@@ -6,7 +6,7 @@ version_number = open(version_path, "r").readline().strip()
 print(f"version_number is {version_number}")
 
 setup(
-    name="timemachine",
+    name="timemachine_lite",
     version=version_number,
     author="Steve Eichblatt",
     author_email="info@spertilo.net",
@@ -64,16 +64,9 @@ setup(
         ]
     },
     scripts=[
-        "timemachine/bin/services.sh",
-        "timemachine/bin/update.sh",
-        "timemachine/bin/board_version.sh",
-        "timemachine/bin/calibrate.sh",
-        "timemachine/bin/timemachine.service",
-        "timemachine/bin/update.service",
-        "timemachine/bin/connect_network.service",
-        "timemachine/bin/serve_options.service",
-        "timemachine/bin/calibrate.service",
-        "timemachine/bin/pulseaudio.service",
+        # "timemachine/bin/update.sh",
+        # "timemachine/bin/board_version.sh",
+        # "timemachine/bin/calibrate.sh",
     ],
     license_files=("LICENSE",),
     license="GNU General Public License v3 (GPLv3)",
