@@ -13,6 +13,7 @@ try:
 except Exception as e:
     logger.warning(f"Failied to import controls")
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 OPTIONS_PATH = os.path.join(os.getenv("HOME"), ".timemachine_options.txt")
 DB_PATH = os.path.join(ROOT_DIR, "metadata")
 
@@ -82,12 +83,6 @@ def default_options():
     d["AUTO_UPDATE_ARCHIVE"] = True
     d["UPDATE_ARCHIVE_ON_STARTUP"] = False
     d["PLAY_LOSSLESS"] = False
-    d["ON_TOUR_ALLOWED"] = False
-    d["PULSEAUDIO_ENABLE"] = False
-    if controls.get_os_version() > 10:
-        d["PULSEAUDIO_ENABLE"] = True
-        d["BLUETOOTH_ENABLE"] = True
-    d["DEFAULT_START_TIME"] = datetime.time(15, 0)
     d["TIMEZONE"] = "America/New_York"
     return d
 
@@ -101,10 +96,7 @@ def save_options(optd_to_save):
         optd_to_save["COLLECTIONS"] = tmpd["COLLECTIONS"]
     for arg in optd_to_save.keys():
         if arg == arg.upper():
-            if arg == "DEFAULT_START_TIME":
-                if isinstance(optd_to_save[arg], datetime.time):
-                    optd_to_save[arg] = datetime.time.strftime(optd_to_save[arg], "%H:%M:%S")
-            elif isinstance(optd_to_save[arg], (list, tuple)):
+            if isinstance(optd_to_save[arg], (list, tuple)):
                 optd_to_save[arg] = ",".join(optd_to_save[arg])
             elif isinstance(optd_to_save[arg], (bool)):
                 optd_to_save[arg] = str(optd_to_save[arg]).lower()
@@ -126,9 +118,6 @@ def load_options():
                 if k in [
                     "AUTO_UPDATE_ARCHIVE",
                     "PLAY_LOSSLESS",
-                    "PULSEAUDIO_ENABLE",
-                    "ON_TOUR_ALLOWED",
-                    "BLUETOOTH_ENABLE",
                     "UPDATE_ARCHIVE_ON_STARTUP",
                 ]:  # make booleans.
                     tmpd[k] = tmpd[k].lower() == "true"
@@ -139,9 +128,6 @@ def load_options():
                     if k == "COLLECTIONS":
                         c = ["Phish" if x.lower() == "phish" else x for x in c]
                     tmpd[k] = c
-                if k in ["DEFAULT_START_TIME"]:  # make datetime
-                    logger.debug(f"time k is {k}")
-                    tmpd[k] = datetime.time.fromisoformat(tmpd[k])
             except Exception:
                 logger.warning(f"Failed to set option {k}. Using {optd[k]}")
     except Exception:
@@ -150,8 +136,3 @@ def load_options():
     logger.info(f"in load_options, optd {optd}")
     os.environ["TZ"] = optd["TIMEZONE"]
     time.tzset()
-    led_cmd = 'sudo bash -c "echo default-on > /sys/class/leds/led1/trigger"'
-    os.system(led_cmd)
-    led_cmd = 'sudo bash -c "echo none > /sys/class/leds/led1/trigger"'
-    logger.info(f"in load_options, running {led_cmd}")
-    os.system(led_cmd)
