@@ -1,1 +1,37 @@
 https://github.com/SpotlightKid/mrequests
+
+To make mpy files:
+sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util
+sudo apt-get install python-is-python3 python3-pip python3-setuptools
+pip3 install pyelftools>=0.25
+
+1.install ESP32 toolchain (Different toolchain is required for different architecture)
+	a. mkdir esp
+	b. cd esp
+	c. git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+	d. cd esp-idf
+	e. ./install.sh
+	f. nano ~/.bash_aliases
+	g. add alias esp32_idf='. $HOME/esp/esp-idf/export.sh'
+	   save&exit
+
+2. Download micropython resp and compile mpy-cross compiler
+	a. cd $HOME
+	b. git clone -b v1.19.1 https://github.com/micropython/micropython.git
+	c. cd micropython/mpy-cross
+	d. make
+	e. nano ~/.bash_aliases
+	f. add alias mpy_cross='$HOME/micropython/mpy-cross/./mpy-cross'
+   save&exit
+
+3. Test with C code
+	a. cd $HOME/micropython/examples/natmod/features0
+	b. edit Makefile to change ARCH = xtensawin and set module name
+	c. esp32_idf (must be called before every compilation if native C files included)
+	d. make
+
+4. Test with MicroPython code
+  a. Create test.py:
+     def SayHi():
+        print("Hello there")
+  b. mpy_cross
