@@ -1047,7 +1047,7 @@ class GDArchive(BaseArchive):
         )
 
         meta_files = os.listdir(meta_path) if os.path.exists(meta_path) else []
-        meta_files = [x for x in meta_files if x.endswith(".json")]
+        meta_files = [x for x in meta_files if x.startswith("ids_") and x.endswith(".json")]
         meta_files = [x for x in meta_files if int(os.path.splitext(x)[0].split("_")[-1]) in years_to_load]
 
         if reload_ids or len(meta_files) == 0:
@@ -1076,7 +1076,7 @@ class GDArchive(BaseArchive):
         # loop over chunks -- get max addeddate before filtering collections.
         if os.path.isdir(meta_path):
             for filename in os.listdir(meta_path):
-                if filename.endswith(".json"):
+                if filename.startswith("ids_") and filename.endswith(".json"):
                     time_period = int(filename.split("_")[-1].replace(".json", ""))
                     # if min_year <= time_period <= max_year:
                     if time_period in years_to_load:
