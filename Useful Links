@@ -5,7 +5,7 @@ http://stuartcheshire.org/papers/NagleDelayedAck/
 To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) - flash firmware.bin from https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ or https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --chip esp32s3 write_flash --flash_mode dio --flash_freq 80m 0x0 C:\Users\mike\Downloads\firmware\firmware.bin
 
-To check free space: os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
+To check free space: import os   os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
 File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, Number of free inodes for unprivileged users, Mount flags, Maximum filename length
 So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
 To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB
