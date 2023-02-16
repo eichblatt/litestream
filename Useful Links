@@ -1,4 +1,13 @@
+Interesting articles:
 https://github.com/SpotlightKid/mrequests
+http://stuartcheshire.org/papers/NagleDelayedAck/
+
+To flash MicroPython on the ESP32-S3 N16R8 - https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
+C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --chip esp32s3 write_flash --flash_mode dio --flash_freq 80m 0x0 C:\Users\mike\Downloads\firmware\firmware.bin
+
+Then check free space:os.statvfs('/'). Should show (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
+
+
 
 To make mpy files:
 sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util
