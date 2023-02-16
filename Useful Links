@@ -2,7 +2,7 @@ Interesting articles:
 https://github.com/SpotlightKid/mrequests
 http://stuartcheshire.org/papers/NagleDelayedAck/
 
-To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) - flash firmware.bin from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
+To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) - flash firmware.bin from https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ or https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --chip esp32s3 write_flash --flash_mode dio --flash_freq 80m 0x0 C:\Users\mike\Downloads\firmware\firmware.bin
 
 To check free space: os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
