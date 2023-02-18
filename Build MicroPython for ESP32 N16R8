@@ -1,6 +1,8 @@
-To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory
+To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from
+https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory
 
-The alternative is to build Micropython from source - info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
+The alternative is to build Micropython from source - info taken from 
+https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
 
 Install ESP-IDF
 ===============
@@ -37,7 +39,8 @@ make BOARD=GENERIC_S3_N16R8
 
 Flash the chip
 ==============
-Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8. Bootloader is under that in bootloader directory, partition table is in partition_table directory
+Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8. 
+bootloader is under that in bootloader directory, partition table is in partition_table directory
 
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
