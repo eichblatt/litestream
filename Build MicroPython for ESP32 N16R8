@@ -29,3 +29,7 @@ cd micropython/ports/esp32
 make submodules
 export IDF_TARGET=esp32s3
 make BOARD=GENERIC_S3_N16R8
+
+Notes:
+======
+I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
