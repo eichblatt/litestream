@@ -2,8 +2,11 @@ Interesting articles:
 https://github.com/SpotlightKid/mrequests
 http://stuartcheshire.org/papers/NagleDelayedAck/
 
-To check free space: import os   os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
-File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, Number of free inodes for unprivileged users, Mount flags, Maximum filename length
+To check free space: import os   os.statvfs('/'). Should show something like
+(4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
+File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, 
+Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, 
+Number of free inodes for unprivileged users, Mount flags, Maximum filename length
 So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
 To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB
 
