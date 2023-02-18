@@ -1,0 +1,31 @@
+Info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
+Note: The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects.
+
+Install ESP-IDF
+===============
+cd $HOME
+mkdir -p ~/esp
+cd ~/esp
+git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+cd ~/esp/esp-idf
+./install.sh esp32,esp32s3
+
+Install Micropython
+===================
+cd $HOME
+git clone -b v1.19.1 https://github.com/micropython/micropython.git
+
+Install Board config
+====================
+cd $HOME
+git clone https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8.git
+cp -r MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 micropython/ports/esp32/boards
+
+Start a terminal session
+========================
+cd $HOME
+. $HOME/esp/esp-idf/export.sh
+cd micropython/ports/esp32
+make submodules
+export IDF_TARGET=esp32s3
+make BOARD=GENERIC_S3_N16R8
