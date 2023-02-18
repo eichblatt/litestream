@@ -1,6 +1,6 @@
 To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory
 
-The alternative is to build Microsopython from source - info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
+The alternative is to build Micropython from source - info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
 
 Install ESP-IDF
 ===============
