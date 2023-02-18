@@ -30,6 +30,10 @@ make submodules
 export IDF_TARGET=esp32s3
 make BOARD=GENERIC_S3_N16R8
 
+Flash the chip
+==============
+C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --chip esp32s3 write_flash --flash_mode dio --flash_freq 80m 0x0 C:\Users\mike\Downloads\firmware\firmware.bin
+
 Notes:
 ======
 I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
