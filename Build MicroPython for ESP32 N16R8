@@ -32,7 +32,7 @@ make BOARD=GENERIC_S3_N16R8
 
 Flash the chip
 ==============
-Previous steps will build Micropython in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8. Bootloader is in bootloader directory, partition table is in partition_table directory
+Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8. Bootloader is under that in bootloader directory, partition table is in partition_table directory
 
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM13 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
@@ -43,3 +43,4 @@ idf.py -p COM13 flash
 Notes:
 ======
 I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
+The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects.
