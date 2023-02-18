@@ -1,5 +1,6 @@
-Info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
-Note: The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects.
+To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory
+
+The alternative is to build Microsopython from source - info taken from https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
 
 Install ESP-IDF
 ===============
@@ -10,16 +11,19 @@ git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf
 ./install.sh esp32,esp32s3
 
+
 Install Micropython
 ===================
 cd $HOME
 git clone -b v1.19.1 https://github.com/micropython/micropython.git
+
 
 Install Board config
 ====================
 cd $HOME
 git clone https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8.git
 cp -r MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 micropython/ports/esp32/boards
+
 
 Start a terminal session
 ========================
@@ -29,6 +33,7 @@ cd micropython/ports/esp32
 make submodules
 export IDF_TARGET=esp32s3
 make BOARD=GENERIC_S3_N16R8
+
 
 Flash the chip
 ==============
@@ -40,7 +45,15 @@ or
 or
 idf.py -p COM13 flash
 
+
+Check that it worked
+====================
+To check free space: import os   os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
+File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, Number of free inodes for unprivileged users, Mount flags, Maximum filename length
+So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
+To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB
+
 Notes:
 ======
 I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
-The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects.
+The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
