@@ -14,10 +14,12 @@ cd ~/esp/esp-idf
 ./install.sh esp32,esp32s3
 
 
-Install Micropython
-===================
+Install Micropython & compile cross compiler
+============================================
 cd $HOME
 git clone -b v1.19.1 https://github.com/micropython/micropython.git
+cd mpy-cross/
+make
 
 
 Install Board config
@@ -27,6 +29,12 @@ git clone https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8.git
 cp -r MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 micropython/ports/esp32/boards
 
 
+Install ST7789 Driver
+=====================
+git clone https://github.com/russhughes/st7789_mpy.git
+Copy ~st7789_mpy/st7789/st7789.c, ~st7789_mpy/st7789/st7789.h & ~st7789_mpy/fonts/bitmap/vga1_16x32.py to ~/micropython/ports/esp32/modules
+
+
 Start a terminal session
 ========================
 cd $HOME
@@ -34,7 +42,7 @@ cd $HOME
 cd micropython/ports/esp32
 make submodules
 export IDF_TARGET=esp32s3
-make BOARD=GENERIC_S3_N16R8
+make BOARD=GENERIC_S3_N16R8 USER_C_MODULES=../../../../st7789_mpy/st7789/micropython.cmake
 
 
 Flash the chip
