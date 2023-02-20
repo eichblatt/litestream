@@ -68,3 +68,4 @@ Notes:
 ======
 I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
 The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
+Looks like v1.19.1 has issues with ESP32-S3 SPI. Removing the -b v1.19.1 when cloning MicroPython (and therefore getting the latest dev version) fixed it.
