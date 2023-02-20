@@ -32,7 +32,7 @@ cp -r MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 micropython/ports/esp32/boards
 Install ST7789 Driver
 =====================
 git clone https://github.com/russhughes/st7789_mpy.git
-Copy ~st7789_mpy/st7789/st7789.c, ~st7789_mpy/st7789/st7789.h & ~st7789_mpy/fonts/bitmap/vga1_16x32.py to ~/micropython/ports/esp32/modules
+Copy ~/st7789_mpy/st7789/st7789.c, ~/st7789_mpy/st7789/st7789.h & ~/st7789_mpy/fonts/bitmap/vga1_16x32.py to ~/micropython/ports/esp32/modules
 
 
 Start a terminal session
