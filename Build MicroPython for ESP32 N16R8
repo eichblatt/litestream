@@ -18,7 +18,7 @@ Install Micropython & compile cross compiler
 ============================================
 cd $HOME
 git clone -b v1.19.1 https://github.com/micropython/micropython.git
-cd mpy-cross/
+cd ~/micropython/mpy-cross/
 make
 
 
