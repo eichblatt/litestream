@@ -11,7 +11,7 @@ mkdir -p ~/esp
 cd ~/esp
 git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf
-./install.sh esp32,esp32s3 (if you get weird errors try rm -rf ~/.espressif & PATH=$(getconf PATH))
+./install.sh esp32,esp32s3 (if you get weird errors try rm -rf ~.esp & rm -rf ~/.espressif & PATH=$(getconf PATH) and start again)
 
 
 Install Micropython & compile cross compiler
