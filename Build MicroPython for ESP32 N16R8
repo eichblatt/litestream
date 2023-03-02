@@ -17,7 +17,7 @@ cd ~/esp/esp-idf
 Install Micropython & compile cross compiler
 ============================================
 cd $HOME
-git clone -b v1.19.1 https://github.com/micropython/micropython.git
+git clone -b v1.19.1 --recursive https://github.com/micropython/micropython.git
 cd ~/micropython/mpy-cross/
 make
 
