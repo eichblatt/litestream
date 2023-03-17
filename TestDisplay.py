@@ -39,8 +39,7 @@ while True:
     val_old = val_new
 
     #tft.fill_polygon(poly, 80, 60, st7789.GREEN, 0.01745329 * val_new * 18 , tft.polygon_center(poly)[0], tft.polygon_center(poly)[1])
-    tft.text(font, 'Vali:' + str(val_new) + ' ', 20, 40, st7789.WHITE, st7789.BLUE)
-    #tft.text(font, 'Hi Steve!!! ', 20, 40, st7789.WHITE, st7789.BLUE)
+    tft.text(font, 'Val:' + str(val_new) + ' ', 20, 40, st7789.WHITE, st7789.BLUE)
     #print('result =', val_new)
             
     #time.sleep_ms(100)
