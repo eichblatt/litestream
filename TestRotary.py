@@ -1,4 +1,6 @@
 # Display driver: https://github.com/russhughes/st7789_mpy
+# Rotary Driver: https://github.com/MikeTeachman/micropython-rotary
+
 import time
 from rotary_irq_esp import RotaryIRQ
 
