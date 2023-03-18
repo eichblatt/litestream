@@ -29,10 +29,17 @@ git clone https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8.git
 cp -r ~/MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 ~/micropython/ports/esp32/boards (may need to delete CMakeCache.txt from build-GENERIC_S3_N16R8 or run clean)
 
 
-Install ST7789 Driver
-=====================
+Install ST7789 Driver (from https://github.com/russhughes/st7789_mpy)
+=====================================================================
 git clone https://github.com/russhughes/st7789_mpy.git
 cp ~/st7789_mpy/fonts/bitmap/vga1_16x32.py ~/micropython/ports/esp32/modules
+
+
+Install Rotary Encoder Driver (from https://github.com/MikeTeachman/micropython-rotary)
+=======================================================================================
+git clone https://github.com/MikeTeachman/micropython-rotary
+cp ~/micropython-rotary/rotary.py ~/micropython/ports/esp32/modules
+cp ~/micropython-rotary/rotary_irq_esp.py ~/micropython/ports/esp32/modules
 
 
 Start a terminal session
