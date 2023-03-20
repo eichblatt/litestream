@@ -1,6 +1,7 @@
 Interesting articles:
 https://github.com/SpotlightKid/mrequests
 http://stuartcheshire.org/papers/NagleDelayedAck/
+https://github.com/StartAutomating/ugit
 
 To check free space: import os   os.statvfs('/'). Should show something like
 (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
