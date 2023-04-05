@@ -49,7 +49,7 @@ Start a terminal session
 cd $HOME
 . $HOME/esp/esp-idf/export.sh
 cd micropython/ports/esp32
-idf.py -B build-GENERIC_S3_N16R8 menuconfig (if required)
+idf.py -B build-GENERIC_S3_N16R8 menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
 export IDF_TARGET=esp32s3
 make BOARD=GENERIC_S3_N16R8 USER_C_MODULES=../../../../st7789_mpy/st7789/micropython.cmake
@@ -106,3 +106,4 @@ Notes:
 I got errors and had to rm -r .espressif/ and then ./install.sh esp32,esp32s3 again
 The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
 Looks like v1.19.1 has issues with ESP32-S3 SPI. Removing the -b v1.19.1 when cloning MicroPython (and therefore getting the latest dev version) fixed it.
+Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. Have to run menuconfig and set the single core flag.
