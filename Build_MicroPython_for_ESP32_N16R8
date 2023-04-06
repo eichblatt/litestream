@@ -93,6 +93,13 @@ Duh! the device is unplugged!
 : ~/projects/deadstream ; sudo screen  /dev/ttyACM0 115200
 and I have a repl!!!
 
+Connecting the device from PyMakr
+=================================
+On my machine, when i plug in the device, a file handle /dev/ttyACM0 is created to connect to it. It is owned by root, and since my vscode is running as me, I can't connect.
+Run this command to change the permissions so that PyMakr can connect:
+: ~ ; sudo chown steve /dev/ttyACM0 
+
+
 Check that it worked
 ====================
 To check free space: import os   os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
