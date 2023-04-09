@@ -54,8 +54,8 @@ json_text = ""
 try:
     json_text = r.json()
 except:
-    pass
-content = r.content
-print(content)
+    print("Failed to parse json. Probably because the MAX_READ_SIZE limited the output")
+    content = r.content
+    print(content)
+
 r.close()
-# this cannot be converted to json because it only pulls in 4096 bytes, which is incomplete.
