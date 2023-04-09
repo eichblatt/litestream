@@ -22,7 +22,7 @@ parms = {
 parmstring = make_parmstring(parms)
 
 # true_url = "https://archive.org/services/search/v1/scrape?debug=false&xvar=production&total_only=true&count=100&fields=identifier%2Citem_count%2Ccollection_size%2Cdownloads%2Cnum_favorites&q=collection%3Detree%20AND%20mediatype%3Acollection"
-# From
+# From https://archive.org/services/swagger/
 url = api + "?" + parmstring
 print(f"URL is {url}")
 r = requests.get(url)
