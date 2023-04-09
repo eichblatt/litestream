@@ -1,6 +1,13 @@
 from mrequests import mrequests as requests
 import time
 
+"""get_metadata.py
+This is an example script which uses the mrequests package to get some metadata from archive.org.
+I used this example to confirm that mrequests was working, and I learned a few gotchas here. 
+NOTE I had to incread the MAX_READ_SIZE in order to pull the entire results. I'm not sure how
+this will scale when we pull larger amounts of data.
+"""
+
 
 def make_parmstring(parms):
     parmstring = "&".join([f"{k}={v}" for k, v in parms.items()])
