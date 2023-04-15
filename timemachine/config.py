@@ -3,7 +3,7 @@ import os
 import time
 
 try:
-    from timemachine import controls
+    import controls
 except Exception as e:
     print(f"Failied to import controls")
 
@@ -113,5 +113,3 @@ def load_options():
         print(f"Failed to read options from {OPTIONS_PATH}. Using defaults")
     optd.update(tmpd)  # update defaults with those read from the file.
     print(f"in load_options, optd {optd}")
-    os.environ["TZ"] = optd["TIMEZONE"]
-    time.tzset()

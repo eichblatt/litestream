@@ -51,6 +51,7 @@ print(f"Max read size is {requests.MAX_READ_SIZE}")
 r = requests.get(url)
 
 json_text = ""
+
 try:
     json_text = r.json()
 except:

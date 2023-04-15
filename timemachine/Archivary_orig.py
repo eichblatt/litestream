@@ -14,6 +14,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import abc
+import codecs
+import csv
 import datetime
 import difflib
 import json
@@ -768,7 +770,6 @@ class PhishinArchive(BaseArchive):
             print ("Loading Tapes from Phish.in. This will take a few minutes")
             n_tapes = self.downloader.get_all_tapes(self.idpath)  # this will write chunks to folder
             if n_tapes > 0:
-                pass
                 # logger.debug(f"Phish.in Loaded {n_tapes} tapes from archive")
 
         if with_latest:
@@ -776,7 +777,6 @@ class PhishinArchive(BaseArchive):
             # logger.debug(f"Refreshing Tapes\nmax showdate {max_showdate}")
             n_tapes = self.downloader.get_all_tapes(self.idpath, max_showdate)
             if n_tapes > 0:
-                pass
                 # logger.debug(f"Phish.in Loaded {n_tapes} new tapes from archive")
         else:
             if len(self.tapes) > 0:  # The tapes have already been written, and nothing was added
@@ -1564,11 +1564,10 @@ class GDSetBreaks:
         # if 'GratefulDead' not in self.collection_list:
         #    self.set_data = set_data
         #    return
-        # set_breaks = pkg_resources.resource_stream("timemachine.metadata", "set_breaks.csv")
-        # r = [r for r in csv.reader(utf8_reader(set_breaks))]
-        #headers = r[0]
-        headers = ""
-        r = []
+        set_breaks = pkg_resources.resource_stream("timemachine.metadata", "set_breaks.csv")
+        utf8_reader = codecs.getreader("utf-8")
+        r = [r for r in csv.reader(utf8_reader(set_breaks))]
+        headers = r[0]
         for row in r[1:]:
             d = dict(zip(headers, row))
             current_row = GDSet_row(d)
