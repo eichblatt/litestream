@@ -60,11 +60,13 @@ Flash the chip
 Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
 
-C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.2.1\esptool -p COM4 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
+C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
 /home/mikealex/.espressif/python_env/idf4.4_py3.8_env/bin/python ../../../esp/esp-idf/components/esptool_py/esptool/esptool.py -p (PORT) -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 build-GENERIC_S3_N16R8/bootloader/bootloader.bin 0x8000 build-GENERIC_S3_N16R8/partition_table/partition-table.bin 0x10000 build-GENERIC_S3_N16R8/micropython.bin
 or
 idf.py -p COM13 flash
+
+(If you need to erase flash, the command is C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 erase_flash)
 
 
 For Steve:
