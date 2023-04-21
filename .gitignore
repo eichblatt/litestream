@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 timemachine/metadata/*_ids
 *.bin
+adapter_board.png
