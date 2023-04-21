@@ -53,9 +53,9 @@ PowerLED = False
 # Initialise the three rotaries. First value is CL, second is DT
 # Year
 y = RotaryIRQ(42, 40, min_val=0, max_val=10, reverse=True, range_mode=RotaryIRQ.RANGE_UNBOUNDED, pull_up=True, half_step=False)
-#Month
+# Month
 m = RotaryIRQ(39, 18, min_val=0, max_val=10, reverse=True, range_mode=RotaryIRQ.RANGE_UNBOUNDED, pull_up=True, half_step=False)
-#Day
+# Day
 d = RotaryIRQ(8, 7, min_val=0, max_val=10, reverse=True, range_mode=RotaryIRQ.RANGE_UNBOUNDED, pull_up=True, half_step=False)
 
 year_old = -1
