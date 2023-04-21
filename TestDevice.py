@@ -166,10 +166,8 @@ while True:
         print('year =', year_new)
         
     if month_old != month_new:
-        #tft.fill_polygon(poly, 80, 60, st7789.BLUE, 0.01745329 * val_old * 18 , tft.polygon_center(poly)[0], tft.polygon_center(poly)[1])
         month_old = month_new
         tft.text(font, 'M = ' + str(month_new) + '     ', 0, 0, st7789.WHITE, st7789.BLUE)
-        #tft.fill_polygon(poly, 80, 60, st7789.GREEN, 0.01745329 * val_new * 18 , tft.polygon_center(poly)[0], tft.polygon_center(poly)[1])
         print('month =', month_new)
                 
     if day_old != day_new:
