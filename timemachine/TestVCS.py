@@ -16,7 +16,7 @@ def main_loop(col_dict):
     month_old = -1
     day_old = -1
     date_old = ""
-    pPower_old = False
+    pPower_old = True
     pSelect_old = False
     pPlayPause_old = False
     pStop_old = False
@@ -32,6 +32,7 @@ def main_loop(col_dict):
         if pPower_old != TMB.pPower.value():
             pPower_old = TMB.pPower.value()
             TMB.pLED.value(TMB.PowerLED)
+            TMB.tft.off() if not TMB.PowerLED else TMB.tft.on()
             if pPower_old:
                 TMB.tft.fill_circle(5 + 8, 108 + 8, 8, TMB.st7789.BLUE)
                 print("Power UP")
