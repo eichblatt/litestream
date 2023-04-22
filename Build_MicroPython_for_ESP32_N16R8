@@ -70,9 +70,11 @@ idf.py -p COM13 flash
 
 
 For Steve:
+=============================
 first source the file  $HOME/projects/esp/esp-idf/export.sh
 
 cd to $HOME/projects/litestream
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/activate
 
 sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/projects/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 
@@ -80,20 +82,7 @@ This fails, but i should be able to figure it out.
 
 I think the problem is that I don't have the "pyserial" package installed **in the venv that I'm working in**. I have installed it, but it doesn't seem to be aware of it.
 
-Pyserial is not installed for /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python. Check the README for installation instructions.
-Traceback (most recent call last):
-  File "/home/steve/projects/esp/esp-idf/components/esptool_py/esptool/esptool.py", line 39, in <module>
-    import serial
-ModuleNotFoundError: No module named 'serial'
-
-: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/activate
 (idf4.4_py3.10_env) : ~/projects/litestream ; pip3 install pyserial
-Now I get a new error:
-serial.serialutil.SerialException: [Errno 2] could not open port /dev/ttyACM0: [Errno 2] No such file or directory: '/dev/ttyACM0'
-
-Duh! the device is unplugged!
-: ~/projects/deadstream ; sudo screen  /dev/ttyACM0 115200
-and I have a repl!!!
 
 Connecting the device from PyMakr
 =================================
