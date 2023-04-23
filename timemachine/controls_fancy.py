@@ -82,7 +82,7 @@ class date_knob_reader:
         m_val = self.m.steps
         d_val = self.d.steps
         y_val = self.y.steps + self.year_baseline
-        logger.debug(f"updating date reader. m:{m_val},d:{d_val},y:{y_val}")
+        print(f"updating date reader. m:{m_val},d:{d_val},y:{y_val}")
         if d_val > self.maxd[m_val - 1]:
             self.d.steps = self.maxd[m_val - 1]
             d_val = self.d.steps
@@ -92,7 +92,7 @@ class date_knob_reader:
             self.d.steps = self.d.steps - 1
             d_val = d_val - 1
             self.date = datetime.date(y_val, m_val, d_val)
-        logger.debug(f"date reader date {self.date}")
+        print(f"date reader date {self.date}")
 
     def set_date(self, date, shownum=0):
         new_month, new_day, new_year = (date.month, date.day, date.year)
@@ -140,7 +140,7 @@ class date_knob_reader:
             if not artist in artists:
                 continue
             shownum = artists.index(artist)
-            logger.debug(f" artist is {artist}. artists: {artists}. date {d}. Shownum {shownum}")
+            print(f" artist is {artist}. artists: {artists}. date {d}. Shownum {shownum}")
             return (datetime.datetime.fromisoformat(d).date(), shownum)
         return None
 
@@ -271,13 +271,13 @@ class Time_Machine_Board:
 
     def twist_knob(self, knob: RotaryEncoder, label, date_reader: date_knob_reader):
         if knob.is_active:
-            logger.debug(f"Knob {label} steps={knob.steps} value={knob.value}")
+            print(f"Knob {label} steps={knob.steps} value={knob.value}")
         else:
             if knob.steps < knob.threshold_steps[0]:
                 knob.steps = knob.threshold_steps[0]
             if knob.steps > knob.threshold_steps[1]:
                 knob.steps = knob.threshold_steps[1]
-            logger.debug(f"Knob {label} is inactive")
+            print(f"Knob {label} is inactive")
         date_reader.update()
 
     def decade_knob(self, knob: RotaryEncoder, label, counter: decade_counter):
@@ -314,48 +314,40 @@ class Time_Machine_Board:
                 raise ValueError
             kfile.close()
         except Exception as e:
-            logger.warning(f"error in get_knob_sense {e}. Setting knob_sense to 0")
+            print(f"error in get_knob_sense {e}. Setting knob_sense to 0")
             knob_sense = 0
         finally:
             return knob_sense
 
     def rewind_button(self, button):
-        logger.debug("pressing or holding rewind")
         self.button_event.set()
         self.rewind_event.set()
 
     def select_button(self, button):
-        logger.debug("pressing select")
         self.button_event.set()
         self.select_event.set()
 
     def stop_button(self, button):
-        logger.debug("pressing stop")
         self.button_event.set()
         self.stop_event.set()
 
     def ffwd_button(self, button):
-        logger.debug("pressing ffwd")
         self.button_event.set()
         self.ffwd_event.set()
 
     def play_pause_button(self, button):
-        logger.debug("pressing play_pause")
         self.button_event.set()
         self.play_pause_event.set()
 
     def month_button(self, button):
-        logger.debug("pressing or holding rewind")
         self.button_event.set()
         self.m_event.set()
 
     def day_button(self, button):
-        logger.debug("pressing or holding rewind")
         self.button_event.set()
         self.d_event.set()
 
     def year_button(self, button):
-        logger.debug("pressing or holding rewind")
         self.button_event.set()
         self.y_event.set()
 
@@ -377,7 +369,7 @@ def select_option(TMB, counter, message, chooser):
     TMB.rewind_event.clear()
     TMB.select_event.clear()
 
-    scr.show_text(message, loc=(0, 0), font=scr.smallfont, color=(0, 255, 255), force=True)
+    scr.show_text(message, loc=(0, 0), font=scr.smallfont, color=(0, 255, 255))
     (text_width, text_height) = scr.smallfont.getsize(message)
 
     text_height = text_height + 1
@@ -391,14 +383,14 @@ def select_option(TMB, counter, message, chooser):
             else:
                 choices = chooser
             TMB.rewind_event.clear()
-        scr.clear_area(selection_bbox, force=False)
+        scr.clear_area(selection_bbox)
         x_loc = 0
         y_loc = y_origin
         step = divmod(counter.value, len(choices))[1]
 
         text = "\n".join(choices[max(0, step - int(screen_height / 2)) : step])
         (text_width, text_height) = scr.smallfont.getsize(text)
-        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont, force=False)
+        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont)
         y_loc = y_loc + text_height * (1 + text.count("\n"))
 
         if len(choices[step]) > screen_width:
@@ -406,19 +398,19 @@ def select_option(TMB, counter, message, chooser):
         else:
             text = ">" + choices[step]
         (text_width, text_height) = scr.smallfont.getsize(text)
-        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont, color=(0, 0, 255), force=False)
+        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont, color=(0, 0, 255))
         y_loc = y_loc + text_height
 
         text = "\n".join(choices[step + 1 : min(step + screen_height, len(choices))])
         (text_width, text_height) = scr.smallfont.getsize(text)
-        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont, force=True)
+        scr.show_text(text, loc=(x_loc, y_loc), font=scr.smallfont)
 
         time.sleep(0.01)
     TMB.select_event.clear()
     selected = choices[step]
-    # scr.show_text(F"So far: \n{selected}",loc=selected_bbox.origin(),color=(255,255,255),font=scr.smallfont,force=True)
+    # scr.show_text(F"So far: \n{selected}",loc=selected_bbox.origin(),color=(255,255,255),font=scr.smallfont)
 
-    logger.info(f"word selected {selected}")
+    print(f"word selected {selected}")
     scr.update_now = update_now
     return selected
 
@@ -434,7 +426,7 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
     TMB.stop_event.clear()
     TMB.select_event.clear()
 
-    scr.show_text(message, loc=(0, 0), font=scr.smallfont, color=(0, 255, 255), force=True)
+    scr.show_text(message, loc=(0, 0), font=scr.smallfont, color=(0, 255, 255))
     (text_width, text_height) = scr.smallfont.getsize(message)
 
     y_origin = text_height * (1 + message.count("\n"))
@@ -443,7 +435,7 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
 
     while not TMB.stop_event.is_set():
         while not TMB.select_event.is_set() and not TMB.stop_event.is_set():
-            scr.clear_area(selection_bbox, force=False)
+            scr.clear_area(selection_bbox)
             # scr.draw.rectangle((0,0,scr.width,scr.height),outline=0,fill=(0,0,0))
             x_loc = 0
             y_loc = y_origin
@@ -451,12 +443,11 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
             text = "DEL"
             (text_width, text_height) = scr.oldfont.getsize(text)
             if counter.value == 0:  # we are deleting
-                scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, color=(0, 0, 255), force=False)
+                scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, color=(0, 0, 255))
                 scr.show_text(
-                    character_set[:screen_width], loc=(x_loc + text_width, y_loc), font=scr.oldfont, force=True
-                )
+                    character_set[:screen_width], loc=(x_loc + text_width, y_loc), font=scr.oldfont)
                 continue
-            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, force=False)
+            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont)
             x_loc = x_loc + text_width
 
             # print the white before the red, if applicable
@@ -464,7 +455,7 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
             for x in character_set[94:]:
                 text = text.replace(x, "\u25A1")
             (text_width, text_height) = scr.oldfont.getsize(text)
-            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, force=False)
+            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont)
             x_loc = x_loc + text_width
 
             # print the red character
@@ -482,7 +473,7 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
             elif text == "\x0c":
                 text = "\\f"
             (text_width, text_height) = scr.oldfont.getsize(text)
-            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, color=(0, 0, 255), force=False)
+            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, color=(0, 0, 255))
             x_loc = x_loc + text_width
 
             # print the white after the red, if applicable
@@ -490,7 +481,7 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
             for x in character_set[94:]:
                 text = text.replace(x, "\u25A1")
             (text_width, text_height) = scr.oldfont.getsize(text)
-            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont, force=True)
+            scr.show_text(text, loc=(x_loc, y_loc), font=scr.oldfont)
             x_loc = x_loc + text_width
 
             time.sleep(0.1)
@@ -499,35 +490,20 @@ def select_chars(TMB, counter, message, message2="So Far", character_set=string.
             continue
         if counter.value == 0:
             selected = selected[:-1]
-            scr.clear_area(selected_bbox, force=False)
+            scr.clear_area(selected_bbox)
         else:
             selected = selected + character_set[-1 + counter.value]
-        scr.clear_area(selected_bbox, force=False)
+        scr.clear_area(selected_bbox)
         scr.show_text(
             f"{message2}:\n{selected[-screen_width:]}",
             loc=selected_bbox.origin(),
             color=(255, 255, 255),
             font=scr.oldfont,
-            force=True,
         )
 
-    logger.info(f"word selected {selected}")
+    print(f"word selected {selected}")
     scr.update_now = update_now
     return selected
-
-
-def get_version():
-    __version__ = "v1.0"
-    try:
-        latest_tag_path = pkg_resources.resource_filename("timemachine", ".latest_tag")
-        with open(latest_tag_path, "r") as tag:
-            __version__ = tag.readline()
-        __version__ = __version__.strip()
-        return __version__
-    except Exception as e:
-        logging.warning(f"get_version error {e}")
-    finally:
-        return __version__
 
 
 class Bbox:
@@ -568,7 +544,7 @@ RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
 # Configure display driver
-tft = configure(1, buffer_size=64 * 64 * 2)
+# tft = configure(1, buffer_size=64 * 64 * 2)
 
 
 class screen:
@@ -614,18 +590,6 @@ class screen:
     def clear(self):
         self.clear_area((0, 0, self.width, self.height))
 
-    # def sleep(self):
-    #     self.led.off()
-    #     pixels = self.image.tobytes()
-    #     self.clear()
-    #     self.sleeping = True
-    #     self.image.frombytes(pixels)
-
-    # def wake_up(self):
-    #     config.WOKE_AT = datetime.datetime.now()
-    #     self.sleeping = False
-    #     self.led.on()
-
     def show_text(self, text, loc=(0, 0), font=None, color=(255, 255, 255), scale=1, clear=False):
         if text is None:
             text = " "
@@ -636,15 +600,7 @@ class screen:
             self.clear()
         self.draw(font, text, loc[0], loc[1], color, scale)
 
-    def scroll_venue(self, color=(0, 255, 255), stroke_width=0, inc=15):
-        """This function can be called in a thread from the main.
-        eg.
-        venue_thread = threading.Thread(target=s.scroll_venue,name="venue_scroll",args=(),kwargs={'stroke_width':0,'inc':10})
-        venue_thread.start()
-        s.venue_name ="Fillmore West, San Francisco, CA"
-
-        It works, but eats a lot of cycles. I'm not ready to go in this direction yet
-        """
+    def scroll_venue(self, color=(0, 255, 255), inc=15):
         bbox = self.venue_bbox
         font = self.boldsmall
         self.clear_area(bbox)
@@ -652,12 +608,11 @@ class screen:
             text = self.venue_name
             (text_width, text_height) = font.getsize(text)
             excess = text_width - bbox.width()
-            self.draw.text(bbox.origin(), text, font=font, fill=color, stroke_width=stroke_width)
+            self.draw.text(bbox.origin(), text, font=font, fill=color)
             if excess > 0:
-                self.show_text(text, bbox.origin(), font=font, color=color, stroke_width=stroke_width)
+                self.show_text(text, bbox.origin(), font=font, color=color)
                 time.sleep(2)
                 for i in range(int(excess / inc) + 2):
-                    # logger.debug(F"scrolling excess {excess}, inc: {inc}, i:{i}")
                     if self.venue_name != text:
                         break
                     # sleep(0.005)
@@ -667,37 +622,36 @@ class screen:
                         bbox.shift(Bbox(inc * i, 0, 0, 0)).origin(),
                         font=font,
                         color=color,
-                        stroke_width=stroke_width,
                     )
-                sleep(1)
+                time.sleep(1)
                 self.clear_area(bbox)
 
-    def show_experience(self, text="Press Month to\nExit Experience", color=(255, 255, 255), force=False):
+    def show_experience(self, text="Press Month to\nExit Experience", color=(255, 255, 255)):
         self.clear_area(self.exp_bbox)
-        self.show_text(text, self.exp_bbox.origin(), font=self.smallfont, color=color, stroke_width=1, force=force)
+        self.show_text(text, self.exp_bbox.origin(), font=self.smallfont, color=color)
 
-    def show_nevents(self, num_events, color=(255, 100, 0), force=False):
+    def show_nevents(self, num_events, color=(255, 100, 0))
         self.clear_area(self.nevents_bbox)
-        self.show_text(str(num_events), self.nevents_bbox.origin(), font=self.boldsmall, color=color, force=force)
+        self.show_text(str(num_events), self.nevents_bbox.origin(), font=self.boldsmall, color=color)
 
-    def show_venue(self, arg, color=(0, 255, 255), force=False):
+    def show_venue(self, arg, color=(0, 255, 255)):
         self.clear_area(self.venue_bbox)
-        self.show_text(arg, self.venue_bbox.origin(), font=self.boldsmall, color=color, force=force)
+        self.show_text(arg, self.venue_bbox.origin(), font=self.boldsmall, color=color)
 
-    def show_staged_years(self, years, color=(0, 255, 255), show_dash=False, force=False):
+    def show_staged_years(self, years, color=(0, 255, 255), show_dash=False):
         if isinstance(years, datetime.date):
             self.staged_date = years
             years = [years.year, years.year]
         if len(years) != 2:
-            logger.warning("show_staged_years: Cannot pass years list longer than 2")
+            print("show_staged_years: Cannot pass years list longer than 2")
             return
         if years[0] is None:
             return
         if min(years) < 1800:
-            logger.warning("show_staged_years: min year less than 1800")
+            print("show_staged_years: min year less than 1800")
             return
         years = sorted(years)
-        if (years == self.staged_years) and not force:
+        if (years == self.staged_years):
             return
         self.clear_area(self.staged_date_bbox)
         start_year = str(years[0])
@@ -712,20 +666,20 @@ class screen:
                 text = f"{start_year}-"
             else:
                 text = f"{start_year}"
-        logger.debug(f"staged date string {text}")
-        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color, force=force)
+        print(f"staged date string {text}")
+        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color)
         self.staged_years = years
 
-    def show_staged_year(self, date, color=(0, 255, 255), force=False):
-        if (date == self.staged_date) and not force:
+    def show_staged_year(self, date, color=(0, 255, 255)):
+        if (date == self.staged_date):
             return
         self.clear_area(self.staged_date_bbox)
         text = f"{date.year}"
-        logger.debug(f"staged date string {text}")
-        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color, force=force)
+        print(f"staged date string {text}")
+        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color)
         self.staged_date = date
 
-    def show_staged_date(self, date, color=(0, 255, 255), force=False):
+    def show_staged_date(self, date, color=(0, 255, 255)):
         if date == self.staged_date:
             return
         self.clear_area(self.staged_date_bbox)
@@ -733,37 +687,37 @@ class screen:
         day = str(date.day).rjust(2)
         year = str(date.year % 100).rjust(2, "0")
         text = month + "-" + day + "-" + year
-        logger.debug(f"staged date string {text}")
-        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color, force=force)
+        print(f"staged date string {text}")
+        self.show_text(text, self.staged_date_bbox.origin(), self.boldfont, color=color)
         self.staged_date = date
 
-    def show_selected_date(self, date, color=(255, 255, 255), force=False):
-        if (date == self.selected_date) and not force:
+    def show_selected_date(self, date, color=(255, 255, 255)):
+        if (date == self.selected_date):
             return
         self.clear_area(self.selected_date_bbox)
         month = str(date.month).rjust(2)
         day = str(date.day).rjust(2)
         year = str(date.year).rjust(4)
         text = month + "-" + day + "-" + year
-        self.show_text(text, self.selected_date_bbox.origin(), self.boldsmall, color=color, force=force)
+        self.show_text(text, self.selected_date_bbox.origin(), self.boldsmall, color=color)
         self.selected_date = date
 
-    def show_track(self, text, trackpos, color=(120, 0, 255), raw_text=False, force=False):
+    def show_track(self, text, trackpos, color=(120, 0, 255), raw_text=False):
         text = text if raw_text else " ".join(x.capitalize() for x in text.split())
         bbox = self.track1_bbox if trackpos == 0 else self.track2_bbox
         self.clear_area(bbox)
-        self.draw.text(bbox.origin(), text, font=self.smallfont, fill=color, stroke_width=1)
-        if force or self.update_now:
+        self.draw.text(bbox.origin(), text, font=self.smallfont, fill=color)
+        if self.update_now:
             self.refresh(True)
 
-    def show_playstate(self, staged_play=False, color=(0, 100, 255), sbd=None, force=False):
-        logger.debug(f"showing playstate {config.PLAY_STATE}")
+    def show_playstate(self, staged_play=False, color=(0, 100, 255), sbd=None):
+        print(f"showing playstate {config.PLAY_STATE}")
         bbox = self.playstate_bbox
         self.clear_area(bbox)
         if staged_play:
             self.draw.regular_polygon((bbox.center(), 10), 3, rotation=30, fill=color)
             self.draw.regular_polygon((bbox.center(), 8), 3, rotation=30, fill=(0, 0, 0))
-            if force or self.update_now:
+            if self.update_now:
                 self.refresh(True)
             return
         if config.PLAY_STATE == config.PLAYING:
@@ -777,14 +731,14 @@ class screen:
             pass
         if sbd:
             self.show_soundboard(sbd)
-        if force or self.update_now:
+        if self.update_now:
             self.refresh(True)
 
     def show_soundboard(self, sbd, color=(255, 255, 255)):
         if not sbd:
             self.draw.regular_polygon((self.sbd_bbox.center(), 3), 4, rotation=45, fill=(0, 0, 0))
             return
-        logger.debug("showing soundboard status")
+        print("showing soundboard status")
         self.draw.regular_polygon((self.sbd_bbox.center(), 3), 4, rotation=45, fill=color)
 
 
@@ -859,7 +813,6 @@ class state:
                 else:
                     self.dict["NEXT_TRACK_TITLE"] = ""
         except Exception:
-            # logger.debug('Exception getting current state. Using some defaults')
             pass
         self.dict["TRACK_ID"] = f"{self.dict['TAPE_ID']}_track_{self.dict['TRACK_NUM']}"
         return self.dict
@@ -883,4 +836,4 @@ def controlLoop(item_list, callback, state=None, scr=None):
         if (now - last_timer).seconds > 5:
             last_timer = now
             callback(None, state, scr)
-        sleep(0.01)
+        time.sleep(0.01)
