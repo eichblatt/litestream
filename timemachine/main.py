@@ -34,7 +34,6 @@ pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 
 pLED = Pin(48, Pin.OUT)
 
-PowerLED = False
 
 # Initialise the three rotaries. First value is CL, second is DT
 # Year
@@ -134,7 +133,8 @@ def main_loop(col_dict):
     month_old = -1
     day_old = -1
     date_old = ""
-    pPower_old = True
+    PowerLED = True
+    pPower_old = False
     pSelect_old = False
     pPlayPause_old = False
     pStop_old = False
