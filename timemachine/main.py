@@ -104,6 +104,20 @@ def connect_network():
 print("Starting...")
 
 
+def set_ymd(year=None, month=None, day=None):
+    global m
+    global y
+    global d
+    if year is not None:
+        y._value = year
+    if month is not None:
+        m._value = month
+    if day is not None:
+        d._value = day
+    key_date = f"{y.value()}-{m.value():02d}-{d.value():02d}"
+    return key_date
+
+
 def set_date(date):
     global m
     global y
@@ -226,12 +240,24 @@ def main_loop(col_dict):
         year_new = y.value()
         month_new = m.value()
         day_new = d.value()
+        if (month_new in [4, 6, 9, 11]) and (day_new > 30):
+            day_new = 30
+        if (month_new == 2) and (day_new > 28):
+            if year_new % 4 == 0:
+                day_new = min(29, day_new)
+                if (year_new % 100 == 0) and (year_new % 400 != 0):
+                    day_new = min(28, day_new)
+            else:
+                day_new = min(28, day_new)
+
         date_new = f"{month_new}-{day_new}-{year_new%100}"
         key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
-
+        key_date = set_date(key_date)
         if year_old != year_new:
             year_old = year_new
-            tft.text(font, f"{year_new%100}", 90, 0, stage_date_color, st7789.BLACK)
+            tft.text(font, f"{year_new%100}", 100, 0, stage_date_color, st7789.BLACK)
+            # clear_area(tft, 0, 0, 160, 30)
+            # tft.draw(romant_font, f"{date_new}", 0, 15, stage_date_color, 1)
             print("year =", year_new)
 
         if month_old != month_new:
@@ -241,7 +267,7 @@ def main_loop(col_dict):
 
         if day_old != day_new:
             day_old = day_new
-            tft.text(font, f"{day_new:2d}-", 43, 0, stage_date_color, st7789.BLACK)
+            tft.text(font, f"{day_new:2d}-", 50, 0, stage_date_color, st7789.BLACK)
             print("day =", day_new)
 
         if date_old != date_new:
@@ -251,7 +277,7 @@ def main_loop(col_dict):
                 vcs = col_dict["GratefulDead"][f"{key_date}"]
                 print(vcs)
                 clear_area(tft, 0, 25, 160, 32)
-                tft.draw(roman_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
+                tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
             except KeyError:
                 clear_area(tft, 0, 25, 160, 32)
                 pass
