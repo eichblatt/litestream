@@ -250,27 +250,28 @@ def main_loop(col_dict):
             else:
                 day_new = min(28, day_new)
 
-        date_new = f"{month_new}-{day_new}-{year_new%100}"
+        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:2d}"
         key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
         key_date = set_date(key_date)
         if year_old != year_new:
             year_old = year_new
-            tft.text(font, f"{year_new%100}", 100, 0, stage_date_color, st7789.BLACK)
+            # tft.text(font, f"{year_new%100}", 100, 0, stage_date_color, st7789.BLACK)
             # clear_area(tft, 0, 0, 160, 30)
             # tft.draw(romant_font, f"{date_new}", 0, 15, stage_date_color, 1)
             print("year =", year_new)
 
         if month_old != month_new:
             month_old = month_new
-            tft.text(font, f"{month_new:2d}-", 0, 0, stage_date_color, st7789.BLACK)
+            # tft.text(font, f"{month_new:2d}-", 0, 0, stage_date_color, st7789.BLACK)
             print("month =", month_new)
 
         if day_old != day_new:
             day_old = day_new
-            tft.text(font, f"{day_new:2d}-", 50, 0, stage_date_color, st7789.BLACK)
+            # tft.text(font, f"{day_new:2d}-", 50, 0, stage_date_color, st7789.BLACK)
             print("day =", day_new)
 
         if date_old != date_new:
+            tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK)
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
             try:
