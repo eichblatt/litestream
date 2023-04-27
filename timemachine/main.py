@@ -128,6 +128,15 @@ def set_date(date):
     return key_date
 
 
+def best_tape(collection, key_date):
+    pass
+
+
+def select_date(collection, key_date):
+    tape_id = best_tape(collection, key_date)
+    pass
+
+
 def main_loop(col_dict):
     year_old = -1
     month_old = -1
@@ -167,6 +176,9 @@ def main_loop(col_dict):
                 print("Select UP")
             else:
                 tft.rect(105, 108, 16, 16, st7789.WHITE)
+                if key_date in col_dict["GratefulDead"].keys():
+                    print(f"selecting show from {key_date}")
+                    select_date(key_date)
                 print("Select DOWN")
 
         if pPlayPause_old != pPlayPause.value():
