@@ -1,9 +1,9 @@
-Interesting articles:
+1) Interesting articles:
 https://github.com/SpotlightKid/mrequests
 http://stuartcheshire.org/papers/NagleDelayedAck/
 https://github.com/turfptax/ugit
 
-To check free space: import os   os.statvfs('/'). Should show something like
+2) To check free space: import os   os.statvfs('/'). Should show something like
 (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
 File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, 
 Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, 
@@ -11,14 +11,16 @@ Number of free inodes for unprivileged users, Mount flags, Maximum filename leng
 So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
 To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB
 
-To debug inside MicroPython .c files use mp_printf(&mp_plat_print, "Test:%u\n", TestVariable);
+3) To debug inside MicroPython .c files use mp_printf(&mp_plat_print, "Test:%u\n", TestVariable);
 
-To make mpy files:
+4) To run a .py file use exec(open("code.py").read())
+
+5) To make mpy files:
 sudo apt-get install git wget flex bison gperf python3 python3-pip python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util
 sudo apt-get install python-is-python3 python3-pip python3-setuptools
 pip3 install pyelftools>=0.25
 
-1.install ESP32 toolchain (Different toolchain is required for different architecture)
+a. Install the ESP32 toolchain (Different toolchain is required for different architecture)
 	a. mkdir esp
 	b. cd esp
 	c. git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
@@ -28,7 +30,7 @@ pip3 install pyelftools>=0.25
 	g. add alias esp32_idf='. $HOME/esp/esp-idf/export.sh'
 	   save&exit
 
-2. Download micropython resp and compile mpy-cross compiler
+b. Download micropython resp and compile mpy-cross compiler
 	a. cd $HOME
 	b. git clone -b v1.19.1 https://github.com/micropython/micropython.git
 	c. cd micropython/mpy-cross
@@ -37,14 +39,14 @@ pip3 install pyelftools>=0.25
 	f. add alias mpy_cross='$HOME/micropython/mpy-cross/./mpy-cross'
    save&exit
 
-3. Test with C code
+c. Test with C code
 	a. cd $HOME/micropython/examples/natmod/features0
 	b. edit Makefile to change ARCH = xtensawin and set module name
 	c. esp32_idf (must be called before every compilation if native C files included)
 	d. make
 
-4. Test with MicroPython code
-  a. Create test.py:
+d. Test with MicroPython code
+  i. Create test.py:
      def SayHi():
         print("Hello there")
-  b. mpy_cross
+  ii. mpy_cross
