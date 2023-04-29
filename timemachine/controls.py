@@ -4,7 +4,7 @@ import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
 import fonts.vga1_16x16 as sfont
-import fonts.NotoSans_32 as prop_font
+import fonts.NotoSans_32 as pfont_large
 import fonts.gothger as gothic_font
 import fonts.romanc as roman_font
 from machine import SPI, Pin

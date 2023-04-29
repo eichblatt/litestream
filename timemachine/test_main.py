@@ -12,7 +12,9 @@ import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
 import fonts.vga1_16x16 as sfont
-import fonts.NotoSans_32 as prop_font
+import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_24 as pfont_med
+import fonts.NotoSans_32 as pfont_large
 import fonts.gothger as gothic_font
 import fonts.romanc as roman_font
 import fonts.romant as romant_font
@@ -179,7 +181,7 @@ def select_date(collection, key_date):
     return tracklist
 
 selected_date_bbox = Bbox(0,110,160,128)
-venue_bbox = Bbox(0,33,160,33+18)
+venue_bbox = Bbox(0,32,160,32+18)
 stage_date_bbox = Bbox(0,0,160,32)
 tracklist_bbox = Bbox(0,52, 160, 95)
 
@@ -228,10 +230,14 @@ def main_loop(col_dict):
                 if key_date in col_dict["GratefulDead"].keys():
                     tracklist = select_date('GratefulDead',key_date)
                     clear_bbox(tft, tracklist_bbox)
-                    tft.draw(romant_font, f"{tracklist[0]}", 0, 60, tracklist_color, 0.65)
-                    tft.draw(romant_font, f"{tracklist[1]}", 0, 80, tracklist_color, 0.65)
+                    tft.write(pfont_small, f"{tracklist[0]}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
+                    tft.write(pfont_small, f"{tracklist[1]}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
+                    # tft.draw(romant_font, f"{tracklist[0]}", 0, 60, tracklist_color, 0.65)
+                    # tft.draw(romant_font, f"{tracklist[1]}", 0, 80, tracklist_color, 0.65)
                     selected_date = key_date
                     clear_bbox(tft, selected_date_bbox)
+                    tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",selected_date_bbox.x0,selected_date_bbox.y0)
+
                 print("Select DOWN")
 
         if pPlayPause_old != pPlayPause.value():
@@ -325,8 +331,8 @@ def main_loop(col_dict):
             print("day =", day_new)
 
         if date_old != date_new:
-            clear_bbox(stage_date_bbox)
-            tft.write(prop_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
+            clear_bbox(tft,stage_date_bbox)
+            tft.write(pfont_large, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
             # tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
@@ -334,8 +340,8 @@ def main_loop(col_dict):
                 vcs = col_dict["GratefulDead"][f"{key_date}"]
                 print(f'vcs is {vcs}')
                 clear_bbox(tft, venue_bbox)
-                tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
-                # tft.write(prop_font, f"{vcs}", venue_bbox.x0, venue_bbox.y1, stage_date_color) # no need to clear this.
+                #tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
+                tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
                 pass
