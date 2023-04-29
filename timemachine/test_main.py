@@ -184,6 +184,13 @@ selected_date_bbox = Bbox(0,110,160,128)
 venue_bbox = Bbox(0,32,160,32+18)
 stage_date_bbox = Bbox(0,0,160,32)
 tracklist_bbox = Bbox(0,52, 160, 95)
+tracklist_color = st7789.color565(0, 255, 255)
+
+def display_tracks(tft,current_track,next_track):
+    clear_bbox(tft, tracklist_bbox)
+    tft.write(pfont_small, f"{current_track}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
+    tft.write(pfont_small, f"{next_track}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
+    return 
 
 def main_loop(col_dict):
     year_old = -1
@@ -201,9 +208,10 @@ def main_loop(col_dict):
     pMSw_old = False
     pDSw_old = False
     stage_date_color = st7789.color565(255, 255, 0)
-    tracklist_color = st7789.color565(0, 255, 255)
     key_date = set_date('1975-08-13')
     selected_date = key_date
+    current_track_index = -1
+    tracklist = []
     clear_screen(tft)
 
     while True:
@@ -228,15 +236,16 @@ def main_loop(col_dict):
             else:
                 tft.rect(105, 108, 16, 16, st7789.WHITE)
                 if key_date in col_dict["GratefulDead"].keys():
+                    current_track_index = 0
                     tracklist = select_date('GratefulDead',key_date)
-                    clear_bbox(tft, tracklist_bbox)
-                    tft.write(pfont_small, f"{tracklist[0]}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-                    tft.write(pfont_small, f"{tracklist[1]}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
-                    # tft.draw(romant_font, f"{tracklist[0]}", 0, 60, tracklist_color, 0.65)
-                    # tft.draw(romant_font, f"{tracklist[1]}", 0, 80, tracklist_color, 0.65)
+                    current_track = tracklist[current_track_index]
+                    next_track = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
+                    display_tracks(tft,current_track,next_track)
+
                     selected_date = key_date
                     clear_bbox(tft, selected_date_bbox)
-                    tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",selected_date_bbox.x0,selected_date_bbox.y0)
+                    tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
+                              selected_date_bbox.x0,selected_date_bbox.y0)
 
                 print("Select DOWN")
 
@@ -266,6 +275,16 @@ def main_loop(col_dict):
             else:
                 tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
+                if current_track_index <= 0:
+                    pass
+                elif current_track_index>=0:
+                    current_track_index += -1
+                    current_track = tracklist[current_track_index]
+                    next_track = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(tft,current_track,next_track)
+
+
+
 
         if pFFwd_old != pFFwd.value():
             pFFwd_old = pFFwd.value()
@@ -275,6 +294,13 @@ def main_loop(col_dict):
             else:
                 tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
+                if current_track_index >= len(tracklist):
+                    pass
+                elif current_track_index>=0:
+                    current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
+                    current_track = tracklist[current_track_index]
+                    next_track = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(tft,current_track,next_track)
 
         if pYSw_old != pYSw.value():
             pYSw_old = pYSw.value()
