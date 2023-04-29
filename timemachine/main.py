@@ -4,7 +4,7 @@ import os
 import time
 import network
 import time
-import mrequests
+from mrequests import mrequests as requests
 
 import config
 
@@ -18,10 +18,21 @@ import fonts.romanc as roman_font
 import fonts.romant as romant_font
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
+import network
+
 
 config.load_options()
 
 API = 'http://192.168.1.230:5000'
+
+def connect_wifi():
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    # sta_if.scan()  # Scan for available access points
+    if not wifi.isconnected():
+        print("Attempting to connect to network")
+        wifi.connect("fiosteve", "Fwest5%maini")
+        time.sleep(2)
 
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -123,16 +134,6 @@ def clear_area(tft, x, y, width, height):
 def clear_screen(tft):
     clear_area(tft, 0, 0, 160, 128)
 
-
-def connect_network():
-    wifi = network.WLAN(network.STA_IF)
-    wifi.active(True)
-    # wifi.scan()  # Scan for available access points
-    if not wifi.isconnected():
-        wifi.connect("fiosteve", "Fwest5%maini")  # Connect to an AP
-    wifi.isconnected()  # Check for successful connection
-
-
 print("Starting...")
 
 
@@ -167,9 +168,9 @@ def best_tape(collection, key_date):
 
 def select_date(collection, key_date):
     print(f"selecting show from {key_date}")
-    tape_id = best_tape(collection, key_date)
+    # tape_id = best_tape(collection, key_date)
     api_request = f"{API}/tracklist/{key_date}" 
-    resp = mrequests.get(api_request).json()
+    resp = requests.get(api_request).json()
     tracklist = resp['tracklist']
     return tracklist
 
@@ -194,6 +195,7 @@ def main_loop(col_dict):
     venue_bbox = Bbox(0,33,160,33+18)
     tracklist_color = st7789.color565(0, 255, 255)
     tracklist_bbox = Bbox(0,52, 160, 95)
+    key_date = set_date('1975-08-13')
     clear_screen(tft)
 
     while True:
@@ -362,12 +364,14 @@ def main():
     col_dict = {}
     for col in config.optd["COLLECTIONS"]:
         col_dict[col] = load_col(col)
-
+    
+    connect_wifi()
     print(f"Loaded collections {col_dict.keys()}")
+    
 
     main_loop(col_dict)
 
-
+    
 # col_dict = main()
 # lookup_date("1994-07-31", col_dict)
 main()
