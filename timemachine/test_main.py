@@ -24,7 +24,8 @@ import network
 
 config.load_options()
 
-API = 'http://192.168.1.231:5000'
+#API = 'http://192.168.1.231:5000'
+API = 'http://deadstreamv3:5000'
 
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
