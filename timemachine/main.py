@@ -21,6 +21,8 @@ from rotary_irq_esp import RotaryIRQ
 
 config.load_options()
 
+API = 'http://192.168.1.230:5000'
+
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -82,6 +84,37 @@ tft = conf_screen(1, buffer_size=64 * 64 * 2)
 tft.init()
 tft.fill(st7789.BLACK)
 
+class Bbox:
+    """Bounding Box -- Initialize with corners.
+    """
+    def __init__(self, x0, y0, x1, y1):
+        self.corners = (x0, y0, x1, y1)
+        self.x0, self.y0, self.x1, self.y1 = self.corners
+        self.width = self.x1 - self.x0
+        self.height = self.y1 - self.y0
+        self.origin = self.corners[:2]
+        self.topright = self.corners[-2:]
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return f"Bbox: x0 {self.x0},y0 {self.y0},x1 {self.x1},y1 {self.y1}"
+
+    def __getitem__(self, key):
+        return self.corners[key]
+
+    def size(self):
+        return (int(self.height), int(self.width))
+
+    def center(self):
+        return (int((self.x0 + self.x1) / 2), int((self.y0 + self.y1) / 2))
+
+    def shift(self, d):
+        return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
+
+def clear_bbox(tft, bbox):
+    tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
 
 def clear_area(tft, x, y, width, height):
     tft.fill_rect(x, y, width, height, st7789.BLACK)
@@ -133,8 +166,12 @@ def best_tape(collection, key_date):
 
 
 def select_date(collection, key_date):
+    print(f"selecting show from {key_date}")
     tape_id = best_tape(collection, key_date)
-    pass
+    api_request = f"{API}/tracklist/{key_date}" 
+    resp = mrequests.get(api_request).json()
+    tracklist = resp['tracklist']
+    return tracklist
 
 
 def main_loop(col_dict):
@@ -153,6 +190,10 @@ def main_loop(col_dict):
     pMSw_old = False
     pDSw_old = False
     stage_date_color = st7789.color565(255, 255, 0)
+    stage_date_bbox = Bbox(0,0,160,32)
+    venue_bbox = Bbox(0,33,160,33+18)
+    tracklist_color = st7789.color565(0, 255, 255)
+    tracklist_bbox = Bbox(0,52, 160, 95)
     clear_screen(tft)
 
     while True:
@@ -177,8 +218,10 @@ def main_loop(col_dict):
             else:
                 tft.rect(105, 108, 16, 16, st7789.WHITE)
                 if key_date in col_dict["GratefulDead"].keys():
-                    print(f"selecting show from {key_date}")
-                    select_date(key_date)
+                    tracklist = select_date('GratefulDead',key_date)
+                    clear_bbox(tft, tracklist_bbox)
+                    tft.draw(romant_font, f"{tracklist[0]}", 0, 60, tracklist_color, 0.65)
+                    tft.draw(romant_font, f"{tracklist[1]}", 0, 80, tracklist_color, 0.65)
                 print("Select DOWN")
 
         if pPlayPause_old != pPlayPause.value():
@@ -220,33 +263,27 @@ def main_loop(col_dict):
         if pYSw_old != pYSw.value():
             pYSw_old = pYSw.value()
             if pYSw_old:
-                tft.text(sfont, "Y", 60, 70, st7789.WHITE, st7789.BLUE)
                 print("Year UP")
             else:
                 # cycle through Today In History (once we know what today is!)
-                tft.text(sfont, "Y", 60, 70, st7789.BLUE, st7789.WHITE)
                 print("Year DOWN")
 
         if pMSw_old != pMSw.value():
             pMSw_old = pMSw.value()
             if pMSw_old:
-                tft.text(sfont, "M", 0, 70, st7789.WHITE, st7789.BLUE)
                 print("Month UP")
             else:
-                tft.text(sfont, "M", 0, 70, st7789.BLUE, st7789.WHITE)
                 print("Month DOWN")
 
         if pDSw_old != pDSw.value():
             pDSw_old = pDSw.value()
             if pDSw_old:
-                tft.text(sfont, "D", 30, 70, st7789.WHITE, st7789.BLUE)
                 print("Day UP")
             else:
                 for date in sorted(col_dict["GratefulDead"].keys()):
                     if date > key_date:
                         key_date = set_date(date)
                         break
-                tft.text(sfont, "D", 30, 70, st7789.BLUE, st7789.WHITE)
                 print("Day DOWN")
 
         year_new = y.value()
@@ -283,16 +320,18 @@ def main_loop(col_dict):
             print("day =", day_new)
 
         if date_old != date_new:
-            tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK)
+            tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
             try:
                 vcs = col_dict["GratefulDead"][f"{key_date}"]
-                print(vcs)
-                clear_area(tft, 0, 25, 160, 32)
+                print(f'vcs is {vcs}')
+                # clear_area(tft, 0, 25, 160, 32)
+                clear_bbox(tft, venue_bbox)
                 tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
             except KeyError:
-                clear_area(tft, 0, 25, 160, 32)
+                clear_bbox(tft, venue_bbox)
+                #clear_area(tft, 0, 25, 160, 32)
                 pass
         # time.sleep_ms(50)
 
