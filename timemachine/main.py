@@ -172,6 +172,10 @@ def select_date(collection, key_date):
     api_request = f"{API}/tracklist/{key_date}" 
     resp = requests.get(api_request).json()
     tracklist = resp['tracklist']
+    api_request = f"{API}/urls/{key_date}" 
+    resp = requests.get(api_request).json()
+    urls = resp['urls']
+    print(f"URLs: {urls}")
     return tracklist
 
 
