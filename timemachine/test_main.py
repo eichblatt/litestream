@@ -4,7 +4,7 @@ import os
 import time
 import network
 import time
-from mrequests import mrequests as requests
+from mrequests_pkg import mrequests as requests
 
 import config
 
@@ -23,7 +23,7 @@ import network
 
 config.load_options()
 
-API = 'http://192.168.1.230:5000'
+API = 'http://192.168.1.231:5000'
 
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
@@ -178,6 +178,10 @@ def select_date(collection, key_date):
     print(f"URLs: {urls}")
     return tracklist
 
+selected_date_bbox = Bbox(0,110,160,128)
+venue_bbox = Bbox(0,33,160,33+18)
+stage_date_bbox = Bbox(0,0,160,32)
+tracklist_bbox = Bbox(0,52, 160, 95)
 
 def main_loop(col_dict):
     year_old = -1
@@ -195,11 +199,9 @@ def main_loop(col_dict):
     pMSw_old = False
     pDSw_old = False
     stage_date_color = st7789.color565(255, 255, 0)
-    stage_date_bbox = Bbox(0,0,160,32)
-    venue_bbox = Bbox(0,33,160,33+18)
     tracklist_color = st7789.color565(0, 255, 255)
-    tracklist_bbox = Bbox(0,52, 160, 95)
     key_date = set_date('1975-08-13')
+    selected_date = key_date
     clear_screen(tft)
 
     while True:
@@ -228,6 +230,8 @@ def main_loop(col_dict):
                     clear_bbox(tft, tracklist_bbox)
                     tft.draw(romant_font, f"{tracklist[0]}", 0, 60, tracklist_color, 0.65)
                     tft.draw(romant_font, f"{tracklist[1]}", 0, 80, tracklist_color, 0.65)
+                    selected_date = key_date
+                    clear_bbox(tft, selected_date_bbox)
                 print("Select DOWN")
 
         if pPlayPause_old != pPlayPause.value():
@@ -310,34 +314,30 @@ def main_loop(col_dict):
         key_date = set_date(key_date)
         if year_old != year_new:
             year_old = year_new
-            # tft.text(font, f"{year_new%100}", 100, 0, stage_date_color, st7789.BLACK)
-            # clear_area(tft, 0, 0, 160, 30)
-            # tft.draw(romant_font, f"{date_new}", 0, 15, stage_date_color, 1)
             print("year =", year_new)
 
         if month_old != month_new:
             month_old = month_new
-            # tft.text(font, f"{month_new:2d}-", 0, 0, stage_date_color, st7789.BLACK)
             print("month =", month_new)
 
         if day_old != day_new:
             day_old = day_new
-            # tft.text(font, f"{day_new:2d}-", 50, 0, stage_date_color, st7789.BLACK)
             print("day =", day_new)
 
         if date_old != date_new:
-            tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
+            clear_bbox(stage_date_bbox)
+            tft.write(prop_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
+            # tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
             try:
                 vcs = col_dict["GratefulDead"][f"{key_date}"]
                 print(f'vcs is {vcs}')
-                # clear_area(tft, 0, 25, 160, 32)
                 clear_bbox(tft, venue_bbox)
                 tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
+                # tft.write(prop_font, f"{vcs}", venue_bbox.x0, venue_bbox.y1, stage_date_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
-                #clear_area(tft, 0, 25, 160, 32)
                 pass
         # time.sleep_ms(50)
 
