@@ -130,3 +130,4 @@ dmypy.json
 timemachine/metadata/*_ids
 *.bin
 adapter_board.png
+timemachine/.main.py.swp

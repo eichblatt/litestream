@@ -1,0 +1,14 @@
+Install Jama
+============================================
+Code is at
+https://github.com/jczic/ESP32-MPY-Jama 
+
+I installed it in my $HOME folder.
+
+Running the Program
+====================
+
+: ~ ; cd ESP32-MPY-Jama/
+: ~/ESP32-MPY-Jama ; . jama_env/bin/activate
+(jama_env) : ~/ESP32-MPY-Jama ; python3 src/app.py 
+Starts ESP32 MPY-Jama v1.2.0 on Linux

@@ -1,4 +1,4 @@
-from timemachine import controls
+from timemachine import controls_fancy
 from timemachine import config
 import datetime
 from threading import Event
@@ -11,10 +11,10 @@ from gpiozero import RotaryEncoder, Button
 from tenacity import retry
 from tenacity.stop import stop_after_delay
 
-controls.logger.setLevel(50)
+controls_fancy.logger.setLevel(50)
 d1 = "1977-05-08"
 d1 = datetime.date(*(int(s) for s in d1.split("-")))
-scr = controls.screen()
+scr = controls_fancy.screen()
 scr.clear()
 scr.show_staged_date(d1)
 d2 = "1979-11-02"
@@ -29,7 +29,7 @@ def retry_call(callable: Callable, *args, **kwargs):
     return callable(*args, **kwargs)
 
 
-def twist_knob(screen_event: Event, knob: RotaryEncoder, label, date_reader: controls.date_knob_reader):
+def twist_knob(screen_event: Event, knob: RotaryEncoder, label, date_reader: controls_fancy.date_knob_reader):
     if knob.is_active:
         print(f"Knob {label} steps={knob.steps} value={knob.value}")
     else:
@@ -48,7 +48,7 @@ d = retry_call(RotaryEncoder, config.day_pins[1], config.day_pins[0], max_steps=
 y.steps = 1979 - 1965
 m.steps = 11
 d.steps = 2
-date_reader = controls.date_knob_reader(y, m, d, None)
+date_reader = controls_fancy.date_knob_reader(y, m, d, None)
 y.when_rotated = lambda x: twist_knob(screen_event, y, "year", date_reader)
 m.when_rotated = lambda x: twist_knob(screen_event, m, "month", date_reader)
 d.when_rotated = lambda x: twist_knob(screen_event, d, "day", date_reader)
