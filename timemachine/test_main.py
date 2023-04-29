@@ -7,7 +7,6 @@ import time
 from mrequests_pkg import mrequests as requests
 
 import config
-
 import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
@@ -377,11 +376,7 @@ def main():
     
     connect_wifi()
     print(f"Loaded collections {col_dict.keys()}")
-    
 
     main_loop(col_dict)
 
-    
-# col_dict = main()
-# lookup_date("1994-07-31", col_dict)
 main()
