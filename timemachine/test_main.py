@@ -71,7 +71,8 @@ d = RotaryIRQ(
     7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
 )
 
-PlayPausePoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
+PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
+PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10,15), (10,0)]
 RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
@@ -184,7 +185,9 @@ selected_date_bbox = Bbox(0,110,160,128)
 venue_bbox = Bbox(0,32,160,32+18)
 stage_date_bbox = Bbox(0,0,160,32)
 tracklist_bbox = Bbox(0,52, 160, 95)
+playpause_bbox = Bbox(145 ,108, 160, 128)
 tracklist_color = st7789.color565(0, 255, 255)
+play_color = st7789.color565(255, 0, 0)
 
 def display_tracks(tft,current_track,next_track):
     clear_bbox(tft, tracklist_bbox)
@@ -210,6 +213,7 @@ def main_loop(col_dict):
     stage_date_color = st7789.color565(255, 255, 0)
     key_date = set_date('1975-08-13')
     selected_date = key_date
+    playstate = 0
     current_track_index = -1
     tracklist = []
     clear_screen(tft)
@@ -221,20 +225,20 @@ def main_loop(col_dict):
             pLED.value(PowerLED)
             tft.off() if not PowerLED else tft.on()
             if pPower_old:
-                tft.fill_circle(5 + 8, 108 + 8, 8, st7789.BLUE)
+                # tft.fill_circle(5 + 8, 108 + 8, 8, st7789.BLUE)
                 print("Power UP")
             else:
                 PowerLED = not PowerLED
-                tft.fill_circle(5 + 8, 108 + 8, 8, st7789.WHITE)
+                # tft.fill_circle(5 + 8, 108 + 8, 8, st7789.WHITE)
                 print("Power DOWN")
 
         if pSelect_old != pSelect.value():
             pSelect_old = pSelect.value()
             if pSelect_old:
-                tft.rect(105, 108, 16, 16, st7789.BLUE)
+                # tft.rect(105, 108, 16, 16, st7789.BLUE)
                 print("Select UP")
             else:
-                tft.rect(105, 108, 16, 16, st7789.WHITE)
+                # tft.rect(105, 108, 16, 16, st7789.WHITE)
                 if key_date in col_dict["GratefulDead"].keys():
                     current_track_index = 0
                     tracklist = select_date('GratefulDead',key_date)
@@ -252,28 +256,33 @@ def main_loop(col_dict):
         if pPlayPause_old != pPlayPause.value():
             pPlayPause_old = pPlayPause.value()
             if pPlayPause_old:
-                tft.fill_polygon(PlayPausePoly, 130, 108, st7789.BLUE)
+                # tft.fill_polygon(PlayPausePoly, 145, 108, st7789.BLUE)
                 print("PlayPause UP")
             else:
-                tft.fill_polygon(PlayPausePoly, 130, 108, st7789.WHITE)
+                playstate = 1 if playstate == 0 else 0
+                clear_bbox(tft,playpause_bbox)
+                if playstate > 0:
+                    tft.fill_polygon(PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                else:
+                    tft.fill_polygon(PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 print("PlayPause DOWN")
 
         if pStop_old != pStop.value():
             pStop_old = pStop.value()
             if pStop_old:
-                tft.fill_rect(55, 108, 16, 16, st7789.BLUE)
+                # tft.fill_rect(55, 108, 16, 16, st7789.BLUE)
                 print("Stop UP")
             else:
-                tft.fill_rect(55, 108, 16, 16, st7789.WHITE)
+                # tft.fill_rect(55, 108, 16, 16, st7789.WHITE)
                 print("Stop DOWN")
 
         if pRewind_old != pRewind.value():
             pRewind_old = pRewind.value()
             if pRewind_old:
-                tft.fill_polygon(RewPoly, 30, 108, st7789.BLUE)
+                # tft.fill_polygon(RewPoly, 30, 108, st7789.BLUE)
                 print("Rewind UP")
             else:
-                tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
+                # tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
                 if current_track_index <= 0:
                     pass
@@ -289,10 +298,10 @@ def main_loop(col_dict):
         if pFFwd_old != pFFwd.value():
             pFFwd_old = pFFwd.value()
             if pFFwd_old:
-                tft.fill_polygon(FFPoly, 80, 108, st7789.BLUE)
+                # tft.fill_polygon(FFPoly, 80, 108, st7789.BLUE)
                 print("FFwd UP")
             else:
-                tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
+                # tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
                 if current_track_index >= len(tracklist):
                     pass
