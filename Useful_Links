@@ -50,3 +50,5 @@ d. Test with MicroPython code
      def SayHi():
         print("Hello there")
   ii. mpy_cross
+  
+6) DACs that don't need a master clock: MAX98357A, UDA1334A, PCM5102
