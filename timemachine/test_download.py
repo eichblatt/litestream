@@ -10,6 +10,7 @@ def http_get(url):
     mv = memoryview(ba)
 
     _, _, host, path = url.split("/", 3)
+    print(f'host {host}, path {path}')
     addr = socket.getaddrinfo(host, 80)[0][-1]
     s = socket.socket()
     s.connect(addr)
@@ -38,6 +39,7 @@ def do_connect():
 
 
 url = "https://ia803405.us.archive.org/20/items/mjq-1983-montreal-jazz-festival-cbc/01-Introduction.mp3"
+# url = "https://archive.org/download/gd82-08-28.sbd.lai.2333.sbefail.shnf/gd82-08-28d1t101.ogg"
 # do_connect()
 starttime = time.ticks_ms()
 http_get(url)

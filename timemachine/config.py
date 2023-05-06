@@ -37,13 +37,13 @@ TOUR_STATE = 0
 
 def default_options():
     d = {}
-    d["MODULE"] = "livemusic"
+    #d["MODULE"] = "livemusic"
     d["COLLECTIONS"] = ["GratefulDead"]
-    d["FAVORED_TAPER"] = ["miller"]
-    d["AUTO_UPDATE_ARCHIVE"] = True
-    d["UPDATE_ARCHIVE_ON_STARTUP"] = False
-    d["PLAY_LOSSLESS"] = False
-    d["TIMEZONE"] = "America/New_York"
+    #d["FAVORED_TAPER"] = ["miller"]
+    #d["AUTO_UPDATE_ARCHIVE"] = True
+    #d["UPDATE_ARCHIVE_ON_STARTUP"] = False
+    #d["PLAY_LOSSLESS"] = False
+    #d["TIMEZONE"] = "America/New_York"
     return d
 
 

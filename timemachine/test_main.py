@@ -4,9 +4,8 @@ import os
 import time
 import network
 import time
-from mrequests_pkg import mrequests as requests
+from mrequests import mrequests as requests
 
-import config
 import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
@@ -14,7 +13,6 @@ import fonts.vga1_16x16 as sfont
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
-import fonts.gothger as gothic_font
 import fonts.romanc as roman_font
 import fonts.romant as romant_font
 from machine import SPI, Pin
@@ -22,10 +20,9 @@ from rotary_irq_esp import RotaryIRQ
 import network
 
 
-config.load_options()
 
-#API = 'http://192.168.1.231:5000'
-API = 'http://deadstreamv3:5000'
+API = 'http://westmain:5000' # westmain
+#API = 'http://deadstreamv3:5000'
 
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
@@ -35,6 +32,7 @@ def connect_wifi():
         print("Attempting to connect to network")
         wifi.connect("fiosteve", "Fwest5%maini")
         time.sleep(2)
+    return wifi
 
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -169,23 +167,27 @@ def best_tape(collection, key_date):
     pass
 
 
-def select_date(collection, key_date):
+def select_date(collections, key_date):
     print(f"selecting show from {key_date}")
-    # tape_id = best_tape(collection, key_date)
-    api_request = f"{API}/tracklist/{key_date}" 
+    collstring = ",".join(collections)
+    api_request = f"{API}/tracklist/{key_date}?collections={collstring}" 
+    print(f"API request is {api_request}")
     resp = requests.get(api_request).json()
+    collection = resp['collection']
     tracklist = resp['tracklist']
-    api_request = f"{API}/urls/{key_date}" 
+    api_request = f"{API}/urls/{key_date}?collections={collstring}" 
     resp = requests.get(api_request).json()
     urls = resp['urls']
     print(f"URLs: {urls}")
-    return tracklist
+    return collection, tracklist, urls
 
-selected_date_bbox = Bbox(0,110,160,128)
-venue_bbox = Bbox(0,32,160,32+18)
 stage_date_bbox = Bbox(0,0,160,32)
-tracklist_bbox = Bbox(0,52, 160, 95)
+venue_bbox = Bbox(0,32,160,32+20)
+artist_bbox = Bbox(0,52,160,52+20)
+tracklist_bbox = Bbox(0,70, 160, 110)
+selected_date_bbox = Bbox(0,110,160,128)
 playpause_bbox = Bbox(145 ,108, 160, 128)
+
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 
@@ -195,7 +197,7 @@ def display_tracks(tft,current_track,next_track):
     tft.write(pfont_small, f"{next_track}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
-def main_loop(col_dict):
+def main_loop(coll_dict):
     year_old = -1
     month_old = -1
     day_old = -1
@@ -215,7 +217,14 @@ def main_loop(col_dict):
     selected_date = key_date
     playstate = 0
     current_track_index = -1
-    tracklist = []
+    collection = "GratefulDead"; tracklist = []; urls = []
+    collections = list(coll_dict.keys())
+    current_track = next_track = ''
+    valid_dates = set()
+    for c in collections:
+        valid_dates = valid_dates | set(list(coll_dict[c].keys()))
+    del c
+    valid_dates = list(sorted(valid_dates))
     clear_screen(tft)
 
     while True:
@@ -239,9 +248,9 @@ def main_loop(col_dict):
                 print("Select UP")
             else:
                 # tft.rect(105, 108, 16, 16, st7789.WHITE)
-                if key_date in col_dict["GratefulDead"].keys():
+                if key_date in valid_dates:
                     current_track_index = 0
-                    tracklist = select_date('GratefulDead',key_date)
+                    collection, tracklist, urls = select_date(coll_dict.keys(),key_date)
                     current_track = tracklist[current_track_index]
                     next_track = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
                     display_tracks(tft,current_track,next_track)
@@ -262,8 +271,11 @@ def main_loop(col_dict):
                 playstate = 1 if playstate == 0 else 0
                 clear_bbox(tft,playpause_bbox)
                 if playstate > 0:
+                    # data = requests.get(urls[current_track])
+                    print(f"Playing URL {urls[current_track]}")
                     tft.fill_polygon(PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 else:
+                    print(f"Pausing URL {urls[current_track]}")
                     tft.fill_polygon(PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 print("PlayPause DOWN")
 
@@ -331,7 +343,7 @@ def main_loop(col_dict):
             if pDSw_old:
                 print("Day UP")
             else:
-                for date in sorted(col_dict["GratefulDead"].keys()):
+                for date in valid_dates:
                     if date > key_date:
                         key_date = set_date(date)
                         break
@@ -350,7 +362,7 @@ def main_loop(col_dict):
             else:
                 day_new = min(28, day_new)
 
-        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:2d}"
+        date_new = f"{month_new:2d}-{day_new:02d}-{year_new%100:02d}"
         key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
         key_date = set_date(key_date)
         if year_old != year_new:
@@ -372,20 +384,64 @@ def main_loop(col_dict):
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
             try:
-                vcs = col_dict["GratefulDead"][f"{key_date}"]
+                if key_date in valid_dates:
+                    for c in coll_dict.keys():
+                        if key_date in coll_dict[c].keys():
+                            collection = c
+                            vcs = coll_dict[collection][f"{key_date}"]
+                            clear_bbox(tft, artist_bbox)
+                            tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                            continue
+                else:
+                    vcs = ''
+                    collection = ''
+                    display_tracks(tft,current_track,next_track)
                 print(f'vcs is {vcs}')
                 clear_bbox(tft, venue_bbox)
-                #tft.draw(romant_font, f"{vcs}", 0, 40, stage_date_color, 0.65)
                 tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
+                display_tracks(tft,current_track,next_track)
                 pass
         # time.sleep_ms(50)
 
 
-def load_col(col):
-    ids_path = f"metadata/{col}_ids/tiny.json"
-    print(f"Loading collection {col} from {ids_path}")
+
+# --------------------------------------------------
+# These functions belong in a utils library
+# --------------------------------------------------
+def is_dir(path):
+    try:
+        return (os.stat(path)[0] & 0x4000) != 0
+    except OSError:
+        return False
+
+
+def path_exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
+
+
+#  ---------------------------------   End utils library
+def add_vcs(coll):
+    ids_path = f"metadata/{coll}_vcs.json"
+    print(f"Loading collection {coll} from {ids_path}")
+    api_request = f"{API}/vcs/{coll}" 
+    resp = requests.get(api_request).json()
+    vcs = resp[coll]
+    print(f"vcs: {vcs}")
+    with open(ids_path,'w') as f:
+        json.dump(vcs,f)
+    
+
+def load_vcs(coll):
+    ids_path = f"metadata/{coll}_vcs.json"
+    if not path_exists(ids_path):
+        add_vcs(coll)
+    print(f"Loading collection {coll} from {ids_path}")
     data = json.load(open(ids_path, "r"))
     return data
 
@@ -403,16 +459,32 @@ def main():
     This script will load a super-compressed version of the
     date, artist, venue, city, state.
     """
-    tft.draw(gothic_font, f"Grateful Dead", 0, 30, st7789.color565(255, 255, 0), 0.8)
-    tft.draw(gothic_font, f"Time Machine", 0, 60, st7789.color565(255, 255, 0), 0.8)
-    tft.draw(gothic_font, f"Loading", 0, 90, st7789.color565(255, 255, 0), 1)
-    col_dict = {}
-    for col in config.optd["COLLECTIONS"]:
-        col_dict[col] = load_col(col)
-    
-    connect_wifi()
-    print(f"Loaded collections {col_dict.keys()}")
+    tft.write(pfont_large, "Time ", 0, 0, st7789.color565(255, 255, 0))
+    tft.write(pfont_large, "Machine", 0, 30, st7789.color565(255, 255, 0))
+    tft.write(pfont_large, "Loading", 0, 90, st7789.color565(255, 255, 0))
 
-    main_loop(col_dict)
+    collection_list_path = 'collection_list.json'
+    if path_exists(collection_list_path):
+        collection_list = json.load(open(collection_list_path, "r"))
+    else:
+        collection_list = ['GratefulDead']
+        with open(collection_list_path,'w') as f:
+            json.dump(collection_list,f)
+
+    coll_dict = {}
+    min_year = y._min_val
+    max_year = y._max_val
+    for coll in collection_list:
+        coll_dict[coll] = load_vcs(coll)
+        coll_dates = coll_dict[coll].keys()
+        min_year = min(int(min(coll_dates)[:4]),min_year)
+        max_year = max(int(max(coll_dates)[:4]),max_year)
+        y._min_val = min_year
+        y._max_val = max_year
+
+    wifi = connect_wifi()
+    print(f"Loaded collections {coll_dict.keys()}")
+
+    main_loop(coll_dict)
 
 main()
