@@ -1,6 +1,7 @@
 # Display driver: https://github.com/russhughes/st7789_mpy
 import json
 import os
+import re
 import time
 import network
 import time
@@ -190,7 +191,8 @@ def get_tape_ids(collections,key_date):
     return tape_ids
      
 
-stage_date_bbox = Bbox(0,0,160,32)
+stage_date_bbox = Bbox(0,0,150,32)
+nshows_bbox = Bbox(150,16,160,32)
 venue_bbox = Bbox(0,32,160,32+20)
 artist_bbox = Bbox(0,52,160,52+20)
 tracklist_bbox = Bbox(0,70, 160, 110)
@@ -199,6 +201,7 @@ playpause_bbox = Bbox(145 ,110, 160, 128)
 
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
+nshows_color = st7789.color565(0, 100, 255)
 
 def display_tracks(tft,current_track_name,next_track_name):
     clear_bbox(tft, tracklist_bbox)
@@ -222,13 +225,13 @@ def main_loop(coll_dict):
     pMSw_old = False
     pDSw_old = False
     stage_date_color = st7789.color565(255, 255, 0)
-    key_date = set_date('1975-08-13')
+    key_date = set_date('1989-08-13')
     selected_date = key_date
     playstate = 0
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
     current_track_index = -1
-    current_track_name = next_track_name = 0
+    current_track_name = next_track_name = '' 
     select_press_time = 0
     ntape = 0
     valid_dates = set()
@@ -239,7 +242,8 @@ def main_loop(coll_dict):
     clear_screen(tft)
 
     while True:
-
+        nshows = 0
+        
         if pPower_old != pPower.value():
             pPower_old = pPower.value()
             pLED.value(PowerLED)
@@ -285,7 +289,12 @@ def main_loop(coll_dict):
                 tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
                 #vcs = coll_dict[tape_ids[ntape][0]][key_date]
                 clear_bbox(tft, venue_bbox)
-                tft.write(pfont_small, f"{tape_ids[ntape][1]}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*","~", tape_ids[ntape][1])
+                display_str = re.sub(r"\d\d-\d\d-\d\d\.*","~", display_str)
+                print(f"display string is {display_str}")
+                if len(display_str) > 18:
+                    display_str = display_str[:11] + display_str[-6:]
+                tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                 print(f"Select LONG_PRESS values is {pSelect.value()}. ntape = {ntape}")
 
         
@@ -408,13 +417,13 @@ def main_loop(coll_dict):
             print(f"date = {date_new} or {key_date}")
             try:
                 if key_date in valid_dates:
-                    for c in coll_dict.keys():
+                    for c in list(coll_dict.keys()):
                         if key_date in coll_dict[c].keys():
+                            nshows += 1
                             collection = c
                             vcs = coll_dict[collection][f"{key_date}"]
                             clear_bbox(tft, artist_bbox)
                             tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
-                            continue
                 else:
                     vcs = ''
                     collection = ''
@@ -422,6 +431,9 @@ def main_loop(coll_dict):
                 print(f'vcs is {vcs}')
                 clear_bbox(tft, venue_bbox)
                 tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                clear_bbox(tft, nshows_bbox)
+                if nshows > 1:
+                    tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
                 display_tracks(tft,current_track_name,next_track_name)
