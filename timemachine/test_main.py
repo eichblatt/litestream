@@ -230,6 +230,7 @@ def main_loop(coll_dict):
     playstate = 0
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
+    current_collection = ''
     current_track_index = -1
     current_track_name = next_track_name = '' 
     select_press_time = 0
@@ -264,6 +265,7 @@ def main_loop(coll_dict):
                     collection, tracklist, urls = select_date(coll_dict.keys(),key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     ntape = 0
+                    current_collection = collection
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
                     display_tracks(tft,current_track_name,next_track_name)
@@ -427,6 +429,8 @@ def main_loop(coll_dict):
                 else:
                     vcs = ''
                     collection = ''
+                    clear_bbox(tft, artist_bbox)
+                    tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color) 
                     display_tracks(tft,current_track_name,next_track_name)
                 print(f'vcs is {vcs}')
                 clear_bbox(tft, venue_bbox)
@@ -436,6 +440,8 @@ def main_loop(coll_dict):
                     tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
+                clear_bbox(tft, artist_bbox)
+                tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
                 display_tracks(tft,current_track_name,next_track_name)
                 pass
         # time.sleep_ms(50)
