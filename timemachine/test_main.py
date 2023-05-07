@@ -261,7 +261,7 @@ def main_loop(coll_dict):
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
-        if (pSelect.value()==0) & ((time.ticks_ms()-select_press_time) > 1_000):
+        if (not pSelect.value()) & ((time.ticks_ms()-select_press_time) > 1_000):
             print(f"Select LONG_PRESS values is {pSelect.value()}")
 
         
