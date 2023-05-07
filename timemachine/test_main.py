@@ -25,15 +25,6 @@ import network
 API = 'http://192.168.1.235:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
-def connect_wifi():
-    wifi = network.WLAN(network.STA_IF)
-    wifi.active(True)
-    # sta_if.scan()  # Scan for available access points
-    if not wifi.isconnected():
-        print("Attempting to connect to network")
-        wifi.connect("fiosteve", "Fwest5%maini")
-        time.sleep(2)
-    return wifi
 
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -136,21 +127,166 @@ def clear_area(tft, x, y, width, height):
 def clear_screen(tft):
     clear_area(tft, 0, 0, 160, 128)
 
-print("Starting...")
-
-
-def set_ymd(year=None, month=None, day=None):
-    global m
+def select_option(message, choices):
     global y
     global d
-    if year is not None:
-        y._value = year
-    if month is not None:
-        m._value = month
-    if day is not None:
-        d._value = day
-    key_date = f"{y.value()}-{m.value():02d}-{d.value():02d}"
-    return key_date
+    pSelect_old = True
+    y._value = y._min_val
+    d._value = d._min_val
+    step = step_old = 0
+    text_height = 16
+    choice = ""
+    first_time = True
+    clear_screen(tft)
+    select_bbox = Bbox(0,20,160,128)
+    tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
+    while pSelect_old == pSelect.value():
+        step = (y.value() - y._min_val)% len(choices) 
+        if (step != step_old) or first_time: 
+            i = j = 0
+            first_time = False
+            step_old = step
+            clear_bbox(tft, select_bbox)
+
+            for i,s in enumerate(range(max(0,step-2), step)):
+                tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*i, tracklist_color)
+
+            text = ">" + choices[step]
+            tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height*(i+1), st7789.RED)
+
+            for j,s in enumerate(range(step+1,min(step+5,len(choices)))):
+                tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*(i+j+2), tracklist_color)
+            # print(f"step is {step}. Text is {text}")
+        time.sleep(0.2)
+    choice = choices[step]
+    # print(f"step is now {step}. Choice: {choice}")
+    time.sleep(0.6)
+    return choices[step]        
+        
+def select_chars(message, message2="So Far"):
+    global y
+    global d
+    charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c'
+    message = message.split("\n")
+    pSelect_old = pStop_old = True
+    y._value = y._min_val
+    d._value = d._min_val
+    y._max_val = y._max_val + 100
+    step = step_old = 0
+    text_height = 18
+    screen_width = 16
+    clear_screen(tft)
+    y_origin = len(message) * text_height
+
+    select_bbox = Bbox(0,y_origin,160,y_origin + text_height)
+    selected_bbox = Bbox(0,y_origin + text_height,160,128)
+
+    for i,msg in enumerate(message):
+        tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
+
+    selected = ""
+    text = "DEL"
+    first_time = True
+    finished = False
+
+    while not finished:
+        print(f"pStop_old {pStop_old}, pStop: {pStop.value()}")
+        while pSelect_old == pSelect.value():
+            if pStop_old != pStop.value():
+                finished = True
+                break
+            step = (y.value() - y._min_val) % (len(charset) + 1) 
+            if (step != step_old) or first_time: 
+                cursor = 0
+                first_time = False
+                step_old = step
+                clear_bbox(tft, select_bbox)
+
+                # Write the Delete character
+                cursor += tft.write(pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step!=0 else st7789.RED)
+
+                text = charset[max(0,step - 5) : -1 + step]
+                for x in charset[94:]:
+                    text = text.replace(x,".")   # Should be "\u25A1", but I don't think we have the font for this yet.
+
+                # Write the characters before the cursor
+                cursor += tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tracklist_color)
+                
+                # Write the character AT the cursor
+                text = charset[-1 + min(step,len(charset))]
+                if text == " ":
+                    text = "SPC"
+                elif text == "\t":
+                    text = "\\t"
+                elif text == "\n":
+                    text = "\\n"
+                elif text == "\r":
+                    text = "\\r"
+                elif text == "\x0b":
+                    text = "\\v"
+                elif text == "\x0c":
+                    text = "\\f"
+
+                cursor += tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
+
+                # Write the characters after the cursor
+                text = charset[step:min(-1+step+screen_width,len(charset))]
+                for x in charset[94:]:
+                    text = text.replace(x, ".")
+                tft.write(pfont_small, text, select_bbox.x0+cursor, select_bbox.y0, tracklist_color)
+
+                # print(f"step is {step}. Text is {text}")
+            time.sleep(0.2)
+        time.sleep(0.2) # de-jitter
+        if not finished:
+            if step == 0:
+                selected = selected[:-1]
+            else:
+                choice = charset[step-1] # -1 for the delete character.
+                # print(f"step is now {step}. Choice: {choice}")
+                selected = selected + choice
+            clear_bbox(tft,selected_bbox)
+            tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+    y._max_val = y._max_val - 100
+    print(f"stop pressed. selected is: {selected}")
+    time.sleep(0.3)
+    return selected
+ 
+    
+
+def get_wifi_cred(wifi):
+    choices = wifi.scan()  # Scan for available access points
+    choices = [x[0].decode().replace('"', "") for x in choices]
+    choices = [x for x in choices if x != '']
+    choices = sorted(set(choices),key=choices.index)
+    print(f"get_wifi_cred. Choices are {choices}") 
+    choice = select_option("Select Wifi", choices)
+    passkey = select_chars("Input Passkey for {choice}\nSelect. Stop to End\n ")
+    return {'name':choice,"passkey":passkey}
+
+def connect_wifi():
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    wifi_cred_path = 'wifi_cred.json'
+    # sta_if.scan()  # Scan for available access points
+
+    if path_exists(wifi_cred_path):
+        wifi_cred = json.load(open(wifi_cred_path, "r"))
+    else:
+        wifi_cred = get_wifi_cred(wifi)
+    attempts = 0
+    max_attempts = 5
+    while (not wifi.isconnected()) & (attempts < max_attempts):
+        print("Attempting to connect to network")
+        wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+        attempts += 1
+        time.sleep(2)
+    if wifi.isconnected():
+        with open(wifi_cred_path,'w') as f:
+            json.dump(wifi_cred,f)
+    return wifi
+
+print("Starting...")
 
 
 def set_date(date):
@@ -199,6 +335,7 @@ tracklist_bbox = Bbox(0,70, 160, 110)
 selected_date_bbox = Bbox(35,110,145,128)
 playpause_bbox = Bbox(145 ,110, 160, 128)
 
+stage_date_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
@@ -224,7 +361,6 @@ def main_loop(coll_dict):
     pYSw_old = False
     pMSw_old = False
     pDSw_old = False
-    stage_date_color = st7789.color565(255, 255, 0)
     key_date = set_date('1989-08-13')
     selected_date = key_date
     playstate = 0
