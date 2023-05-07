@@ -21,7 +21,7 @@ from rotary_irq_esp import RotaryIRQ
 import network
 
 
-
+machine.freq(240_000_000)
 API = 'http://192.168.1.235:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
