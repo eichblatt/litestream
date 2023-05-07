@@ -7,6 +7,7 @@ import network
 import time
 from mrequests import mrequests as requests
 
+import machine
 import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
@@ -336,6 +337,7 @@ selected_date_bbox = Bbox(35,110,145,128)
 playpause_bbox = Bbox(145 ,110, 160, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
+yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
@@ -636,9 +638,9 @@ def main():
     This script will load a super-compressed version of the
     date, artist, venue, city, state.
     """
-    tft.write(pfont_large, "Time ", 0, 0, st7789.color565(255, 255, 0))
-    tft.write(pfont_large, "Machine", 0, 30, st7789.color565(255, 255, 0))
-    tft.write(pfont_large, "Loading", 0, 90, st7789.color565(255, 255, 0))
+    tft.write(pfont_large, "Time ", 0, 0, yellow_color)
+    tft.write(pfont_large, "Machine", 0, 30, yellow_color)
+    tft.write(pfont_large, "Loading", 0, 90, yellow_color)
 
     collection_list_path = 'collection_list.json'
     if path_exists(collection_list_path):
@@ -660,6 +662,9 @@ def main():
         y._max_val = max_year
 
     wifi = connect_wifi()
+    ip_address = wifi.ifconfig()[0]
+    tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+
     print(f"Loaded collections {coll_dict.keys()}")
 
     main_loop(coll_dict)
