@@ -167,19 +167,28 @@ def best_tape(collection, key_date):
     pass
 
 
-def select_date(collections, key_date):
+def select_date(collections, key_date, ntape=0):
     print(f"selecting show from {key_date}")
     collstring = ",".join(collections)
-    api_request = f"{API}/tracklist/{key_date}?collections={collstring}" 
+    api_request = f"{API}/tracklist/{key_date}?collections={collstring}&ntape={ntape}" 
     print(f"API request is {api_request}")
     resp = requests.get(api_request).json()
     collection = resp['collection']
     tracklist = resp['tracklist']
-    api_request = f"{API}/urls/{key_date}?collections={collstring}" 
+    api_request = f"{API}/urls/{key_date}?collections={collstring}&ntape={ntape}" 
     resp = requests.get(api_request).json()
     urls = resp['urls']
     print(f"URLs: {urls}")
     return collection, tracklist, urls
+
+def get_tape_ids(collections,key_date):
+    print(f"getting tape_ids from {key_date}")
+    collstring = ",".join(collections)
+    api_request = f"{API}/tape_ids/{key_date}?collections={collstring}"
+    print(f"API request is {api_request}")
+    tape_ids = requests.get(api_request).json()
+    return tape_ids
+     
 
 stage_date_bbox = Bbox(0,0,160,32)
 venue_bbox = Bbox(0,32,160,32+20)
@@ -221,6 +230,7 @@ def main_loop(coll_dict):
     current_track_index = -1
     current_track_name = next_track_name = 0
     select_press_time = 0
+    ntape = 0
     valid_dates = set()
     for c in collections:
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
@@ -247,12 +257,16 @@ def main_loop(coll_dict):
             if pSelect_old:
                 if key_date in valid_dates:
                     current_track_index = 0
-                    collection, tracklist, urls = select_date(coll_dict.keys(),key_date)
+                    collection, tracklist, urls = select_date(coll_dict.keys(),key_date, ntape)
+                    vcs = coll_dict[collection][key_date]
+                    ntape = 0
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
                     display_tracks(tft,current_track_name,next_track_name)
 
                     selected_date = key_date
+                    clear_bbox(tft, venue_bbox)
+                    tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                     clear_bbox(tft, selected_date_bbox)
                     tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
@@ -261,8 +275,18 @@ def main_loop(coll_dict):
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
-        if (not pSelect.value()) & ((time.ticks_ms()-select_press_time) > 1_000):
-            print(f"Select LONG_PRESS values is {pSelect.value()}")
+        if not pSelect.value():
+            if (time.ticks_ms()-select_press_time) > 1_000:
+                select_press_time = time.ticks_ms()
+                if ntape == 0:
+                    tape_ids = get_tape_ids(coll_dict.keys(),key_date)
+                ntape = (ntape + 1)%len(tape_ids)
+                clear_bbox(tft, artist_bbox)
+                tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                #vcs = coll_dict[tape_ids[ntape][0]][key_date]
+                clear_bbox(tft, venue_bbox)
+                tft.write(pfont_small, f"{tape_ids[ntape][1]}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                print(f"Select LONG_PRESS values is {pSelect.value()}. ntape = {ntape}")
 
         
         if pPlayPause_old != pPlayPause.value():
