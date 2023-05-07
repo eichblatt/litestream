@@ -21,7 +21,7 @@ import network
 
 
 
-API = 'http://westmain:5000' # westmain
+API = 'http://192.168.1.235:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
 def connect_wifi():
@@ -185,16 +185,16 @@ stage_date_bbox = Bbox(0,0,160,32)
 venue_bbox = Bbox(0,32,160,32+20)
 artist_bbox = Bbox(0,52,160,52+20)
 tracklist_bbox = Bbox(0,70, 160, 110)
-selected_date_bbox = Bbox(0,110,160,128)
-playpause_bbox = Bbox(145 ,108, 160, 128)
+selected_date_bbox = Bbox(35,110,145,128)
+playpause_bbox = Bbox(145 ,110, 160, 128)
 
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 
-def display_tracks(tft,current_track,next_track):
+def display_tracks(tft,current_track_name,next_track_name):
     clear_bbox(tft, tracklist_bbox)
-    tft.write(pfont_small, f"{current_track}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-    tft.write(pfont_small, f"{next_track}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
+    tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
+    tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
 def main_loop(coll_dict):
@@ -216,10 +216,11 @@ def main_loop(coll_dict):
     key_date = set_date('1975-08-13')
     selected_date = key_date
     playstate = 0
-    current_track_index = -1
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
-    current_track = next_track = ''
+    current_track_index = -1
+    current_track_name = next_track_name = 0
+    select_press_time = 0
     valid_dates = set()
     for c in collections:
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
@@ -244,48 +245,46 @@ def main_loop(coll_dict):
         if pSelect_old != pSelect.value():
             pSelect_old = pSelect.value()
             if pSelect_old:
-                # tft.rect(105, 108, 16, 16, st7789.BLUE)
-                print("Select UP")
-            else:
-                # tft.rect(105, 108, 16, 16, st7789.WHITE)
                 if key_date in valid_dates:
                     current_track_index = 0
                     collection, tracklist, urls = select_date(coll_dict.keys(),key_date)
-                    current_track = tracklist[current_track_index]
-                    next_track = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
-                    display_tracks(tft,current_track,next_track)
+                    current_track_name = tracklist[current_track_index]
+                    next_track_name = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
+                    display_tracks(tft,current_track_name,next_track_name)
 
                     selected_date = key_date
                     clear_bbox(tft, selected_date_bbox)
                     tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
-
+                print("Select UP")
+            else:
+                select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
+        if (pSelect.value()==0) & ((time.ticks_ms()-select_press_time) > 1_000):
+            print(f"Select LONG_PRESS values is {pSelect.value()}")
+
+        
         if pPlayPause_old != pPlayPause.value():
             pPlayPause_old = pPlayPause.value()
             if pPlayPause_old:
-                # tft.fill_polygon(PlayPausePoly, 145, 108, st7789.BLUE)
                 print("PlayPause UP")
             else:
                 playstate = 1 if playstate == 0 else 0
                 clear_bbox(tft,playpause_bbox)
                 if playstate > 0:
-                    # data = requests.get(urls[current_track])
-                    print(f"Playing URL {urls[current_track]}")
+                    print(f"Playing URL {urls[current_track_index]}")
                     tft.fill_polygon(PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 else:
-                    print(f"Pausing URL {urls[current_track]}")
+                    print(f"Pausing URL {urls[current_track_index]}")
                     tft.fill_polygon(PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 print("PlayPause DOWN")
 
         if pStop_old != pStop.value():
             pStop_old = pStop.value()
             if pStop_old:
-                # tft.fill_rect(55, 108, 16, 16, st7789.BLUE)
                 print("Stop UP")
             else:
-                # tft.fill_rect(55, 108, 16, 16, st7789.WHITE)
                 print("Stop DOWN")
 
         if pRewind_old != pRewind.value():
@@ -300,9 +299,9 @@ def main_loop(coll_dict):
                     pass
                 elif current_track_index>=0:
                     current_track_index += -1
-                    current_track = tracklist[current_track_index]
-                    next_track = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(tft,current_track,next_track)
+                    current_track_name = tracklist[current_track_index]
+                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(tft,current_track_name,next_track_name)
 
 
 
@@ -319,9 +318,9 @@ def main_loop(coll_dict):
                     pass
                 elif current_track_index>=0:
                     current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
-                    current_track = tracklist[current_track_index]
-                    next_track = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(tft,current_track,next_track)
+                    current_track_name = tracklist[current_track_index]
+                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(tft,current_track_name,next_track_name)
 
         if pYSw_old != pYSw.value():
             pYSw_old = pYSw.value()
@@ -395,13 +394,13 @@ def main_loop(coll_dict):
                 else:
                     vcs = ''
                     collection = ''
-                    display_tracks(tft,current_track,next_track)
+                    display_tracks(tft,current_track_name,next_track_name)
                 print(f'vcs is {vcs}')
                 clear_bbox(tft, venue_bbox)
                 tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
             except KeyError:
                 clear_bbox(tft, venue_bbox)
-                display_tracks(tft,current_track,next_track)
+                display_tracks(tft,current_track_name,next_track_name)
                 pass
         # time.sleep_ms(50)
 
