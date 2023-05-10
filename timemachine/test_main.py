@@ -9,12 +9,11 @@ from mrequests import mrequests as requests
 
 import machine
 import st7789
-import vga1_16x32 as font
-import fonts.vga1_bold_16x16 as bfont
-import fonts.vga1_16x16 as sfont
+import fonts.DejaVu_20x as date_font
+import fonts.DejaVu_22 as small_font
+import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
-import fonts.NotoSans_32 as pfont_large
 import fonts.romanc as roman_font
 import fonts.romant as romant_font
 from machine import SPI, Pin
@@ -23,7 +22,8 @@ import network
 
 
 machine.freq(240_000_000)
-API = 'http://192.168.1.235:5000' # westmain
+API = 'http://westmain:5000' # westmain
+#API = 'http://192.168.1.235:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
 
@@ -328,13 +328,13 @@ def get_tape_ids(collections,key_date):
     return tape_ids
      
 
-stage_date_bbox = Bbox(0,0,150,32)
-nshows_bbox = Bbox(150,16,160,32)
+stage_date_bbox = Bbox(0,0,160,32)
+nshows_bbox = Bbox(150,32,160,48)
 venue_bbox = Bbox(0,32,160,32+20)
 artist_bbox = Bbox(0,52,160,52+20)
 tracklist_bbox = Bbox(0,70, 160, 110)
-selected_date_bbox = Bbox(35,110,145,128)
-playpause_bbox = Bbox(145 ,110, 160, 128)
+selected_date_bbox = Bbox(15,113,145,128)
+playpause_bbox = Bbox(145 ,113, 160, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -412,7 +412,7 @@ def main_loop(coll_dict):
                     clear_bbox(tft, venue_bbox)
                     tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                     clear_bbox(tft, selected_date_bbox)
-                    tft.write(pfont_small, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
+                    tft.write(date_font, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
                 print("Select UP")
             else:
@@ -551,7 +551,7 @@ def main_loop(coll_dict):
 
         if date_old != date_new:
             clear_bbox(tft,stage_date_bbox)
-            tft.write(pfont_large, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
+            tft.write(large_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
             # tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
@@ -638,9 +638,9 @@ def main():
     This script will load a super-compressed version of the
     date, artist, venue, city, state.
     """
-    tft.write(pfont_large, "Time ", 0, 0, yellow_color)
-    tft.write(pfont_large, "Machine", 0, 30, yellow_color)
-    tft.write(pfont_large, "Loading", 0, 90, yellow_color)
+    tft.write(large_font, "Time ", 0, 0, yellow_color)
+    tft.write(large_font, "Machine", 0, 30, yellow_color)
+    tft.write(large_font, "Loading", 0, 90, yellow_color)
 
     collection_list_path = 'collection_list.json'
     if path_exists(collection_list_path):

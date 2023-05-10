@@ -132,3 +132,6 @@ timemachine/metadata/*_ids
 adapter_board.png
 timemachine/.main.py.swp
 NotoSans-Regular.ttf
+timemachine/fonts/FreeMono*
+timemachine/fonts/arial*.py
+timemachine/fonts/DejaVu_22.py
