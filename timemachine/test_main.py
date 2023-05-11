@@ -10,10 +10,10 @@ from mrequests import mrequests as requests
 import machine
 import st7789
 import fonts.DejaVu_20x as date_font
-import fonts.DejaVu_22 as small_font
 import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
+import fonts.NotoSans_32 as pfont_large
 import fonts.romanc as roman_font
 import fonts.romant as romant_font
 from machine import SPI, Pin
@@ -412,7 +412,7 @@ def main_loop(coll_dict):
                     clear_bbox(tft, venue_bbox)
                     tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                     clear_bbox(tft, selected_date_bbox)
-                    tft.write(date_font, f"{selected_date[5:7]}-{selected_date[8:10]}-{selected_date[:4]}",
+                    tft.write(date_font, f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
                 print("Select UP")
             else:
