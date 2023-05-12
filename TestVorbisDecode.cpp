@@ -329,6 +329,16 @@ void setup()
             break;
         }
     }
+        
+    stb_vorbis_close(v);
+    
+    if (buffer)
+        free(buffer);
+        
+    if (VorbisBuffer.alloc_buffer)
+        free(VorbisBuffer.alloc_buffer);
+        
+    httpClient.end();
 }
 
 void loop() 
