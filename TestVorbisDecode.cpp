@@ -180,7 +180,7 @@ void setup()
     
     //uint8 buffer[BUFFER_SIZE];
 
-    // Read  data from the HTTP response until the buffer is full
+    // Read data from the HTTP response until the buffer is full
     while (p < BUFFER_SIZE && httpClient.connected())
     {
         bytes_read = httpClient.getStream().read(buffer + p, BUFFER_SIZE - p);
