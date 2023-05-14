@@ -20,74 +20,14 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import network
 
+import board as tm
+
 
 machine.freq(240_000_000)
 API = 'http://westmain:5000' # westmain
 #API = 'http://192.168.1.235:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
-
-# Set up pins
-pPower = Pin(21, Pin.IN, Pin.PULL_UP)
-pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
-pPlayPause = Pin(2, Pin.IN, Pin.PULL_UP)
-pStop = Pin(15, Pin.IN, Pin.PULL_UP)
-pRewind = Pin(16, Pin.IN, Pin.PULL_UP)
-pFFwd = Pin(1, Pin.IN, Pin.PULL_UP)
-pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
-pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
-pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
-
-pLED = Pin(48, Pin.OUT)
-
-
-# Initialise the three rotaries. First value is CL, second is DT
-# Year
-y = RotaryIRQ(
-    40,
-    42,
-    min_val=1966,
-    max_val=1995,
-    reverse=False,
-    range_mode=RotaryIRQ.RANGE_BOUNDED,
-    pull_up=True,
-    half_step=False,
-)
-# Month
-m = RotaryIRQ(
-    39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
-# Day
-d = RotaryIRQ(
-    7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
-
-PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
-PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10,15), (10,0)]
-RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
-FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
-
-# Configure display driver
-def conf_screen(rotation=0, buffer_size=0, options=0):
-    return st7789.ST7789(
-        SPI(1, baudrate=40000000, sck=Pin(12), mosi=Pin(11)),
-        128,
-        160,
-        reset=Pin(4, Pin.OUT),
-        cs=Pin(10, Pin.OUT),
-        dc=Pin(6, Pin.OUT),
-        backlight=Pin(5, Pin.OUT),
-        color_order=st7789.RGB,
-        inversion=False,
-        rotation=rotation,
-        options=options,
-        buffer_size=buffer_size,
-    )
-
-
-tft = conf_screen(1, buffer_size=64 * 64 * 2)
-tft.init()
-tft.fill(st7789.BLACK)
 
 class Bbox:
     """Bounding Box -- Initialize with corners.
@@ -118,45 +58,43 @@ class Bbox:
     def shift(self, d):
         return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
 
-def clear_bbox(tft, bbox):
-    tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
+def clear_bbox(bbox):
+    tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
 
-def clear_area(tft, x, y, width, height):
-    tft.fill_rect(x, y, width, height, st7789.BLACK)
+def clear_area(x, y, width, height):
+    tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
 
 
-def clear_screen(tft):
-    clear_area(tft, 0, 0, 160, 128)
+def clear_screen():
+    clear_area(0, 0, 160, 128)
 
 def select_option(message, choices):
-    global y
-    global d
     pSelect_old = True
-    y._value = y._min_val
-    d._value = d._min_val
+    tm.y._value = tm.y._min_val
+    tm.d._value = tm.d._min_val
     step = step_old = 0
     text_height = 16
     choice = ""
     first_time = True
-    clear_screen(tft)
+    clear_screen()
     select_bbox = Bbox(0,20,160,128)
-    tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
-    while pSelect_old == pSelect.value():
-        step = (y.value() - y._min_val)% len(choices) 
+    tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
+    while pSelect_old == tm.pSelect.value():
+        step = (tm.y.value() - tm.y._min_val)% len(choices) 
         if (step != step_old) or first_time: 
             i = j = 0
             first_time = False
             step_old = step
-            clear_bbox(tft, select_bbox)
+            clear_bbox(select_bbox)
 
             for i,s in enumerate(range(max(0,step-2), step)):
-                tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*i, tracklist_color)
+                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*i, tracklist_color)
 
             text = ">" + choices[step]
-            tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height*(i+1), st7789.RED)
+            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height*(i+1), st7789.RED)
 
             for j,s in enumerate(range(step+1,min(step+5,len(choices)))):
-                tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*(i+j+2), tracklist_color)
+                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*(i+j+2), tracklist_color)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -165,25 +103,23 @@ def select_option(message, choices):
     return choices[step]        
         
 def select_chars(message, message2="So Far"):
-    global y
-    global d
     charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c'
     message = message.split("\n")
     pSelect_old = pStop_old = True
-    y._value = y._min_val
-    d._value = d._min_val
-    y._max_val = y._max_val + 100
+    tm.y._value = tm.y._min_val
+    tm.d._value = tm.d._min_val
+    tm.y._max_val = tm.y._max_val + 100
     step = step_old = 0
     text_height = 18
     screen_width = 16
-    clear_screen(tft)
+    clear_screen()
     y_origin = len(message) * text_height
 
     select_bbox = Bbox(0,y_origin,160,y_origin + text_height)
     selected_bbox = Bbox(0,y_origin + text_height,160,128)
 
     for i,msg in enumerate(message):
-        tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
+        tm.tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
 
     selected = ""
     text = "DEL"
@@ -191,27 +127,27 @@ def select_chars(message, message2="So Far"):
     finished = False
 
     while not finished:
-        print(f"pStop_old {pStop_old}, pStop: {pStop.value()}")
-        while pSelect_old == pSelect.value():
-            if pStop_old != pStop.value():
+        print(f"pStop_old {pStop_old}, pStop: {tm.pStop.value()}")
+        while pSelect_old == tm.pSelect.value():
+            if pStop_old != tm.pStop.value():
                 finished = True
                 break
-            step = (y.value() - y._min_val) % (len(charset) + 1) 
+            step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1) 
             if (step != step_old) or first_time: 
                 cursor = 0
                 first_time = False
                 step_old = step
-                clear_bbox(tft, select_bbox)
+                clear_bbox(select_bbox)
 
                 # Write the Delete character
-                cursor += tft.write(pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step!=0 else st7789.RED)
+                cursor += tm.tft.write(pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step!=0 else st7789.RED)
 
                 text = charset[max(0,step - 5) : -1 + step]
                 for x in charset[94:]:
                     text = text.replace(x,".")   # Should be "\u25A1", but I don't think we have the font for this yet.
 
                 # Write the characters before the cursor
-                cursor += tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tracklist_color)
+                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tracklist_color)
                 
                 # Write the character AT the cursor
                 text = charset[-1 + min(step,len(charset))]
@@ -228,13 +164,13 @@ def select_chars(message, message2="So Far"):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
+                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
 
                 # Write the characters after the cursor
                 text = charset[step:min(-1+step+screen_width,len(charset))]
                 for x in charset[94:]:
                     text = text.replace(x, ".")
-                tft.write(pfont_small, text, select_bbox.x0+cursor, select_bbox.y0, tracklist_color)
+                tm.tft.write(pfont_small, text, select_bbox.x0+cursor, select_bbox.y0, tracklist_color)
 
                 # print(f"step is {step}. Text is {text}")
             time.sleep(0.2)
@@ -246,9 +182,9 @@ def select_chars(message, message2="So Far"):
                 choice = charset[step-1] # -1 for the delete character.
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
-            clear_bbox(tft,selected_bbox)
-            tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
-    y._max_val = y._max_val - 100
+            clear_bbox(selected_bbox)
+            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+    tm.y._max_val = tm.y._max_val - 100
     print(f"stop pressed. selected is: {selected}")
     time.sleep(0.3)
     return selected
@@ -291,13 +227,10 @@ print("Starting...")
 
 
 def set_date(date):
-    global m
-    global y
-    global d
-    y._value = int(date[:4])
-    m._value = int(date[5:7])
-    d._value = int(date[8:10])
-    key_date = f"{y.value()}-{m.value():02d}-{d.value():02d}"
+    tm.y._value = int(date[:4])
+    tm.m._value = int(date[5:7])
+    tm.d._value = int(date[8:10])
+    key_date = f"{tm.y.value()}-{tm.m.value():02d}-{tm.d.value():02d}"
     return key_date
 
 
@@ -342,10 +275,10 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
-def display_tracks(tft,current_track_name,next_track_name):
-    clear_bbox(tft, tracklist_bbox)
-    tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-    tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
+def display_tracks(current_track_name,next_track_name):
+    clear_bbox(tracklist_bbox)
+    tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
+    tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
 def main_loop(coll_dict):
@@ -378,25 +311,25 @@ def main_loop(coll_dict):
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
     del c
     valid_dates = list(sorted(valid_dates))
-    clear_screen(tft)
+    clear_screen()
 
     while True:
         nshows = 0
         
-        if pPower_old != pPower.value():
-            pPower_old = pPower.value()
-            pLED.value(PowerLED)
-            tft.off() if not PowerLED else tft.on()
+        if pPower_old != tm.pPower.value():
+            pPower_old = tm.pPower.value()
+            tm.pLED.value(PowerLED)
+            tm.tft.off() if not PowerLED else tm.tft.on()
             if pPower_old:
-                # tft.fill_circle(5 + 8, 108 + 8, 8, st7789.BLUE)
+                # tm.tft.fill_circle(5 + 8, 108 + 8, 8, st7789.BLUE)
                 print("Power UP")
             else:
                 PowerLED = not PowerLED
-                # tft.fill_circle(5 + 8, 108 + 8, 8, st7789.WHITE)
+                # tm.tft.fill_circle(5 + 8, 108 + 8, 8, st7789.WHITE)
                 print("Power DOWN")
 
-        if pSelect_old != pSelect.value():
-            pSelect_old = pSelect.value()
+        if pSelect_old != tm.pSelect.value():
+            pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 if key_date in valid_dates:
                     current_track_index = 0
@@ -406,67 +339,67 @@ def main_loop(coll_dict):
                     current_collection = collection
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
-                    display_tracks(tft,current_track_name,next_track_name)
+                    display_tracks(current_track_name,next_track_name)
 
                     selected_date = key_date
-                    clear_bbox(tft, venue_bbox)
-                    tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
-                    clear_bbox(tft, selected_date_bbox)
-                    tft.write(date_font, f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}",
+                    clear_bbox(venue_bbox)
+                    tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                    clear_bbox(selected_date_bbox)
+                    tm.tft.write(date_font, f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
-        if not pSelect.value():
+        if not tm.pSelect.value():
             if (time.ticks_ms()-select_press_time) > 1_000:
                 select_press_time = time.ticks_ms()
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict.keys(),key_date)
                 ntape = (ntape + 1)%len(tape_ids)
-                clear_bbox(tft, artist_bbox)
-                tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                clear_bbox(artist_bbox)
+                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
                 #vcs = coll_dict[tape_ids[ntape][0]][key_date]
-                clear_bbox(tft, venue_bbox)
+                clear_bbox(venue_bbox)
                 display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*","~", tape_ids[ntape][1])
                 display_str = re.sub(r"\d\d-\d\d-\d\d\.*","~", display_str)
                 print(f"display string is {display_str}")
                 if len(display_str) > 18:
                     display_str = display_str[:11] + display_str[-6:]
-                tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
-                print(f"Select LONG_PRESS values is {pSelect.value()}. ntape = {ntape}")
+                tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         
-        if pPlayPause_old != pPlayPause.value():
-            pPlayPause_old = pPlayPause.value()
+        if pPlayPause_old != tm.pPlayPause.value():
+            pPlayPause_old = tm.pPlayPause.value()
             if pPlayPause_old:
                 print("PlayPause UP")
             else:
                 playstate = 1 if playstate == 0 else 0
-                clear_bbox(tft,playpause_bbox)
+                clear_bbox(playpause_bbox)
                 if playstate > 0:
                     print(f"Playing URL {urls[current_track_index]}")
-                    tft.fill_polygon(PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 else:
                     print(f"Pausing URL {urls[current_track_index]}")
-                    tft.fill_polygon(PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
+                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 print("PlayPause DOWN")
 
-        if pStop_old != pStop.value():
-            pStop_old = pStop.value()
+        if pStop_old != tm.pStop.value():
+            pStop_old = tm.pStop.value()
             if pStop_old:
                 print("Stop UP")
             else:
                 print("Stop DOWN")
 
-        if pRewind_old != pRewind.value():
-            pRewind_old = pRewind.value()
+        if pRewind_old != tm.pRewind.value():
+            pRewind_old = tm.pRewind.value()
             if pRewind_old:
-                # tft.fill_polygon(RewPoly, 30, 108, st7789.BLUE)
+                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.BLUE)
                 print("Rewind UP")
             else:
-                # tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
+                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
                 if current_track_index <= 0:
                     pass
@@ -474,18 +407,18 @@ def main_loop(coll_dict):
                     current_track_index += -1
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(tft,current_track_name,next_track_name)
+                    display_tracks(current_track_name,next_track_name)
 
 
 
 
-        if pFFwd_old != pFFwd.value():
-            pFFwd_old = pFFwd.value()
+        if pFFwd_old != tm.pFFwd.value():
+            pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
-                # tft.fill_polygon(FFPoly, 80, 108, st7789.BLUE)
+                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.BLUE)
                 print("FFwd UP")
             else:
-                # tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
+                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
                 if current_track_index >= len(tracklist):
                     pass
@@ -493,25 +426,25 @@ def main_loop(coll_dict):
                     current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(tft,current_track_name,next_track_name)
+                    display_tracks(current_track_name,next_track_name)
 
-        if pYSw_old != pYSw.value():
-            pYSw_old = pYSw.value()
+        if pYSw_old != tm.pYSw.value():
+            pYSw_old = tm.pYSw.value()
             if pYSw_old:
                 print("Year UP")
             else:
                 # cycle through Today In History (once we know what today is!)
                 print("Year DOWN")
 
-        if pMSw_old != pMSw.value():
-            pMSw_old = pMSw.value()
+        if pMSw_old != tm.pMSw.value():
+            pMSw_old = tm.pMSw.value()
             if pMSw_old:
                 print("Month UP")
             else:
                 print("Month DOWN")
 
-        if pDSw_old != pDSw.value():
-            pDSw_old = pDSw.value()
+        if pDSw_old != tm.pDSw.value():
+            pDSw_old = tm.pDSw.value()
             if pDSw_old:
                 print("Day UP")
             else:
@@ -521,9 +454,9 @@ def main_loop(coll_dict):
                         break
                 print("Day DOWN")
 
-        year_new = y.value()
-        month_new = m.value()
-        day_new = d.value()
+        year_new = tm.y.value()
+        month_new = tm.m.value()
+        day_new = tm.d.value()
         if (month_new in [4, 6, 9, 11]) and (day_new > 30):
             day_new = 30
         if (month_new == 2) and (day_new > 28):
@@ -550,9 +483,9 @@ def main_loop(coll_dict):
             print("day =", day_new)
 
         if date_old != date_new:
-            clear_bbox(tft,stage_date_bbox)
-            tft.write(large_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
-            # tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
+            clear_bbox(stage_date_bbox)
+            tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
+            # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
             try:
@@ -562,25 +495,25 @@ def main_loop(coll_dict):
                             nshows += 1
                             collection = c
                             vcs = coll_dict[collection][f"{key_date}"]
-                            clear_bbox(tft, artist_bbox)
-                            tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                            clear_bbox(artist_bbox)
+                            tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
                 else:
                     vcs = ''
                     collection = ''
-                    clear_bbox(tft, artist_bbox)
-                    tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color) 
-                    display_tracks(tft,current_track_name,next_track_name)
+                    clear_bbox(artist_bbox)
+                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color) 
+                    display_tracks(current_track_name,next_track_name)
                 print(f'vcs is {vcs}')
-                clear_bbox(tft, venue_bbox)
-                tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
-                clear_bbox(tft, nshows_bbox)
+                clear_bbox(venue_bbox)
+                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                clear_bbox(nshows_bbox)
                 if nshows > 1:
-                    tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color) # no need to clear this.
+                    tm.tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color) # no need to clear this.
             except KeyError:
-                clear_bbox(tft, venue_bbox)
-                clear_bbox(tft, artist_bbox)
-                tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
-                display_tracks(tft,current_track_name,next_track_name)
+                clear_bbox(venue_bbox)
+                clear_bbox(artist_bbox)
+                tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                display_tracks(current_track_name,next_track_name)
                 pass
         # time.sleep_ms(50)
 
@@ -638,9 +571,9 @@ def main():
     This script will load a super-compressed version of the
     date, artist, venue, city, state.
     """
-    tft.write(large_font, "Time ", 0, 0, yellow_color)
-    tft.write(large_font, "Machine", 0, 30, yellow_color)
-    tft.write(large_font, "Loading", 0, 90, yellow_color)
+    tm.tft.write(large_font, "Time ", 0, 0, yellow_color)
+    tm.tft.write(large_font, "Machine", 0, 30, yellow_color)
+    tm.tft.write(large_font, "Loading", 0, 90, yellow_color)
 
     collection_list_path = 'collection_list.json'
     if path_exists(collection_list_path):
@@ -651,19 +584,19 @@ def main():
             json.dump(collection_list,f)
 
     coll_dict = {}
-    min_year = y._min_val
-    max_year = y._max_val
+    min_year = tm.y._min_val
+    max_year = tm.y._max_val
     for coll in collection_list:
         coll_dict[coll] = load_vcs(coll)
         coll_dates = coll_dict[coll].keys()
         min_year = min(int(min(coll_dates)[:4]),min_year)
         max_year = max(int(max(coll_dates)[:4]),max_year)
-        y._min_val = min_year
-        y._max_val = max_year
+        tm.y._min_val = min_year
+        tm.y._max_val = max_year
 
     wifi = connect_wifi()
     ip_address = wifi.ifconfig()[0]
-    tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+    tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
 
     print(f"Loaded collections {coll_dict.keys()}")
 
