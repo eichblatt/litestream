@@ -2,7 +2,6 @@
 import json
 import os
 import re
-import time
 import network
 import time
 from mrequests import mrequests as requests
@@ -211,17 +210,24 @@ def connect_wifi():
         wifi_cred = json.load(open(wifi_cred_path, "r"))
     else:
         wifi_cred = get_wifi_cred(wifi)
+        with open(wifi_cred_path,'w') as f:
+            json.dump(wifi_cred,f)
     attempts = 0
     max_attempts = 5
     while (not wifi.isconnected()) & (attempts < max_attempts):
         print("Attempting to connect to network")
-        wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+        try:
+            wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+        except OSError:
+            pass
         attempts += 1
         time.sleep(2)
-    if wifi.isconnected():
-        with open(wifi_cred_path,'w') as f:
-            json.dump(wifi_cred,f)
-    return wifi
+    if not wifi.isconnected():
+        tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
+        os.remove(wifi_cred_path)
+        return connect_wifi()
+    else:
+        return wifi
 
 print("Starting...")
 
@@ -571,9 +577,9 @@ def main():
     This script will load a super-compressed version of the
     date, artist, venue, city, state.
     """
-    tm.tft.write(large_font, "Time ", 0, 0, yellow_color)
-    tm.tft.write(large_font, "Machine", 0, 30, yellow_color)
-    tm.tft.write(large_font, "Loading", 0, 90, yellow_color)
+    clear_screen()
+    tm.tft.write(pfont_med, "Connecting", 0, 0, yellow_color)
+    tm.tft.write(pfont_med, "WiFi...", 0, 30, yellow_color)
 
     collection_list_path = 'collection_list.json'
     if path_exists(collection_list_path):
