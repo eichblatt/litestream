@@ -17,12 +17,13 @@ import network
 import board as tm
 
 def copy_file(src, dest):
+    print(f"Copying {src} to {dest}")
     f_in = open(src,'r')
     f_out = open(dest,'w')
     for line in f_in.readlines():
         f_out.write(line)
-    f_out.close()
     f_in.close()
+    f_out.close()
     
 def basic_main():
     """
