@@ -11,6 +11,7 @@ import fonts.NotoSans_32 as pfont_large
 import fonts.romanc as roman_font
 import fonts.romant as romant_font
 from machine import SPI, Pin
+from mrequests import mrequests as requests
 from rotary_irq_esp import RotaryIRQ
 import network
 
@@ -27,7 +28,7 @@ def copy_file(src, dest):
     
 def basic_main():
     """
-    This script will update main.py if button pressed within 2 seconds.
+    This script will update livemusic.py if rewind button pressed within 2 seconds.
     """
     tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
     yellow_color = st7789.color565(255, 255, 0)
@@ -36,14 +37,22 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 60, yellow_color)
     tm.tft.write(pfont_med, "Loading", 0, 90, yellow_color)
-    
+
+    git_code_url = "https://raw.githubusercontent.com/eichblatt/litestream/main/timemachine/livemusic.py?token=GHSAT0AAAAAACBAKSJDFAR5ATJ7TPHAXRCOZDC2KGA"
     
     start_time = time.ticks_ms()
     pRewind_old = True
+    pSelect_old = True
     pStop_old = True
     update_code = False
 
     while time.ticks_ms() < (start_time + 3000):
+
+        if pSelect_old != tm.pSelect.value():
+            pSelect_old = tm.pSelect.value()
+            update_code = True
+            print(f"{time.ticks_ms()} Select button Pressed!!")
+            break
 
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()
@@ -54,6 +63,7 @@ def basic_main():
             pRewind_old = tm.pRewind.value()
             update_code = True
             print(f"{time.ticks_ms()} Rewind button Pressed!!")
+            break
 
     if update_code:
         try:
@@ -61,6 +71,21 @@ def basic_main():
         except Exception:
             print("Failed to copy livemusic.py to livemusic_bak.py. Not updating!!")
             return  
+
+        try:
+            resp = requests.get(git_code_url)
+            if resp.status_code != 200:
+                raise Exception("Error downloading file")
+            f_out = open('livemusic.py','w')
+            for line in resp.text.split('\n'):
+                f_out.write(line)
+            f_out.close()
+            print("livemusic.py written")
+            
+        except Exception:
+            print("Failed to download livemusic.py Not updating!!")
+            return
+            
 
         print("This means we should update livemusic.py")
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
@@ -77,5 +102,5 @@ import livemusic as livemusic
 try:
     livemusic.main()
 except Exception:
-    print("test_main.py is not running!!")
+    print("livemusic.py is not running!!")
 
