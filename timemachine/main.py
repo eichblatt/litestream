@@ -40,9 +40,16 @@ def basic_main():
     
     start_time = time.ticks_ms()
     pRewind_old = True
+    pStop_old = True
     update_code = False
 
-    while time.ticks_ms() < (start_time + 2000):
+    while time.ticks_ms() < (start_time + 3000):
+
+        if pStop_old != tm.pStop.value():
+            pStop_old = tm.pStop.value()
+            print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
+            return
+
         if pRewind_old != tm.pRewind.value():
             pRewind_old = tm.pRewind.value()
             update_code = True
@@ -50,25 +57,25 @@ def basic_main():
 
     if update_code:
         try:
-            copy_file('test_main.py', 'main_bak.py')
+            copy_file('livemusic.py', 'livemusic_bak.py')
         except Exception:
-            print("Failed to copy test_main.py to main_bak.py. Not updating!!")
+            print("Failed to copy livemusic.py to livemusic_bak.py. Not updating!!")
             return  
 
-        print("This means we should update main.py")
+        print("This means we should update livemusic.py")
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
         tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
         time.sleep(3)
 
-    if 'test_main' in sys.modules:
-        del sys.modules['test_main']
+    if 'livemusic' in sys.modules:
+        del sys.modules['livemusic']
 
 
 basic_main()
 
-import test_main
+import livemusic as livemusic
 try:
-    test_main.main()
+    livemusic.main()
 except Exception:
     print("test_main.py is not running!!")
 
