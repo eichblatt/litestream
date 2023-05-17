@@ -16,6 +16,7 @@ from rotary_irq_esp import RotaryIRQ
 import network
 
 import board as tm
+import utils
 
 def copy_file(src, dest):
     print(f"Copying {src} to {dest}")
@@ -25,7 +26,7 @@ def copy_file(src, dest):
         f_out.write(line)
     f_in.close()
     f_out.close()
-    
+   
 def basic_main():
     """
     This script will update livemusic.py if rewind button pressed within 2 seconds.
@@ -66,6 +67,9 @@ def basic_main():
             break
 
     if update_code:
+        tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+        tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
+
         try:
             copy_file('livemusic.py', 'livemusic_bak.py')
         except Exception:
@@ -73,6 +77,10 @@ def basic_main():
             return  
 
         try:
+            wifi = utils.connect_wifi()
+            ip_address = wifi.ifconfig()[0]
+            tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+
             resp = requests.get(git_code_url)
             if resp.status_code != 200:
                 raise Exception("Error downloading file")
@@ -83,13 +91,10 @@ def basic_main():
             print("livemusic.py written")
             
         except Exception:
-            print("Failed to download livemusic.py Not updating!!")
+            print("Failed to download or save livemusic.py Not updating!!")
             return
-            
 
         print("This means we should update livemusic.py")
-        tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-        tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
         time.sleep(3)
 
     if 'livemusic' in sys.modules:

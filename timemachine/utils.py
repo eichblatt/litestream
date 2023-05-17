@@ -226,9 +226,10 @@ def connect_wifi():
         wifi_cred = get_wifi_cred(wifi)
         with open(wifi_cred_path,'w') as f:
             json.dump(wifi_cred,f)
+
     attempts = 0
     max_attempts = 5
-    while (not wifi.isconnected()) & (attempts < max_attempts):
+    while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
         try:
             wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
@@ -238,6 +239,8 @@ def connect_wifi():
         time.sleep(2)
     if not wifi.isconnected():
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
+        with open(f'{wifi_cred_path}.bak','w') as f:
+            json.dump(wifi_cred,f)
         os.remove(wifi_cred_path)
         return connect_wifi()
     else:

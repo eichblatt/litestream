@@ -324,7 +324,6 @@ def main_loop(coll_dict):
         # time.sleep_ms(50)
 
 
-#  ---------------------------------   End utils library
 def add_vcs(coll):
     ids_path = f"metadata/{coll}_vcs.json"
     print(f"Loading collection {coll} from {ids_path}")
@@ -381,9 +380,6 @@ def main():
         tm.y._min_val = min_year
         tm.y._max_val = max_year
 
-    wifi = utils.connect_wifi()
-    ip_address = wifi.ifconfig()[0]
-    tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
 
     print(f"Loaded collections {coll_dict.keys()}")
 
