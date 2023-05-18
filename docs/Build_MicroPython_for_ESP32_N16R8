@@ -82,7 +82,7 @@ Flash the chip
 Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
 
-You can combine the three files into one micropython.bin with makeimg.py
+There is also a combined firmware.bin which is the three files above combined into one. Flash at 0x00 offset
 
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
@@ -110,7 +110,7 @@ I think the problem is that I don't have the "pyserial" package installed **in t
 
 Connecting the device from PyMakr
 =================================
-On my machine, when i plug in the device, a file handle /dev/ttyACM0 is created to connect to it. It is owned by root, and since my vscode is running as me, I can't connect.
+On my machine, when I plug in the device, a file handle /dev/ttyACM0 is created to connect to it. It is owned by root, and since my vscode is running as me, I can't connect.
 Run this command to change the permissions so that PyMakr can connect:
 : ~ ; sudo chown steve /dev/ttyACM0 
 
