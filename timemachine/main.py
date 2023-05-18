@@ -39,7 +39,7 @@ def basic_main():
     tm.tft.write(pfont_med, "Machine", 0, 60, yellow_color)
     tm.tft.write(pfont_med, "Loading", 0, 90, yellow_color)
 
-    git_code_url = "https://raw.githubusercontent.com/eichblatt/litestream/main/timemachine/livemusic.py?token=GHSAT0AAAAAACBAKSJDFAR5ATJ7TPHAXRCOZDC2KGA"
+    git_code_url = "https://raw.githubusercontent.com/eichblatt/deadstream/api_server/micro_livemusic.py"
     
     start_time = time.ticks_ms()
     pRewind_old = True
@@ -90,8 +90,8 @@ def basic_main():
             f_out.close()
             print("livemusic.py written")
             
-        except Exception:
-            print("Failed to download or save livemusic.py Not updating!!")
+        except Exception as e:
+            print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
             return
 
         print("This means we should update livemusic.py")
@@ -99,11 +99,12 @@ def basic_main():
 
     if 'livemusic' in sys.modules:
         del sys.modules['livemusic']
+        del livemusic
 
 
 basic_main()
 
-import livemusic as livemusic
+import livemusic 
 try:
     livemusic.main()
 except Exception:
