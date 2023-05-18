@@ -1,6 +1,6 @@
 To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from
 https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory. 
-You can build the firmware yourself, but edit  ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board and change:
+You can build the firmware yourself, but edit ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board and change:
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv"
@@ -52,10 +52,24 @@ cp ~/micropython-rotary/rotary.py ~/micropython/ports/esp32/modules
 cp ~/micropython-rotary/rotary_irq_esp.py ~/micropython/ports/esp32/modules
 
 
-Start a terminal session
-========================
-cd $HOME
-. $HOME/esp/esp-idf/export.sh
+Fix the I2S Bug
+===============
+nano ~/micropython/ports/esp32/machine_i2s.c
+Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the following at the end:
+#if SOC_I2S_SUPPORTS_TDM
+    i2s_config.chan_mask = 0x03;
+    i2s_config.total_chan = 0;
+    i2s_config.left_align = true;
+    i2s_config.big_edin = false;
+    i2s_config.bit_order_msb = false;
+    i2s_config.skip_msk = false;
+#endif
+
+
+Start a terminal session to compile Micropython
+===============================================
+cd ~
+. ~/esp/esp-idf/export.sh
 cd micropython/ports/esp32
 idf.py -B build-GENERIC_S3_N16R8 menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
@@ -67,6 +81,8 @@ Flash the chip
 ==============
 Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
+
+You can combine the three files into one micropython.bin with makeimg.py
 
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
