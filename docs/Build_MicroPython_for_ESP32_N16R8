@@ -1,5 +1,13 @@
 To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from
-https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory
+https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory. 
+You can build the firmware yourself, but edit  ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board and change:
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv"
+
+This will then tell it to use the full 16MB of flash. Then follow the instructions below, but no need to get the board config from Mythologyli, 
+and build with BOARD=GENERIC_S3_SPIRAM_OCT instead of BOARD=GENERIC_S3_N16R8
+
 
 The alternative is to build Micropython from source - info taken from 
 https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
@@ -17,7 +25,7 @@ cd ~/esp/esp-idf
 Install Micropython & compile cross compiler
 ============================================
 cd $HOME
-git clone -b v1.19.1 --recursive https://github.com/micropython/micropython.git
+git clone -b v1.19.1 --recursive https://github.com/micropython/micropython.git (or leave out the -b v1.19.1 if you want the latest daily version)
 cd ~/micropython/mpy-cross/
 make
 
