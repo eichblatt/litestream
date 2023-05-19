@@ -40,7 +40,7 @@ b. Download micropython resp and compile mpy-cross compiler
 	f. add alias mpy_cross='$HOME/micropython/mpy-cross/./mpy-cross'
    save&exit
 
-c. Test with C code
+c. Test with C code - check https://github.com/micropython/micropython/issues/6264 if you get a ".data non-empty" error
 	a. cd $HOME/micropython/examples/natmod/features0
 	b. edit Makefile to change ARCH = xtensawin and set module name
 	c. esp32_idf (must be called before every compilation if native C files included)
