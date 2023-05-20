@@ -9,6 +9,14 @@ import fonts.NotoSans_18 as pfont_small
 from mrequests import mrequests as requests
 
 import board as tm
+
+def reload(mod):
+    import sys
+    z = __import__(mod)
+    del z
+    del sys.modules[mod]
+    return __import__(mod)
+
 class Bbox:
     """Bounding Box -- Initialize with corners.
     """
