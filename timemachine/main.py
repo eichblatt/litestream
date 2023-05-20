@@ -96,11 +96,6 @@ def basic_main():
         print("We should update livemusic.py")
         time.sleep(3)
 
-    #if 'livemusic' in sys.modules:
-    #    print("Resetting device")
-    #    time.sleep(1)
-    #    machine.reset()
-
 basic_main()
 
 try:
