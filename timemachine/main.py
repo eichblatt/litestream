@@ -84,7 +84,8 @@ def basic_main():
                 raise Exception("Error downloading file")
             f_out = open('livemusic.py','w')
             for line in resp.text.split('\n'):
-                f_out.write(line)
+                f_out.write(line + '\n')
+            f_out.flush()
             f_out.close()
             print("livemusic.py written")
             
