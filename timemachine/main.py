@@ -4,12 +4,8 @@ import time
 import machine
 import st7789
 import fonts.DejaVu_20x as date_font
-import fonts.DejaVu_33 as large_font
-import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
-import fonts.romanc as roman_font
-import fonts.romant as romant_font
 from machine import SPI, Pin
 from mrequests import mrequests as requests
 from rotary_irq_esp import RotaryIRQ
@@ -31,6 +27,7 @@ def basic_main():
     """
     This script will update livemusic.py if rewind button pressed within 2 seconds.
     """
+    print("in basic_main")
     tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
@@ -67,6 +64,7 @@ def basic_main():
             break
 
     if update_code:
+        print('Updating code')
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
         tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
@@ -94,20 +92,23 @@ def basic_main():
             print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
             return
 
-        print("This means we should update livemusic.py")
+        print("We should update livemusic.py")
         time.sleep(3)
 
-    if 'livemusic' in sys.modules:
-        # del sys.modules['livemusic']
-        # del livemusic
-        machine.reset()
-
+    #if 'livemusic' in sys.modules:
+    #    print("Resetting device")
+    #    time.sleep(1)
+    #    machine.reset()
 
 basic_main()
 
-import livemusic 
 try:
-    livemusic.main()
+    print("Trying to run livemusic main")
+    if 'livemusic' in sys.modules:
+        utils.reload('livemusic')
+    else:
+        import livemusic 
+        livemusic.main()
 except Exception:
     print("livemusic.py is not running!!")
 
