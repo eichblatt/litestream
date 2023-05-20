@@ -98,8 +98,9 @@ def basic_main():
         time.sleep(3)
 
     if 'livemusic' in sys.modules:
-        del sys.modules['livemusic']
-        del livemusic
+        # del sys.modules['livemusic']
+        # del livemusic
+        machine.reset()
 
 
 basic_main()

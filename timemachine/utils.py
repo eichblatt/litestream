@@ -217,6 +217,7 @@ def get_wifi_cred(wifi):
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
+    wifi.config(pm=network.WLAN.PM_NONE)
     wifi_cred_path = 'wifi_cred.json'
     # sta_if.scan()  # Scan for available access points
 
