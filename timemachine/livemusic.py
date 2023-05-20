@@ -24,7 +24,7 @@ import utils
 
 machine.freq(240_000_000)
 API = 'http://westmain:5000' # westmain
-#API = 'http://192.168.1.235:5000' # westmain
+API = 'http://192.168.1.242:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
 
@@ -109,6 +109,8 @@ def main_loop(coll_dict):
     current_collection = ''
     current_track_index = -1
     current_track_name = next_track_name = '' 
+    vcs = selected_vcs = ''
+    pvcs_line = 0
     select_press_time = 0
     power_press_time = 0
     ntape = 0
@@ -155,8 +157,9 @@ def main_loop(coll_dict):
                     display_tracks(current_track_name,next_track_name)
 
                     selected_date = key_date
+                    selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
-                    tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                    tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) 
                     utils.clear_bbox(selected_date_bbox)
                     tm.tft.write(date_font, f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}",
                               selected_date_bbox.x0,selected_date_bbox.y0)
@@ -165,7 +168,7 @@ def main_loop(coll_dict):
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
-        if not tm.pSelect.value():
+        if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms()-select_press_time) > 1_000:
                 select_press_time = time.ticks_ms()
                 if ntape == 0:
@@ -182,7 +185,15 @@ def main_loop(coll_dict):
                     display_str = display_str[:11] + display_str[-6:]
                 tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
-
+        
+        vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1+len(selected_vcs)//16)
+        if (vcs == selected_vcs) & (vcs_line != pvcs_line):
+                pvcs_line = vcs_line
+                utils.clear_bbox(venue_bbox)
+                startchar = min(15 * vcs_line,len(selected_vcs) - 16)
+                tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color) 
+        
+            
         
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()

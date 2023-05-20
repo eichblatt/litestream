@@ -83,7 +83,9 @@ def basic_main():
             if resp.status_code != 200:
                 raise Exception("Error downloading file")
             f_out = open('livemusic.py','w')
-            for line in resp.text.split('\n'):
+            lines = resp.text.split('\n')
+            print(f"Downloaded {len(lines)} lines from github")
+            for line in lines:
                 f_out.write(line + '\n')
             f_out.flush()
             f_out.close()
