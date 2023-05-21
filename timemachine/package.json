@@ -1,6 +1,10 @@
 {
     "urls": [
         [
+            "board.py",
+            "github:eichblatt/litestream/timemachine/board.py"
+        ],
+        [
             "utils.py",
             "github:eichblatt/litestream/timemachine/utils.py"
         ],
