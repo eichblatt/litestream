@@ -9,10 +9,13 @@ import fonts.NotoSans_32 as pfont_large
 from machine import SPI, Pin
 from mrequests import mrequests as requests
 from rotary_irq_esp import RotaryIRQ
+import mip
 import network
 
 import board as tm
 import utils
+
+# mip.install("github:eichblatt/litestream/timemachine/package.json")
 
 def copy_file(src, dest):
     print(f"Copying {src} to {dest}")
