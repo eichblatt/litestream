@@ -37,5 +37,11 @@
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
         ],
     ],
+    "deps": [
+        [
+            "urequests",
+            "latest"
+        ]
+    ]
     "version": "0.1.0"
 }
