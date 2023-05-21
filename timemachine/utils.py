@@ -245,7 +245,6 @@ def connect_wifi():
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
     wifi_cred_path = 'wifi_cred.json'
-    # sta_if.scan()  # Scan for available access points
 
     if path_exists(wifi_cred_path):
         wifi_cred = json.load(open(wifi_cred_path, "r"))
@@ -255,7 +254,7 @@ def connect_wifi():
             json.dump(wifi_cred,f)
 
     attempts = 0
-    max_attempts = 10
+    max_attempts = 7 
     while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
         try:
@@ -264,12 +263,13 @@ def connect_wifi():
             pass
         attempts += 1
         time.sleep(2)
-    if not wifi.isconnected():
+    if wifi.isconnected():
+        return wifi
+    else:
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
         with open(f'{wifi_cred_path}.bak','w') as f:
             json.dump(wifi_cred,f)
         os.remove(wifi_cred_path)
-        return connect_wifi()
-    else:
-        return wifi
+        wifi = connect_wifi()
+    return wifi
  
