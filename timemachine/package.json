@@ -39,7 +39,7 @@
     ],
     "deps": [
         [
-            "urequests",
+            "mrequests",
             "latest"
         ]
     ]
