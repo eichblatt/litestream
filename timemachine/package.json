@@ -35,6 +35,34 @@
         [
             "fonts/NotoSans_32.py",
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
+        ],
+        [
+            "mrequests/defaultdict.mpy",
+            "github:eichblatt/litestream/timemachine/mrequests/defaultdict.mpy"
+        ],
+        [
+            "mrequests/mrequests.mpy",
+            "github:eichblatt/litestream/timemachine/mrequests/mrequests.mpy"
+        ],
+        [
+            "mrequests/mrequests.py",
+            "github:eichblatt/litestream/timemachine/mrequests/mrequests.py"
+        ],
+        [
+            "mrequests/mrequests.py",
+            "github:eichblatt/litestream/timemachine/mrequests/mrequests.py"
+        ],
+        [
+            "mrequests/urlencode.mpy",
+            "github:eichblatt/litestream/timemachine/mrequests/urlencode.mpy"
+        ],
+        [
+            "mrequests/urlparseqs.py",
+            "github:eichblatt/litestream/timemachine/mrequests/urlparseqs.mpy"
+        ],
+        [
+            "mrequests/urlunquote.mpy",
+            "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
         ]
     ],
     "deps": [
