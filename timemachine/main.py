@@ -23,6 +23,21 @@ def copy_file(src, dest):
     f_in.close()
     f_out.close()
    
+def connect_wifi():
+    utils.clear_screen()
+    yellow_color = st7789.color565(255, 255, 0)
+    tm.tft.write(pfont_med, "Connecting", 0, 0, yellow_color)
+    tm.tft.write(pfont_med, "WiFi...", 0, 30, yellow_color)
+ 
+    wifi = utils.connect_wifi()
+    if not wifi.isconnected():
+        print("Wifi did not connect!!!")
+        raise Exception("Wifi Failed to Connect")
+    ip_address = wifi.ifconfig()[0]
+    tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+    return wifi
+
+    
 def basic_main():
     """
     This script will update livemusic.py if rewind button pressed within 2 seconds.
@@ -75,9 +90,7 @@ def basic_main():
             return  
 
         try:
-            wifi = utils.connect_wifi()
-            ip_address = wifi.ifconfig()[0]
-            tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+            wifi = connect_wifi()
 
             resp = requests.get(git_code_url)
             if resp.status_code != 200:
@@ -99,6 +112,7 @@ def basic_main():
         time.sleep(3)
 
 basic_main()
+wifi = connect_wifi()
 
 try:
     print("Trying to run livemusic main")

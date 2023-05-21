@@ -240,6 +240,8 @@ def get_wifi_cred(wifi):
 
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
+    if wifi.isconnected():
+        return wifi
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
     wifi_cred_path = 'wifi_cred.json'
@@ -253,7 +255,7 @@ def connect_wifi():
             json.dump(wifi_cred,f)
 
     attempts = 0
-    max_attempts = 5
+    max_attempts = 10
     while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
         try:
