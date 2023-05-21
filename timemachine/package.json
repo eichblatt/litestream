@@ -1,0 +1,41 @@
+{
+    "urls": [
+        [
+            "utils.py",
+            "github:eichblatt/litestream/timemachine/utils.py"
+        ],
+        [
+            "main.py",
+            "github:eichblatt/litestream/timemachine/main.py"
+        ],
+        [
+            "livemusic.py",
+            "github:eichblatt/litestream/timemachine/livemusic.py"
+        ],
+        [
+            "fonts/DejaVu_20.py",
+            "github:eichblatt/litestream/timemachine/fonts/DejaVu_20.py"
+        ],
+        [
+            "fonts/DejaVu_20x.py",
+            "github:eichblatt/litestream/timemachine/fonts/DejaVu_20x.py"
+        ],
+        [
+            "fonts/DejaVu_33.py",
+            "github:eichblatt/litestream/timemachine/fonts/DejaVu_33.py"
+        ],
+        [
+            "fonts/NotoSans_18.py",
+            "github:eichblatt/litestream/timemachine/fonts/NotoSans_18.py"
+        ],
+        [
+            "fonts/NotoSans_24.py",
+            "github:eichblatt/litestream/timemachine/fonts/NotoSans_24.py"
+        ],
+        [
+            "fonts/NotoSans_32.py",
+            "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
+        ],
+    ],
+    "version": "0.1.0"
+}
