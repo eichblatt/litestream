@@ -53,3 +53,5 @@ d. Test with MicroPython code
   ii. mpy_cross
   
 6) DACs that don't need a master clock: MAX98357A, UDA1334A, PCM5102
+
+7) To load code using mip: mip.install("github:eichblatt/litestream/timemachine/package.json")
