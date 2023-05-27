@@ -343,6 +343,7 @@ def main_loop(coll_dict):
 
 
 def add_vcs(coll):
+    os.mkdir('metadata') if not utils.path_exists('metadata') else None
     ids_path = f"metadata/{coll}_vcs.json"
     print(f"Loading collection {coll} from {ids_path}")
     api_request = f"{API}/vcs/{coll}" 
