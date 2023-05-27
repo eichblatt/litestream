@@ -86,14 +86,10 @@ def basic_main():
         tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
         try:
-            copy_file('lib/livemusic.py', 'lib/livemusic_bak.py')
-        except Exception:
-            print("Failed to copy livemusic.py to livemusic_bak.py. Not updating!!")
-            return  
-
-        try:
             wifi = connect_wifi()
 
+            if not wifi.isconnected():
+                raise RuntimeError("Wifi Not Connected -- not able to update code")
             mip.install("github:eichblatt/litestream/timemachine/package.json", target="test")
             os.rename('lib','lib_previous')
             os.rename('test','lib')

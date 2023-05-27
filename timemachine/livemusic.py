@@ -23,8 +23,8 @@ import utils
 
 
 machine.freq(240_000_000)
+API = 'http://192.168.1.249:5000' # westmain
 API = 'http://westmain:5000' # westmain
-API = 'http://192.168.1.243:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
 
