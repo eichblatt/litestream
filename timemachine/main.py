@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 
 import machine
@@ -54,8 +55,6 @@ def basic_main():
     tm.tft.write(pfont_med, "Machine", 0, 60, yellow_color)
     tm.tft.write(pfont_med, "Loading", 0, 90, yellow_color)
 
-    git_code_url = "https://raw.githubusercontent.com/eichblatt/deadstream/api_server/micro_livemusic.py"
-    
     start_time = time.ticks_ms()
     pRewind_old = True
     pSelect_old = True
@@ -87,7 +86,7 @@ def basic_main():
         tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
         try:
-            copy_file('livemusic.py', 'livemusic_bak.py')
+            copy_file('lib/livemusic.py', 'lib/livemusic_bak.py')
         except Exception:
             print("Failed to copy livemusic.py to livemusic_bak.py. Not updating!!")
             return  
@@ -95,18 +94,9 @@ def basic_main():
         try:
             wifi = connect_wifi()
 
-            resp = requests.get(git_code_url)
-            if resp.status_code != 200:
-                raise Exception("Error downloading file")
-            f_out = open('livemusic.py','w')
-            lines = resp.text.split('\n')
-            print(f"Downloaded {len(lines)} lines from github")
-            for line in lines:
-                f_out.write(line + '\n')
-            f_out.flush()
-            f_out.close()
-            print("livemusic.py written")
-            
+            mip.install("github:eichblatt/litestream/timemachine/package.json", target="test")
+            os.rename('lib','lib_previous')
+            os.rename('test','lib')
         except Exception as e:
             print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
             return

@@ -1,6 +1,10 @@
 {
     "urls": [
         [
+            "__init__.py",
+            "github:eichblatt/litestream/timemachine/__init__.py"
+        ],
+        [
             "board.py",
             "github:eichblatt/litestream/timemachine/board.py"
         ],
@@ -15,6 +19,10 @@
         [
             "livemusic.py",
             "github:eichblatt/litestream/timemachine/livemusic.py"
+        ],
+        [
+            "fonts/__init__.py",
+            "github:eichblatt/litestream/timemachine/fonts/__init__.py"
         ],
         [
             "fonts/DejaVu_20.py",
