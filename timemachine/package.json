@@ -77,11 +77,5 @@
             "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
         ]
     ],
-    "deps": [
-        [
-            "mrequests",
-            "latest"
-        ]
-    ],
     "version": "0.1.0"
 }
