@@ -20,7 +20,6 @@ pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 
 pLED = Pin(48, Pin.OUT)
 
-
 # Initialise the three rotaries. First value is CL, second is DT
 # Year
 y = RotaryIRQ(
@@ -75,24 +74,3 @@ yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-
-
-# --------------------------------------------------
-# These functions belong in a utils library
-# --------------------------------------------------
-def is_dir(path):
-    try:
-        return (os.stat(path)[0] & 0x4000) != 0
-    except OSError:
-        return False
-
-
-def path_exists(path):
-    try:
-        os.stat(path)
-        return True
-    except OSError:
-        return False
-
-
-#  ---------------------------------   End utils library

@@ -55,10 +55,10 @@ def copy_dir(src_d,dest_d):
     
         
 try:
-    import utils
-    utils.reload('main')
-    # import main
-except:
+    #import utils
+    #utils.reload('main')
+    import main
+except ImportError:
     try:
         remove_dir('lib') if path_exists('lib') else None
         copy_dir('factory_lib','lib')
