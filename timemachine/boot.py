@@ -1,4 +1,5 @@
 # boot.py -- run on boot-up
+import machine
 import os
 
 def path_exists(path):
@@ -54,11 +55,12 @@ def copy_dir(src_d,dest_d):
     
         
 try:
-    import main
+    import utils
+    utils.reload('main')
+    # import main
 except:
     try:
-        remove_dir('lib_failed') if path_exists('lib_failed') else None
-        os.rename('lib','lib_failed') if path_exists('lib') else None
+        remove_dir('lib') if path_exists('lib') else None
         copy_dir('factory_lib','lib')
         import utils
         utils.reload('main')
