@@ -91,8 +91,10 @@ def basic_main():
             if not wifi.isconnected():
                 raise RuntimeError("Wifi Not Connected -- not able to update code")
             mip.install("github:eichblatt/litestream/timemachine/package.json", target="test")
+            utils.remove_dir('previous_lib')
             os.rename('lib','previous_lib')
-            utils.copy_dir('test','lib')
+            os.rename('test','lib')
+            machine.reset()
         except Exception as e:
             print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
             return
