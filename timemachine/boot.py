@@ -51,11 +51,11 @@ def copy_dir(src_d,dest_d):
         
 try:
     import main
-except ImportError:
+except:
     try:
         os.rename('lib','lib_failed') if path_exists('lib') else None
         copy_dir('previous_lib','lib')
         import utils
         utils.reload('main')
-    except Exception:
+    except:
         print("Can't load anything. Bailing!")
