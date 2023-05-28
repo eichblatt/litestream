@@ -13,13 +13,13 @@ def isdir(path):
         return False
     try:
         os.listdir(path)
-    except Exception:
+    except:
         return False
     return True
 
 def copy_file(src,dest):
-    outfile = open(dest,'w')
-    infile = open(src,'r')
+    outfile = open(dest,'wb')
+    infile = open(src,'rb')
     content = infile.readlines()
     infile.close()
     for line in content:
@@ -38,11 +38,14 @@ def remove_dir(path):
     os.rmdir(path)
     
 def copy_dir(src_d,dest_d):
+    print(f"Copy_dir {src_d}, {dest_d}")
     if path_exists(dest_d):
         os.rename(dest_d,f'{dest_d}_tmp')
     os.mkdir(dest_d)
     for file in os.listdir(src_d):
-        if isdir(file):
+        print(f'file: {file}')
+        if isdir(f"{src_d}/{file}"):
+            print(".. is a directory")
             copy_dir(f'{src_d}/{file}',f'{dest_d}/{file}')
         else:
             copy_file(f'{src_d}/{file}',f'{dest_d}/{file}')
@@ -57,5 +60,5 @@ except:
         copy_dir('previous_lib','lib')
         import utils
         utils.reload('main')
-    except:
+    except Exception:
         print("Can't load anything. Bailing!")
