@@ -31,12 +31,13 @@ def remove_dir(path):
     if not path_exists(path):
         return
     for file in os.listdir(path):
-        if isdir(file):
-            remove_dir(f'{path}/{file}')
+        full_path = f'{path}/{file}'
+        if isdir(full_path):
+            remove_dir(full_path)
         else:
-            os.remove(f'{path}/{file}')
+            os.remove(full_path)
     os.rmdir(path)
-    
+
 def copy_dir(src_d,dest_d):
     print(f"Copy_dir {src_d}, {dest_d}")
     if path_exists(dest_d):
@@ -56,8 +57,9 @@ try:
     import main
 except:
     try:
+        remove_dir('lib_failed') if path_exists('lib_failed') else None
         os.rename('lib','lib_failed') if path_exists('lib') else None
-        copy_dir('previous_lib','lib')
+        copy_dir('factory_lib','lib')
         import utils
         utils.reload('main')
     except Exception:
