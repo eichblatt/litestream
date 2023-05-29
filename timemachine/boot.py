@@ -1,6 +1,7 @@
 # boot.py -- run on boot-up
 import machine
 import os
+import sys
 
 def path_exists(path):
     try:
@@ -52,17 +53,46 @@ def copy_dir(src_d,dest_d):
         else:
             copy_file(f'{src_d}/{file}',f'{dest_d}/{file}')
     remove_dir(f'{dest_d}_tmp')
+
+def touch(path):
+    f = open(path,'a')
+    f.close()
     
+def test_new_package(new_path):
+    if path_exists(f'{new_path}/tried'):
+        remove_dir(new_path)
+        sys.path.remove(new_path) if new_path in sys.path
+        sys.path.insert(2,'/lib') if not '/lib' in sys.path
+        return False
+    else:
+        touch(f'{new_path}/tried')
+        sys.path.insert(2, new_path) if not new_path in sys.path
+        sys.path.remove('/lib') if '/lib' in sys.path
         
-try:
-    #import utils
-    #utils.reload('main')
-    import main
-except ImportError:
-    try:
-        remove_dir('lib') if path_exists('lib') else None
-        copy_dir('factory_lib','lib')
+        import main
+        return main.test_update()
+
+#try:
+if isdir('/test_download'):
+    success = test_new_package('/test_download')
+    if success:
+        remove_dir('previous_lib')
+        os.rename('lib','previous_lib')
+        copy_dir('test_download','lib')
+        sys.path.remove('/test_download') if '/test_download' in sys.path
+        sys.path.insert(2,'/lib') if not '/lib' in sys.path
         import utils
-        utils.reload('main')
-    except Exception:
-        print("Can't load anything. Bailing!")
+        utils.reload('main') # We may need to reboot in this situation
+        main.run_livemusic()
+else:
+    import main
+    main.run_livemusic()
+
+#except ImportError:
+#    try:
+#        remove_dir('lib') if path_exists('lib') else None
+#        copy_dir('factory_lib','lib')
+#        import utils
+#        utils.reload('main')
+#    except Exception:
+#        print("Can't load anything. Bailing!")

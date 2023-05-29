@@ -90,7 +90,7 @@ def basic_main():
 
             if not wifi.isconnected():
                 raise RuntimeError("Wifi Not Connected -- not able to update code")
-            mip.install("github:eichblatt/litestream/timemachine/package.json", target="test")
+            mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
             print("removing directory previous_lib")
             utils.remove_dir('previous_lib')
             print("renaming lib to previous_lib")
@@ -106,17 +106,54 @@ def basic_main():
         print("We should update livemusic.py")
         time.sleep(3)
 
+def test_update():
+    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
+    yellow_color = st7789.color565(255, 255, 0)
+    red_color = st7789.color565(255, 0, 0)
+    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
+    tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
+    tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)
+    tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
+
+    start_time = time.ticks_ms()
+    pRewind_old = True
+    pSelect_old = True
+    pStop_old = True
+    update_code = False
+
+    while time.ticks_ms() < (start_time + 60_000):
+
+        if pSelect_old != tm.pSelect.value():
+            pSelect_old = tm.pSelect.value()
+            update_code = True
+            print(f"{time.ticks_ms()} Select button Pressed!!")
+            break
+
+        if pStop_old != tm.pStop.value():
+            pStop_old = tm.pStop.value()
+            print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
+            return
+
+        if pRewind_old != tm.pRewind.value():
+            pRewind_old = tm.pRewind.value()
+            update_code = True
+            print(f"{time.ticks_ms()} Rewind button Pressed!!")
+            break
+
+    return update_code
+
+def run_livemusic():
+    try:
+        print("Connecting Wifi")
+        wifi = connect_wifi()
+        print("Trying to run livemusic main")
+        if 'livemusic' in sys.modules:
+            utils.reload('livemusic')
+        else:
+            import livemusic 
+            livemusic.main()
+    except Exception:
+        print("livemusic.py is not running!!")
+
+
 basic_main()
-
-try:
-    print("Connecting Wifi")
-    wifi = connect_wifi()
-    print("Trying to run livemusic main")
-    if 'livemusic' in sys.modules:
-        utils.reload('livemusic')
-    else:
-        import livemusic 
-        livemusic.main()
-except Exception:
-    print("livemusic.py is not running!!")
-
