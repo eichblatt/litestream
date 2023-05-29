@@ -81,6 +81,7 @@ if isdir('/test_download'):
         remove_dir('previous_lib')
         os.rename('lib','previous_lib')
         os.rename('test_download','lib')
+        os.remove('/lib/tried')
     else:
         remove_dir('test_download')
     machine.reset()
