@@ -4,7 +4,7 @@ import time
 
 import machine
 import st7789
-import fonts.DejaVu_20x as date_font
+import fonts.date_font as date_font
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 from machine import SPI, Pin
@@ -37,7 +37,7 @@ def connect_wifi():
         print("Wifi did not connect!!!")
         raise Exception("Wifi Failed to Connect")
     ip_address = wifi.ifconfig()[0]
-    tm.tft.write(pfont_med, ip_address, 0, 60, st7789.WHITE)
+    tm.tft.write(date_font, ip_address, 0, 60, st7789.WHITE) 
     return wifi
 
     

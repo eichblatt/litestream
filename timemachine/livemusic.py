@@ -9,7 +9,7 @@ from mrequests import mrequests as requests
 
 import machine
 import st7789
-import fonts.DejaVu_20x as date_font
+import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
