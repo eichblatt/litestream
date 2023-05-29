@@ -81,9 +81,13 @@ if isdir('/test_download'):
         copy_dir('test_download','lib')
         remove_dir('test_download')
         machine.reset()
-else:
-    import main
+
+import main
+main.basic_main()
+try:
     main.run_livemusic()
+except:
+    pass
 
 #except ImportError:
 #    try:
