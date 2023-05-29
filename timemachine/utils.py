@@ -274,10 +274,10 @@ def get_wifi_cred(wifi):
 
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
-    if wifi.isconnected():
-        return wifi
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
+    if wifi.isconnected():
+        return wifi
     wifi_cred_path = 'wifi_cred.json'
 
     if path_exists(wifi_cred_path):
@@ -293,11 +293,13 @@ def connect_wifi():
         print("Attempting to connect to network")
         try:
             wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
-        except OSError:
+            time.sleep(5)
+        except:
             pass
         attempts += 1
-        time.sleep(2)
     if wifi.isconnected():
+        wifi.active(True)
+        wifi.config(pm=network.WLAN.PM_NONE)
         return wifi
     else:
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
@@ -305,5 +307,6 @@ def connect_wifi():
             json.dump(wifi_cred,f)
         os.remove(wifi_cred_path)
         wifi = connect_wifi()
+
     return wifi
  
