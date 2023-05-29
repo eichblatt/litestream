@@ -16,7 +16,6 @@ import network
 import board as tm
 import utils
 
-# mip.install("github:eichblatt/litestream/timemachine/package.json")
 
 def copy_file(src, dest):
     print(f"Copying {src} to {dest}")
@@ -90,6 +89,7 @@ def basic_main():
 
             if not wifi.isconnected():
                 raise RuntimeError("Wifi Not Connected -- not able to update code")
+            tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
             mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
             print("rebooting")
             machine.reset()
@@ -152,7 +152,7 @@ def run_livemusic():
             utils.reload('livemusic')
         else:
             import livemusic 
-        livemusic.main()
+        livemusic.run()
     except Exception:
         print("livemusic.py is not running!!")
 

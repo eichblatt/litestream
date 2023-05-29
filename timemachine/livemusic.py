@@ -371,11 +371,8 @@ def lookup_date(d, col_d):
     return response
 
 
-def main():
-    """
-    This script will load a super-compressed version of the
-    date, artist, venue, city, state.
-    """
+def run():
+    """run the livemusic controls"""
     utils.clear_screen()
     tm.tft.write(pfont_med, "Connecting", 0, 0, yellow_color)
     tm.tft.write(pfont_med, "WiFi...", 0, 30, yellow_color)
@@ -406,5 +403,3 @@ def main():
     print(f"Loaded collections {coll_dict.keys()}")
 
     main_loop(coll_dict)
-
-# main()
