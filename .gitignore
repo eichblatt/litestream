@@ -135,3 +135,4 @@ NotoSans-Regular.ttf
 timemachine/fonts/FreeMono*
 timemachine/fonts/arial*.py
 timemachine/fonts/DejaVu_22.py
+timemachine/connection_log.py

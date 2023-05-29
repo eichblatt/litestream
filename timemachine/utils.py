@@ -273,10 +273,12 @@ def get_wifi_cred(wifi):
     return {'name':choice,"passkey":passkey}
 
 def connect_wifi():
+    log = open('connection_log.py','a')
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
     if wifi.isconnected():
+        log.write("Already connected")
         return wifi
     wifi_cred_path = 'wifi_cred.json'
 
@@ -291,22 +293,28 @@ def connect_wifi():
     max_attempts = 7 
     while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
+        log.write(f"Attempting to connect to network. attempt {attempts}/{max_attempts}\n")
         try:
             wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
             time.sleep(5)
-        except:
+        except Exception as e:
+            log.write(f"Exception {e}")
             pass
         attempts += 1
     if wifi.isconnected():
+        log.write(f"is connected")
         wifi.active(True)
         wifi.config(pm=network.WLAN.PM_NONE)
         return wifi
     else:
+        log.write(f"failed -- retrying")
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
         with open(f'{wifi_cred_path}.bak','w') as f:
             json.dump(wifi_cred,f)
+        log.write(f"removing wifi_cred")
         os.remove(wifi_cred_path)
         wifi = connect_wifi()
 
+    log.close()
     return wifi
  
