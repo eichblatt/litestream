@@ -139,7 +139,7 @@ def test_update():
     if update_code:
         tm.tft.write(pfont_med, "Updating ... ", 0, 30, yellow_color)
     else:
-        tm.tft.write(pfont_med, "Not Updateing", 0, 60, red_color)
+        tm.tft.write(pfont_med, "Not Updating", 0, 60, red_color)
 
     return update_code
 

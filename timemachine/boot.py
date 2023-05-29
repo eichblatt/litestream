@@ -2,6 +2,7 @@
 import machine
 import os
 import sys
+import time
 
 def path_exists(path):
     try:
@@ -65,6 +66,7 @@ def test_new_package(new_path):
         sys.path.insert(2,'/lib') if '/lib' not in sys.path else None
         return False
     else:
+        time.sleep(10)
         touch(f'{new_path}/tried')
         sys.path.insert(2, new_path) if new_path not in sys.path else None
         sys.path.remove('/lib') if '/lib' in sys.path else None
@@ -78,16 +80,19 @@ if isdir('/test_download'):
     if success:
         remove_dir('previous_lib')
         os.rename('lib','previous_lib')
-        copy_dir('test_download','lib')
+        os.rename('test_download','lib')
+    else:
         remove_dir('test_download')
-        machine.reset()
+    machine.reset()
 
 import main
 main.basic_main()
 try:
     main.run_livemusic()
 except:
-    pass
+    import utils
+    utils.reload('main')
+    main.run_livemusic()
 
 #except ImportError:
 #    try:
