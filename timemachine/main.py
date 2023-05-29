@@ -91,12 +91,6 @@ def basic_main():
             if not wifi.isconnected():
                 raise RuntimeError("Wifi Not Connected -- not able to update code")
             mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
-            print("removing directory previous_lib")
-            utils.remove_dir('previous_lib')
-            print("renaming lib to previous_lib")
-            os.rename('lib','previous_lib')
-            print("renaming test to lib")
-            os.rename('test','lib')
             print("rebooting")
             machine.reset()
         except Exception as e:

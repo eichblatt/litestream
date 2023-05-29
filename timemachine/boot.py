@@ -79,11 +79,8 @@ if isdir('/test_download'):
         remove_dir('previous_lib')
         os.rename('lib','previous_lib')
         copy_dir('test_download','lib')
-        sys.path.remove('/test_download') if '/test_download' in sys.path else None
-        sys.path.insert(2,'/lib') if not '/lib' in sys.path else None
-        import utils
-        utils.reload('main') # We may need to reboot in this situation
-        main.run_livemusic()
+        remove_dir('test_download')
+        machine.reset()
 else:
     import main
     main.run_livemusic()
