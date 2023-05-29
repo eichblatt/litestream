@@ -25,8 +25,8 @@
             "github:eichblatt/litestream/timemachine/fonts/__init__.py"
         ],
         [
-            "fonts/DejaVu_20.py",
-            "github:eichblatt/litestream/timemachine/fonts/DejaVu_20.py"
+            "fonts/date_font.py",
+            "github:eichblatt/litestream/timemachine/fonts/date_font.py"
         ],
         [
             "fonts/DejaVu_20x.py",
