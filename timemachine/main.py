@@ -140,6 +140,13 @@ def test_update():
             print(f"{time.ticks_ms()} Rewind button Pressed!!")
             break
 
+    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
+    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
+    if update_code:
+        tm.tft.write(pfont_med, "Updating ... ", 0, 30, yellow_color)
+    else:
+        tm.tft.write(pfont_med, "Not Updateing", 0, 60, red_color)
+
     return update_code
 
 def run_livemusic():
@@ -151,7 +158,7 @@ def run_livemusic():
             utils.reload('livemusic')
         else:
             import livemusic 
-            livemusic.main()
+        livemusic.main()
     except Exception:
         print("livemusic.py is not running!!")
 

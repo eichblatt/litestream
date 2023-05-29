@@ -61,14 +61,14 @@ def touch(path):
 def test_new_package(new_path):
     if path_exists(f'{new_path}/tried'):
         remove_dir(new_path)
-        sys.path.remove(new_path) if new_path in sys.path
-        sys.path.insert(2,'/lib') if not '/lib' in sys.path
+        sys.path.remove(new_path) if new_path in sys.path else None
+        sys.path.insert(2,'/lib') if '/lib' not in sys.path else None
         return False
     else:
         touch(f'{new_path}/tried')
-        sys.path.insert(2, new_path) if not new_path in sys.path
-        sys.path.remove('/lib') if '/lib' in sys.path
-        
+        sys.path.insert(2, new_path) if new_path not in sys.path else None
+        sys.path.remove('/lib') if '/lib' in sys.path else None
+        print(f"sys.path is now {sys.path}") 
         import main
         return main.test_update()
 
@@ -79,8 +79,8 @@ if isdir('/test_download'):
         remove_dir('previous_lib')
         os.rename('lib','previous_lib')
         copy_dir('test_download','lib')
-        sys.path.remove('/test_download') if '/test_download' in sys.path
-        sys.path.insert(2,'/lib') if not '/lib' in sys.path
+        sys.path.remove('/test_download') if '/test_download' in sys.path else None
+        sys.path.insert(2,'/lib') if not '/lib' in sys.path else None
         import utils
         utils.reload('main') # We may need to reboot in this situation
         main.run_livemusic()
