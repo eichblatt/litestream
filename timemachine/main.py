@@ -150,9 +150,10 @@ def run_livemusic():
         print("Trying to run livemusic main")
         if 'livemusic' in sys.modules:
             utils.reload('livemusic')
+            livemusic.run()
         else:
             import livemusic 
-        livemusic.run()
+            livemusic.run()
     except Exception:
         print("livemusic.py is not running!!")
 
