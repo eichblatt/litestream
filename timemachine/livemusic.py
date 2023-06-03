@@ -72,7 +72,7 @@ nshows_bbox = utils.Bbox(150,32,160,48)
 venue_bbox = utils.Bbox(0,32,160,32+20)
 artist_bbox = utils.Bbox(0,52,160,52+20)
 tracklist_bbox = utils.Bbox(0,70, 160, 110)
-selected_date_bbox = utils.Bbox(15,113,145,128)
+selected_date_bbox = utils.Bbox(15,112,145,128)
 playpause_bbox = utils.Bbox(145 ,113, 160, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
