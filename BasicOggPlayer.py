@@ -31,33 +31,33 @@ def http_get(url, port):
     s.connect(addr)
     s.setblocking(False) # Return straight away
     s.send(bytes('GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (path, host), 'utf8'))
+    InHeader = True;
+    TotalData = 0
     
     while True:
         data = -1
-        TotalData = 0
         TimeStart = time.ticks_ms()
-        InHeader = True;
         
         # Fill the buffer
         while (TotalData < buffsize) and (data != 0):
             data = s.readinto(StreamBufferMV[TotalData:], buffsize - TotalData)
             time.sleep_ms(2)
             #print('r:', data, time.ticks_ms(), end=' ')
-            print('r', end='')
+            #print('r', end='')
             if data != None:
                 TotalData = data + TotalData
         
-        print()        
+        #print()        
         print ("Time:", time.ticks_ms() - TimeStart, "Total Data:", TotalData, end='')
         
         # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
-        while (block == True): 
-            print('.', end='')
-            time.sleep_ms(2)
-            continue
+        #while (block == True): 
+        #    print('.', end='')
+        #    time.sleep_ms(2)
+        #    continue
             
         print()
-        
+                
         if data == 0:
             print("No more data")
             break
@@ -72,11 +72,12 @@ def http_get(url, port):
                 # Create the Vorbis Player, and pass it a big buffer for it to use
                 PlayerBuffer = bytearray(200000)
                 PlayerBufferMV = memoryview(PlayerBuffer)
-                
+                                
                 # Decode the header, will return how many bytes it has consumed from the buffer
                 Used = Player.Vorbis_Start(PlayerBufferMV, 200000, StreamBufferMV[178:]) # Hack for now. Offset 178 bytes into the returned data to skip the HTTP response and go straight to the data body
                 print("Used", Used)
-
+                Used += 178
+                
                 # Get info about this stream, specifically the max frame size, and then create a buffer to hold the decoded data
                 MaxFrameSize = Player.Vorbis_GetInfo()
                 print("MaxFrameSize", MaxFrameSize)
@@ -85,21 +86,32 @@ def http_get(url, port):
             
             # Loop around, consuming all the data from the stream buffer one chunk at a time, and send the decoded data to the DAC
             while True:
-                print("Calling decoder with offset", Used)
-                BytesUsed, AudioBytes = Player.Vorbis_Decode(StreamBufferMV[178 + Used:], buffsize - Used - 178, DecodedDataBufferMV)
-                print("Result:", BytesUsed, AudioBytes)
+                #print("Calling decoder with offset", Used)
+                BytesUsed, AudioSamples = Player.Vorbis_Decode(StreamBufferMV[Used:], buffsize - Used, DecodedDataBufferMV)
+                #print("Result:", BytesUsed, AudioBytes)
                 # BytesUsed is the number of bytes used from the buffer 
-                # AudioBytes is the number of bytes of decoded audio data available
+                # AudioSamples is the number of decoded audio samples available. Each sample is 4 bytes
 
                 # If we got audio data, play it
-                if AudioBytes > 0:
-                    audio_out.write(DecodedDataBufferMV[:AudioBytes]) #returns straight away
+                if AudioSamples > 0:
+                    #print("DAC")
+                    audio_out.write(DecodedDataBufferMV[:(AudioSamples * 4)]) #returns straight away
                 
-                if BytesUsed == 0:   # No more usable data in the buffer. There may still be some at the end, but the function will move it to the beginning
+                if BytesUsed == 0:   # No more usable data in the buffer. There may still be some data at the end
                     break
                 
                 Used += BytesUsed
                 block = True;
+            
+            # We may still have some data at the end of the buffer. If so, move it to the beginning
+            print(buffsize - Used, "bytes left")
+            if Used < buffsize:
+                StreamBufferMV[:(buffsize - Used)] = StreamBufferMV[-(buffsize - Used):]
+                TotalData = buffsize - Used
+            else:
+                TotalData = 0
+                
+            Used = 0
             
     s.close()
     Player.Vorbis_Close()
@@ -162,8 +174,8 @@ url = "http://192.168.1.117/examplein.ogg"
 machine.freq(240000000)
 
 # Set up the I2S output, async with a callback
-audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=2048)
-audio_out.irq(i2s_callback) 
+audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=4096)
+#audio_out.irq(i2s_callback) 
 
 connect_to_WiFi()
 starttime = time.ticks_ms()
