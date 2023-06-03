@@ -23,7 +23,8 @@ import utils
 
 
 machine.freq(240_000_000)
-API = 'http://192.168.1.251:5000' # westmain
+API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
+#API = 'http://192.168.1.251:5000' # westmain
 #API = 'http://westmain:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 
