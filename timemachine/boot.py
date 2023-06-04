@@ -94,12 +94,3 @@ except:
     import utils
     utils.reload('main')
     main.run_livemusic()
-
-#except ImportError:
-#    try:
-#        remove_dir('lib') if path_exists('lib') else None
-#        copy_dir('factory_lib','lib')
-#        import utils
-#        utils.reload('main')
-#    except Exception:
-#        print("Can't load anything. Bailing!")
