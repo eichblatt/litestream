@@ -27,6 +27,7 @@ API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
 #API = 'http://192.168.1.251:5000' # westmain
 #API = 'http://westmain:5000' # westmain
 #API = 'http://deadstreamv3:5000'
+COLLECTION_LIST_PATH = 'collection_list.json'
 
 
 print("Starting...")
@@ -373,6 +374,7 @@ def lookup_date(d, col_d):
     return response
 
 
+
 def run():
     """run the livemusic controls"""
     utils.clear_screen()
@@ -382,12 +384,11 @@ def run():
     ip_address = wifi.ifconfig()[0]
     tm.tft.write(date_font, ip_address, 0, 60, st7789.WHITE)
 
-    collection_list_path = 'collection_list.json'
-    if utils.path_exists(collection_list_path):
-        collection_list = json.load(open(collection_list_path, "r"))
+    if utils.path_exists(COLLECTION_LIST_PATH):
+        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
     else:
         collection_list = ['GratefulDead']
-        with open(collection_list_path,'w') as f:
+        with open(COLLECTION_LIST_PATH,'w') as f:
             json.dump(collection_list,f)
 
     coll_dict = {}

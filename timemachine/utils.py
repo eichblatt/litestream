@@ -110,7 +110,7 @@ def select_option(message, choices):
     time.sleep(0.6)
     return choices[step]        
         
-def select_chars(message, message2="So Far"):
+def select_chars(message, already="", message2="", singleLetter=False):
     charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c'
     message = message.split("\n")
     pSelect_old = pStop_old = True
@@ -126,6 +126,7 @@ def select_chars(message, message2="So Far"):
 
     select_bbox = Bbox(0,y_origin,160,y_origin + text_height)
     selected_bbox = Bbox(0,y_origin + text_height,160,128)
+    message2_bbox = Bbox(0,y_origin + 2*text_height,160,128)
 
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value,tm.y._value)):
         value = ((tens - start_vals[0]) * 10 + (ones - start_vals[1])) 
@@ -139,11 +140,15 @@ def select_chars(message, message2="So Far"):
 
     for i,msg in enumerate(message):
         tm.tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
+    if len(message2) > 0:
+        clear_bbox(message2_bbox)
+        tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
 
-    selected = ""
+    selected = already
     text = "DEL"
     first_time = True
     finished = False
+    prev_selected = ""
 
     while not finished:
         print(f"pStop_old {pStop_old}, pStop: {tm.pStop.value()}")
@@ -151,6 +156,10 @@ def select_chars(message, message2="So Far"):
             if pStop_old != tm.pStop.value():
                 finished = True
                 break
+            if (len(selected) > 0) and (selected != prev_selected):
+                prev_selected = selected
+                clear_bbox(selected_bbox)
+                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
             # step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1) 
             step = decade_value(tm.d.value(), tm.y.value(), (0,len(charset) + 1))
             if (step != step_old) or first_time: 
@@ -204,6 +213,9 @@ def select_chars(message, message2="So Far"):
                 selected = selected + choice
             clear_bbox(selected_bbox)
             tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+        if (len(already) > 0) or singleLetter:
+            finished = True
+
     tm.y._max_val = tm.y._max_val - 100
     print(f"stop pressed. selected is: {selected}")
     clear_screen()

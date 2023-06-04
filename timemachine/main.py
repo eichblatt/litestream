@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 import time
@@ -15,6 +16,9 @@ import network
 
 import board as tm
 import utils
+
+COLLECTION_LIST_PATH = 'collection_list.json'
+API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
 
 
 def copy_file(src, dest):
@@ -40,7 +44,37 @@ def connect_wifi():
     tm.tft.write(date_font, ip_address, 0, 60, st7789.WHITE) 
     return wifi
 
-    
+def _collection_names():
+    all_collection_names_dict = {}
+    api_request = f"{API}/all_collection_names/" 
+    print(f"API request is {api_request}")
+    resp = requests.get(api_request).json()
+    all_collection_names_dict = resp['collection_names']
+    return all_collection_names_dict
+
+def choose_collections(): 
+    collection_list = []
+    all_collections = []
+    if utils.path_exists(COLLECTION_LIST_PATH):
+        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
+    all_collections_dict = _collection_names()
+    for archive in all_collections_dict.keys():
+        all_collections = all_collections + all_collections_dict[archive]
+        
+    matching = [x for x in all_collections if not x in collection_list]
+    n_matching = len(matching)
+
+    selected_chars = ""
+    while n_matching > 20:
+        selected_chars = utils.select_chars("Spell desired Collection", message2=f"{n_matching} Matching",already=selected_chars,singleLetter=True)
+        matching = [x for x in matching if selected_chars in x]
+        n_matching = len(matching)
+
+    if n_matching > 0:
+        choice = utils.select_option("Choose coll to add",matching)
+
+    return choice
+ 
 def basic_main():
     """
     This script will update livemusic.py if rewind button pressed within 2 seconds.
@@ -59,12 +93,13 @@ def basic_main():
     pSelect_old = True
     pStop_old = True
     update_code = False
+    reconfigure = False
 
-    while time.ticks_ms() < (start_time + 3000):
+    while time.ticks_ms() < (start_time + 5000):
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
-            update_code = True
+            reconfigure = True
             print(f"{time.ticks_ms()} Select button Pressed!!")
             break
 
@@ -98,7 +133,16 @@ def basic_main():
             return
 
         print("We should update livemusic.py")
-        time.sleep(3)
+
+    elif reconfigure:
+        print('Reconfiguring')
+        tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+        choice = utils.select_option("Reconfigure",["Collections","Wifi","Factory Reset"])
+        if choice == "Collections":
+            choose_collections() 
+    time.sleep(3)
+
+
 
 def test_update():
     tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
