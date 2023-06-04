@@ -6,6 +6,7 @@ import time
 import machine
 import st7789
 import fonts.date_font as date_font
+import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 from machine import SPI, Pin
@@ -30,21 +31,38 @@ def copy_file(src, dest):
     f_in.close()
     f_out.close()
    
+def factory_reset():
+    print("Reseting to factory settings")
+    utils.remove_dir('./lib')
+    utils.copy_dir('./factory_lib','./lib')
+    return 
+
 def connect_wifi():
-    utils.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
-    tm.tft.write(pfont_med, "Connecting", 0, 0, yellow_color)
-    tm.tft.write(pfont_med, "WiFi...", 0, 30, yellow_color)
+    utils.write("Connecting\nWiFi..", color=yellow_color)
  
     wifi = utils.connect_wifi()
     if not wifi.isconnected():
         print("Wifi did not connect!!!")
         raise Exception("Wifi Failed to Connect")
     ip_address = wifi.ifconfig()[0]
-    tm.tft.write(date_font, ip_address, 0, 60, st7789.WHITE) 
+    utils.write(ip_address, font=date_font, y=60, clear=False) 
+    return wifi
+
+def configure_wifi(): 
+    print("Configuring Wifi")
+    choices = ["Remove Wifi", "Cancel"]
+    choice = utils.select_option("Year/Select",choices)
+    print(f"configure_wifi: chose {choice}")
+    if choice == "Remove Wifi":
+        utils.remove_wifi_cred() 
+    utils.disconnect_wifi()
+    time.sleep(2)
+    wifi = connect_wifi()
     return wifi
 
 def _collection_names():
+    utils.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     print(f"API request is {api_request}")
@@ -75,7 +93,8 @@ def configure_collections():
     
         while keepGoing:
             coll_to_add = add_collection(all_collections)
-            collection_list.append(coll_to_add)
+            if coll_to_add != "_CANCEL":
+                collection_list.append(coll_to_add)
             choices = ["Add Another", "Finished"]
             choice2 = utils.select_option("Year/Select",choices)
             if choice2 == "Finished":
@@ -86,7 +105,7 @@ def configure_collections():
     if (choice == "Remove Collection"):
         keepGoing = True
         while keepGoing & (len(collection_list)> 0):
-            coll_to_remove = utils.select_option("Year/Select",collection_list)
+            coll_to_remove = utils.select_option("Year/Select",collection_list + ["_CANCEL"])
             collection_list = [x for x in collection_list if not x==coll_to_remove]
             choices = ["Remove Another", "Finished"]
             choice2 = utils.select_option("Year/Select",choices)
@@ -94,6 +113,7 @@ def configure_collections():
                 keepGoing = False
             json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
 
+    print(f"Collection List set to {collection_list} written to {COLLECTION_LIST_PATH}")
     return 
 
 
@@ -115,7 +135,7 @@ def add_collection(all_collections):
 
     print(f"Matching is {matching}")
     if n_matching > 0:
-        choice = utils.select_option("Choose coll to add",matching)
+        choice = utils.select_option("Choose coll to add",matching + ["_CANCEL"])
 
     return choice
  
@@ -124,7 +144,9 @@ def basic_main():
     This script will update livemusic.py if rewind button pressed within 2 seconds.
     """
     print("in basic_main")
-    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
+
+    wifi = connect_wifi()
+    utils.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
@@ -138,6 +160,7 @@ def basic_main():
     pStop_old = True
     update_code = False
     reconfigure = False
+
 
     while time.ticks_ms() < (start_time + 5000):
 
@@ -184,6 +207,10 @@ def basic_main():
         choice = utils.select_option("Reconfigure",["Collections","Wifi","Factory Reset"])
         if choice == "Collections":
             configure_collections()
+        elif choice == "Wifi":
+            wifi = configure_wifi()
+        elif choice == "FactoryReset":
+            factory_reset()
     utils.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
     time.sleep(3)

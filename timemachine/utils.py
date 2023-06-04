@@ -5,10 +5,13 @@ import st7789
 import time
 
 import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_24 as pfont_med
 
 from mrequests import mrequests as requests
 
 import board as tm
+
+WIFI_CRED_PATH = 'wifi_cred.json'
 
 def reload(mod):
     import sys
@@ -73,8 +76,13 @@ def clear_screen():
 def clear_area(x, y, width, height):
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
 
-def clear_screen():
-    clear_area(0, 0, 160, 128)
+def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
+    if clear:
+        clear_screen()
+    text = msg.split("\n")
+    for i,line in enumerate(text):
+        tm.tft.write(font, line, x, y+(i*text_height), color)
+    
 
 def select_option(message, choices):
     pSelect_old = True
@@ -131,7 +139,6 @@ def select_chars(message, message2="", already=None):
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value,tm.y._value)):
         value = ((tens - start_vals[0]) * 10 + (ones - start_vals[1])) 
         value = max(value,bounds[0]) % bounds[1] 
-        print(f'decade value {value}')
 
         if value == 0:
             tm.d._value = start_vals[0]
@@ -280,6 +287,9 @@ def copy_dir(src_d,dest_d):
             copy_file(f'{src_d}/{file}',f'{dest_d}/{file}')
     remove_dir(f'{dest_d}_tmp')
   
+def remove_wifi_cred():
+    os.remove(WIFI_CRED_PATH)
+
 def get_wifi_cred(wifi):
     choices = wifi.scan()  # Scan for available access points
     choices = [x[0].decode().replace('"', "") for x in choices]
@@ -290,6 +300,11 @@ def get_wifi_cred(wifi):
     passkey = select_chars("Input Passkey for {choice}\nSelect. Stop to End\n ")
     return {'name':choice,"passkey":passkey}
 
+def disconnect_wifi():
+    wifi = network.WLAN(network.STA_IF)
+    wifi.active(True)
+    wifi.disconnect()
+    
 def connect_wifi():
     log = open('connection_log.py','a')
     wifi = network.WLAN(network.STA_IF)
@@ -298,13 +313,12 @@ def connect_wifi():
     if wifi.isconnected():
         log.write("Already connected")
         return wifi
-    wifi_cred_path = 'wifi_cred.json'
 
-    if path_exists(wifi_cred_path):
-        wifi_cred = json.load(open(wifi_cred_path, "r"))
+    if path_exists(WIFI_CRED_PATH):
+        wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:
         wifi_cred = get_wifi_cred(wifi)
-        with open(wifi_cred_path,'w') as f:
+        with open(WIFI_CRED_PATH,'w') as f:
             json.dump(wifi_cred,f)
 
     attempts = 0
@@ -327,10 +341,10 @@ def connect_wifi():
     else:
         log.write(f"failed -- retrying")
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
-        with open(f'{wifi_cred_path}.bak','w') as f:
+        with open(f'{WIFI_CRED_PATH}.bak','w') as f:
             json.dump(wifi_cred,f)
         log.write(f"removing wifi_cred")
-        os.remove(wifi_cred_path)
+        os.remove(WIFI_CRED_PATH)
         wifi = connect_wifi()
 
     log.close()
