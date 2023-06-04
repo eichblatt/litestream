@@ -68,6 +68,7 @@ def configure_collections():
     print(f"current collection_list is {collection_list}")
     if choice == "Add Collection":
         keepGoing = True
+        all_collections = []
         all_collections_dict = _collection_names()
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
@@ -98,7 +99,6 @@ def configure_collections():
 
 def add_collection(all_collections): 
     collection_list = []
-    all_collections = []
     if utils.path_exists(COLLECTION_LIST_PATH):
         collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
        
@@ -184,6 +184,8 @@ def basic_main():
         choice = utils.select_option("Reconfigure",["Collections","Wifi","Factory Reset"])
         if choice == "Collections":
             configure_collections()
+    utils.clear_screen()
+    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
     time.sleep(3)
 
 
