@@ -3,22 +3,41 @@ import time
 import Player
 from machine import Pin, I2S
 import machine
-
-buffsize = 8192
+import gc
 
 sck_pin = Pin(13)   # Serial clock output
 ws_pin = Pin(14)    # Word clock output
 sd_pin = Pin(17)    # Serial data output
 
 block = False
-    
-def http_get(url, port):
+InBufferSize = 8192
+DecodedBufferSize = 132095 # Max size the I2S device will use for its buffer is 132095
+
+def get_redirect_location(headers):
+    for line in headers.split(b"\r\n"):
+        if line.startswith(b"Location:"):
+            return line.split(b": ", 1)[1]
+    return None
+
+def parse_redirect_location(location):
+    parts = location.decode().split("://", 1)[1].split("/", 1)
+    host_port = parts[0].split(":", 1)
+    host = host_port[0]
+    port = int(host_port[1]) if len(host_port) > 1 else 80
+    path = "/" + parts[1] if len(parts) > 1 else "/"
+    return host, port, path
+
+def Play_URL(url, port):
     import socket
-    global block
     
-    StreamBuffer = bytearray(buffsize)  # array to hold samples
+    global block    # Flag which we use to block operation until the I2S decoder has finished playing
+
+    StreamBuffer = bytearray(InBufferSize)  # array to hold samples
     StreamBufferMV = memoryview(StreamBuffer)
 
+    DecodedDataBuffer = bytearray(DecodedBufferSize) #bytearray(MaxFrameSize * 4)   # 2 channels, 16-bit (or 2-byte) samples
+    DecodedDataBufferMV = memoryview(DecodedDataBuffer)
+        
     _, _, host, path = url.split('/', 3)
     addr = socket.getaddrinfo(host, port)[0][-1]
     s = socket.socket()
@@ -31,7 +50,40 @@ def http_get(url, port):
     s.connect(addr)
     s.setblocking(False) # Return straight away
     s.send(bytes('GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (path, host), 'utf8'))
-    InHeader = True;
+    
+    # Read the response headers
+    response_headers = b""
+    while True:
+        header = s.readline()
+        print(header)
+        if header != None:
+            response_headers += header.decode('utf-8')
+        if header == b"\r\n":
+            break
+
+    # Check if the response is a redirect
+    if b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
+        redirect_location = get_redirect_location(response_headers)
+        if redirect_location:
+            # Extract the new host, port, and path from the redirect location
+            new_host, new_port, new_path = parse_redirect_location(redirect_location)
+            s.close()
+            # Establish a new socket connection to the server
+            print("Redirecting to", new_host, new_port, new_path)
+            s = socket.socket()
+            addr = socket.getaddrinfo(new_host, new_port)[0][-1]
+            s.connect(addr)
+            s.setblocking(False) # Return straight away
+            s.send(bytes('GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n' % (new_path, new_host), 'utf8'))
+
+            # Skip the response headers
+            while True:
+                header = s.readline()
+                if header == b"\r\n":
+                    break
+
+    InHeader = True
+    SamplesOut = 0
     TotalData = 0
     
     while True:
@@ -39,8 +91,8 @@ def http_get(url, port):
         TimeStart = time.ticks_ms()
         
         # Fill the buffer
-        while (TotalData < buffsize) and (data != 0):
-            data = s.readinto(StreamBufferMV[TotalData:], buffsize - TotalData)
+        while (TotalData < InBufferSize) and (data != 0):
+            data = s.readinto(StreamBufferMV[TotalData:], InBufferSize - TotalData)
             time.sleep_ms(2)
             #print('r:', data, time.ticks_ms(), end=' ')
             #print('r', end='')
@@ -51,10 +103,10 @@ def http_get(url, port):
         print ("Time:", time.ticks_ms() - TimeStart, "Total Data:", TotalData, end='')
         
         # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
-        #while (block == True): 
-        #    print('.', end='')
-        #    time.sleep_ms(2)
-        #    continue
+        while (block == True): 
+            print('.', end='')
+            time.sleep_ms(2)
+            continue
             
         print()
                 
@@ -63,51 +115,50 @@ def http_get(url, port):
             break
         else:
             #print('w', time.ticks_ms(), end='') #str(data, 'utf8'), end='')
-            #print(hex(mva[0]))
-            #print(hex(mva[1]))
             # Do this once, when we first start streaming the data, to initialise the decoder & set up buffers
             if InHeader:
                 InHeader = False
                 
-                # Create the Vorbis Player, and pass it a big buffer for it to use
+                # Create the Vorbis Player, and pass it a big buffer for it to use (200kB seems enough)
                 PlayerBuffer = bytearray(200000)
                 PlayerBufferMV = memoryview(PlayerBuffer)
                                 
                 # Decode the header, will return how many bytes it has consumed from the buffer
-                Used = Player.Vorbis_Start(PlayerBufferMV, 200000, StreamBufferMV[178:]) # Hack for now. Offset 178 bytes into the returned data to skip the HTTP response and go straight to the data body
+                Used = Player.Vorbis_Start(PlayerBufferMV, StreamBufferMV)
                 print("Used", Used)
-                Used += 178
                 
                 # Get info about this stream, specifically the max frame size, and then create a buffer to hold the decoded data
-                MaxFrameSize = Player.Vorbis_GetInfo()
-                print("MaxFrameSize", MaxFrameSize)
-                DecodedDataBuffer = bytearray(MaxFrameSize * 4)   # 2 channels, 16-bit (or 2-byte) samples
-                DecodedDataBufferMV = memoryview(DecodedDataBuffer)
-            
-            # Loop around, consuming all the data from the stream buffer one chunk at a time, and send the decoded data to the DAC
-            while True:
-                #print("Calling decoder with offset", Used)
-                BytesUsed, AudioSamples = Player.Vorbis_Decode(StreamBufferMV[Used:], buffsize - Used, DecodedDataBufferMV)
-                #print("Result:", BytesUsed, AudioBytes)
-                # BytesUsed is the number of bytes used from the buffer 
-                # AudioSamples is the number of decoded audio samples available. Each sample is 4 bytes
+                channels, sample_rate, setup_memory_required, temp_memory_required, max_frame_size = Player.Vorbis_GetInfo()
+                print("MaxFrameSize", max_frame_size)
+           
+            # Loop around, consuming all the data from the stream buffer one chunk at a time, and finally send the decoded data to the DAC
+            else:
+                while True:
+                    #print("Calling decoder with offset", Used)
+                    BytesUsed, AudioSamples = Player.Vorbis_Decode(StreamBufferMV[Used:], InBufferSize - Used, DecodedDataBufferMV[(SamplesOut * 4):])
+                    print("Result:", BytesUsed, AudioSamples)
+                    # BytesUsed is the number of bytes used from the buffer 
+                    # AudioSamples is the number of decoded audio samples available. Each sample is 4 bytes
 
-                # If we got audio data, play it
-                if AudioSamples > 0:
-                    #print("DAC")
-                    audio_out.write(DecodedDataBufferMV[:(AudioSamples * 4)]) #returns straight away
-                
-                if BytesUsed == 0:   # No more usable data in the buffer. There may still be some data at the end
-                    break
-                
-                Used += BytesUsed
+                    if BytesUsed == 0:   # No more usable data in the buffer. There may still be some data at the end which is not enough to decode
+                        break
+
+                    SamplesOut += AudioSamples;
+                    Used += BytesUsed
+
+            # If we got audio data, play it
+            if SamplesOut > 0:
+                print("DAC", SamplesOut * 4)
+                numout = audio_out.write(DecodedDataBufferMV[:(SamplesOut * 4)]) #returns straight away
+                print("DACOUT", numout)
+                SamplesOut = 0
                 block = True;
-            
+                    
             # We may still have some data at the end of the buffer. If so, move it to the beginning
-            print(buffsize - Used, "bytes left")
-            if Used < buffsize:
-                StreamBufferMV[:(buffsize - Used)] = StreamBufferMV[-(buffsize - Used):]
-                TotalData = buffsize - Used
+            print(InBufferSize - Used, "bytes left")
+            if Used < InBufferSize:
+                StreamBufferMV[:(InBufferSize - Used)] = StreamBufferMV[-(InBufferSize - Used):]
+                TotalData = InBufferSize - Used
             else:
                 TotalData = 0
                 
@@ -169,19 +220,21 @@ def connect_to_WiFi():
 # Main Code
 ########################################
 
-url = "http://192.168.1.117/examplein.ogg"  
+#url = "http://192.168.1.117/examplein.ogg" 
+#url = "http://ia800305.us.archive.org/19/items/gd1980-10-29.beyer.stankiewicz.126919.flac1644/gd1980-10-29s1t02.ogg"
+url="https://archive.org/download/gd1980-10-29.beyer.stankiewicz.126919.flac1644/gd1980-10-29s1t02.ogg"
 
 machine.freq(240000000)
 
 # Set up the I2S output, async with a callback
-audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=4096)
-#audio_out.irq(i2s_callback) 
+audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=DecodedBufferSize) # Max bufffer is 132095 (129kB)
+audio_out.irq(i2s_callback) 
 
 connect_to_WiFi()
 starttime = time.ticks_ms()
 gc.disable()        # Disable the garbage collector to avoid interrupting the stream
 
-http_get(url, 1180) # Play the file
+Play_URL(url, 80) # Play the file
 
 gc.enable()
 
