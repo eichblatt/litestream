@@ -110,7 +110,7 @@ def select_option(message, choices):
     time.sleep(0.6)
     return choices[step]        
         
-def select_chars(message, already="", message2="", singleLetter=False):
+def select_chars(message, message2="", already=None):
     charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c'
     message = message.split("\n")
     pSelect_old = pStop_old = True
@@ -125,7 +125,7 @@ def select_chars(message, already="", message2="", singleLetter=False):
     y_origin = len(message) * text_height
 
     select_bbox = Bbox(0,y_origin,160,y_origin + text_height)
-    selected_bbox = Bbox(0,y_origin + text_height,160,128)
+    selected_bbox = Bbox(0,y_origin + text_height,160,y_origin+2*text_height)
     message2_bbox = Bbox(0,y_origin + 2*text_height,160,128)
 
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value,tm.y._value)):
@@ -140,11 +140,17 @@ def select_chars(message, already="", message2="", singleLetter=False):
 
     for i,msg in enumerate(message):
         tm.tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
+
+    print(f"Message2 is {message2}")
     if len(message2) > 0:
         clear_bbox(message2_bbox)
         tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
 
-    selected = already
+    singleLetter = already is not None
+    already = already if singleLetter else ""
+    selected = already 
+    print(f"already is {already}")
+    print(f"Message2 is {message2}")
     text = "DEL"
     first_time = True
     finished = False
@@ -213,15 +219,15 @@ def select_chars(message, already="", message2="", singleLetter=False):
                 selected = selected + choice
             clear_bbox(selected_bbox)
             tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
-        if (len(already) > 0) or singleLetter:
+        if singleLetter:
+            print(f"singleLetter chosen {selected}")
             finished = True
 
     tm.y._max_val = tm.y._max_val - 100
-    print(f"stop pressed. selected is: {selected}")
+    print(f"select_char Returning. selected is: {selected}")
     clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
     tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height+5 , st7789.RED)
-    tm.tft.write(pfont_small, "Connecting...", selected_bbox.x0, selected_bbox.y0, stage_date_color)
     time.sleep(0.3)
     return selected
  

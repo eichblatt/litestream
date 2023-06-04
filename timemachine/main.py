@@ -46,30 +46,74 @@ def connect_wifi():
 
 def _collection_names():
     all_collection_names_dict = {}
-    api_request = f"{API}/all_collection_names/" 
+    api_request = f"{API}/all_collection_names/"
     print(f"API request is {api_request}")
     resp = requests.get(api_request).json()
     all_collection_names_dict = resp['collection_names']
     return all_collection_names_dict
 
-def choose_collections(): 
+def configure_collections(): 
+    choices = ["Add Collection","Remove Collection", "Cancel"]
+    choice = utils.select_option("Year/Select",choices)
+    print(f"configure_collection: chose to {choice}")
+
+    if choice == "Cancel":
+        return
+    
+    if utils.path_exists(COLLECTION_LIST_PATH):
+        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
+    else:
+        collection_list = []
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Collection":
+        keepGoing = True
+        all_collections_dict = _collection_names()
+        for archive in all_collections_dict.keys():
+            all_collections = all_collections + all_collections_dict[archive]
+    
+        while keepGoing:
+            coll_to_add = add_collection(all_collections)
+            collection_list.append(coll_to_add)
+            choices = ["Add Another", "Finished"]
+            choice2 = utils.select_option("Year/Select",choices)
+            if choice2 == "Finished":
+                keepGoing = False
+
+            json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
+
+    if (choice == "Remove Collection"):
+        keepGoing = True
+        while keepGoing & (len(collection_list)> 0):
+            coll_to_remove = utils.select_option("Year/Select",collection_list)
+            collection_list = [x for x in collection_list if not x==coll_to_remove]
+            choices = ["Remove Another", "Finished"]
+            choice2 = utils.select_option("Year/Select",choices)
+            if choice2 == "Finished":
+                keepGoing = False
+            json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
+
+    return 
+
+
+def add_collection(all_collections): 
     collection_list = []
     all_collections = []
     if utils.path_exists(COLLECTION_LIST_PATH):
         collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    all_collections_dict = _collection_names()
-    for archive in all_collections_dict.keys():
-        all_collections = all_collections + all_collections_dict[archive]
-        
+       
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)
 
     selected_chars = ""
     while n_matching > 20:
-        selected_chars = utils.select_chars("Spell desired Collection", message2=f"{n_matching} Matching",already=selected_chars,singleLetter=True)
-        matching = [x for x in matching if selected_chars in x]
+        m2 = f"{n_matching} Matching"
+        print(m2)
+        selected_chars = utils.select_chars("Spell desired\nCollection", message2=m2,already=selected_chars)
+        matching = [x for x in matching if selected_chars.lower() in x.lower()]
         n_matching = len(matching)
 
+    print(f"Matching is {matching}")
     if n_matching > 0:
         choice = utils.select_option("Choose coll to add",matching)
 
@@ -139,7 +183,7 @@ def basic_main():
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
         choice = utils.select_option("Reconfigure",["Collections","Wifi","Factory Reset"])
         if choice == "Collections":
-            choose_collections() 
+            configure_collections()
     time.sleep(3)
 
 
