@@ -13,8 +13,8 @@
             "github:eichblatt/litestream/timemachine/boot.py"
         ],
         [
-            "BasicOggPlayer.py",
-            "github:eichblatt/litestream/timemachine/BasicOggPlayer.py"
+            "oggPlayer.py",
+            "github:eichblatt/litestream/timemachine/oggPlayer.py"
         ],
         [
             "utils.py",
