@@ -18,7 +18,7 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import network
 
-import oggplayer
+import oggPlayer
 import board as tm
 import utils
 
@@ -212,7 +212,7 @@ def main_loop(coll_dict):
                 utils.clear_bbox(playpause_bbox)
                 if playstate > 0:
                     print(f"Playing URL {urls[current_track_index]}")
-                    oggplayer.Play_URL(urls[current_track_index],player_callback)
+                    oggPlayer.Play_URL(urls[current_track_index],player_callback)
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 else:
                     print(f"Pausing URL {urls[current_track_index]}")
