@@ -1,5 +1,5 @@
-import BasicOggPlayer
-import gc
+import machine, network, gc, time
+from BasicOggPlayer import Play_URL
 
 def connect_to_WiFi():
     sta_if = network.WLAN(network.STA_IF)
@@ -31,7 +31,9 @@ gc.disable()        # Disable the garbage collector to avoid interrupting the st
 
 #url = "http://192.168.1.117/examplein.ogg" 
 #url = "http://ia800305.us.archive.org/19/items/gd1980-10-29.beyer.stankiewicz.126919.flac1644/gd1980-10-29s1t02.ogg"
-url="https://archive.org/download/gd1980-10-29.beyer.stankiewicz.126919.flac1644/gd1980-10-29s1t02.ogg"
+#url = "https://archive.org/download/gd1980-10-29.beyer.stankiewicz.126919.flac1644/gd1980-10-29s1t02.ogg"
+url = "https://archive.org/download/gd1984-12-28.142611.sbd.miller.flac1648/13LooksLikeRain.ogg"
+#url="https://archive.org/download/gd1984-12-28.142611.sbd.miller.flac1648/18TheOtherOne.ogg"
 Play_URL(url, 80, Callback) # Play the file
 
 gc.enable()
