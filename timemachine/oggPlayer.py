@@ -6,6 +6,7 @@ ws_pin = Pin(14)    # Word clock output
 sd_pin = Pin(17)    # Serial data output
 
 block = False
+DEBUG_OGG = False
 
 def get_redirect_location(headers):
     for line in headers.split(b"\r\n"):
@@ -107,7 +108,7 @@ def Play_URL(url, callback, port=80):
         if data != None:
             TotalData += data
 
-    print ("Filled header buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData)
+    print ("Filled header buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData) if DEBUG_OGG else None
     
     # Process the header when we first start streaming the data, to initialise the decoder & set up buffers
     PlayerBuffer = bytearray(200000)     # Create a big buffer for the decoder to use (200kB seems enough)
@@ -115,7 +116,7 @@ def Play_URL(url, callback, port=80):
 
     # Decode the header. This will return how many bytes it has consumed from the buffer
     Used = Player.Vorbis_Start(PlayerBufferMV, HeaderBufferMV)
-    print("Header used", Used, "bytes")
+    print("Header used", Used, "bytes") if DEBUG_OGG else None
 
     # Copy what's left in the header buffer to the Inbuffer for later decoding
     if Used < HeaderBufferSize:
@@ -150,7 +151,7 @@ def Play_URL(url, callback, port=80):
             if data != None:
                 TotalData += data
         
-        print ("Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData)
+        print ("Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData) if DEBUG_OGG else None
         TotalData = 0
         
         # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
@@ -167,7 +168,7 @@ def Play_URL(url, callback, port=80):
         while True:
             #print("Calling decoder with offset", Used)
             BytesUsed, AudioSamples = Player.Vorbis_Decode(InBufferMV[Used:], InBufferSize - Used, OutBufferMV[(SamplesOut * channels * 2):])  # Multiply by 2 because we are assuming 16-bit samples
-            print("Result:", BytesUsed, AudioSamples)
+            print("Result:", BytesUsed, AudioSamples) if DEBUG_OGG else None
             # BytesUsed is the number of bytes used from the buffer 
             # AudioSamples is the number of decoded audio samples available. Each sample is 2 bytes (16 bits) x number of channels, so usually will be 4 bytes
 
@@ -190,7 +191,7 @@ def Play_URL(url, callback, port=80):
             block = True;
 
         # We may still have some data at the end of the buffer which was too short to decode. If so, move it to the beginning
-        print(InBufferSize - Used, "bytes left")
+        print(InBufferSize - Used, "bytes left") if DEBUG_OGG else None
         if Used < InBufferSize:
             InBufferMV[:(InBufferSize - Used)] = InBufferMV[-(InBufferSize - Used):]
             TotalData = InBufferSize - Used
