@@ -8,7 +8,7 @@ sd_pin = Pin(17)    # Serial data output
 buf = bytearray(1024)
 
 print("Starting") 
-audio_out = I2S(1, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=2048)
+audio_out = I2S(1, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=1024)
 print(audio_out)
 
 with io.open("GDCDQualityTrim.wav", 'rb') as fp:
