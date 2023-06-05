@@ -9,6 +9,14 @@
             "github:eichblatt/litestream/timemachine/board.py"
         ],
         [
+            "boot.py",
+            "github:eichblatt/litestream/timemachine/boot.py"
+        ],
+        [
+            "BasicOggPlayer.py",
+            "github:eichblatt/litestream/timemachine/BasicOggPlayer.py"
+        ],
+        [
             "utils.py",
             "github:eichblatt/litestream/timemachine/utils.py"
         ],
