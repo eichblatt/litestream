@@ -145,7 +145,6 @@ def basic_main():
     """
     print("in basic_main")
 
-    wifi = connect_wifi()
     utils.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
@@ -181,14 +180,13 @@ def basic_main():
             print(f"{time.ticks_ms()} Rewind button Pressed!!")
             break
 
+    wifi = connect_wifi()
     if update_code:
         print('Updating code')
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
         tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
         try:
-            wifi = connect_wifi()
-
             if not wifi.isconnected():
                 raise RuntimeError("Wifi Not Connected -- not able to update code")
             tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
