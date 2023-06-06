@@ -202,7 +202,7 @@ def basic_main():
     elif reconfigure:
         print('Reconfiguring')
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-        choice = utils.select_option("Reconfigure",["Collections","Wifi","Factory Reset"])
+        choice = utils.select_option("Reconfigure",["Collections","Wifi","FactoryReset","Cancel"])
         if choice == "Collections":
             configure_collections()
         elif choice == "Wifi":
