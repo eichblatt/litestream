@@ -138,7 +138,7 @@ def Play_URL(url, callback, port=80):
         if TotalData == InBufferSize:    # If we get here with an already full buffer then something went wrong with the decoder
             print("Something went wrong")
             audio_out.deinit()
-            s.close()
+            sock.close()
             Player.Vorbis_Close()
             return
         
@@ -165,6 +165,9 @@ def Play_URL(url, callback, port=80):
         #print('w', time.ticks_ms(), end='') #str(data, 'utf8'), end='')
 
         while True:
+            if (SamplesOut * channels * 2) + (max_frame_size * channels * 2)  > OutBufferSize: # Make sure that we have enough OutBuffer space left for one more frame
+                    break
+                    
             #print("Calling decoder with offset", Used)
             BytesUsed, AudioSamples = Player.Vorbis_Decode(InBufferMV[Used:], InBufferSize - Used, OutBufferMV[(SamplesOut * channels * 2):])  # Multiply by 2 because we are assuming 16-bit samples
             print("Result:", BytesUsed, AudioSamples)
