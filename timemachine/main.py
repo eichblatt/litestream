@@ -175,8 +175,8 @@ def basic_main():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-        if pRewind_old != tm.pRewind.value():
-            pRewind_old = tm.pRewind.value()
+        if pRewind_old != tm.pFFwd.value():
+            pRewind_old = tm.pFFwd.value()
             update_code = True
             print(f"{time.ticks_ms()} Rewind button Pressed!!")
             break
@@ -244,12 +244,6 @@ def test_update():
             pStop_old = tm.pStop.value()
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
-
-        if pRewind_old != tm.pRewind.value():
-            pRewind_old = tm.pRewind.value()
-            update_code = True
-            print(f"{time.ticks_ms()} Rewind button Pressed!!")
-            break
 
     tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
