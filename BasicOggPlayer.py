@@ -212,5 +212,3 @@ def Audio_Pump():
         if Used < InBufferSize:
             InBufferMV[:(InBufferSize - Used)] = InBufferMV[-(InBufferSize - Used):]
             TotalData = InBufferSize - Used
-            
-        return TotalData
