@@ -53,6 +53,7 @@ def i2s_callback(t):
 # However, if the Inbuffer is too small then data that is left in the Headerbuffer after the header has been processed will overflow the Inbuffer
 
 def Pause():
+    pass
 def Play_URL(url, port=80):
     global TotalData
     global sock
