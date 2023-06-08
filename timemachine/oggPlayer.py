@@ -5,8 +5,26 @@ sck_pin = Pin(13)   # Serial clock output
 ws_pin = Pin(14)    # Word clock output
 sd_pin = Pin(17)    # Serial data output
 
-block = False
-DEBUG_OGG = False
+DEBUG_OGG = True
+BlockFlag = False
+TotalData = 0
+sock = None
+audio_out = None
+channels = 0
+max_frame_size = 0
+
+HeaderBufferSize = 8192
+InBufferSize = 4096
+OutBufferSize = 132095 # Max size the I2S device will use for its buffer is 132095
+
+HeaderBuffer = bytearray(HeaderBufferSize)  # An array to hold the Header data of the stream
+HeaderBufferMV = memoryview(HeaderBuffer)
+
+InBuffer = bytearray(InBufferSize)  # An array to hold samples which we read from the network
+InBufferMV = memoryview(InBuffer)
+
+OutBuffer = bytearray(OutBufferSize) # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
+OutBufferMV = memoryview(OutBuffer)
 
 def get_redirect_location(headers):
     for line in headers.split(b"\r\n"):
@@ -23,9 +41,9 @@ def parse_redirect_location(location):
     return host, port, path
 
 def i2s_callback(t):
-    global block
+    global BlockFlag
     print('*')
-    block = False;
+    BlockFlag = False;
   
 # There is a bit of a balancing act going on with buffers here:
 # The Header buffer needs to be big enough to hold the header. By observation, headers are around 4k in size but I don't know how big they can get. So it is made a generous size (8k)
@@ -34,21 +52,16 @@ def i2s_callback(t):
 # So if the Inbuffer is too big, we will overflow the Outbuffer.
 # However, if the Inbuffer is too small then data that is left in the Headerbuffer after the header has been processed will overflow the Inbuffer
 
-def Play_URL(url, callback, port=80):
-    global block    # Flag which we use to block operation until the I2S decoder has finished playing
-    HeaderBufferSize = 8192
-    InBufferSize = 4096
-    OutBufferSize = 132095 # Max size the I2S device will use for its buffer is 132095
-
-    HeaderBuffer = bytearray(HeaderBufferSize)  # An array to hold the Header data of the stream
-    HeaderBufferMV = memoryview(HeaderBuffer)
-    
-    InBuffer = bytearray(InBufferSize)  # An array to hold samples which we read from the network
-    InBufferMV = memoryview(InBuffer)
-
-    OutBuffer = bytearray(OutBufferSize) # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
-    OutBufferMV = memoryview(OutBuffer)
+def Pause():
+def Play_URL(url, port=80):
+    global TotalData
+    global sock
+    global audio_out
+    global channels
+    global max_frame_size
         
+    with open('current_url.py','w') as f:
+        f.write(url)
     _, _, host, path = url.split('/', 3)
     addr = socket.getaddrinfo(host, port)[0][-1]
     sock = socket.socket()
@@ -129,35 +142,40 @@ def Play_URL(url, callback, port=80):
 
     # Set up the first I2S peripheral (0), make it async with a callback
     audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO if channels == 2 else I2S.MONO, rate=sample_rate, ibuf=OutBufferSize) # Max bufffer is 132095 (129kB). We have to assume 16-bit samples as there is no way to read it from the stream info.
-    audio_out.irq(i2s_callback) 
+    audio_out.irq(i2s_callback)
+    
 
-    # Now decode the rest of the stream
+def Audio_Pump():
+    global BlockFlag        # Flag which we use to block operation until the I2S decoder has finished playing
+    global TotalData
+    SamplesOut = 0
+    
+    if sock == None:
+       raise ValueError("Need to call Play_URL first")     
+        
+    # Decode the rest of the stream
     while True:
-        data = -1
+        Data = -1
         TimeStart = time.ticks_ms()
         
-        if TotalData == InBufferSize:    # If we get here with an already full buffer then something went wrong with the decoder
-            print("Something went wrong")
-            audio_out.deinit()
-            s.close()
-            Player.Vorbis_Close()
+        if TotalData == InBufferSize:
+            print(".", end='') if DEBUG_OGG else None
+        else:    
+            # Fill the Inbuffer. May take multiple reads. We may exit with data == 0 which means we are at the end of the stream, but we still need to play the last buffer
+            while (TotalData < InBufferSize) and (Data != 0):
+                Data = sock.readinto(InBufferMV[TotalData:], InBufferSize - TotalData)
+                time.sleep_ms(2) # Let the WiFi thread have some CPU time (not sure if needed as it *may* run on a different thread)
+                #print('r:', data, time.ticks_ms(), end=' ')
+                if Data != None:
+                    TotalData += Data
+
+            print ("Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData)
+
+        # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
+        if BlockFlag == True: 
             return
         
-        # Fill the Inbuffer. May take multiple reads. We may exit with data == 0 which means we are at the end of the stream, but we still need to play the last buffer
-        while (TotalData < InBufferSize) and (data != 0):
-            data = sock.readinto(InBufferMV[TotalData:], InBufferSize - TotalData)
-            time.sleep_ms(2) # Let the WiFi thread have some CPU time (not sure if needed as it *may* run on a different thread)
-            #print('r:', data, time.ticks_ms(), end=' ')
-            if data != None:
-                TotalData += data
-        
-        print ("Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", TotalData) if DEBUG_OGG else None
         TotalData = 0
-        
-        # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
-        while (block == True): 
-            callback()
-            continue
             
         print()
                  
@@ -166,14 +184,17 @@ def Play_URL(url, callback, port=80):
         #print('w', time.ticks_ms(), end='') #str(data, 'utf8'), end='')
 
         while True:
+            if (SamplesOut * channels * 2) + (max_frame_size * channels * 2)  > OutBufferSize: # Make sure that we have enough OutBuffer space left for one more frame
+                    break
+                    
             #print("Calling decoder with offset", Used)
             BytesUsed, AudioSamples = Player.Vorbis_Decode(InBufferMV[Used:], InBufferSize - Used, OutBufferMV[(SamplesOut * channels * 2):])  # Multiply by 2 because we are assuming 16-bit samples
-            print("Result:", BytesUsed, AudioSamples) if DEBUG_OGG else None
+            print("Decoded", BytesUsed, "to", AudioSamples)
             # BytesUsed is the number of bytes used from the buffer 
             # AudioSamples is the number of decoded audio samples available. Each sample is 2 bytes (16 bits) x number of channels, so usually will be 4 bytes
 
             if BytesUsed == 0:      # No more usable data in the Inbuffer. There may still be some data at the end which is not enough to decode
-                if data == 0:       # If the decoder has finished decoding the Inbuffer AND the last read was zero, then we must be at the end of the stream. Otherwise just break out of the loop, play any samples and fill the Inbuffer again
+                if Data == 0:       # If the decoder has finished decoding the Inbuffer AND the last read was zero, then we must be at the end of the stream. Otherwise just break out of the loop, play any samples and fill the Inbuffer again
                     print("Stream finished")
                     audio_out.deinit()
                     sock.close()
@@ -186,9 +207,10 @@ def Play_URL(url, callback, port=80):
 
         # If we got audio data, play it
         if SamplesOut > 0:
-            numout = audio_out.write(OutBufferMV[:(SamplesOut * channels * 2)]) # Returns straight away. Multiply by 2 because we are assuming 16-bit samples
-            SamplesOut = 0
-            block = True;
+            print(f"{SamplesOut} samples to audio buffer") if DEBUG_OGG else None
+            numout = audio_out.write(OutBufferMV[:SamplesOut * channels * 2]) # Returns straight away. Multiply by 2 because we are assuming 16-bit samples
+            # SamplesOut = max(SamplesOut - 1024,0)
+            BlockFlag = True;
 
         # We may still have some data at the end of the buffer which was too short to decode. If so, move it to the beginning
         print(InBufferSize - Used, "bytes left") if DEBUG_OGG else None

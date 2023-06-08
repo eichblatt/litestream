@@ -89,10 +89,6 @@ def display_tracks(current_track_name,next_track_name):
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
-def player_callback():
-    print('.',end="")
-    time.sleep_ms(2)
-
 def main_loop(coll_dict):
     year_old = -1
     month_old = -1
@@ -130,6 +126,8 @@ def main_loop(coll_dict):
 
     while True:
         nshows = 0
+        if playstate == 1:
+            oggPlayer.Audio_Pump()
         
         if pPower_old != tm.pPower.value():
             pPower_old = tm.pPower.value()
@@ -212,7 +210,7 @@ def main_loop(coll_dict):
                 utils.clear_bbox(playpause_bbox)
                 if playstate > 0:
                     print(f"Playing URL {urls[current_track_index]}")
-                    oggPlayer.Play_URL(urls[current_track_index],player_callback)
+                    oggPlayer.Play_URL(urls[current_track_index])  # non-blocking
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 else:
                     print(f"Pausing URL {urls[current_track_index]}")
