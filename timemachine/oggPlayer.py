@@ -7,6 +7,7 @@ sd_pin = Pin(17)    # Serial data output
 
 DEBUG_OGG = True
 BlockFlag = False
+PLAY_STATE = 0
 TotalData = 0
 sock = None
 audio_out = None
@@ -52,15 +53,24 @@ def i2s_callback(t):
 # So if the Inbuffer is too big, we will overflow the Outbuffer.
 # However, if the Inbuffer is too small then data that is left in the Headerbuffer after the header has been processed will overflow the Inbuffer
 
-def Pause():
-    pass
-def Play_URL(url, port=80):
+def pause():
+    global PLAY_STATE
+    if PLAY_STATE == 1:
+        PLAY_STATE = 2
+
+def play():
+    global PLAY_STATE
+    PLAY_STATE = 1
+
+def prep_URL(url, port=80):
     global TotalData
     global sock
     global audio_out
     global channels
     global max_frame_size
+    global PLAY_STATE
         
+    PLAY_STATE = 1
     with open('current_url.py','w') as f:
         f.write(url)
     _, _, host, path = url.split('/', 3)
@@ -151,6 +161,9 @@ def Audio_Pump():
     global TotalData
     SamplesOut = 0
     
+    if PLAY_STATE == 0:   # initialized
+        return
+
     if sock == None:
        raise ValueError("Need to call Play_URL first")     
         
@@ -174,6 +187,9 @@ def Audio_Pump():
 
         # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
         if BlockFlag == True: 
+            return
+        
+        if PLAY_STATE > 1:
             return
         
         TotalData = 0

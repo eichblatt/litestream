@@ -106,7 +106,6 @@ def main_loop(coll_dict):
     pDSw_old = False
     key_date = set_date('1989-08-13')
     selected_date = key_date
-    playstate = 0
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
     current_collection = ''
@@ -124,10 +123,13 @@ def main_loop(coll_dict):
     valid_dates = list(sorted(valid_dates))
     utils.clear_screen()
 
+    poll_count = 0
     while True:
         nshows = 0
-        if playstate == 1:
-            oggPlayer.Audio_Pump()
+        oggPlayer.Audio_Pump()
+        playstate = oggPlayer.PLAY_STATE
+        if (playstate > 0) and (poll_count%100 != 0):
+            continue
         
         if pPower_old != tm.pPower.value():
             pPower_old = tm.pPower.value()
@@ -206,15 +208,19 @@ def main_loop(coll_dict):
             if pPlayPause_old:
                 print("PlayPause UP")
             else:
-                playstate = 1 if playstate == 0 else 0
                 utils.clear_bbox(playpause_bbox)
-                if playstate > 0:
+                if playstate == 0:  # initial state
                     print(f"Playing URL {urls[current_track_index]}")
-                    oggPlayer.Play_URL(urls[current_track_index])  # non-blocking
+                    oggPlayer.prep_URL(urls[current_track_index])  
+                    oggPlayer.play()
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
-                else:
+                elif playstate == 1: # playing
                     print(f"Pausing URL {urls[current_track_index]}")
+                    oggPlayer.pause()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
+                elif playstate == 2: # paused
+                    oggPlayer.play()
+                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("PlayPause DOWN")
 
         if pStop_old != tm.pStop.value():
