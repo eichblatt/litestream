@@ -128,7 +128,8 @@ def main_loop(coll_dict):
         nshows = 0
         oggPlayer.Audio_Pump()
         playstate = oggPlayer.PLAY_STATE
-        if (playstate > 0) and (poll_count%100 != 0):
+        poll_count = poll_count + 1
+        if (playstate == 1) and (poll_count%10 != 0):  # throttle the polling, to pump more often.
             continue
         
         if pPower_old != tm.pPower.value():
@@ -149,6 +150,72 @@ def main_loop(coll_dict):
                 tm.tft.off() 
                 time.sleep(0.1)
                 sys.exit()
+
+        if pPlayPause_old != tm.pPlayPause.value():
+            pPlayPause_old = tm.pPlayPause.value()
+            if pPlayPause_old:
+                print("PlayPause UP")
+            else:
+                utils.clear_bbox(playpause_bbox)
+                if playstate == 0:  # initial state
+                    print(f"Playing URL {urls[current_track_index]}")
+                    oggPlayer.prep_URL(urls[current_track_index])  
+                    oggPlayer.play()
+                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                elif playstate == 1: # playing
+                    print(f"Pausing URL {urls[current_track_index]}")
+                    oggPlayer.pause()
+                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
+                elif playstate == 2: # paused
+                    oggPlayer.play()
+                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                print("PlayPause DOWN")
+
+        if pStop_old != tm.pStop.value():
+            pStop_old = tm.pStop.value()
+            if pStop_old:
+                print("Stop UP")
+            else:
+                print("Stop DOWN")
+
+        if (playstate == 1) and (poll_count%100 != 0): # Throttle polling again. These functions are less critical while playing.
+            continue
+
+        if pRewind_old != tm.pRewind.value():
+            pRewind_old = tm.pRewind.value()
+            if pRewind_old:
+                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.BLUE)
+                print("Rewind UP")
+            else:
+                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
+                print("Rewind DOWN")
+                if current_track_index <= 0:
+                    pass
+                elif current_track_index>=0:
+                    current_track_index += -1
+                    current_track_name = tracklist[current_track_index]
+                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(current_track_name,next_track_name)
+
+
+
+
+        if pFFwd_old != tm.pFFwd.value():
+            pFFwd_old = tm.pFFwd.value()
+            if pFFwd_old:
+                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.BLUE)
+                print("FFwd UP")
+            else:
+                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
+                print("FFwd DOWN")
+                if current_track_index >= len(tracklist):
+                    pass
+                elif current_track_index>=0:
+                    current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
+                    current_track_name = tracklist[current_track_index]
+                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+                    display_tracks(current_track_name,next_track_name)
+
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -203,68 +270,6 @@ def main_loop(coll_dict):
         
             
         
-        if pPlayPause_old != tm.pPlayPause.value():
-            pPlayPause_old = tm.pPlayPause.value()
-            if pPlayPause_old:
-                print("PlayPause UP")
-            else:
-                utils.clear_bbox(playpause_bbox)
-                if playstate == 0:  # initial state
-                    print(f"Playing URL {urls[current_track_index]}")
-                    oggPlayer.prep_URL(urls[current_track_index])  
-                    oggPlayer.play()
-                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
-                elif playstate == 1: # playing
-                    print(f"Pausing URL {urls[current_track_index]}")
-                    oggPlayer.pause()
-                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
-                elif playstate == 2: # paused
-                    oggPlayer.play()
-                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
-                print("PlayPause DOWN")
-
-        if pStop_old != tm.pStop.value():
-            pStop_old = tm.pStop.value()
-            if pStop_old:
-                print("Stop UP")
-            else:
-                print("Stop DOWN")
-
-        if pRewind_old != tm.pRewind.value():
-            pRewind_old = tm.pRewind.value()
-            if pRewind_old:
-                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.BLUE)
-                print("Rewind UP")
-            else:
-                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
-                print("Rewind DOWN")
-                if current_track_index <= 0:
-                    pass
-                elif current_track_index>=0:
-                    current_track_index += -1
-                    current_track_name = tracklist[current_track_index]
-                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(current_track_name,next_track_name)
-
-
-
-
-        if pFFwd_old != tm.pFFwd.value():
-            pFFwd_old = tm.pFFwd.value()
-            if pFFwd_old:
-                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.BLUE)
-                print("FFwd UP")
-            else:
-                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
-                print("FFwd DOWN")
-                if current_track_index >= len(tracklist):
-                    pass
-                elif current_track_index>=0:
-                    current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
-                    current_track_name = tracklist[current_track_index]
-                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(current_track_name,next_track_name)
-
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
             if pYSw_old:
