@@ -53,14 +53,18 @@ def i2s_callback(t):
 # So if the Inbuffer is too big, we will overflow the Outbuffer.
 # However, if the Inbuffer is too small then data that is left in the Headerbuffer after the header has been processed will overflow the Inbuffer
 
+def play():
+    global PLAY_STATE
+    PLAY_STATE = 1
+
 def pause():
     global PLAY_STATE
     if PLAY_STATE == 1:
         PLAY_STATE = 2
 
-def play():
+def stop():
     global PLAY_STATE
-    PLAY_STATE = 1
+    PLAY_STATE = 0
 
 def prep_URL(url, port=80):
     global TotalData
@@ -161,8 +165,8 @@ def Audio_Pump():
     global TotalData
     SamplesOut = 0
     
-    if PLAY_STATE == 0:   # initialized
-        return
+    if PLAY_STATE != 1:   # Only while playing
+        return 'inactive'
 
     if sock == None:
        raise ValueError("Need to call Play_URL first")     
@@ -187,15 +191,13 @@ def Audio_Pump():
 
         # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
         if BlockFlag == True: 
-            return
+            return 'pumping'
         
         if PLAY_STATE > 1:
-            return
+            return 'paused'
         
         TotalData = 0
             
-        print()
-                 
         # We have some data. Repeatedly call the decoder to decode one chunk at a time from Inbuffer, and build up audio samples in Outbuffer
         Used = 0
         #print('w', time.ticks_ms(), end='') #str(data, 'utf8'), end='')
@@ -206,7 +208,7 @@ def Audio_Pump():
                     
             #print("Calling decoder with offset", Used)
             BytesUsed, AudioSamples = Player.Vorbis_Decode(InBufferMV[Used:], InBufferSize - Used, OutBufferMV[(SamplesOut * channels * 2):])  # Multiply by 2 because we are assuming 16-bit samples
-            print("Decoded", BytesUsed, "to", AudioSamples)
+            print("Decoded", BytesUsed, "to", AudioSamples) if DEBUG_OGG else None
             # BytesUsed is the number of bytes used from the buffer 
             # AudioSamples is the number of decoded audio samples available. Each sample is 2 bytes (16 bits) x number of channels, so usually will be 4 bytes
 
@@ -216,7 +218,8 @@ def Audio_Pump():
                     audio_out.deinit()
                     sock.close()
                     Player.Vorbis_Close()
-                    return
+                    stop()
+                    return 'track_finished'
                 break
 
             SamplesOut += AudioSamples;

@@ -29,7 +29,7 @@ API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
 #API = 'http://westmain:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 COLLECTION_LIST_PATH = 'collection_list.json'
-
+oggPlayer.DEBUG_OGG = False
 
 print("Starting...")
 
@@ -89,6 +89,14 @@ def display_tracks(current_track_name,next_track_name):
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
+def advance_track(current_track_index, tracklist, increment=1):
+    if current_track_index>=0:
+        current_track_index += increment if len(tracklist)> current_track_index + increment else 0
+        current_track_name = tracklist[current_track_index]
+        next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+        display_tracks(current_track_name,next_track_name)
+        return current_track_index, current_track_name, next_track_name
+ 
 def main_loop(coll_dict):
     year_old = -1
     month_old = -1
@@ -126,10 +134,10 @@ def main_loop(coll_dict):
     poll_count = 0
     while True:
         nshows = 0
-        oggPlayer.Audio_Pump()
+        player_status = oggPlayer.Audio_Pump()
         playstate = oggPlayer.PLAY_STATE
         poll_count = poll_count + 1
-        if (playstate == 1) and (poll_count%10 != 0):  # throttle the polling, to pump more often.
+        if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
             continue
         
         if pPower_old != tm.pPower.value():
@@ -157,7 +165,7 @@ def main_loop(coll_dict):
                 print("PlayPause UP")
             else:
                 utils.clear_bbox(playpause_bbox)
-                if playstate == 0:  # initial state
+                if playstate == 0:  # initial state or stopped
                     print(f"Playing URL {urls[current_track_index]}")
                     oggPlayer.prep_URL(urls[current_track_index])  
                     oggPlayer.play()
@@ -176,9 +184,11 @@ def main_loop(coll_dict):
             if pStop_old:
                 print("Stop UP")
             else:
+                oggPlayer.stop()
                 print("Stop DOWN")
 
-        if (playstate == 1) and (poll_count%100 != 0): # Throttle polling again. These functions are less critical while playing.
+        # Throttle Downstream polling 
+        if (playstate == 1) and (poll_count%200 != 0):
             continue
 
         if pRewind_old != tm.pRewind.value():
@@ -189,6 +199,8 @@ def main_loop(coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
+                if playstate >= 1: # playing or paused
+                    oggPlayer.stop()
                 if current_track_index <= 0:
                     pass
                 elif current_track_index>=0:
@@ -196,10 +208,13 @@ def main_loop(coll_dict):
                     current_track_name = tracklist[current_track_index]
                     next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
                     display_tracks(current_track_name,next_track_name)
+                if playstate >= 1: # playing or paused
+                    oggPlayer.prep_URL(urls[current_track_index])  
+                    oggPlayer.play()
+                    playstate = oggPlayer.PLAY_STATE
 
-
-
-
+        if player_status == 'track_finished':
+            current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
@@ -208,13 +223,16 @@ def main_loop(coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
+                if playstate >= 1: # playing or paused
+                    oggPlayer.stop()
                 if current_track_index >= len(tracklist):
                     pass
                 elif current_track_index>=0:
-                    current_track_index += 1 if len(tracklist)> current_track_index + 1 else 0
-                    current_track_name = tracklist[current_track_index]
-                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(current_track_name,next_track_name)
+                    current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
+                if playstate >= 1: # playing or paused
+                    oggPlayer.prep_URL(urls[current_track_index])  
+                    oggPlayer.play()
+                    playstate = oggPlayer.PLAY_STATE
 
 
         if pSelect_old != tm.pSelect.value():
