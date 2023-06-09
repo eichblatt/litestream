@@ -5,7 +5,7 @@ sck_pin = Pin(13)   # Serial clock output
 ws_pin = Pin(14)    # Word clock output
 sd_pin = Pin(17)    # Serial data output
 
-DEBUG_OGG = True
+DEBUG_OGG = False
 BlockFlag = False
 PLAY_STATE = 0
 TotalData = 0
@@ -64,6 +64,9 @@ def pause():
 
 def stop():
     global PLAY_STATE
+    audio_out.deinit()
+    sock.close()
+    Player.Vorbis_Close()
     PLAY_STATE = 0
 
 def prep_URL(url, port=80):
@@ -215,9 +218,6 @@ def Audio_Pump():
             if BytesUsed == 0:      # No more usable data in the Inbuffer. There may still be some data at the end which is not enough to decode
                 if Data == 0:       # If the decoder has finished decoding the Inbuffer AND the last read was zero, then we must be at the end of the stream. Otherwise just break out of the loop, play any samples and fill the Inbuffer again
                     print("Stream finished")
-                    audio_out.deinit()
-                    sock.close()
-                    Player.Vorbis_Close()
                     stop()
                     return 'track_finished'
                 break

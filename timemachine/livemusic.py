@@ -29,7 +29,6 @@ API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
 #API = 'http://westmain:5000' # westmain
 #API = 'http://deadstreamv3:5000'
 COLLECTION_LIST_PATH = 'collection_list.json'
-oggPlayer.DEBUG_OGG = False
 
 print("Starting...")
 
@@ -112,7 +111,7 @@ def main_loop(coll_dict):
     pYSw_old = False
     pMSw_old = False
     pDSw_old = False
-    key_date = set_date('1989-08-13')
+    key_date = set_date('1975-08-13')
     selected_date = key_date
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
@@ -135,30 +134,13 @@ def main_loop(coll_dict):
     while True:
         nshows = 0
         player_status = oggPlayer.Audio_Pump()
+        if player_status == 'track_finished':
+            current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
         playstate = oggPlayer.PLAY_STATE
         poll_count = poll_count + 1
         if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
             continue
         
-        if pPower_old != tm.pPower.value():
-            pPower_old = tm.pPower.value()
-            tm.pLED.value(PowerLED)
-            tm.tft.off() if not PowerLED else tm.tft.on()
-            if pPower_old:
-                print("Power UP")
-            else:
-                PowerLED = not PowerLED
-                power_press_time = time.ticks_ms()
-                print("Power DOWN -- screen")
-
-        if not tm.pPower.value():
-            if (time.ticks_ms()-power_press_time) > 1_000:
-                select_press_time = time.ticks_ms()
-                print("Power DOWN -- exiting")
-                tm.tft.off() 
-                time.sleep(0.1)
-                sys.exit()
-
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
             if pPlayPause_old:
@@ -185,6 +167,7 @@ def main_loop(coll_dict):
                 print("Stop UP")
             else:
                 oggPlayer.stop()
+                tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("Stop DOWN")
 
         # Throttle Downstream polling 
@@ -213,8 +196,6 @@ def main_loop(coll_dict):
                     oggPlayer.play()
                     playstate = oggPlayer.PLAY_STATE
 
-        if player_status == 'track_finished':
-            current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
@@ -279,15 +260,32 @@ def main_loop(coll_dict):
                 tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
         
+        if pPower_old != tm.pPower.value():
+            pPower_old = tm.pPower.value()
+            tm.pLED.value(PowerLED)
+            tm.tft.off() if not PowerLED else tm.tft.on()
+            if pPower_old:
+                print("Power UP")
+            else:
+                PowerLED = not PowerLED
+                power_press_time = time.ticks_ms()
+                print("Power DOWN -- screen")
+
+        if not tm.pPower.value():
+            if (time.ticks_ms()-power_press_time) > 1_000:
+                select_press_time = time.ticks_ms()
+                print("Power DOWN -- exiting")
+                tm.tft.off() 
+                time.sleep(0.1)
+                sys.exit()
+
         vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1+len(selected_vcs)//16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
                 pvcs_line = vcs_line
                 utils.clear_bbox(venue_bbox)
                 startchar = min(15 * vcs_line,len(selected_vcs) - 16)
                 tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color) 
-        
-            
-        
+         
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
             if pYSw_old:
