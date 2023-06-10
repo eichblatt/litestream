@@ -22,7 +22,8 @@ def parse_redirect_location(location):
 
 
 class AudioPlayer():
-    def __init__(self):
+    def __init__(self,callbacks={}):
+        self.callbacks = callbacks
         self.DEBUG = False
         self.PLAY_STATE = 0
         self.BlockFlag = False
@@ -45,21 +46,30 @@ class AudioPlayer():
         OutBuffer = bytearray(self.OutBufferSize) # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
         self.OutBufferMV = memoryview(OutBuffer)
 
-        self.playlist = []
-        self.current_track = None  # the index of current track in playlist
-        self.next_track = None     # index of next track in playlist
+        self.playlist = self.tracklist = []
+        self.ntracks = 0
+        self.current_track = self.next_track = None  # the index of current track in playlist
         self.buffer_status = 'inactive'
 
-    def set_playlist(self,urllist):
+    def set_playlist(self,tracklist, urllist):
+        assert len(tracklist) == len(urllist)
+        self.ntracks = len(tracklist)
+        self.tracklist = tracklist
         self.playlist = urllist
-        if len(urllist) > 0:
+        if self.ntracks > 0:
             self.current_track = 0
-            self.next_track = 1 if len(urllist) > 1 else None
+            self.next_track = 1 if self.ntracks > 1 else None
+        self.callbacks['display'](*self.track_names())
 
     def track_status(self):
         if self.current_track is None:
             return None
-        return {'current_track':self.current_track,'next_track':self.next_track,'ntracks':len(self.urllist)}
+        return {'current_track':self.current_track,'next_track':self.next_track,'ntracks':self.ntracks}
+
+    def track_names(self):
+        current_name = self.tracklist[self.current_track]
+        next_name = self.tracklist[self.next_track] if self.next_track is not None else ''
+        return current_name, next_name
 
     def i2s_callback(self,t):
         print('*')
@@ -75,14 +85,25 @@ class AudioPlayer():
     def play(self):
         if self.PLAY_STATE == 0:
             self.prep_URL(self.playlist[self.current_track])
+        elif self.PLAY_STATE == 1:
+            print(f"Playing URL {self.playlist[self.current_track]}") 
         self.PLAY_STATE = 1
 
     def pause(self):
+        print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == 1:
             self.PLAY_STATE = 2
 
     def stop(self):
         self.PLAY_STATE = 0
+
+    def rewind(self):
+        if self.PLAY_STATE == 1:
+            self.stop()
+            self.advance_track(-1)
+            self.play()
+        else:
+            self.advance_track(-1)
 
     def ffwd(self):
         if self.PLAY_STATE == 1:
@@ -93,9 +114,11 @@ class AudioPlayer():
             self.advance_track()
 
     def advance_track(self, increment=1):
-        if self.current_track >= 0:
-            self.current_track += increment if len(self.playlist)> self.current_track + increment else 0
-        self.next_track = self.current_track + 1 if len(self.playlist) > (self.current_track + 1) else None 
+        if not 0 <= (self.current_track + increment) <= self.ntracks:
+            return 
+        self.current_track += increment 
+        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None 
+        self.callbacks['display'](*self.track_names())
 
     def prep_URL(self,url, port=80):
             
@@ -183,7 +206,6 @@ class AudioPlayer():
         # Set up the first I2S peripheral (0), make it async with a callback
         self.audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO if self.channels == 2 else I2S.MONO, rate=sample_rate, ibuf=self.OutBufferSize) # Max bufffer is 132095 (129kB). We have to assume 16-bit samples as there is no way to read it from the stream info.
         self.audio_out.irq(self.i2s_callback)
-
 
     def Audio_Pump(self):
         SamplesOut = 0

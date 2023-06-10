@@ -88,15 +88,7 @@ def display_tracks(current_track_name,next_track_name):
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
-def advance_track(player, tracklist, increment=1):
-    current_track_index = player.current_track
-    next_track_index = player.next_track
-    if current_track_index>=0:
-        current_track_name = tracklist[current_track_index]
-        next_track_name = tracklist[next_track_index] if next_track_index is not None else ''
-        display_tracks(current_track_name,next_track_name)
-        return current_track_index, current_track_name, next_track_name
- 
+
 def main_loop(player, coll_dict):
     year_old = -1
     month_old = -1
@@ -117,8 +109,6 @@ def main_loop(player, coll_dict):
     collection = "GratefulDead"; tracklist = []; urls = []
     collections = list(coll_dict.keys())
     current_collection = ''
-    current_track_index = -1
-    current_track_name = next_track_name = '' 
     vcs = selected_vcs = ''
     pvcs_line = 0
     select_press_time = 0
@@ -135,8 +125,6 @@ def main_loop(player, coll_dict):
     while True:
         nshows = 0
         player_status = player.Audio_Pump()
-        if player_status == 'track_finished':
-            current_track_index, current_track_name, next_track_name = advance_track(player, tracklist)
         playstate = player.PLAY_STATE
         poll_count = poll_count + 1
         if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
@@ -149,11 +137,9 @@ def main_loop(player, coll_dict):
             else:
                 utils.clear_bbox(playpause_bbox)
                 if playstate == 1: # playing
-                    print(f"Pausing URL {urls[current_track_index]}")
                     player.pause()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 else:  # initial state or stopped
-                    print(f"Playing URL {urls[current_track_index]}") if playstate == 1 else None
                     player.play()
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("PlayPause DOWN")
@@ -179,19 +165,7 @@ def main_loop(player, coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
-                if playstate >= 1: # playing or paused
-                    player.stop()
-                if current_track_index <= 0:
-                    pass
-                elif current_track_index>=0:
-                    current_track_index += -1
-                    current_track_name = tracklist[current_track_index]
-                    next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
-                    display_tracks(current_track_name,next_track_name)
-                if playstate >= 1: # playing or paused
-                    player.prep_URL(urls[current_track_index])  
-                    player.play()
-                    playstate = player.PLAY_STATE
+                player.rewind()
 
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
@@ -202,21 +176,15 @@ def main_loop(player, coll_dict):
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
                 player.ffwd()
-                current_track_index, current_track_name, next_track_name = advance_track(player, tracklist)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 if key_date in valid_dates:
-                    current_track_index = 0
                     collection, tracklist, urls = select_date(coll_dict.keys(),key_date, ntape)
                     vcs = coll_dict[collection][key_date]
-                    player.set_playlist(urls)
+                    player.set_playlist(tracklist, urls)
                     ntape = 0
-                    current_collection = collection
-                    current_track_name = tracklist[current_track_index]
-                    next_track_name = tracklist[current_track_index+1] if len(tracklist)> current_track_index else ''
-                    display_tracks(current_track_name,next_track_name)
 
                     selected_date = key_date
                     selected_vcs = vcs
@@ -349,7 +317,7 @@ def main_loop(player, coll_dict):
                     collection = ''
                     utils.clear_bbox(artist_bbox)
                     tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color) 
-                    display_tracks(current_track_name,next_track_name)
+                    display_tracks(*player.track_names())
                 print(f'vcs is {vcs}')
                 utils.clear_bbox(venue_bbox)
                 tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
@@ -360,7 +328,7 @@ def main_loop(player, coll_dict):
                 utils.clear_bbox(venue_bbox)
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
-                display_tracks(current_track_name,next_track_name)
+                display_tracks(*player.track_names())
                 pass
         # time.sleep_ms(50)
 
@@ -424,5 +392,5 @@ def run():
 
 
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer()
+    player = audioPlayer.AudioPlayer(callbacks={'display':display_tracks})
     main_loop(player, coll_dict)
