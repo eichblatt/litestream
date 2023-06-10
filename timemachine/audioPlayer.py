@@ -22,7 +22,7 @@ def parse_redirect_location(location):
 
 
 class AudioPlayer():
-    def __init__(self, urllist):
+    def __init__(self):
         self.DEBUG = False
         self.PLAY_STATE = 0
         self.BlockFlag = False
@@ -45,10 +45,15 @@ class AudioPlayer():
         OutBuffer = bytearray(self.OutBufferSize) # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
         self.OutBufferMV = memoryview(OutBuffer)
 
+        self.playlist = []
+
+    def set_playlist(self,urllist):
+        self.playlist = urllist
+
     def i2s_callback(self,t):
         print('*')
         self.BlockFlag = False;
-  
+
     # There is a bit of a balancing act going on with buffers here:
     # The Header buffer needs to be big enough to hold the header. By observation, headers are around 4k in size but I don't know how big they can get. So it is made a generous size (8k)
     # What is left in the Headerbuffer after the header has been processed is then copied to the Inbuffer. So the Inbuffer needs to be big enough to hold that. 

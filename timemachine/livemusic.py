@@ -96,7 +96,7 @@ def advance_track(current_track_index, tracklist, increment=1):
         display_tracks(current_track_name,next_track_name)
         return current_track_index, current_track_name, next_track_name
  
-def main_loop(coll_dict):
+def main_loop(player, coll_dict):
     year_old = -1
     month_old = -1
     day_old = -1
@@ -133,10 +133,10 @@ def main_loop(coll_dict):
     poll_count = 0
     while True:
         nshows = 0
-        player_status = audioPlayer.Audio_Pump()
+        player_status = player.Audio_Pump()
         if player_status == 'track_finished':
             current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
-        playstate = audioPlayer.PLAY_STATE
+        playstate = player.PLAY_STATE
         poll_count = poll_count + 1
         if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
             continue
@@ -149,15 +149,15 @@ def main_loop(coll_dict):
                 utils.clear_bbox(playpause_bbox)
                 if playstate == 0:  # initial state or stopped
                     print(f"Playing URL {urls[current_track_index]}")
-                    audioPlayer.prep_URL(urls[current_track_index])  
-                    audioPlayer.play()
+                    player.prep_URL(urls[current_track_index])  
+                    player.play()
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 elif playstate == 1: # playing
                     print(f"Pausing URL {urls[current_track_index]}")
-                    audioPlayer.pause()
+                    player.pause()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
                 elif playstate == 2: # paused
-                    audioPlayer.play()
+                    player.play()
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("PlayPause DOWN")
 
@@ -166,7 +166,7 @@ def main_loop(coll_dict):
             if pStop_old:
                 print("Stop UP")
             else:
-                audioPlayer.stop()
+                player.stop()
                 tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("Stop DOWN")
 
@@ -183,7 +183,7 @@ def main_loop(coll_dict):
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind DOWN")
                 if playstate >= 1: # playing or paused
-                    audioPlayer.stop()
+                    player.stop()
                 if current_track_index <= 0:
                     pass
                 elif current_track_index>=0:
@@ -192,9 +192,9 @@ def main_loop(coll_dict):
                     next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
                     display_tracks(current_track_name,next_track_name)
                 if playstate >= 1: # playing or paused
-                    audioPlayer.prep_URL(urls[current_track_index])  
-                    audioPlayer.play()
-                    playstate = audioPlayer.PLAY_STATE
+                    player.prep_URL(urls[current_track_index])  
+                    player.play()
+                    playstate = player.PLAY_STATE
 
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
@@ -205,15 +205,15 @@ def main_loop(coll_dict):
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
                 if playstate >= 1: # playing or paused
-                    audioPlayer.stop()
+                    player.stop()
                 if current_track_index >= len(tracklist):
                     pass
                 elif current_track_index>=0:
                     current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
                 if playstate >= 1: # playing or paused
-                    audioPlayer.prep_URL(urls[current_track_index])  
-                    audioPlayer.play()
-                    playstate = audioPlayer.PLAY_STATE
+                    player.prep_URL(urls[current_track_index])  
+                    player.play()
+                    playstate = player.PLAY_STATE
 
 
         if pSelect_old != tm.pSelect.value():
@@ -435,5 +435,5 @@ def run():
 
 
     print(f"Loaded collections {coll_dict.keys()}")
-
-    main_loop(coll_dict)
+    player = audioPlayer.AudioPlayer()
+    main_loop(player, coll_dict)
