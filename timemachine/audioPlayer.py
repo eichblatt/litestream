@@ -98,27 +98,22 @@ class AudioPlayer():
         self.PLAY_STATE = 0
 
     def rewind(self):
-        if self.PLAY_STATE == 1:
-            self.stop()
-            self.advance_track(-1)
-            self.play()
-        else:
-            self.advance_track(-1)
+        self.advance_track(-1)
 
     def ffwd(self):
-        if self.PLAY_STATE == 1:
-            self.stop()
-            self.advance_track()
-            self.play()
-        else:
-            self.advance_track()
+        self.advance_track()
 
     def advance_track(self, increment=1):
         if not 0 <= (self.current_track + increment) <= self.ntracks:
+            if self.PLAY_STATE == 1:
+                self.stop()
             return 
         self.current_track += increment 
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None 
         self.callbacks['display'](*self.track_names())
+        if self.PLAY_STATE == 1: # Play the track that we are advancing to if playing
+            self.PLAY_STATE = 0
+            self.play()
 
     def prep_URL(self,url, port=80):
             
@@ -266,9 +261,8 @@ class AudioPlayer():
                         self.audio_out.deinit()
                         self.sock.close()
                         Player.Vorbis_Close()
-                        self.stop()
-                        self.buffer_status = 'track_finished'
                         self.advance_track()
+                        self.buffer_status = 'track_finished'
                         return self.buffer_status
                     break
 
