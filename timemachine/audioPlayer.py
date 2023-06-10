@@ -84,6 +84,19 @@ class AudioPlayer():
     def stop(self):
         self.PLAY_STATE = 0
 
+    def ffwd(self):
+        if self.PLAY_STATE == 1:
+            self.stop()
+            self.advance_track()
+            self.play()
+        else:
+            self.advance_track()
+
+    def advance_track(self, increment=1):
+        if self.current_track >= 0:
+            self.current_track += increment if len(self.playlist)> self.current_track + increment else 0
+        self.next_track = self.current_track + 1 if len(self.playlist) > (self.current_track + 1) else None 
+
     def prep_URL(self,url, port=80):
             
         self.PLAY_STATE = 1
@@ -170,19 +183,7 @@ class AudioPlayer():
         # Set up the first I2S peripheral (0), make it async with a callback
         self.audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO if self.channels == 2 else I2S.MONO, rate=sample_rate, ibuf=self.OutBufferSize) # Max bufffer is 132095 (129kB). We have to assume 16-bit samples as there is no way to read it from the stream info.
         self.audio_out.irq(self.i2s_callback)
-        
-    def ffwd(self):
-        if self.PLAY_STATE == 1:
-            self.stop()
-            self.advance_track()
-            self.play()
-        else:
-            self.advance_track()
 
-    def advance_track(self, increment=1):
-        if self.current_track >= 0:
-            self.current_track += increment if len(self.playlist)> self.current_track + increment else 0
-        self.next_track = self.current_track + 1 if len(self.playlist) > (self.current_track + 1) else None 
 
     def Audio_Pump(self):
         SamplesOut = 0
