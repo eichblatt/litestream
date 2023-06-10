@@ -88,11 +88,12 @@ def display_tracks(current_track_name,next_track_name):
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return 
 
-def advance_track(current_track_index, tracklist, increment=1):
+def advance_track(player, tracklist, increment=1):
+    current_track_index = player.current_track
+    next_track_index = player.next_track
     if current_track_index>=0:
-        current_track_index += increment if len(tracklist)> current_track_index + increment else 0
         current_track_name = tracklist[current_track_index]
-        next_track_name = tracklist[current_track_index+1] if len(tracklist) > current_track_index + 1 else ''
+        next_track_name = tracklist[next_track_index] if next_track_index is not None else ''
         display_tracks(current_track_name,next_track_name)
         return current_track_index, current_track_name, next_track_name
  
@@ -135,7 +136,7 @@ def main_loop(player, coll_dict):
         nshows = 0
         player_status = player.Audio_Pump()
         if player_status == 'track_finished':
-            current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
+            current_track_index, current_track_name, next_track_name = advance_track(player, tracklist)
         playstate = player.PLAY_STATE
         poll_count = poll_count + 1
         if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
@@ -147,16 +148,12 @@ def main_loop(player, coll_dict):
                 print("PlayPause UP")
             else:
                 utils.clear_bbox(playpause_bbox)
-                if playstate == 0:  # initial state or stopped
-                    print(f"Playing URL {urls[current_track_index]}")
-                    player.prep_URL(urls[current_track_index])  
-                    player.play()
-                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
-                elif playstate == 1: # playing
+                if playstate == 1: # playing
                     print(f"Pausing URL {urls[current_track_index]}")
                     player.pause()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
-                elif playstate == 2: # paused
+                else:  # initial state or stopped
+                    print(f"Playing URL {urls[current_track_index]}") if playstate == 1 else None
                     player.play()
                     tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
                 print("PlayPause DOWN")
@@ -204,17 +201,8 @@ def main_loop(player, coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd DOWN")
-                if playstate >= 1: # playing or paused
-                    player.stop()
-                if current_track_index >= len(tracklist):
-                    pass
-                elif current_track_index>=0:
-                    current_track_index, current_track_name, next_track_name = advance_track(current_track_index, tracklist)
-                if playstate >= 1: # playing or paused
-                    player.prep_URL(urls[current_track_index])  
-                    player.play()
-                    playstate = player.PLAY_STATE
-
+                player.ffwd()
+                current_track_index, current_track_name, next_track_name = advance_track(player, tracklist)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -223,6 +211,7 @@ def main_loop(player, coll_dict):
                     current_track_index = 0
                     collection, tracklist, urls = select_date(coll_dict.keys(),key_date, ntape)
                     vcs = coll_dict[collection][key_date]
+                    player.set_playlist(urls)
                     ntape = 0
                     current_collection = collection
                     current_track_name = tracklist[current_track_index]

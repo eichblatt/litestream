@@ -46,9 +46,20 @@ class AudioPlayer():
         self.OutBufferMV = memoryview(OutBuffer)
 
         self.playlist = []
+        self.current_track = None  # the index of current track in playlist
+        self.next_track = None     # index of next track in playlist
+        self.buffer_status = 'inactive'
 
     def set_playlist(self,urllist):
         self.playlist = urllist
+        if len(urllist) > 0:
+            self.current_track = 0
+            self.next_track = 1 if len(urllist) > 1 else None
+
+    def track_status(self):
+        if self.current_track is None:
+            return None
+        return {'current_track':self.current_track,'next_track':self.next_track,'ntracks':len(self.urllist)}
 
     def i2s_callback(self,t):
         print('*')
@@ -62,6 +73,8 @@ class AudioPlayer():
     # However, if the Inbuffer is too small then data that is left in the Headerbuffer after the header has been processed will overflow the Inbuffer
 
     def play(self):
+        if self.PLAY_STATE == 0:
+            self.prep_URL(self.playlist[self.current_track])
         self.PLAY_STATE = 1
 
     def pause(self):
@@ -158,12 +171,25 @@ class AudioPlayer():
         self.audio_out = I2S(0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO if self.channels == 2 else I2S.MONO, rate=sample_rate, ibuf=self.OutBufferSize) # Max bufffer is 132095 (129kB). We have to assume 16-bit samples as there is no way to read it from the stream info.
         self.audio_out.irq(self.i2s_callback)
         
+    def ffwd(self):
+        if self.PLAY_STATE == 1:
+            self.stop()
+            self.advance_track()
+            self.play()
+        else:
+            self.advance_track()
+
+    def advance_track(self, increment=1):
+        if self.current_track >= 0:
+            self.current_track += increment if len(self.playlist)> self.current_track + increment else 0
+        self.next_track = self.current_track + 1 if len(self.playlist) > (self.current_track + 1) else None 
 
     def Audio_Pump(self):
         SamplesOut = 0
         
         if self.PLAY_STATE != 1:   # Only while playing
-            return 'inactive'
+            self.buffer_status = 'inactive'
+            return self.buffer_status
 
         if self.sock == None:
             raise ValueError("Need to call prep_URL first")     
@@ -188,10 +214,12 @@ class AudioPlayer():
 
             # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
             if self.BlockFlag == True: 
-                return 'pumping'
+                self.buffer_status = 'pumping'
+                return self.buffer_status
             
             if self.PLAY_STATE > 1:
-                return 'paused'
+                self.buffer_status = 'paused'
+                return self.buffer_status
             
             self.TotalData = 0
                 
@@ -215,8 +243,10 @@ class AudioPlayer():
                         self.audio_out.deinit()
                         self.sock.close()
                         Player.Vorbis_Close()
-                        stop()
-                        return 'track_finished'
+                        self.stop()
+                        self.buffer_status = 'track_finished'
+                        self.advance_track()
+                        return self.buffer_status
                     break
 
                 SamplesOut += AudioSamples;
