@@ -161,8 +161,22 @@ def update_code():
 
     print("We should update livemusic.py")
 
+def reconfigure():
+    print('Reconfiguring')
+    tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    choice = utils.select_option("Reconfigure",["Collections","Update Code","Wifi","FactoryReset","Reboot","Cancel"])
+    if choice == "Collections":
+        configure_collections()
+    elif choice == "Wifi":
+        wifi = configure_wifi()
+    elif choice == "Update Code":
+        update_code()
+    elif choice == "FactoryReset":
+        factory_reset()
+    elif choice == "Reboot":
+        machine.reset()
 
- 
+
 def basic_main():
     """
     This script will update livemusic.py if rewind button pressed within 2 seconds.
@@ -182,14 +196,14 @@ def basic_main():
     pSelect_old = True
     pStop_old = True
     update = False
-    reconfigure = False
+    configure = False
 
 
     while time.ticks_ms() < (start_time + 5000):
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
-            reconfigure = True
+            configure = True
             print(f"{time.ticks_ms()} Select button Pressed!!")
             break
 
@@ -207,18 +221,8 @@ def basic_main():
     wifi = connect_wifi()
     if update:
         update_code()
-    elif reconfigure:
-        print('Reconfiguring')
-        tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-        choice = utils.select_option("Reconfigure",["Collections","Wifi","Update Code","FactoryReset","Cancel"])
-        if choice == "Collections":
-            configure_collections()
-        elif choice == "Wifi":
-            wifi = configure_wifi()
-        elif choice == "Update Code":
-            update_code()
-        elif choice == "FactoryReset":
-            factory_reset()
+    elif configure:
+        reconfigure()
     utils.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
     time.sleep(3)
@@ -274,6 +278,6 @@ def run_livemusic():
             livemusic.run()
     except Exception:
         print("livemusic.py is not running!!")
-
+    basic_main()
 
 #basic_main()

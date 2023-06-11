@@ -160,8 +160,8 @@ def main_loop(player, coll_dict):
                 stop_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
                 tm.tft.off() 
-                time.sleep(0.1)
-                sys.exit()
+                # sys.exit()
+                return
 
 
         # Throttle Downstream polling 
