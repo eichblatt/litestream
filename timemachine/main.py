@@ -100,7 +100,10 @@ def configure_collections():
             if choice2 == "Finished":
                 keepGoing = False
 
-            json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
+            coll_file = open(COLLECTION_LIST_PATH, "w")
+            json.dump(collection_list,coll_file)
+            coll_file.close()
+
 
     elif (choice == "Remove Collection"):
         keepGoing = True
@@ -111,7 +114,9 @@ def configure_collections():
             choice2 = utils.select_option("Year/Select",choices)
             if choice2 == "Finished":
                 keepGoing = False
-            json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
+            coll_file = open(COLLECTION_LIST_PATH, "w")
+            json.dump(collection_list,coll_file)
+            coll_file.close()
 
     print(f"Collection List set to {collection_list} written to {COLLECTION_LIST_PATH}")
     return 
