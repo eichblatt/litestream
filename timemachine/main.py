@@ -162,6 +162,7 @@ def update_code():
     print("We should update livemusic.py")
 
 def reconfigure():
+    tm.tft.on()
     print('Reconfiguring')
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
     choice = utils.select_option("Reconfigure",["Collections","Update Code","Wifi","FactoryReset","Reboot","Cancel"])
@@ -182,7 +183,7 @@ def basic_main():
     This script will update livemusic.py if rewind button pressed within 2 seconds.
     """
     print("in basic_main")
-
+    tm.tft.on()
     utils.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
@@ -224,7 +225,6 @@ def basic_main():
     elif configure:
         reconfigure()
     utils.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
     time.sleep(3)
 
 
@@ -278,6 +278,6 @@ def run_livemusic():
             livemusic.run()
     except Exception:
         print("livemusic.py is not running!!")
-    basic_main()
+    reconfigure()
 
 #basic_main()

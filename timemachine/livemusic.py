@@ -160,6 +160,7 @@ def main_loop(player, coll_dict):
                 stop_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
                 tm.tft.off() 
+                time.sleep(3)
                 # sys.exit()
                 return
 
