@@ -165,6 +165,7 @@ def reconfigure():
     tm.tft.on()
     print('Reconfiguring')
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    time.sleep(1)
     choice = utils.select_option("Reconfigure",["Collections","Update Code","Wifi","FactoryReset","Reboot","Cancel"])
     if choice == "Collections":
         configure_collections()
