@@ -113,6 +113,7 @@ def main_loop(player, coll_dict):
     pvcs_line = 0
     select_press_time = 0
     power_press_time = 0
+    stop_press_time = 0
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -151,7 +152,17 @@ def main_loop(player, coll_dict):
             else:
                 player.stop()
                 tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                stop_press_time = time.ticks_ms()
                 print("Stop DOWN")
+
+        if not tm.pStop.value():
+            if (time.ticks_ms()-stop_press_time) > 1_000:
+                stop_press_time = time.ticks_ms()
+                print("Power DOWN -- exiting")
+                tm.tft.off() 
+                time.sleep(0.1)
+                sys.exit()
+
 
         # Throttle Downstream polling 
         if (playstate == 1) and (poll_count%200 != 0):
@@ -230,11 +241,11 @@ def main_loop(player, coll_dict):
 
         if not tm.pPower.value():
             if (time.ticks_ms()-power_press_time) > 1_000:
-                select_press_time = time.ticks_ms()
+                power_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
                 tm.tft.off() 
                 time.sleep(0.1)
-                sys.exit()
+                machine.reset()
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1+len(selected_vcs)//16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):

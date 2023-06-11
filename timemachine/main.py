@@ -102,7 +102,7 @@ def configure_collections():
 
             json.dump(collection_list,open(COLLECTION_LIST_PATH, "w"))
 
-    if (choice == "Remove Collection"):
+    elif (choice == "Remove Collection"):
         keepGoing = True
         while keepGoing & (len(collection_list)> 0):
             coll_to_remove = utils.select_option("Year/Select",collection_list + ["_CANCEL"])
@@ -138,6 +138,25 @@ def add_collection(all_collections):
         choice = utils.select_option("Choose coll to add",matching + ["_CANCEL"])
 
     return choice
+        
+def update_code():
+    print('Updating code')
+    yellow_color = st7789.color565(255, 255, 0)
+    tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
+
+    try:
+        tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
+        mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
+        print("rebooting")
+        machine.reset()
+    except Exception as e:
+        print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
+        return
+
+    print("We should update livemusic.py")
+
+
  
 def basic_main():
     """
@@ -154,10 +173,10 @@ def basic_main():
     tm.tft.write(pfont_med, "Loading", 0, 90, yellow_color)
 
     start_time = time.ticks_ms()
-    pRewind_old = True
+    pFFwd_old = True
     pSelect_old = True
     pStop_old = True
-    update_code = False
+    update = False
     reconfigure = False
 
 
@@ -174,39 +193,25 @@ def basic_main():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-        if pRewind_old != tm.pFFwd.value():
-            pRewind_old = tm.pFFwd.value()
-            update_code = True
-            print(f"{time.ticks_ms()} Rewind button Pressed!!")
+        if pFFwd_old != tm.pFFwd.value():
+            pFFwd_old = tm.pFFwd.value()
+            update = True
+            print(f"{time.ticks_ms()} FFwd button Pressed!!")
             break
 
     wifi = connect_wifi()
-    if update_code:
-        print('Updating code')
-        tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-        tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
-
-        try:
-            if not wifi.isconnected():
-                raise RuntimeError("Wifi Not Connected -- not able to update code")
-            tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
-            mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
-            print("rebooting")
-            machine.reset()
-        except Exception as e:
-            print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
-            return
-
-        print("We should update livemusic.py")
-
+    if update:
+        update_code()
     elif reconfigure:
         print('Reconfiguring')
         tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-        choice = utils.select_option("Reconfigure",["Collections","Wifi","FactoryReset","Cancel"])
+        choice = utils.select_option("Reconfigure",["Collections","Wifi","Update Code","FactoryReset","Cancel"])
         if choice == "Collections":
             configure_collections()
         elif choice == "Wifi":
             wifi = configure_wifi()
+        elif choice == "Update Code":
+            update_code()
         elif choice == "FactoryReset":
             factory_reset()
     utils.clear_screen()
@@ -225,7 +230,6 @@ def test_update():
     tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
 
     start_time = time.ticks_ms()
-    pRewind_old = True
     pSelect_old = True
     pStop_old = True
     update_code = False
