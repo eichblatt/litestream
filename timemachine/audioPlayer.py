@@ -72,7 +72,7 @@ class AudioPlayer():
         return current_name, next_name
 
     def i2s_callback(self,t):
-        print('*')
+        print('*', end='')
         self.BlockFlag = False;
 
     # There is a bit of a balancing act going on with buffers here:
@@ -179,7 +179,8 @@ class AudioPlayer():
             if data != None:
                 self.TotalData += data
 
-        print ("Filled header buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", self.TotalData) if self.DEBUG else None
+        dtime = time.ticks_ms() - TimeStart
+        print (f"Filled header buffer. Time: {dtime} ms. Total Data: {self.TotalData}\n" if (self.DEBUG and dtime > 10) else " ", end="")
         
         # Process the header when we first start streaming the data, to initialise the decoder & set up buffers
         PlayerBuffer = bytearray(200000)     # Create a big buffer for the decoder to use (200kB seems enough)
@@ -228,7 +229,8 @@ class AudioPlayer():
                     if Data != None:
                         self.TotalData += Data
 
-                print ("Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", self.TotalData)
+                dtime = time.ticks_ms() - TimeStart
+                print (f"Filled header buffer. Time: {dtime} ms. Total Data: {self.TotalData}\n" if (self.DEBUG and dtime > 10) else " ", end="")
 
             # We will block here (except for the first time through) until the I2S callback is fired. i.e. I2S has finished playing and needs more data
             if self.BlockFlag == True: 
