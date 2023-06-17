@@ -144,11 +144,10 @@ def add_collection(all_collections):
 def update_code():
     print('Updating code')
     yellow_color = st7789.color565(255, 255, 0)
-    tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    utils.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
     try:
-        tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
         mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
         print("rebooting")
         machine.reset()
