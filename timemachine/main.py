@@ -38,9 +38,6 @@ def factory_reset():
     return 
 
 def connect_wifi():
-    yellow_color = st7789.color565(255, 255, 0)
-    utils.write("Connecting\nWiFi..", color=yellow_color)
- 
     wifi = utils.connect_wifi()
     if not wifi.isconnected():
         print("Wifi did not connect!!!")

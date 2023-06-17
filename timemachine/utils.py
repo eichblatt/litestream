@@ -306,14 +306,17 @@ def disconnect_wifi():
     wifi.disconnect()
     
 def connect_wifi():
-    log = open('connection_log.py','a')
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
+    # log = open('connection_log.py','a')
+    log = None
     if wifi.isconnected():
-        log.write("Already connected")
+        log.write("Already connected") if log is not None else None
         return wifi
 
+    yellow_color = st7789.color565(255, 255, 0)
+    write("Connecting\nWiFi..", color=yellow_color)
     if path_exists(WIFI_CRED_PATH):
         wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:
@@ -325,28 +328,28 @@ def connect_wifi():
     max_attempts = 7 
     while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
-        log.write(f"Attempting to connect to network. attempt {attempts}/{max_attempts}\n")
+        log.write(f"Attempting to connect to network. attempt {attempts}/{max_attempts}\n") if log is not None else None
         try:
             wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
             time.sleep(5)
         except Exception as e:
-            log.write(f"Exception {e}")
+            log.write(f"Exception {e}") if log is not None else None
             pass
         attempts += 1
     if wifi.isconnected():
-        log.write(f"is connected")
+        log.write(f"is connected") if log is not None else None
         wifi.active(True)
         wifi.config(pm=network.WLAN.PM_NONE)
         return wifi
     else:
-        log.write(f"failed -- retrying")
+        log.write(f"failed -- retrying") if log is not None else None
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
         with open(f'{WIFI_CRED_PATH}.bak','w') as f:
             json.dump(wifi_cred,f)
-        log.write(f"removing wifi_cred")
+        log.write(f"removing wifi_cred") if log is not None else None
         os.remove(WIFI_CRED_PATH)
         wifi = connect_wifi()
 
-    log.close()
+    log.close() if log is not None else None
     return wifi
  
