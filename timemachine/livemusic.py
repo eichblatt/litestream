@@ -156,9 +156,10 @@ def main_loop(player, coll_dict):
                 print("Stop DOWN")
 
         if not tm.pStop.value():
-            if (time.ticks_ms()-stop_press_time) > 1_000:
+            if (time.ticks_ms()-stop_press_time) > 1_500:
                 stop_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
+                utils.clear_screen()
                 tm.tft.off() 
                 time.sleep(3)
                 # sys.exit()

@@ -42,8 +42,8 @@ def connect_wifi():
     if not wifi.isconnected():
         print("Wifi did not connect!!!")
         raise Exception("Wifi Failed to Connect")
-    ip_address = wifi.ifconfig()[0]
-    utils.write(ip_address, font=date_font, y=60, clear=False) 
+    # ip_address = wifi.ifconfig()[0]
+    # utils.write(ip_address, font=date_font, y=60, clear=False) 
     return wifi
 
 def configure_wifi(): 
@@ -163,7 +163,7 @@ def reconfigure():
     print('Reconfiguring')
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
     time.sleep(1)
-    choice = utils.select_option("Reconfigure",["Collections","Update Code","Wifi","FactoryReset","Reboot","Cancel"])
+    choice = utils.select_option("Reconfigure",["Collections","Update Code","Wifi","FactoryReset","Reboot","Exit","Cancel"])
     if choice == "Collections":
         configure_collections()
     elif choice == "Wifi":
@@ -174,6 +174,7 @@ def reconfigure():
         factory_reset()
     elif choice == "Reboot":
         machine.reset()
+    return choice
 
 
 def basic_main():
@@ -270,12 +271,16 @@ def run_livemusic():
         print("Trying to run livemusic main")
         if 'livemusic' in sys.modules:
             utils.reload('livemusic')
-            livemusic.run()
         else:
             import livemusic 
-            livemusic.run()
     except Exception:
-        print("livemusic.py is not running!!")
-    reconfigure()
+        print("livemusic.py is not imported!!")
+
+    while True:
+        livemusic.run()
+        choice = reconfigure()
+        if choice == "Exit":
+            break
+
 
 #basic_main()
