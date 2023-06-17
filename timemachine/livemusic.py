@@ -379,11 +379,6 @@ def lookup_date(d, col_d):
 def run():
     """run the livemusic controls"""
     utils.clear_screen()
-    tm.tft.write(pfont_med, "Connecting", 0, 0, yellow_color)
-    tm.tft.write(pfont_med, "WiFi...", 0, 30, yellow_color)
-    wifi = utils.connect_wifi()
-    ip_address = wifi.ifconfig()[0]
-    tm.tft.write(date_font, ip_address, 0, 60, st7789.WHITE)
 
     if utils.path_exists(COLLECTION_LIST_PATH):
         collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
