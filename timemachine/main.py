@@ -244,10 +244,8 @@ def basic_main():
     tm.tft.write(pfont_med, "Loading", 0, 90, yellow_color)
 
     start_time = time.ticks_ms()
-    pFFwd_old = True
     pSelect_old = True
     pStop_old = True
-    update = False
     configure = False
 
     while time.ticks_ms() < (start_time + 5000):
@@ -262,19 +260,12 @@ def basic_main():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-        if pFFwd_old != tm.pFFwd.value():
-            pFFwd_old = tm.pFFwd.value()
-            update = True
-            print(f"{time.ticks_ms()} FFwd button Pressed!!")
-            break
-
     wifi = connect_wifi()
-    if update:
-        update_code()
-    elif configure:
+    if configure:
         reconfigure()
     utils.clear_screen()
     time.sleep(3)
+    return wifi
 
 
 def run_livemusic():
