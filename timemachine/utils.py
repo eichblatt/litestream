@@ -1,5 +1,6 @@
 import json
 import network
+import ntptime
 import os
 import st7789
 import time
@@ -323,6 +324,23 @@ def disconnect_wifi():
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.disconnect()
+
+
+def set_datetime():
+    time_set = False
+    # for some reason, we have to try several times before it works.
+    for i in range(10):
+        try:
+            ntptime.time()
+            ntptime.settime()
+            time_set = True
+        except OSError:
+            time.sleep(0.3)
+            pass
+    if time_set:
+        return time.localtime()
+    else:
+        return None
 
 
 def connect_wifi():

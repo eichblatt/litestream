@@ -5,6 +5,9 @@ import sys
 import time
 
 
+machine.freq(240_000_000)
+
+
 def path_exists(path):
     try:
         os.stat(path)
@@ -96,7 +99,7 @@ if isdir("/test_download"):
 
 import main
 
-wifi = main.basic_main()
+wifi = main.basic_main()  # Connect wifi, allow reconfigure
 try:
     main.run_livemusic()
 except:

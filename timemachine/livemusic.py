@@ -23,7 +23,6 @@ import board as tm
 import utils
 
 
-machine.freq(240_000_000)
 API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 # API = 'http://192.168.1.251:5000' # westmain
 # API = 'http://westmain:5000' # westmain
@@ -382,16 +381,26 @@ def lookup_date(d, col_d):
     return response
 
 
+def show_collections(collection_list):
+    ncoll = len(collection_list)
+    message = f"Loading {ncoll} Collections"
+    print(message)
+    tm.tft.write(pfont_med, message, 0, 0, st7789.RED)
+    for i, coll in enumerate(collection_list[:5]):
+        tm.tft.write(pfont_small, f"{coll}", 0, 5 + 20 * i, st7789.WHITE)
+    if ncoll > 5:
+        tm.tft.write(pfont_small, f"...", 0, 5 + 20 * i, st7789.WHITE)
+
+
 def run():
     """run the livemusic controls"""
-    utils.clear_screen()
-
     if utils.path_exists(COLLECTION_LIST_PATH):
         collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
     else:
         collection_list = ["GratefulDead"]
         with open(COLLECTION_LIST_PATH, "w") as f:
             json.dump(collection_list, f)
+    show_collections(collection_list)
 
     coll_dict = {}
     min_year = tm.y._min_val

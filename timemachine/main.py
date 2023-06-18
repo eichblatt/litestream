@@ -39,16 +39,6 @@ def factory_reset():
     return
 
 
-def connect_wifi():
-    wifi = utils.connect_wifi()
-    if not wifi.isconnected():
-        print("Wifi did not connect!!!")
-        raise Exception("Wifi Failed to Connect")
-    # ip_address = wifi.ifconfig()[0]
-    # utils.write(ip_address, font=date_font, y=60, clear=False)
-    return wifi
-
-
 def configure_wifi():
     print("Configuring Wifi")
     choices = ["Remove Wifi", "Cancel"]
@@ -58,7 +48,7 @@ def configure_wifi():
         utils.remove_wifi_cred()
     utils.disconnect_wifi()
     time.sleep(2)
-    wifi = connect_wifi()
+    wifi = utils.connect_wifi()
     return wifi
 
 
@@ -260,18 +250,18 @@ def basic_main():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-    wifi = connect_wifi()
+    wifi = utils.connect_wifi()
     if configure:
         reconfigure()
+    dt = utils.set_datetime()
+    print(f"Date set to {dt}" if dt is not None else "Failed to set datetime")
+    time.sleep(2)
     utils.clear_screen()
-    time.sleep(3)
     return wifi
 
 
 def run_livemusic():
     try:
-        print("Connecting Wifi")
-        wifi = connect_wifi()
         print("Trying to run livemusic main")
         if "livemusic" in sys.modules:
             utils.reload("livemusic")
