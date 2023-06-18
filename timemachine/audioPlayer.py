@@ -45,9 +45,8 @@ class AudioPlayer:
         InBuffer = bytearray(self.InBufferSize)  # An array to hold samples which we read from the network
         self.InBufferMV = memoryview(InBuffer)
 
-        OutBuffer = bytearray(
-            self.OutBufferSize
-        )  # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
+        # An array to hold decoded audio samples. This needs to be bigger than the incoming samples buffer as the decoder expands the data
+        OutBuffer = bytearray(self.OutBufferSize)
         self.OutBufferMV = memoryview(OutBuffer)
 
         self.playlist = self.tracklist = []
@@ -304,9 +303,8 @@ class AudioPlayer:
             # If we got audio data, play it
             if SamplesOut > 0:
                 print(f"{SamplesOut} samples to audio buffer") if self.DEBUG else None
-                numout = self.audio_out.write(
-                    self.OutBufferMV[: SamplesOut * self.channels * 2]
-                )  # Returns straight away. Multiply by 2 because we are assuming 16-bit samples
+                # Returns straight away. Multiply by 2 because we are assuming 16-bit samples
+                numout = self.audio_out.write(self.OutBufferMV[: SamplesOut * self.channels * 2])
                 # SamplesOut = max(SamplesOut - 1024,0)
                 self.BlockFlag = True
 
