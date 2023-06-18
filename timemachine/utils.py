@@ -11,18 +11,21 @@ from mrequests import mrequests as requests
 
 import board as tm
 
-WIFI_CRED_PATH = 'wifi_cred.json'
+WIFI_CRED_PATH = "wifi_cred.json"
+
 
 def reload(mod):
     import sys
+
     z = __import__(mod)
     del z
     del sys.modules[mod]
     return __import__(mod)
 
+
 class Bbox:
-    """Bounding Box -- Initialize with corners.
-    """
+    """Bounding Box -- Initialize with corners."""
+
     def __init__(self, x0, y0, x1, y1):
         self.corners = (x0, y0, x1, y1)
         self.x0, self.y0, self.x1, self.y1 = self.corners
@@ -49,13 +52,14 @@ class Bbox:
     def shift(self, d):
         return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
 
-stage_date_bbox = Bbox(0,0,160,32)
-nshows_bbox = Bbox(150,32,160,48)
-venue_bbox = Bbox(0,32,160,32+20)
-artist_bbox = Bbox(0,52,160,52+20)
-tracklist_bbox = Bbox(0,70, 160, 110)
-selected_date_bbox = Bbox(15,113,145,128)
-playpause_bbox = Bbox(145 ,113, 160, 128)
+
+stage_date_bbox = Bbox(0, 0, 160, 32)
+nshows_bbox = Bbox(150, 32, 160, 48)
+venue_bbox = Bbox(0, 32, 160, 32 + 20)
+artist_bbox = Bbox(0, 52, 160, 52 + 20)
+tracklist_bbox = Bbox(0, 70, 160, 110)
+selected_date_bbox = Bbox(15, 113, 145, 128)
+playpause_bbox = Bbox(145, 113, 160, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -67,22 +71,26 @@ nshows_color = st7789.color565(0, 100, 255)
 def clear_bbox(bbox):
     tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
 
+
 def clear_area(x, y, width, height):
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
+
 
 def clear_screen():
     clear_area(0, 0, 160, 128)
 
+
 def clear_area(x, y, width, height):
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
+
 
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()
     text = msg.split("\n")
-    for i,line in enumerate(text):
-        tm.tft.write(font, line, x, y+(i*text_height), color)
-    
+    for i, line in enumerate(text):
+        tm.tft.write(font, line, x, y + (i * text_height), color)
+
 
 def select_option(message, choices):
     pSelect_old = True
@@ -93,38 +101,41 @@ def select_option(message, choices):
     choice = ""
     first_time = True
     clear_screen()
-    select_bbox = Bbox(0,20,160,128)
+    select_bbox = Bbox(0, 20, 160, 128)
     tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
     while pSelect_old == tm.pSelect.value():
-        step = (tm.y.value() - tm.y._min_val)% len(choices) 
-        if (step != step_old) or first_time: 
+        step = (tm.y.value() - tm.y._min_val) % len(choices)
+        if (step != step_old) or first_time:
             i = j = 0
             first_time = False
             step_old = step
             clear_bbox(select_bbox)
 
-            for i,s in enumerate(range(max(0,step-2), step)):
-                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*i, tracklist_color)
+            for i, s in enumerate(range(max(0, step - 2), step)):
+                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, tracklist_color)
 
             text = ">" + choices[step]
-            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height*(i+1), st7789.RED)
+            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), st7789.RED)
 
-            for j,s in enumerate(range(step+1,min(step+5,len(choices)))):
-                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height*(i+j+2), tracklist_color)
+            for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
+                tm.tft.write(
+                    pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), tracklist_color
+                )
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
     # print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
-    return choices[step]        
-        
+    return choices[step]
+
+
 def select_chars(message, message2="", already=None):
-    charset = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c'
+    charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"
     message = message.split("\n")
     pSelect_old = pStop_old = True
     tm.y._max_val = tm.y._max_val + 100
-    tm.y._value = int((tm.y._min_val + tm.y._max_val)/2)
-    tm.d._value = int((tm.d._min_val + tm.d._max_val)/2)
+    tm.y._value = int((tm.y._min_val + tm.y._max_val) / 2)
+    tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
     step = step_old = 0
     text_height = 18
@@ -132,21 +143,21 @@ def select_chars(message, message2="", already=None):
     clear_screen()
     y_origin = len(message) * text_height
 
-    select_bbox = Bbox(0,y_origin,160,y_origin + text_height)
-    selected_bbox = Bbox(0,y_origin + text_height,160,y_origin+2*text_height)
-    message2_bbox = Bbox(0,y_origin + 2*text_height,160,128)
+    select_bbox = Bbox(0, y_origin, 160, y_origin + text_height)
+    selected_bbox = Bbox(0, y_origin + text_height, 160, y_origin + 2 * text_height)
+    message2_bbox = Bbox(0, y_origin + 2 * text_height, 160, 128)
 
-    def decade_value(tens, ones, bounds, start_vals=(tm.d._value,tm.y._value)):
-        value = ((tens - start_vals[0]) * 10 + (ones - start_vals[1])) 
-        value = max(value,bounds[0]) % bounds[1] 
+    def decade_value(tens, ones, bounds, start_vals=(tm.d._value, tm.y._value)):
+        value = (tens - start_vals[0]) * 10 + (ones - start_vals[1])
+        value = max(value, bounds[0]) % bounds[1]
 
         if value == 0:
             tm.d._value = start_vals[0]
             tm.y._value = start_vals[1]
         return value
 
-    for i,msg in enumerate(message):
-        tm.tft.write(pfont_small, f"{msg}", 0, i*text_height, stage_date_color)
+    for i, msg in enumerate(message):
+        tm.tft.write(pfont_small, f"{msg}", 0, i * text_height, stage_date_color)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
@@ -155,7 +166,7 @@ def select_chars(message, message2="", already=None):
 
     singleLetter = already is not None
     already = already if singleLetter else ""
-    selected = already 
+    selected = already
     print(f"already is {already}")
     print(f"Message2 is {message2}")
     text = "DEL"
@@ -173,26 +184,28 @@ def select_chars(message, message2="", already=None):
                 prev_selected = selected
                 clear_bbox(selected_bbox)
                 tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
-            # step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1) 
-            step = decade_value(tm.d.value(), tm.y.value(), (0,len(charset) + 1))
-            if (step != step_old) or first_time: 
+            # step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1)
+            step = decade_value(tm.d.value(), tm.y.value(), (0, len(charset) + 1))
+            if (step != step_old) or first_time:
                 cursor = 0
                 first_time = False
                 step_old = step
                 clear_bbox(select_bbox)
 
                 # Write the Delete character
-                cursor += tm.tft.write(pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step!=0 else st7789.RED)
+                cursor += tm.tft.write(
+                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step != 0 else st7789.RED
+                )
 
-                text = charset[max(0,step - 5) : -1 + step]
+                text = charset[max(0, step - 5) : -1 + step]
                 for x in charset[94:]:
-                    text = text.replace(x,".")   # Should be "\u25A1", but I don't think we have the font for this yet.
+                    text = text.replace(x, ".")  # Should be "\u25A1", but I don't think we have the font for this yet.
 
                 # Write the characters before the cursor
                 cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tracklist_color)
-                
+
                 # Write the character AT the cursor
-                text = charset[-1 + min(step,len(charset))]
+                text = charset[-1 + min(step, len(charset))]
                 if text == " ":
                     text = "SPC"
                 elif text == "\t":
@@ -209,19 +222,19 @@ def select_chars(message, message2="", already=None):
                 cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
 
                 # Write the characters after the cursor
-                text = charset[step:min(-1+step+screen_width,len(charset))]
+                text = charset[step : min(-1 + step + screen_width, len(charset))]
                 for x in charset[94:]:
                     text = text.replace(x, ".")
-                tm.tft.write(pfont_small, text, select_bbox.x0+cursor, select_bbox.y0, tracklist_color)
+                tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tracklist_color)
 
                 # print(f"step is {step}. Text is {text}")
             time.sleep(0.2)
-        time.sleep(0.2) # de-jitter
+        time.sleep(0.2)  # de-jitter
         if not finished:
             if step == 0:
                 selected = selected[:-1]
             else:
-                choice = charset[step-1] # -1 for the delete character.
+                choice = charset[step - 1]  # -1 for the delete character.
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             clear_bbox(selected_bbox)
@@ -234,10 +247,11 @@ def select_chars(message, message2="", already=None):
     print(f"select_char Returning. selected is: {selected}")
     clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
-    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height+5 , st7789.RED)
+    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, st7789.RED)
     time.sleep(0.3)
     return selected
- 
+
+
 def isdir(path):
     try:
         return (os.stat(path)[0] & 0x4000) != 0
@@ -252,59 +266,65 @@ def path_exists(path):
     except OSError:
         return False
 
-def copy_file(src,dest):
-    outfile = open(dest,'wb')
-    infile = open(src,'rb')
+
+def copy_file(src, dest):
+    outfile = open(dest, "wb")
+    infile = open(src, "rb")
     content = infile.readlines()
     infile.close()
     for line in content:
-        outfile.write(line) 
+        outfile.write(line)
     outfile.close()
-    
+
 
 def remove_dir(path):
     if not path_exists(path):
         return
     for file in os.listdir(path):
-        full_path = f'{path}/{file}'
+        full_path = f"{path}/{file}"
         if isdir(full_path):
             remove_dir(full_path)
         else:
             os.remove(full_path)
     os.rmdir(path)
 
-def copy_dir(src_d,dest_d):
+
+def copy_dir(src_d, dest_d):
     print(f"Copy_dir {src_d}, {dest_d}")
     if path_exists(dest_d):
-        os.rename(dest_d,f'{dest_d}_tmp')
+        os.rename(dest_d, f"{dest_d}_tmp")
     os.mkdir(dest_d)
     for file in os.listdir(src_d):
-        print(f'file: {file}')
+        print(f"file: {file}")
         if isdir(f"{src_d}/{file}"):
             print(".. is a directory")
-            copy_dir(f'{src_d}/{file}',f'{dest_d}/{file}')
+            copy_dir(f"{src_d}/{file}", f"{dest_d}/{file}")
         else:
-            copy_file(f'{src_d}/{file}',f'{dest_d}/{file}')
-    remove_dir(f'{dest_d}_tmp')
-  
+            copy_file(f"{src_d}/{file}", f"{dest_d}/{file}")
+    remove_dir(f"{dest_d}_tmp")
+
+
 def remove_wifi_cred():
     os.remove(WIFI_CRED_PATH)
+
 
 def get_wifi_cred(wifi):
     choices = wifi.scan()  # Scan for available access points
     choices = [x[0].decode().replace('"', "") for x in choices]
-    choices = [x for x in choices if x != '']
-    choices = sorted(set(choices),key=choices.index)
-    print(f"get_wifi_cred. Choices are {choices}") 
+    choices = [x for x in choices if x != ""]
+    choices = sorted(set(choices), key=choices.index)
+    print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     passkey = select_chars("Input Passkey for {choice}\nSelect. Stop to End\n ")
-    return {'name':choice,"passkey":passkey}
+    return {"name": choice, "passkey": passkey}
+
 
 def disconnect_wifi():
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.disconnect()
-    
+
+
 def connect_wifi():
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
@@ -321,11 +341,11 @@ def connect_wifi():
         wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:
         wifi_cred = get_wifi_cred(wifi)
-        with open(WIFI_CRED_PATH,'w') as f:
-            json.dump(wifi_cred,f)
+        with open(WIFI_CRED_PATH, "w") as f:
+            json.dump(wifi_cred, f)
 
     attempts = 0
-    max_attempts = 7 
+    max_attempts = 7
     while (not wifi.isconnected()) & (attempts <= max_attempts):
         print("Attempting to connect to network")
         log.write(f"Attempting to connect to network. attempt {attempts}/{max_attempts}\n") if log is not None else None
@@ -344,12 +364,11 @@ def connect_wifi():
     else:
         log.write(f"failed -- retrying") if log is not None else None
         tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
-        with open(f'{WIFI_CRED_PATH}.bak','w') as f:
-            json.dump(wifi_cred,f)
+        with open(f"{WIFI_CRED_PATH}.bak", "w") as f:
+            json.dump(wifi_cred, f)
         log.write(f"removing wifi_cred") if log is not None else None
         os.remove(WIFI_CRED_PATH)
         wifi = connect_wifi()
 
     log.close() if log is not None else None
     return wifi
- 

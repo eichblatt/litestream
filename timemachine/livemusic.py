@@ -24,11 +24,11 @@ import utils
 
 
 machine.freq(240_000_000)
-API = 'https://msdocs-python-webapp-quickstart-sle.azurewebsites.net'
-#API = 'http://192.168.1.251:5000' # westmain
-#API = 'http://westmain:5000' # westmain
-#API = 'http://deadstreamv3:5000'
-COLLECTION_LIST_PATH = 'collection_list.json'
+API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
+# API = 'http://192.168.1.251:5000' # westmain
+# API = 'http://westmain:5000' # westmain
+# API = 'http://deadstreamv3:5000'
+COLLECTION_LIST_PATH = "collection_list.json"
 
 print("Starting...")
 
@@ -48,33 +48,34 @@ def best_tape(collection, key_date):
 def select_date(collections, key_date, ntape=0):
     print(f"selecting show from {key_date}")
     collstring = ",".join(collections)
-    api_request = f"{API}/tracklist/{key_date}?collections={collstring}&ntape={ntape}" 
+    api_request = f"{API}/tracklist/{key_date}?collections={collstring}&ntape={ntape}"
     print(f"API request is {api_request}")
     resp = requests.get(api_request).json()
-    collection = resp['collection']
-    tracklist = resp['tracklist']
-    api_request = f"{API}/urls/{key_date}?collections={collstring}&ntape={ntape}" 
+    collection = resp["collection"]
+    tracklist = resp["tracklist"]
+    api_request = f"{API}/urls/{key_date}?collections={collstring}&ntape={ntape}"
     resp = requests.get(api_request).json()
-    urls = resp['urls']
+    urls = resp["urls"]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
-def get_tape_ids(collections,key_date):
+
+def get_tape_ids(collections, key_date):
     print(f"getting tape_ids from {key_date}")
     collstring = ",".join(collections)
     api_request = f"{API}/tape_ids/{key_date}?collections={collstring}"
     print(f"API request is {api_request}")
     tape_ids = requests.get(api_request).json()
     return tape_ids
-     
 
-stage_date_bbox = utils.Bbox(0,0,160,32)
-nshows_bbox = utils.Bbox(150,32,160,48)
-venue_bbox = utils.Bbox(0,32,160,32+20)
-artist_bbox = utils.Bbox(0,52,160,52+20)
-tracklist_bbox = utils.Bbox(0,70, 160, 110)
-selected_date_bbox = utils.Bbox(15,112,145,128)
-playpause_bbox = utils.Bbox(145 ,113, 160, 128)
+
+stage_date_bbox = utils.Bbox(0, 0, 160, 32)
+nshows_bbox = utils.Bbox(150, 32, 160, 48)
+venue_bbox = utils.Bbox(0, 32, 160, 32 + 20)
+artist_bbox = utils.Bbox(0, 52, 160, 52 + 20)
+tracklist_bbox = utils.Bbox(0, 70, 160, 110)
+selected_date_bbox = utils.Bbox(15, 112, 145, 128)
+playpause_bbox = utils.Bbox(145, 113, 160, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -82,11 +83,12 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
-def display_tracks(current_track_name,next_track_name):
+
+def display_tracks(current_track_name, next_track_name):
     utils.clear_bbox(tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
-    return 
+    return
 
 
 def main_loop(player, coll_dict):
@@ -104,12 +106,14 @@ def main_loop(player, coll_dict):
     pYSw_old = False
     pMSw_old = False
     pDSw_old = False
-    key_date = set_date('1975-08-13')
+    key_date = set_date("1975-08-13")
     selected_date = key_date
-    collection = "GratefulDead"; tracklist = []; urls = []
+    collection = "GratefulDead"
+    tracklist = []
+    urls = []
     collections = list(coll_dict.keys())
-    current_collection = ''
-    vcs = selected_vcs = ''
+    current_collection = ""
+    vcs = selected_vcs = ""
     pvcs_line = 0
     select_press_time = 0
     power_press_time = 0
@@ -128,21 +132,21 @@ def main_loop(player, coll_dict):
         player_status = player.Audio_Pump()
         playstate = player.PLAY_STATE
         poll_count = poll_count + 1
-        if (playstate == 1) and (poll_count%20 != 0):  # throttle the polling, to pump more often.
+        if (playstate == 1) and (poll_count % 20 != 0):  # throttle the polling, to pump more often.
             continue
-        
+
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
             if pPlayPause_old:
                 print("PlayPause UP")
             else:
                 utils.clear_bbox(playpause_bbox)
-                if playstate == 1: # playing
+                if playstate == 1:  # playing
                     player.pause()
-                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0 , st7789.WHITE)
+                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
                 else:  # initial state or stopped
                     player.play()
-                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 print("PlayPause DOWN")
 
         if pStop_old != tm.pStop.value():
@@ -151,23 +155,22 @@ def main_loop(player, coll_dict):
                 print("Stop UP")
             else:
                 player.stop()
-                tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0 , play_color)
+                tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 stop_press_time = time.ticks_ms()
                 print("Stop DOWN")
 
         if not tm.pStop.value():
-            if (time.ticks_ms()-stop_press_time) > 1_500:
+            if (time.ticks_ms() - stop_press_time) > 1_500:
                 stop_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
                 utils.clear_screen()
-                tm.tft.off() 
+                tm.tft.off()
                 time.sleep(3)
                 # sys.exit()
                 return
 
-
-        # Throttle Downstream polling 
-        if (playstate == 1) and (poll_count%200 != 0):
+        # Throttle Downstream polling
+        if (playstate == 1) and (poll_count % 200 != 0):
             continue
 
         if pRewind_old != tm.pRewind.value():
@@ -194,7 +197,7 @@ def main_loop(player, coll_dict):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 if key_date in valid_dates:
-                    collection, tracklist, urls = select_date(coll_dict.keys(),key_date, ntape)
+                    collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.set_playlist(tracklist, urls)
                     ntape = 0
@@ -202,34 +205,36 @@ def main_loop(player, coll_dict):
                     selected_date = key_date
                     selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
-                    tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) 
+                    tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(selected_date_bbox)
                     selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
                     print(f"Selected date string {selected_date_str}")
-                    tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0,selected_date_bbox.y0)
+                    tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
-            if (time.ticks_ms()-select_press_time) > 1_000:
+            if (time.ticks_ms() - select_press_time) > 1_000:
                 select_press_time = time.ticks_ms()
                 if ntape == 0:
-                    tape_ids = get_tape_ids(coll_dict.keys(),key_date)
-                ntape = (ntape + 1)%len(tape_ids)
+                    tape_ids = get_tape_ids(coll_dict.keys(), key_date)
+                ntape = (ntape + 1) % len(tape_ids)
                 utils.clear_bbox(artist_bbox)
-                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
-                #vcs = coll_dict[tape_ids[ntape][0]][key_date]
+                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                # vcs = coll_dict[tape_ids[ntape][0]][key_date]
                 utils.clear_bbox(venue_bbox)
-                display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*","~", tape_ids[ntape][1])
-                display_str = re.sub(r"\d\d-\d\d-\d\d\.*","~", display_str)
+                display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*", "~", tape_ids[ntape][1])
+                display_str = re.sub(r"\d\d-\d\d-\d\d\.*", "~", display_str)
                 print(f"display string is {display_str}")
                 if len(display_str) > 18:
                     display_str = display_str[:11] + display_str[-6:]
-                tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                tm.tft.write(
+                    pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color
+                )  # no need to clear this.
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
-        
+
         if pPower_old != tm.pPower.value():
             pPower_old = tm.pPower.value()
             tm.pLED.value(PowerLED)
@@ -242,20 +247,20 @@ def main_loop(player, coll_dict):
                 print("Power DOWN -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms()-power_press_time) > 1_000:
+            if (time.ticks_ms() - power_press_time) > 1_000:
                 power_press_time = time.ticks_ms()
                 print("Power DOWN -- exiting")
-                tm.tft.off() 
+                tm.tft.off()
                 time.sleep(0.1)
                 machine.reset()
 
-        vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1+len(selected_vcs)//16)
+        vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
-                pvcs_line = vcs_line
-                utils.clear_bbox(venue_bbox)
-                startchar = min(15 * vcs_line,len(selected_vcs) - 16)
-                tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color) 
-         
+            pvcs_line = vcs_line
+            utils.clear_bbox(venue_bbox)
+            startchar = min(15 * vcs_line, len(selected_vcs) - 16)
+            tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
             if pYSw_old:
@@ -312,7 +317,7 @@ def main_loop(player, coll_dict):
 
         if date_old != date_new:
             utils.clear_bbox(stage_date_bbox)
-            tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color) # no need to clear this.
+            tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
             # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
             date_old = date_new
             print(f"date = {date_new} or {key_date}")
@@ -324,39 +329,41 @@ def main_loop(player, coll_dict):
                             collection = c
                             vcs = coll_dict[collection][f"{key_date}"]
                             utils.clear_bbox(artist_bbox)
-                            tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                            tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                 else:
-                    vcs = ''
-                    collection = ''
+                    vcs = ""
+                    collection = ""
                     utils.clear_bbox(artist_bbox)
-                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color) 
+                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
                     display_tracks(*player.track_names())
-                print(f'vcs is {vcs}')
+                print(f"vcs is {vcs}")
                 utils.clear_bbox(venue_bbox)
-                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color) # no need to clear this.
+                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)  # no need to clear this.
                 utils.clear_bbox(nshows_bbox)
                 if nshows > 1:
-                    tm.tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color) # no need to clear this.
+                    tm.tft.write(
+                        pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
+                    )  # no need to clear this.
             except KeyError:
                 utils.clear_bbox(venue_bbox)
                 utils.clear_bbox(artist_bbox)
-                tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color) 
+                tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                 display_tracks(*player.track_names())
                 pass
         # time.sleep_ms(50)
 
 
 def add_vcs(coll):
-    os.mkdir('metadata') if not utils.path_exists('metadata') else None
+    os.mkdir("metadata") if not utils.path_exists("metadata") else None
     ids_path = f"metadata/{coll}_vcs.json"
     print(f"Loading collection {coll} from {ids_path}")
-    api_request = f"{API}/vcs/{coll}" 
+    api_request = f"{API}/vcs/{coll}"
     resp = requests.get(api_request).json()
     vcs = resp[coll]
     print(f"vcs: {vcs}")
-    with open(ids_path,'w') as f:
-        json.dump(vcs,f)
-    
+    with open(ids_path, "w") as f:
+        json.dump(vcs, f)
+
 
 def load_vcs(coll):
     ids_path = f"metadata/{coll}_vcs.json"
@@ -375,7 +382,6 @@ def lookup_date(d, col_d):
     return response
 
 
-
 def run():
     """run the livemusic controls"""
     utils.clear_screen()
@@ -383,9 +389,9 @@ def run():
     if utils.path_exists(COLLECTION_LIST_PATH):
         collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
     else:
-        collection_list = ['GratefulDead']
-        with open(COLLECTION_LIST_PATH,'w') as f:
-            json.dump(collection_list,f)
+        collection_list = ["GratefulDead"]
+        with open(COLLECTION_LIST_PATH, "w") as f:
+            json.dump(collection_list, f)
 
     coll_dict = {}
     min_year = tm.y._min_val
@@ -393,12 +399,11 @@ def run():
     for coll in collection_list:
         coll_dict[coll] = load_vcs(coll)
         coll_dates = coll_dict[coll].keys()
-        min_year = min(int(min(coll_dates)[:4]),min_year)
-        max_year = max(int(max(coll_dates)[:4]),max_year)
+        min_year = min(int(min(coll_dates)[:4]), min_year)
+        max_year = max(int(max(coll_dates)[:4]), max_year)
         tm.y._min_val = min_year
         tm.y._max_val = max_year
 
-
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={'display':display_tracks})
+    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks})
     main_loop(player, coll_dict)
