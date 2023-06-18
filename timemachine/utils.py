@@ -354,7 +354,7 @@ def connect_wifi():
         return wifi
 
     yellow_color = st7789.color565(255, 255, 0)
-    write("Connecting\nWiFi..", color=yellow_color)
+    write("Connecting\nWiFi....", color=yellow_color)
     if path_exists(WIFI_CRED_PATH):
         wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:

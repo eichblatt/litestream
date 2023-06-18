@@ -29,8 +29,6 @@ API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 # API = 'http://deadstreamv3:5000'
 COLLECTION_LIST_PATH = "collection_list.json"
 
-print("Starting...")
-
 
 def set_date(date):
     tm.y._value = int(date[:4])
@@ -385,11 +383,13 @@ def show_collections(collection_list):
     ncoll = len(collection_list)
     message = f"Loading {ncoll} Collections"
     print(message)
+    utils.clear_screen()
     tm.tft.write(pfont_med, message, 0, 0, st7789.RED)
     for i, coll in enumerate(collection_list[:5]):
-        tm.tft.write(pfont_small, f"{coll}", 0, 5 + 20 * i, st7789.WHITE)
+        tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
     if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, 5 + 20 * i, st7789.WHITE)
+        tm.tft.write(pfont_small, f"...", 0, 25 + 20 * i, st7789.WHITE)
+    time.sleep(1)
 
 
 def run():

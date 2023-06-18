@@ -254,7 +254,9 @@ def basic_main():
     if configure:
         reconfigure()
     dt = utils.set_datetime()
-    print(f"Date set to {dt}" if dt is not None else "Failed to set datetime")
+    if dt is not None:
+        print(f"Date set to {dt}")
+        tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     time.sleep(2)
     utils.clear_screen()
     return wifi
