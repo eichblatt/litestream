@@ -145,9 +145,7 @@ def configure_collections():
     elif choice == "Remove Collection":
         keepGoing = True
         while keepGoing & (len(collection_list) > 0):
-            coll_to_remove = utils.select_option(
-                "Year/Select", collection_list + ["_CANCEL"]
-            )
+            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
             collection_list = [x for x in collection_list if not x == coll_to_remove]
             choices = ["Remove Another", "Finished"]
             choice2 = utils.select_option("Year/Select", choices)
@@ -173,9 +171,7 @@ def add_collection(all_collections):
     while n_matching > 20:
         m2 = f"{n_matching} Matching"
         print(m2)
-        selected_chars = utils.select_chars(
-            "Spell desired\nCollection", message2=m2, already=selected_chars
-        )
+        selected_chars = utils.select_chars("Spell desired\nCollection", message2=m2, already=selected_chars)
         matching = [x for x in matching if selected_chars.lower() in x.lower()]
         n_matching = len(matching)
 
@@ -193,10 +189,7 @@ def update_code():
     tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
 
     try:
-        mip.install(
-            "github:eichblatt/litestream/timemachine/package.json",
-            target="test_download",
-        )
+        mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
         print("rebooting")
         machine.reset()
     except Exception as e:
