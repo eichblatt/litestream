@@ -86,7 +86,7 @@ stage_date_bbox = utils.Bbox(0, 0, 160, 32)
 nshows_bbox = utils.Bbox(150, 32, 160, 48)
 venue_bbox = utils.Bbox(0, 32, 160, 32 + 20)
 artist_bbox = utils.Bbox(0, 52, 160, 52 + 20)
-tracklist_bbox = utils.Bbox(0, 70, 160, 110)
+tracklist_bbox = utils.Bbox(0, 72, 160, 112)
 selected_date_bbox = utils.Bbox(15, 112, 145, 128)
 playpause_bbox = utils.Bbox(145, 113, 160, 128)
 
@@ -102,6 +102,18 @@ def display_tracks(current_track_name, next_track_name):
     tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
     return
+
+
+def play_pause(player):
+    utils.clear_bbox(playpause_bbox)
+    playstate = player.PLAY_STATE
+    if playstate == 1:  # playing
+        player.pause()
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
+    else:  # initial state or stopped
+        player.play()
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+    return playstate
 
 
 def main_loop(player, coll_dict):
@@ -151,31 +163,25 @@ def main_loop(player, coll_dict):
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
             if pPlayPause_old:
-                print("PlayPause UP")
-            else:
-                utils.clear_bbox(playpause_bbox)
-                if playstate == 1:  # playing
-                    player.pause()
-                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
-                else:  # initial state or stopped
-                    player.play()
-                    tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 print("PlayPause DOWN")
+            else:
+                playstate = play_pause(player)
+                print("PlayPause UP")
 
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()
             if pStop_old:
-                print("Stop UP")
+                print("Stop DOWN")
             else:
                 player.stop()
                 tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 stop_press_time = time.ticks_ms()
-                print("Stop DOWN")
+                print("Stop UP")
 
         if not tm.pStop.value():
             if (time.ticks_ms() - stop_press_time) > 1_500:
                 stop_press_time = time.ticks_ms()
-                print("Power DOWN -- back to reconfigure")
+                print("Power UP -- back to reconfigure")
                 utils.clear_screen()
                 tm.tft.off()
                 time.sleep(2)
@@ -190,28 +196,31 @@ def main_loop(player, coll_dict):
             pRewind_old = tm.pRewind.value()
             if pRewind_old:
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.BLUE)
-                print("Rewind UP")
+                print("Rewind DOWN")
             else:
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
-                print("Rewind DOWN")
+                print("Rewind UP")
                 player.rewind()
 
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.BLUE)
-                print("FFwd UP")
+                print("FFwd DOWN")
             else:
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
-                print("FFwd DOWN")
+                print("FFwd UP")
                 player.ffwd()
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
+                # if key_date == selected_date:  # We're already on this date
+                #    pass
                 if key_date in valid_dates:
                     collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
+                    player.stop()
                     player.set_playlist(tracklist, urls)
                     ntape = 0
 
@@ -223,10 +232,12 @@ def main_loop(player, coll_dict):
                     selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
                     print(f"Selected date string {selected_date_str}")
                     tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
-                print("Select UP")
+                    player.play()
+                    # play_pause(player)
+                print("Select DOWN")
             else:
                 select_press_time = time.ticks_ms()
-                print("Select DOWN")
+                print("Select UP")
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
@@ -253,11 +264,11 @@ def main_loop(player, coll_dict):
             tm.pLED.value(PowerLED)
             tm.tft.off() if not PowerLED else tm.tft.on()
             if pPower_old:
-                print("Power UP")
+                print("Power DOWN")
             else:
                 PowerLED = not PowerLED
                 power_press_time = time.ticks_ms()
-                print("Power DOWN -- screen")
+                print("Power UP -- screen")
 
         if not tm.pPower.value():
             if (time.ticks_ms() - power_press_time) > 1_000:
@@ -277,28 +288,28 @@ def main_loop(player, coll_dict):
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
             if pYSw_old:
-                print("Year UP")
+                print("Year DOWN")
             else:  # cycle through Today In History (once we know what today is!)
                 key_date = set_date(get_next_tih(key_date, valid_dates))
-                print("Year DOWN")
+                print("Year UP")
 
         if pMSw_old != tm.pMSw.value():
             pMSw_old = tm.pMSw.value()
             if pMSw_old:
-                print("Month UP")
-            else:
                 print("Month DOWN")
+            else:
+                print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
             pDSw_old = tm.pDSw.value()
             if pDSw_old:
-                print("Day UP")
+                print("Day DOWN")
             else:
                 for date in valid_dates:
                     if date > key_date:
                         key_date = set_date(date)
                         break
-                print("Day DOWN")
+                print("Day UP")
 
         year_new = tm.y.value()
         month_new = tm.m.value()
