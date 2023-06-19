@@ -66,6 +66,22 @@ def get_tape_ids(collections, key_date):
     return tape_ids
 
 
+def get_next_tih(date, valid_dates, valid_tihs=[]):
+    print("Getting next Today In History date")
+    dt = time.localtime()
+    tih_pattern = f"{dt[1]:02d}-{dt[2]:02d}"
+    if len(valid_tihs) == 0:
+        for d in valid_dates:
+            if d[5:] == tih_pattern:
+                valid_tihs.append(d)
+    if date == valid_tihs[-1]:
+        return valid_tihs[0]
+    for d in valid_tihs:
+        if d > date:
+            return d
+    return date
+
+
 stage_date_bbox = utils.Bbox(0, 0, 160, 32)
 nshows_bbox = utils.Bbox(150, 32, 160, 48)
 venue_bbox = utils.Bbox(0, 32, 160, 32 + 20)
@@ -262,8 +278,8 @@ def main_loop(player, coll_dict):
             pYSw_old = tm.pYSw.value()
             if pYSw_old:
                 print("Year UP")
-            else:
-                # cycle through Today In History (once we know what today is!)
+            else:  # cycle through Today In History (once we know what today is!)
+                key_date = set_date(get_next_tih(key_date, valid_dates))
                 print("Year DOWN")
 
         if pMSw_old != tm.pMSw.value():
@@ -388,7 +404,7 @@ def show_collections(collection_list):
     for i, coll in enumerate(collection_list[:5]):
         tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
     if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, 25 + 20 * i, st7789.WHITE)
+        tm.tft.write(pfont_small, f"...", 0, 25 + 20 * 5, st7789.WHITE)
     time.sleep(1)
 
 
