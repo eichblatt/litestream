@@ -28,6 +28,7 @@ API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 # API = 'http://westmain:5000' # westmain
 # API = 'http://deadstreamv3:5000'
 COLLECTION_LIST_PATH = "collection_list.json"
+AUTO_PLAY = False
 
 
 def set_date(date):
@@ -121,16 +122,10 @@ def main_loop(player, coll_dict):
     month_old = -1
     day_old = -1
     date_old = ""
-    PowerLED = True
-    pPower_old = False
-    pSelect_old = False
-    pPlayPause_old = False
-    pStop_old = False
-    pRewind_old = False
-    pFFwd_old = False
-    pYSw_old = False
-    pMSw_old = False
-    pDSw_old = False
+    PowerLED = 1
+    pPower_old = 0
+    pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
+    pYSw_old = pMSw_old = pDSw_old = 1
     key_date = set_date("1975-08-13")
     selected_date = key_date
     collection = "GratefulDead"
@@ -215,9 +210,11 @@ def main_loop(player, coll_dict):
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
-                # if key_date == selected_date:  # We're already on this date
-                #    pass
-                if key_date in valid_dates:
+                print("short press of select")
+                if key_date == selected_date:  # We're already on this date
+                    if player.PLAY_STATE > 0:
+                        pass
+                elif key_date in valid_dates:
                     collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.stop()
@@ -232,8 +229,8 @@ def main_loop(player, coll_dict):
                     selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
                     print(f"Selected date string {selected_date_str}")
                     tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
-                    player.play()
-                    # play_pause(player)
+                    if AUTO_PLAY:
+                        play_pause(player)
                 print("Select DOWN")
             else:
                 select_press_time = time.ticks_ms()
@@ -241,6 +238,7 @@ def main_loop(player, coll_dict):
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
+                print("                 Longpress of select")
                 select_press_time = time.ticks_ms()
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict.keys(), key_date)
@@ -359,7 +357,6 @@ def main_loop(player, coll_dict):
                     collection = ""
                     utils.clear_bbox(artist_bbox)
                     tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
-                    display_tracks(*player.track_names())
                 print(f"vcs is {vcs}")
                 utils.clear_bbox(venue_bbox)
                 tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)  # no need to clear this.

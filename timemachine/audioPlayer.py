@@ -27,7 +27,7 @@ class AudioPlayer:
     def __init__(self, callbacks={}):
         self.callbacks = callbacks
         self.DEBUG = False
-        self.PLAY_STATE = 0
+        self.PLAY_STATE = 0  # 0 = init, 1 = playing , 2 = paused
         self.BlockFlag = False
         self.TotalData = 0
         self.sock = None
@@ -70,6 +70,8 @@ class AudioPlayer:
         return {"current_track": self.current_track, "next_track": self.next_track, "ntracks": self.ntracks}
 
     def track_names(self):
+        if self.current_track is None:
+            return "", ""
         current_name = self.tracklist[self.current_track]
         next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
         return current_name, next_name
