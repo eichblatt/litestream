@@ -185,10 +185,11 @@ class AudioPlayer:
                 self.TotalData += data
 
         dtime = time.ticks_ms() - TimeStart
-        print(
-            f"Filled header buffer. Time: {dtime} ms. Total Data: {self.TotalData}\n" if (self.DEBUG and dtime > 10) else " ",
-            end="",
-        )
+        if self.DEBUG:
+            if dtime > 10:
+                print(f"Filled header buffer. Time: {dtime} ms. Total Data: {self.TotalData}")
+            else:
+                print(" ", end="")
 
         # Process the header when we first start streaming the data, to initialise the decoder & set up buffers
         PlayerBuffer = bytearray(200000)  # Create a big buffer for the decoder to use (200kB seems enough)
