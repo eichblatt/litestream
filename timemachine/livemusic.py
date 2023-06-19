@@ -114,7 +114,7 @@ def play_pause(player):
     else:  # initial state or stopped
         player.play()
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
-    return playstate
+    return player.PLAY_STATE
 
 
 def main_loop(player, coll_dict):
@@ -211,9 +211,8 @@ def main_loop(player, coll_dict):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                if key_date == selected_date:  # We're already on this date
-                    if player.PLAY_STATE > 0:
-                        pass
+                if (key_date == selected_date) and (playstate > 0):  # We're already on this date
+                    pass
                 elif key_date in valid_dates:
                     collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
