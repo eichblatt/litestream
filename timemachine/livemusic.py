@@ -214,6 +214,7 @@ def main_loop(player, coll_dict):
                 if (key_date == selected_date) and (playstate > 0):  # We're already on this date
                     pass
                 elif key_date in valid_dates:
+                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.stop()
@@ -223,6 +224,7 @@ def main_loop(player, coll_dict):
                     selected_date = key_date
                     selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
+                    utils.clear_bbox(playpause_bbox)
                     tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(selected_date_bbox)
                     selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
