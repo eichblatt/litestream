@@ -1,23 +1,9 @@
-To flash MicroPython on the ESP32-S3 N16R8 (16MB Flash & 8MB SRAM) you can flash firmware.bin from
-https://www.micropython.org/download/GENERIC_S3_SPIRAM_OCT/ but it will not use the full memory. 
-You can build the firmware yourself, but edit ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board and change:
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
-CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv"
-
-This will then tell it to use the full 16MB of flash. Then follow the instructions below, but no need to get the board config from Mythologyli, 
-and build with BOARD=GENERIC_S3_SPIRAM_OCT instead of BOARD=GENERIC_S3_N16R8
-
-
-The alternative is to build Micropython from source - info taken from 
-https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8
-
 Install ESP-IDF
 ===============
 cd $HOME
-mkdir -p ~/esp
+mkdir ~/esp
 cd ~/esp
-git clone -b v4.4 --recursive https://github.com/espressif/esp-idf.git
+git clone -b v5.0.2 --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf
 ./install.sh esp32,esp32s3 (if you get weird errors try rm -rf ~/esp & rm -rf ~/.espressif & PATH=$(getconf PATH) and start again)
 
@@ -25,16 +11,26 @@ cd ~/esp/esp-idf
 Install Micropython & compile cross compiler
 ============================================
 cd $HOME
-git clone -b v1.19.1 --recursive https://github.com/micropython/micropython.git (or leave out the -b v1.19.1 if you want the latest daily version)
+git clone -b vx.xx.x --recursive https://github.com/micropython/micropython.git (or leave out the -b vx.xx.x if you want the latest daily version)
 cd ~/micropython/mpy-cross/
 make
 
-
-Install Board config
-====================
+Set up the C modules (Display Driver and OGG Player)
+====================================================
 cd $HOME
-git clone https://github.com/Mythologyli/MicroPython-ESP32-S3-N16R8.git
-cp -r ~/MicroPython-ESP32-S3-N16R8/GENERIC_S3_N16R8 ~/micropython/ports/esp32/boards (may need to delete CMakeCache.txt from build-GENERIC_S3_N16R8 or run clean)
+mkdir modules
+nano micropython.cmake
+
+Add the following lines:
+# This top-level micropython.cmake is responsible for listing
+# the individual modules we want to include.
+# Paths are absolute, and ${CMAKE_CURRENT_LIST_DIR} can be
+# used to prefix subdirectories.
+# Add the C example.
+include(${CMAKE_CURRENT_LIST_DIR}/OVPlayer/micropython.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)m
+
+The Display Driver folder is copied into the modules directory in the next step. Also copy the files for the OGG Player.
 
 
 Install ST7789 Driver (from https://github.com/russhughes/st7789_mpy)
@@ -42,6 +38,7 @@ Install ST7789 Driver (from https://github.com/russhughes/st7789_mpy)
 cd $HOME
 git clone https://github.com/russhughes/st7789_mpy.git
 cp ~/st7789_mpy/fonts/bitmap/vga1_16x32.py ~/micropython/ports/esp32/modules
+cp -r ~/st7789_mpy/st7789 ~/modules
 
 
 Install Rotary Encoder Driver (from https://github.com/MikeTeachman/micropython-rotary)
@@ -66,6 +63,46 @@ Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the
 #endif
 
 
+Change the settings to enable the full 16MB of flash and use the OTA partition scheme
+=====================================================================================
+nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
+
+Change:
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv" (or partitions-16MiB-ota.csv)
+
+
+Change the TCP parameters for faster download
+=============================================
+nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
+
+Add the following lines:
+#
+# TCP
+#
+CONFIG_LWIP_MAX_ACTIVE_TCP=512
+CONFIG_LWIP_MAX_LISTENING_TCP=512
+# CONFIG_LWIP_TCP_HIGH_SPEED_RETRANSMISSION is not set
+CONFIG_LWIP_TCP_MAXRTX=12
+CONFIG_LWIP_TCP_SYNMAXRTX=12
+CONFIG_LWIP_TCP_MSS=1460
+CONFIG_LWIP_TCP_TMR_INTERVAL=200
+CONFIG_LWIP_TCP_MSL=60000
+CONFIG_LWIP_TCP_FIN_WAIT_TIMEOUT=20000
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=8192
+CONFIG_LWIP_TCP_WND_DEFAULT=32768
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=32
+CONFIG_LWIP_TCP_QUEUE_OOSEQ=y
+# CONFIG_LWIP_TCP_SACK_OUT is not set
+# CONFIG_LWIP_TCP_KEEP_CONNECTION_WHEN_IP_CHANGES is not set
+# CONFIG_LWIP_TCP_OVERSIZE_MSS is not set
+# CONFIG_LWIP_TCP_OVERSIZE_QUARTER_MSS is not set
+# CONFIG_LWIP_TCP_OVERSIZE_DISABLE is not set
+CONFIG_LWIP_TCP_RTO_TIME=1500
+# end of TCP
+
+
 Start a terminal session to compile Micropython
 ===============================================
 cd ~
@@ -74,15 +111,15 @@ cd micropython/ports/esp32
 idf.py -B build-GENERIC_S3_N16R8 menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
 export IDF_TARGET=esp32s3
-make BOARD=GENERIC_S3_N16R8 USER_C_MODULES=../../../../st7789_mpy/st7789/micropython.cmake
+make BOARD=GENERIC_S3_SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
 
 
 Flash the chip
 ==============
-Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_N16R8
+Previous steps will build micropython.bin in ~/micropython/ports/esp32/GENERIC_S3_SPIRAM_OCT
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
 
-There is also a combined firmware.bin which is the three files above combined into one. Flash at 0x00 offset
+There is also a combined firmware.bin which is the three files above combined into one. If using the combined file, flash it at 0x00 offset
 
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin
 or
