@@ -63,7 +63,7 @@ Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the
 #endif
 
 
-Change the settings to enable the full 16MB of flash and use the OTA partition scheme
+Change the settings to enable the full 16MB of flash, the 8MB of SPIRAM and use the OTA partition scheme
 =====================================================================================
 nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
 
@@ -71,6 +71,21 @@ Change:
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv" (or partitions-16MiB-ota.csv)
+
+Add:
+CONFIG_ESP32S3_SPIRAM_SUPPORT=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+CONFIG_DEFAULT_PSRAM_CLK_IO=30
+CONFIG_DEFAULT_PSRAM_CS_IO=26
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_SPIRAM_USE_MEMMAP=y
+CONFIG_SPIRAM_MEMTEST=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=32768
 
 
 Change the TCP parameters for faster download
@@ -108,7 +123,7 @@ Start a terminal session to compile Micropython
 cd ~
 . ~/esp/esp-idf/export.sh
 cd micropython/ports/esp32
-idf.py -B build-GENERIC_S3_N16R8 menuconfig (if required. See notes for setting to make interrupts work)
+idf.py -B build-GENERIC_S3_SPIRAM_OCT menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
 export IDF_TARGET=esp32s3
 make BOARD=GENERIC_S3_SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
