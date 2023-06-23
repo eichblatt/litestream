@@ -116,7 +116,7 @@ make BOARD=GENERIC_S3_SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
 
 Flash the chip
 ==============
-Previous steps will build micropython.bin in ~/micropython/ports/esp32/GENERIC_S3_SPIRAM_OCT
+Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_SPIRAM_OCT
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
 
 There is also a combined firmware.bin which is the three files above combined into one. If using the combined file, flash it at 0x00 offset
