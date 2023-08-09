@@ -9,6 +9,7 @@ Running the Program
 ====================
 
 : ~ ; cd ESP32-MPY-Jama/
-: ~/ESP32-MPY-Jama ; . jama_env/bin/activate
+: ~/ESP32-MPY-Jama ; . venv/bin/activate
 (jama_env) : ~/ESP32-MPY-Jama ; python3 src/app.py 
 Starts ESP32 MPY-Jama v1.2.0 on Linux
+NOTE After flashing an image, you have to press the BOOT and/or the REST button on the breakout board.

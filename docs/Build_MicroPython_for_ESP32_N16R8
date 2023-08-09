@@ -147,7 +147,7 @@ idf.py -p COM13 flash
 
 For Steve:
 =============================
-first source the file  $HOME/projects/esp/esp-idf/export.sh
+first source the file  $HOME/esp/esp-idf/export.sh
 Note: Make sure to disconnect from Jama before you flash!
 
 cd to $HOME/projects/litestream
