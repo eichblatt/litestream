@@ -113,7 +113,7 @@ pDSw_old= False
 
 tft.fill(st7789.BLACK)
 
-Player = BasicOggPlayer2.AudioPlayer()
+Player = audioPlayer.AudioPlayer()
 Player.AddToPlaylist("https://ia804506.us.archive.org/13/items/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t01.ogg")
 Player.AddToPlaylist("https://ia804506.us.archive.org/13/items/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t02.ogg")
 Player.AddToPlaylist("https://ia804506.us.archive.org/13/items/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t03.ogg")
