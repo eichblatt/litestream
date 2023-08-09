@@ -5,7 +5,7 @@ import vga1_16x32 as font
 from machine import Pin, SPI
 from rotary_irq_esp import RotaryIRQ
 import machine, network, gc, time
-import BasicOggPlayer2
+import audioPlayer
 import esp32
 
 def connect_to_WiFi():
