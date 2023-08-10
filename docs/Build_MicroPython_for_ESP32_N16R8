@@ -15,8 +15,8 @@ git clone -b vx.xx.x --recursive https://github.com/micropython/micropython.git 
 cd ~/micropython/mpy-cross/
 make
 
-Set up the C modules (Display Driver and OGG Player)
-====================================================
+Set up the C modules (Display Driver and Audio Player) - only need to do this once
+==================================================================================
 cd $HOME
 mkdir modules
 nano micropython.cmake
@@ -27,14 +27,16 @@ Add the following lines:
 # Paths are absolute, and ${CMAKE_CURRENT_LIST_DIR} can be
 # used to prefix subdirectories.
 # Add the C example.
-include(${CMAKE_CURRENT_LIST_DIR}/OVPlayer/micropython.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)m
+include(${CMAKE_CURRENT_LIST_DIR}/AudioPlayer/micropython.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)
 
-The Display Driver folder is copied into the modules directory in the next step. Also copy the files for the OGG Player.
+The Display Driver folder is copied into the modules directory in the next step. 
+Also copy the files for the Audio Player to the modules directory.
+See the MicropythonCModules folder in this GitHub repository for the Audio Player files.
 
 
-Install ST7789 Driver (from https://github.com/russhughes/st7789_mpy)
-=====================================================================
+Install ST7789 Display driver (from https://github.com/russhughes/st7789_mpy)
+=============================================================================
 cd $HOME
 git clone https://github.com/russhughes/st7789_mpy.git
 cp ~/st7789_mpy/fonts/bitmap/vga1_16x32.py ~/micropython/ports/esp32/modules
@@ -64,7 +66,7 @@ Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the
 
 
 Change the settings to enable the full 16MB of flash, the 8MB of SPIRAM and use the OTA partition scheme
-=====================================================================================
+========================================================================================================
 nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
 
 Change:
@@ -111,6 +113,7 @@ cd micropython/ports/esp32
 idf.py -B build-GENERIC_S3_SPIRAM_OCT menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
 export IDF_TARGET=esp32s3
+make BOARD=GENERIC_S3_SPIRAM_OCT clean
 make BOARD=GENERIC_S3_SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
 
 
