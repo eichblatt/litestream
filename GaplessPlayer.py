@@ -236,7 +236,7 @@ class AudioPlayer:
         if self.PLAY_STATE == self.STOPPED:
             if self.TrackNumber <= len(self.playlist):
                 print("Playing track:", self.TrackNumber)
-                self._readHeader(self.playlist[self.TrackNumber - 1])  # Start playing a track
+                self.ReadHeader(self.playlist[self.TrackNumber - 1])  # Start playing a track
     
         self.PLAY_STATE = self.PLAYING
         
@@ -273,11 +273,7 @@ class AudioPlayer:
     def IsStopped(self):
         return self.PLAY_STATE == self.STOPPED
         
-    def _readHeader(self, url, port=80):
-        #global audio_out
-        #global channels
-        #global bits_per_sample
-
+    def ReadHeader(self, url, port=80):
         _, _, host, path = url.split('/', 3)
         addr = socket.getaddrinfo(host, port)[0][-1]
         self.sock = socket.socket()
@@ -383,7 +379,7 @@ class AudioPlayer:
             return
         
         if self.sock == None:
-           raise ValueError("Need to call Play_URL first")     
+           raise ValueError("Need to call ReadHeader first")     
 
         TimeStart = time.ticks_ms()
         #TotalAudioSamples = 0
@@ -416,9 +412,9 @@ class AudioPlayer:
                 return
             
             #print("Decoding")
-            BytesAvailable = self.InBuffer.get_read_available()  # Note: This can change _readPos ################ try inbytesavailable
+            InBytesAvailable = self.InBuffer.get_read_available()  # Note: This can change _readPos ################ try inbytesavailable
 
-            if BytesAvailable < 600: # Either the buffer has emptied (slow network) but we are not at the end of the stream yet, or we are actually at the end of the stream. Check to see if the last read returned anything or is an empty object (EOS)
+            if InBytesAvailable < 600: # Either the buffer has emptied (slow network) but we are not at the end of the stream yet, or we are actually at the end of the stream. Check to see if the last read returned anything or is an empty object (EOS)
                 if data:
                     print("Inbuffer empty")
                     return          # Not enough data to decode
@@ -428,8 +424,8 @@ class AudioPlayer:
                     #self.audio_out.deinit()
                     return 0        # End of stream. Don't close the I2S here, as it still has to play the last packet
 
-            Result, BytesLeft, AudioSamples = Player.Vorbis_Decode(self.InBuffer.Buffer[self.InBuffer.get_readPos():], BytesAvailable, self.OutBuffer.Buffer[self.OutBuffer.get_writePos():])
-            self.InBuffer.bytes_wasRead(BytesAvailable - BytesLeft)
+            Result, BytesLeft, AudioSamples = Player.Vorbis_Decode(self.InBuffer.Buffer[self.InBuffer.get_readPos():], InBytesAvailable, self.OutBuffer.Buffer[self.OutBuffer.get_writePos():])
+            self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
             self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
             
             if not self.Started and self.OutBuffer.get_read_available() > 44100 * 2 * 2 * 2:  # If we have more than 2 seconds of output samples buffered, start playing them. The callback will play the next chunk when it returns
