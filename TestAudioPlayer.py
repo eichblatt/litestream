@@ -157,7 +157,7 @@ while True:
         sys.exit()
     elif Return == 0:
         print("Finished")
-        Player.advance_track()
+        # Player.advance_track()
 
     if pPower_old != pPower.value():
         pPower_old = pPower.value()
