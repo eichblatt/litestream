@@ -5,7 +5,7 @@ import vga1_16x32 as font
 from machine import Pin, SPI
 from rotary_irq_esp import RotaryIRQ
 import machine, network, gc, time
-import audioPlayer_steve as audioPlayer
+import audioPlayer
 import esp32
 
 

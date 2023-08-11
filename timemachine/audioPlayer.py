@@ -207,9 +207,10 @@ class OutRingBuffer:
 
 class AudioPlayer:
     def __init__(self, callbacks={}):
-        print("Constructor")
         self.STOPPED, self.PLAYING, self.PAUSED = 0, 1, 2
         self.callbacks = callbacks
+        if not "display" in self.callbacks.keys():
+            self.callbacks["display"] = lambda x, y: None
         self.DEBUG = False
         self.PLAY_STATE = self.STOPPED
         self.sock = None
@@ -218,7 +219,7 @@ class AudioPlayer:
         self.playlist = self.tracklist = []
         self.ntracks = 0
         self.current_track = self.next_track = None  # the index of current track in playlist
-        self.TrackNumber = 1
+        self.TrackNumber = 0
         self.ChunkSize = 50 * 1024  # Size of the chunks of decoded audio that we will send to I2S
         self.Started = False
 
@@ -235,6 +236,18 @@ class AudioPlayer:
         )  # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). eg 1MB will hold 5.9 seconds
         self.OutBuffer = OutRingBuffer(OutBufferSize)
 
+    @micropython.native
+    def i2s_callback(self, t):
+        if self.PLAY_STATE == self.PAUSED:
+            return
+        
+        BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
+        Offset = self.OutBuffer.get_readPos()
+        ob = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
+        numout = self.audio_out.write(ob)  # Returns straight away
+        assert numout == BytesToPlay, "I2S write error"
+        self.OutBuffer.bytes_wasRead(BytesToPlay)
+        
     def set_playlist(self, tracklist, urllist):
         assert len(tracklist) == len(urllist)
         self.ntracks = len(tracklist)
@@ -257,15 +270,6 @@ class AudioPlayer:
         next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
         return current_name, next_name
 
-    def i2s_callback(self, t):
-        BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
-        Offset = self.OutBuffer.get_readPos()
-
-        ob = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
-        numout = self.audio_out.write(ob)  # Returns straight away
-        assert numout == BytesToPlay, "I2S write error"
-        self.OutBuffer.bytes_wasRead(BytesToPlay)
-
     def get_redirect_location(self, headers):
         for line in headers.split(b"\r\n"):
             if line.startswith(b"Location:"):
@@ -280,31 +284,20 @@ class AudioPlayer:
         path = "/" + parts[1] if len(parts) > 1 else "/"
         return host, port, path
 
-    def AddToPlaylist(self, url):
-        self.playlist.append(url)
-
     def play(self):
         if self.PLAY_STATE == self.STOPPED:
             self.ReadHeader(self.playlist[self.current_track])
+            self.PLAY_STATE = self.PLAYING
         elif self.PLAY_STATE == self.PLAYING:
             print(f"Playing URL {self.playlist[self.current_track]}")
-        self.PLAY_STATE = self.PLAYING
-
+        elif self.PLAY_STATE == self.PAUSED:
+            self.PLAY_STATE = self.PLAYING
+            self.i2s_callback(0)
+            
     def pause(self):
         print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == self.PLAYING:
             self.PLAY_STATE = self.PAUSED
-
-    def Play(self):
-        if self.PLAY_STATE == self.STOPPED:
-            if self.TrackNumber <= len(self.playlist):
-                print("Playing track:", self.TrackNumber)
-                self.ReadHeader(self.playlist[self.TrackNumber - 1])  # Start playing a track
-
-        self.PLAY_STATE = self.PLAYING
-
-    def Pause(self):
-        self.PLAY_STATE = self.PAUSED
 
     def rewind(self):
         self.advance_track(-1)
@@ -314,48 +307,40 @@ class AudioPlayer:
 
     def stop(self):
         self.PLAY_STATE = self.STOPPED
+        self.current_track = 0
         Player.Vorbis_Close()
+        self.Started = False
+        
         if self.audio_out is not None:
             self.audio_out.deinit()
+            self.audio_out = None
+        
+        if self.sock is not None:
             self.sock.close()
+            self.sock = None
+            
         self.InBuffer.InitBuffer()
-        # self.current_track = 0
+        self.OutBuffer.InitBuffer()
 
-    def advance_track(self, increment=1):
+    # Use mute if the user pushes the FF/Rew button as we want the music to stop as soon as they push it 
+    # However if we are advancing because we got to the end of the previous track, then we don't want to mute - just keep playing
+    def advance_track(self, increment = 1, mute = False):
         if not 0 <= (self.current_track + increment) <= self.ntracks:
-            if self.PLAY_STATE == 1:
+            if self.PLAY_STATE == self.PLAYING:
                 self.stop()
             return
+        
         self.current_track += increment
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
         self.callbacks["display"](*self.track_names())
-        if self.PLAY_STATE == 1:  # Play the track that we are advancing to if playing
-            self.PLAY_STATE = 0
+        if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
+            self.PLAY_STATE = self.STOPPED
+            if mute:
+                self.Started = False
+                self.OutBuffer.InitBuffer()
+            Player.Vorbis_Close()
+            self.sock.close()
             self.play()
-
-    def PrevTrack(self):
-        if self.TrackNumber > 1 and self.PLAY_STATE == self.PLAYING:
-            self.PLAY_STATE = self.STOPPED
-            Player.Vorbis_Close()
-            self.sock.close()
-            self.TrackNumber -= 1
-            self.Play()
-
-    def NextTrack(self):
-        if self.TrackNumber < len(self.playlist) and self.PLAY_STATE == self.PLAYING:
-            self.PLAY_STATE = self.STOPPED
-            Player.Vorbis_Close()
-            self.sock.close()
-            self.TrackNumber += 1
-            self.Play()
-
-    def Stop(self):
-        self.PLAY_STATE = self.STOPPED
-        Player.Vorbis_Close()
-        self.audio_out.deinit()
-        self.sock.close()
-        self.InBuffer.InitBuffer()
-        self.TrackNumber = 1
 
     def IsPaused(self):
         return self.PLAY_STATE == self.PAUSED
@@ -398,7 +383,9 @@ class AudioPlayer:
                 self.sock.connect(addr)
                 self.sock.setblocking(False)  # Return straight away
 
-                self.sock.send(bytes("GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n" % (new_path, new_host), "utf8"))
+                self.sock.send(
+                    bytes("GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n" % (new_path, new_host), "utf8")
+                )
 
                 # Skip the response headers
                 while True:
@@ -407,9 +394,14 @@ class AudioPlayer:
                         break
 
         TimeStart = time.ticks_ms()
-        print("Filling Buffer...")
+        print(
+            "Filling Buffer..."
+        )
+        
         self.InBuffer.InitBuffer()
-        while (BytesAvailable := self.InBuffer.get_write_available()) > 0:
+        while (
+            BytesAvailable := self.InBuffer.get_write_available()
+        ) > 0:
             data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
             if data:
                 self.InBuffer.bytes_wasWritten(data)
@@ -422,9 +414,13 @@ class AudioPlayer:
         Result = Player.Vorbis_Init()
 
         if Result:
-            print("Decoder Init success")
+            print(
+                "Decoder Init success"
+            )
         else:
-            print("Decoder Init failed")
+            print(
+                "Decoder Init failed"
+            )
             return -1
 
         FoundSyncWordAt = Player.Vorbis_Start(
@@ -432,9 +428,13 @@ class AudioPlayer:
         )  # Note: This can change _readPos
 
         if FoundSyncWordAt >= 0:
-            print("Decoder Start success. Sync word at", FoundSyncWordAt)
+            print(
+                "Decoder Start success. Sync word at", FoundSyncWordAt
+            )
         else:
-            print("Decoder Start failed")
+            print(
+                "Decoder Start failed"
+            )
             return -1
 
         # Decode the first part of the file after the sync word to get info that we need about the bitrate etc. Keep going until we don't get "Need more data" any more
@@ -451,7 +451,9 @@ class AudioPlayer:
                 TimeStart = time.ticks_ms()
                 # print("Read Header Packet success. Result:", Result)
             else:
-                print("No more header data. Result:", Result)
+                print(
+                    "No more header data. Result:", Result
+                )
                 break
 
         # Get info about this stream
@@ -477,7 +479,8 @@ class AudioPlayer:
             self.audio_out.irq(self.i2s_callback)
 
     #############################################
-
+    
+    @micropython.native
     def Audio_Pump(self):
         # print("Pump")
 
@@ -485,19 +488,23 @@ class AudioPlayer:
             return
 
         if self.sock == None:
-            raise ValueError("Need to call ReadHeader first")
+            raise ValueError(
+                "Need to call ReadHeader first"
+            )
 
         TimeStart = time.ticks_ms()
-        # TotalAudioSamples = 0
 
         # If there is any free space in the input buffer then add any data available from the network.
-        BytesAvailable = self.InBuffer.get_write_available()
-        if BytesAvailable > 0:
-            # print("Adding data to buffer", InBuffer.get_writePos(), BytesAvailable)
+        if (
+            BytesAvailable := self.InBuffer.get_write_available()
+        ) > 0:
+            #print("Adding data to buffer", BytesAvailable)
             try:  # Can get an exception here if we pause too long and the underlying socket gets closed
                 data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
             except:
-                print("Socket Exception")
+                print(
+                    "Socket Exception"
+                )
                 self.stop()
                 return -1
 
@@ -507,33 +514,30 @@ class AudioPlayer:
 
         # We have some data. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
         while True:
-            if self.PLAY_STATE != self.PLAYING:
+            if self.IsStopped() or self.IsPaused():
                 return
 
             # Do we have at least 4096 bytes available for the decoder to write to?
-            OutBytesAvailable = self.OutBuffer.get_write_available()
-
-            while self.OutBuffer.get_write_available() < 4096:
-                # print("X", end='')
+            if self.OutBuffer.get_write_available() < 4096:
+                #print("X", end='')
                 return
 
             # print("Decoding")
-            InBytesAvailable = (
-                self.InBuffer.get_read_available()
-            )  # Note: This can change _readPos ################ try inbytesavailable
-
             if (
-                InBytesAvailable < 600
-            ):  # Either the buffer has emptied (slow network) but we are not at the end of the stream yet, or we are actually at the end of the stream. Check to see if the last read returned anything or is an empty object (EOS)
+                InBytesAvailable := self.InBuffer.get_read_available()
+            ) < 600:    # Note: This can change _readPos
+            # Either the buffer has emptied (slow network) but we are not at the end of the stream yet, or we are actually at the end of the stream. Check to see if the last read returned anything or is an empty object (EOS)
                 if data:
-                    print("Inbuffer empty")
-                    return  # Not enough data to decode
-                else:
+                    print(
+                        "Inbuffer empty"
+                    )
+                    return                      # Not enough data to decode
+                else:                           # End of stream. 
                     Player.Vorbis_Close()
                     self.sock.close()
                     self.advance_track()
-                    # self.audio_out.deinit()
-                    return 0  # End of stream. Don't close the I2S here, as it still has to play the last packet
+                    # self.audio_out.deinit()   # Don't close the I2S here, as it still has to play the last packet
+                    return 0  
 
             Result, BytesLeft, AudioSamples = Player.Vorbis_Decode(
                 self.InBuffer.Buffer[self.InBuffer.get_readPos() :],
@@ -547,20 +551,23 @@ class AudioPlayer:
                 not self.Started and self.OutBuffer.get_read_available() > 44100 * 2 * 2 * 2
             ):  # If we have more than 2 seconds of output samples buffered, start playing them. The callback will play the next chunk when it returns
                 print(
-                    "*********************************************************************** Initiate Playing ******************************************************************"
+                    "************ Initiate Playing ************"
                 )
                 self.i2s_callback(0)
                 self.Started = True
+                break
 
             if Result == 0:
-                TimeStart = time.ticks_ms()
                 # print("Read Packet success. Result:", Result, ", Bytes Left:", BytesLeft, ", Audio Samples:", AudioSamples)
+                pass
             elif Result == 100:
-                TimeStart = time.ticks_ms()
                 # print("Need more data. Bytes Left:", BytesLeft)
+                pass
             elif Result == 110:
-                TimeStart = time.ticks_ms()
                 # print("Continued Page. Bytes Left:", BytesLeft)
+                pass
             else:
-                print("Read Packet failed. Error:", Result)
+                print(
+                    "Read Packet failed. Error:", Result
+                )
                 return -1
