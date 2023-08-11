@@ -290,6 +290,10 @@ class AudioPlayer:
             self.ReadHeader(self.playlist[self.current_track])
         elif self.PLAY_STATE == self.PLAYING:
             print(f"Playing URL {self.playlist[self.current_track]}")
+        elif self.PLAY_STATE == self.PAUSED:
+            self.PLAY_STATE = self.PLAYING
+            self.i2s_callback(0)
+        
         self.PLAY_STATE = self.PLAYING
 
     def pause(self):
@@ -490,7 +494,6 @@ class AudioPlayer:
             raise ValueError("Need to call ReadHeader first")
 
         TimeStart = time.ticks_ms()
-        # TotalAudioSamples = 0
 
         # If there is any free space in the input buffer then add any data available from the network.
         BytesAvailable = self.InBuffer.get_write_available()
@@ -513,16 +516,14 @@ class AudioPlayer:
                 return
 
             # Do we have at least 4096 bytes available for the decoder to write to?
-            OutBytesAvailable = self.OutBuffer.get_write_available()
-
-            while self.OutBuffer.get_write_available() < 4096:
+            if self.OutBuffer.get_write_available() < 4096:
                 # print("X", end='')
                 return
 
             # print("Decoding")
             InBytesAvailable = (
                 self.InBuffer.get_read_available()
-            )  # Note: This can change _readPos ################ try inbytesavailable
+            )  # Note: This can change _readPos
 
             if (
                 InBytesAvailable < 600
@@ -549,7 +550,7 @@ class AudioPlayer:
                 not self.Started and self.OutBuffer.get_read_available() > 44100 * 2 * 2 * 2
             ):  # If we have more than 2 seconds of output samples buffered, start playing them. The callback will play the next chunk when it returns
                 print(
-                    "*********************************************************************** Initiate Playing ******************************************************************"
+                    "************ Initiate Playing ************"
                 )
                 self.i2s_callback(0)
                 self.Started = True
