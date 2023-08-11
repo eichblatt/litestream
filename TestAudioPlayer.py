@@ -131,23 +131,11 @@ urllist = [
 ]
 Player.set_playlist(["trackname"] * len(urllist), urllist)
 
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t01.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t02.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t03.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t04.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t05.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t06.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t07.ogg")
-# Player.AddToPlaylist("https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t08.ogg")
-
 print("Playing...")
 Result = Player.play()
 
 if Result == -1:
     sys.exit()
-
-Return = Player.Audio_Pump()
-# sys.exit()
 
 while True:
     Return = Player.Audio_Pump()
@@ -156,8 +144,7 @@ while True:
         print("Decoding error")
         sys.exit()
     elif Return == 0:
-        print("Finished")
-        # Player.advance_track()
+        print("Finished track")
 
     if pPower_old != pPower.value():
         pPower_old = pPower.value()
@@ -211,7 +198,7 @@ while True:
         else:
             tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
             print("Rewind DOWN")
-            Player.advance_track(-1)
+            Player.advance_track(-1, mute=True)
 
     if pFFwd_old != pFFwd.value():
         pFFwd_old = pFFwd.value()
@@ -221,7 +208,7 @@ while True:
         else:
             tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
             print("FFwd DOWN")
-            Player.advance_track()
+            Player.advance_track(mute=True)
 
     if pYSw_old != pYSw.value():
         pYSw_old = pYSw.value()
