@@ -390,3 +390,36 @@ def connect_wifi():
 
     log.close() if log is not None else None
     return wifi
+
+
+def get_current_partition():
+    from esp32 import Partition
+
+    current_partition = Partition(Partition.RUNNING).info()[4]
+    return current_partition
+
+
+def update_firmware():
+    from ota32.ota import OTA
+    from ota32 import open_url
+    import gc
+
+    latest_release = "MicroPython%20v1.20.0-331-g7fad499d1-dirty"
+    server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
+    sha_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.sha"
+    micropython_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.bin"
+
+    try:
+        s = open_url(sha_url)
+        sha = s.read(1024).split()[0].decode()
+        s.close()
+        gc.collect()
+
+        ota = OTA(verbose=True)
+        ota.ota(micropython_url, sha)
+
+    except Exception as e:
+        print(f"{e}\nFailed to update to a new partition")
+        return -1
+
+    return 0

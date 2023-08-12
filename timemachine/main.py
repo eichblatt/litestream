@@ -175,8 +175,10 @@ def add_collection(all_collections):
 def update_code():
     print("Updating code")
     yellow_color = st7789.color565(255, 255, 0)
+    red_color = st7789.color565(255, 0, 0)
     utils.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
+    tm.tft.write(pfont_med, " code", 0, 120, red_color)
 
     try:
         mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
@@ -187,6 +189,23 @@ def update_code():
         return
 
     print("We should update livemusic.py")
+
+
+def update_firmware():
+    print("Updating firmware -- This will reboot")
+
+    yellow_color = st7789.color565(255, 255, 0)
+    red_color = st7789.color565(255, 0, 0)
+    utils.clear_screen()
+    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
+    tm.tft.write(pfont_med, " Firmware", 0, 120, red_color)
+
+    current_partition = utils.get_current_partition()
+    print(f"The current partition is {current_partition}")
+    status = utils.update_firmware()
+
+    if status == 0:
+        machine.reset()
 
 
 def reconfigure():
@@ -200,6 +219,7 @@ def reconfigure():
             "Collections",
             "Update Code",
             "Wifi",
+            "Update Firmware",
             "FactoryReset",
             "Reboot",
             "Exit",
@@ -212,6 +232,8 @@ def reconfigure():
         wifi = configure_wifi()
     elif choice == "Update Code":
         update_code()
+    elif choice == "Update Firmware":
+        update_firmware()
     elif choice == "FactoryReset":
         factory_reset()
     elif choice == "Reboot":
@@ -265,10 +287,7 @@ def basic_main():
 def run_livemusic():
     try:
         print("Trying to run livemusic main")
-        if "livemusic" in sys.modules:
-            utils.reload("livemusic")
-        else:
-            import livemusic
+        import livemusic
     except Exception:
         print("livemusic.py is not imported!!")
 

@@ -83,7 +83,19 @@
         [
             "mrequests/urlunquote.mpy",
             "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
+        ],
+        [
+            "ota32/ota.py",
+            "github:eichblatt/litestream/timemachine/ota32/ota.py"
+        ],
+        [
+            "ota32/open_url.py",
+            "github:eichblatt/litestream/timemachine/ota32/open_url.py"
+        ],
+        [
+            "ota32/__init__.py",
+            "github:eichblatt/litestream/timemachine/ota32/__init__.py"
         ]
     ],
-    "version": "0.1.0"
+    "version": "0.1.1"
 }

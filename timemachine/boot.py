@@ -90,7 +90,8 @@ if isdir("/test_download"):
     success = test_new_package("/test_download")
     if success:
         remove_dir("previous_lib")
-        os.rename("lib", "previous_lib")
+        if isdir("/lib"):
+            os.rename("lib", "previous_lib")
         os.rename("test_download", "lib")
         os.remove("/lib/tried")
     else:
