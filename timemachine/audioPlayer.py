@@ -300,10 +300,10 @@ class AudioPlayer:
             self.PLAY_STATE = self.PAUSED
 
     def rewind(self):
-        self.advance_track(-1)
+        self.advance_track(-1, mute=True)
 
     def ffwd(self):
-        self.advance_track()
+        self.advance_track(mute=True)
 
     def stop(self):
         self.PLAY_STATE = self.STOPPED
