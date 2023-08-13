@@ -399,6 +399,12 @@ def get_current_partition():
     return current_partition
 
 
+def mark_partition():
+    from esp32 import Partition
+
+    Partition.mark_app_valid_cancel_rollback()
+
+
 def update_firmware():
     from ota32.ota import OTA
     from ota32 import open_url

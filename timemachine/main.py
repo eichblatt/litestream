@@ -177,8 +177,8 @@ def update_code():
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     utils.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
-    tm.tft.write(pfont_med, " code", 0, 120, red_color)
+    tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
+    tm.tft.write(pfont_med, " code", 0, 70, red_color)
 
     try:
         mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
@@ -197,8 +197,8 @@ def update_firmware():
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     utils.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 90, yellow_color)
-    tm.tft.write(pfont_med, " Firmware", 0, 120, red_color)
+    tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
+    tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
 
     current_partition = utils.get_current_partition()
     print(f"The current partition is {current_partition}")
