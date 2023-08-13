@@ -404,7 +404,7 @@ def update_firmware():
     from ota32 import open_url
     import gc
 
-    latest_release = "MicroPython%20v1.20.0-331-g7fad499d1-dirty"
+    latest_release = "latest"
     server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
     sha_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.sha"
     micropython_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.bin"
