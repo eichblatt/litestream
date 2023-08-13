@@ -178,3 +178,12 @@ If you get errors about wrong paths for the compiler, you may need to add the co
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-g++:$PATH
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc:$PATH
 e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_OCT clean" and build again.
+
+OTA Updates:
+===========
+1. Remove the contents of the MicropythonFirmware/latest folder, if any.
+1. Copy the contents of the folder containing the latest release of micropython.bin to MicropythonFirmware/latest/
+: ~/projects/litestream/MicropythonFirmware ; cp v1.20.0-348-g24a6e951e-dirty/* latest/.
+2. Compute the sha of the micropython file
+    sha256sum micropython.bin > micropython.sha
+3. Commit and push this folder contents sha to github.
