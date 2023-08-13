@@ -12,7 +12,7 @@ from mrequests import mrequests as requests
 
 import board as tm
 
-WIFI_CRED_PATH = "wifi_cred.json"
+WIFI_CRED_PATH = "/wifi_cred.json"
 
 
 def reload(mod):
