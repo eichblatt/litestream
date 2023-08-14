@@ -61,3 +61,6 @@ d. Test with MicroPython code
 9) Github command line: 
 Local: git status,  git add,  git clone url foldername,  git commit xxxx -m "message" 
 To send to GitHub: git push
+
+Micropython Issues
+https://github.com/orgs/micropython/discussions/12223
