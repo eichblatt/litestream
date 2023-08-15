@@ -464,7 +464,7 @@ class AudioPlayer:
         # print("Pump")
 
         if self.IsStopped():
-            return 0,0
+            return 0
 
         if self.sock == None:
             raise ValueError("Must call ReadHeader first")
@@ -488,7 +488,7 @@ class AudioPlayer:
             except:
                 print("Socket Exception")
                 self.stop()
-                return -1, -1
+                return -1
 
         # We have some data. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
         Counter = 0
@@ -537,4 +537,4 @@ class AudioPlayer:
                 self.Started = True # So that we don't call this again
                 break
         
-        return self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize * 100, self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize * 100
+        #print(self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize * 100, self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize * 100)
