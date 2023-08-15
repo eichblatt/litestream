@@ -198,7 +198,7 @@ while True:
         else:
             tft.fill_polygon(RewPoly, 30, 108, st7789.WHITE)
             print("Rewind DOWN")
-            Player.advance_track(-1, mute=True)
+            Player.rewind()
 
     if pFFwd_old != pFFwd.value():
         pFFwd_old = pFFwd.value()
@@ -208,7 +208,7 @@ while True:
         else:
             tft.fill_polygon(FFPoly, 80, 108, st7789.WHITE)
             print("FFwd DOWN")
-            Player.advance_track(mute=True)
+            Player.ffwd()
 
     if pYSw_old != pYSw.value():
         pYSw_old = pYSw.value()
