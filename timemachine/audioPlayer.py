@@ -237,20 +237,24 @@ class AudioPlayer:
         self.OutBuffer = OutRingBuffer(OutBufferSize)
 
     @micropython.native
-    def PlayChunk():
+    def PlayChunk(self):
         BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
         Offset = self.OutBuffer.get_readPos()
         ob = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
         numout = self.audio_out.write(ob)  # Returns straight away
         assert numout == BytesToPlay, "I2S write error"
-        self.OutBuffer.bytes_wasRead(BytesToPlay)
+        try:
+            self.OutBuffer.bytes_wasRead(BytesToPlay)
+        except:
+            print("Buffer error. Stopping playback loop")
+            self.PLAY_STATE = self.PAUSED   # Stop the playback loop
     
     @micropython.native
     def i2s_callback(self, t):
         if self.PLAY_STATE == self.PAUSED:
             return
 
-        PlayChunk()
+        self.PlayChunk()
         
 
     def set_playlist(self, tracklist, urllist):
@@ -298,7 +302,7 @@ class AudioPlayer:
         elif self.PLAY_STATE == self.PAUSED:
             self.PLAY_STATE = self.PLAYING
             #self.i2s_callback(0)
-            PlayChunk()
+            self.PlayChunk()
 
     def pause(self):
         print(f"Pausing URL {self.playlist[self.current_track]}")
@@ -535,7 +539,7 @@ class AudioPlayer:
                 not self.Started and self.OutBuffer.get_read_available() > 44100 * 2 * 2 * 2
             ):  # If we have more than 2 seconds of output samples buffered, start playing them. The callback will play the next chunk when it returns
                 print("************ Initiate Playing ************")
-                PlayChunk()
+                self.PlayChunk()
                 self.Started = True
                 break
 
