@@ -138,11 +138,11 @@ if Result == -1:
     sys.exit()
 
 while True:
-    InBuf, OutBuf = Player.Audio_Pump()
+    Return = Player.Audio_Pump()
     
     #print("In:", InBuf, "Out:", OutBuf, end='       ')
 
-    if InBuf == -1:
+    if Return == -1:
         print("Decoding error")
         sys.exit()
     
