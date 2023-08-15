@@ -138,14 +138,14 @@ if Result == -1:
     sys.exit()
 
 while True:
-    Return = Player.Audio_Pump()
+    InBuf, OutBuf = Player.Audio_Pump()
+    
+    #print("In:", InBuf, "Out:", OutBuf, end='       ')
 
-    if Return == -1:
+    if InBuf == -1:
         print("Decoding error")
         sys.exit()
-    elif Return == 0:
-        print("Finished track")
-
+    
     if pPower_old != pPower.value():
         pPower_old = pPower.value()
         pLED.value(PowerLED)
