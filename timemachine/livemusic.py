@@ -151,8 +151,8 @@ def main_loop(player, coll_dict):
         nshows = 0
         player_status = player.Audio_Pump()
         poll_count = poll_count + 1
-        if player.IsPlaying() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
-            continue
+        # if player.IsPlaying() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
+        #     continue
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
@@ -183,7 +183,7 @@ def main_loop(player, coll_dict):
                 return
 
         # Throttle Downstream polling
-        if (player.IsPlaying()) and (poll_count % 20 != 0):
+        if (player.IsPlaying()) and (poll_count % 10 != 0):
             continue
 
         if player.IsStopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
@@ -194,10 +194,8 @@ def main_loop(player, coll_dict):
         if pRewind_old != tm.pRewind.value():
             pRewind_old = tm.pRewind.value()
             if pRewind_old:
-                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.BLUE)
                 print("Rewind DOWN")
             else:
-                # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind UP")
                 if player.IsPlaying():
                     resume_playing = time.ticks_ms() + 200
@@ -206,10 +204,8 @@ def main_loop(player, coll_dict):
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
-                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.BLUE)
                 print("FFwd DOWN")
             else:
-                # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd UP")
                 if player.IsPlaying():
                     resume_playing = time.ticks_ms() + 200
@@ -225,7 +221,7 @@ def main_loop(player, coll_dict):
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
                     vcs = coll_dict[collection][key_date]
-                    player.stop()
+                    player.stop(reset_head=False)
                     player.set_playlist(tracklist, urls)
                     ntape = 0
 

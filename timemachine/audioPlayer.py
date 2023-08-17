@@ -329,20 +329,21 @@ class AudioPlayer:
     def rewind(self):
         print("in rewind")
         if self.IsPlaying():
-            self.pause()
-        self.PLAY_STATE = self.STOPPED
+            self.stop(reset_head=False)
         self.advance_track(-1)
 
     def ffwd(self):
         print("in ffwd")
         if self.IsPlaying():
-            self.pause()
-        self.PLAY_STATE = self.STOPPED
+            self.stop(reset_head=False)
         self.advance_track()
 
-    def stop(self):
+    def stop(self, reset_head=True):
         self.PLAY_STATE = self.STOPPED
-        self.current_track = 0
+        if reset_head:
+            self.current_track = 0
+            self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+            self.callbacks["display"](*self.track_names())
         self.ResetPlayer()
 
     def ResetPlayer(self):
