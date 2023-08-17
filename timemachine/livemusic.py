@@ -107,8 +107,7 @@ def display_tracks(current_track_name, next_track_name):
 
 def play_pause(player):
     utils.clear_bbox(playpause_bbox)
-    playstate = player.PLAY_STATE
-    if playstate == 1:  # playing
+    if player.IsPlaying():
         player.pause()
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
     else:  # initial state or stopped
@@ -151,9 +150,8 @@ def main_loop(player, coll_dict):
     while True:
         nshows = 0
         player_status = player.Audio_Pump()
-        playstate = player.PLAY_STATE
         poll_count = poll_count + 1
-        if (playstate == 1) and (poll_count % 20 != 0):  # throttle the polling, to pump more often.
+        if player.IsPlaying() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
             continue
 
         if pPlayPause_old != tm.pPlayPause.value():
@@ -161,7 +159,7 @@ def main_loop(player, coll_dict):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
-                playstate = play_pause(player)
+                play_pause(player)
                 print("PlayPause UP")
 
         if pStop_old != tm.pStop.value():
@@ -185,8 +183,13 @@ def main_loop(player, coll_dict):
                 return
 
         # Throttle Downstream polling
-        if (playstate == 1) and (poll_count % 200 != 0):
+        if (player.IsPlaying()) and (poll_count % 20 != 0):
             continue
+
+        if player.IsStopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
+            print("Resuming playing")
+            resume_playing = -1
+            player.play()
 
         if pRewind_old != tm.pRewind.value():
             pRewind_old = tm.pRewind.value()
@@ -200,10 +203,6 @@ def main_loop(player, coll_dict):
                     resume_playing = time.ticks_ms() + 200
                 player.rewind()
 
-        if player.IsStopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
-            print("Resuming playing")
-            resume_playing = -1
-            player.play()
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
@@ -220,7 +219,7 @@ def main_loop(player, coll_dict):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                if (key_date == selected_date) and (playstate > 0):  # We're already on this date
+                if (key_date == selected_date) and (player.PLAY_STATE > 0):  # We're already on this date
                     pass
                 elif key_date in valid_dates:
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
