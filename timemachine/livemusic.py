@@ -138,6 +138,7 @@ def main_loop(player, coll_dict):
     select_press_time = 0
     power_press_time = 0
     stop_press_time = 0
+    resume_playing = -1
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -195,8 +196,14 @@ def main_loop(player, coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.RewPoly, 30, 108, st7789.WHITE)
                 print("Rewind UP")
+                if player.IsPlaying():
+                    resume_playing = time.ticks_ms() + 200
                 player.rewind()
 
+        if player.IsStopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
+            print("Resuming playing")
+            resume_playing = -1
+            player.play()
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
             if pFFwd_old:
@@ -205,6 +212,8 @@ def main_loop(player, coll_dict):
             else:
                 # tm.tft.fill_polygon(tm.FFPoly, 80, 108, st7789.WHITE)
                 print("FFwd UP")
+                if player.IsPlaying():
+                    resume_playing = time.ticks_ms() + 200
                 player.ffwd()
 
         if pSelect_old != tm.pSelect.value():
