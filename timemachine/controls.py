@@ -1,4 +1,20 @@
-"""controls -- the definition of the hardward on the Time Machine board
+"""controls -- the definition of the hardward on the Time Machine board """
+"""
+litestream
+Copyright (C) 2023  spertilo.net
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import st7789
 import vga1_16x32 as font
@@ -9,7 +25,6 @@ import fonts.gothger as gothic_font
 import fonts.romanc as roman_font
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
-
 
 
 class Bbox:
@@ -159,10 +174,6 @@ y = RotaryIRQ(
     half_step=False,
 )
 # Month
-m = RotaryIRQ(
-    39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
+m = RotaryIRQ(39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
 # Day
-d = RotaryIRQ(
-    7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
+d = RotaryIRQ(7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)

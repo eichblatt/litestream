@@ -1,4 +1,21 @@
-# Display driver: https://github.com/russhughes/st7789_mpy
+"""
+litestream
+Copyright (C) 2023  spertilo.net
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import os
 
 import machine
@@ -33,19 +50,16 @@ y = RotaryIRQ(
     half_step=False,
 )
 # Month
-m = RotaryIRQ(
-    39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
+m = RotaryIRQ(39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
 # Day
-d = RotaryIRQ(
-    7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False
-)
+d = RotaryIRQ(7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
 
 PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
-PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10,15), (10,0)]
-StopPoly = [(0, 0), (0, 15), (15, 15), (15,0)]
+PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]
+StopPoly = [(0, 0), (0, 15), (15, 15), (15, 0)]
 RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
+
 
 # Configure display driver
 def conf_screen(rotation=0, buffer_size=0, options=0):
