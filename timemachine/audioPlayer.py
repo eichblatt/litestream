@@ -626,6 +626,7 @@ class AudioPlayer:
                     if self.current_track + 1 < self.ntracks:  # Start decode of next track
                         print("starting decode of next track")
                         self.current_track += 1
+                        self.next_track = self.current_track + 1
                         self.callbacks["display"](*self.track_names())
                         self.decode_header()  # Start decoding the next track
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out

@@ -306,6 +306,8 @@ def main_loop(player, coll_dict):
             utils.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+            # t_status = player.track_status()
+            display_tracks(*player.track_names())
 
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
