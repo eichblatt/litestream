@@ -202,8 +202,8 @@ def main_loop(player, coll_dict):
                 return
 
         # Throttle Downstream polling
-        if (player.is_playing()) and (poll_count % 10 != 0):
-            continue
+        # if (player.is_playing()) and (poll_count % 10 != 0):
+        #    continue
 
         if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
             print("Resuming playing")
