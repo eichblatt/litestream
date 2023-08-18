@@ -138,6 +138,7 @@ def main_loop(player, coll_dict):
     power_press_time = 0
     stop_press_time = 0
     resume_playing = -1
+    resume_playing_delay = 500
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -198,7 +199,7 @@ def main_loop(player, coll_dict):
             else:
                 print("Rewind UP")
                 if player.IsPlaying():
-                    resume_playing = time.ticks_ms() + 200
+                    resume_playing = time.ticks_ms() + resume_playing_delay
                 player.rewind()
 
         if pFFwd_old != tm.pFFwd.value():
@@ -208,7 +209,7 @@ def main_loop(player, coll_dict):
             else:
                 print("FFwd UP")
                 if player.IsPlaying():
-                    resume_playing = time.ticks_ms() + 200
+                    resume_playing = time.ticks_ms() + resume_playing_delay
                 player.ffwd()
 
         if pSelect_old != tm.pSelect.value():
