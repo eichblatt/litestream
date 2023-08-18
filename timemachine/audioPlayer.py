@@ -258,7 +258,7 @@ class AudioPlayer:
         self.OutBuffer = OutRingBuffer(OutBufferSize)
 
     @micropython.native
-    def PlayChunk(self):
+    def play_chunk(self):
         BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
 
         if (
@@ -266,7 +266,7 @@ class AudioPlayer:
         ):  # We can get zero bytes to play if the buffer is starved, or when we reach he end of the playlist
             print("Finished Playing")
             self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-            self.ResetPlayer()
+            self.reset_player()
             return
 
         Offset = self.OutBuffer.get_readPos()
@@ -280,7 +280,7 @@ class AudioPlayer:
             print("Buffer error. Stopping playback loop")
             self.PLAY_STATE = self.STOPPED  # Stop the playback loop
             self.current_track = 0
-            self.ResetPlayer()
+            self.reset_player()
             return
 
         numout = self.audio_out.write(outbytes)  # Returns straight away
@@ -289,7 +289,7 @@ class AudioPlayer:
     @micropython.native
     def i2s_callback(self, t):
         if self.PLAY_STATE == self.PLAYING:
-            self.PlayChunk()
+            self.play_chunk()
 
     def set_playlist(self, tracklist, urllist):
         assert len(tracklist) == len(urllist)
@@ -330,14 +330,14 @@ class AudioPlayer:
     def play(self):
         if self.PLAY_STATE == self.STOPPED:
             self.InBuffer.InitBuffer()
-            self.ReadHeader(self.playlist[self.current_track])
-            self.DecodeHeader()
+            self.read_header(self.playlist[self.current_track])
+            self.decode_header()
             self.PLAY_STATE = self.PLAYING
         elif self.PLAY_STATE == self.PLAYING:
             print(f"Playing URL {self.playlist[self.current_track]}")
         elif self.PLAY_STATE == self.PAUSED:
             self.PLAY_STATE = self.PLAYING
-            self.PlayChunk()  # Kick off the playback loop
+            self.play_chunk()  # Kick off the playback loop
 
     def pause(self):
         print(f"Pausing URL {self.playlist[self.current_track]}")
@@ -346,13 +346,13 @@ class AudioPlayer:
 
     def rewind(self):
         print("in rewind")
-        if self.IsPlaying():
+        if self.is_playing():
             self.stop(reset_head=False)
         self.advance_track(-1)
 
     def ffwd(self):
         print("in ffwd")
-        if self.IsPlaying():
+        if self.is_playing():
             self.stop(reset_head=False)
         self.advance_track()
 
@@ -362,9 +362,9 @@ class AudioPlayer:
             self.current_track = 0
             self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
             self.callbacks["display"](*self.track_names())
-        self.ResetPlayer()
+        self.reset_player()
 
-    def ResetPlayer(self):
+    def reset_player(self):
         self.Started = False
         self.FinishedStreaming = False
         self.FinishedDecoding = False
@@ -396,19 +396,19 @@ class AudioPlayer:
         self.callbacks["display"](*self.track_names())
         if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
             self.PLAY_STATE = self.STOPPED
-            self.ResetPlayer()
+            self.reset_player()
             self.play()
 
-    def IsPaused(self):
+    def is_paused(self):
         return self.PLAY_STATE == self.PAUSED
 
-    def IsStopped(self):
+    def is_stopped(self):
         return self.PLAY_STATE == self.STOPPED
 
-    def IsPlaying(self):
+    def is_playing(self):
         return self.PLAY_STATE == self.PLAYING
 
-    def ReadHeader(self, url, port=80):
+    def read_header(self, url, port=80):
         TimeStart = time.ticks_ms()
 
         _, _, host, path = url.split("/", 3)
@@ -467,7 +467,7 @@ class AudioPlayer:
                 "Filled buffer. Time:", time.ticks_ms() - TimeStart, "ms. Total Data:", self.InBuffer.get_read_available()
             )  # Note: This can change _readPos
 
-    def DecodeHeader(self):
+    def decode_header(self):
         # Init the decoder
         Result = Player.Vorbis_Init()
 
@@ -530,10 +530,10 @@ class AudioPlayer:
     #######################################################################################################################################
 
     @micropython.native
-    def Audio_Pump(self):
+    def audio_pump(self):
         # print("Pump", end=' ')
 
-        if self.IsStopped():
+        if self.is_stopped():
             return 0
 
         TimeStart = time.ticks_ms()
@@ -555,7 +555,7 @@ class AudioPlayer:
                             print("EOF - ", end="")
                             if self.current_track + 1 < self.ntracks:
                                 print("reading next track")
-                                self.ReadHeader(
+                                self.read_header(
                                     self.playlist[self.current_track + 1]
                                 )  # We can read the header of the next track now
                             else:
@@ -627,7 +627,7 @@ class AudioPlayer:
                         print("starting decode of next track")
                         self.current_track += 1
                         self.callbacks["display"](*self.track_names())
-                        self.DecodeHeader()  # Start decoding the next track
+                        self.decode_header()  # Start decoding the next track
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         print("end of playlist")
                         self.FinishedDecoding = True
@@ -638,7 +638,7 @@ class AudioPlayer:
                 not self.Started and self.OutBuffer.get_read_available() / 44100 / 2 / 2 > 2
             ):  # If we have more than 2 seconds of output samples buffered (2 channels, 2 bytes per sample), start playing them.
                 print("************ Initiate Playing ************")
-                self.PlayChunk()  # The callback will play the next chunk when it returns
+                self.play_chunk()  # The callback will play the next chunk when it returns
                 self.Started = True  # So that we don't call this again
         # print(Counter)
         # print(self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize * 100, self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize * 100)

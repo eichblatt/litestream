@@ -125,7 +125,7 @@ def display_tracks(current_track_name, next_track_name):
 
 def play_pause(player):
     utils.clear_bbox(playpause_bbox)
-    if player.IsPlaying():
+    if player.is_playing():
         player.pause()
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
     else:  # initial state or stopped
@@ -168,9 +168,9 @@ def main_loop(player, coll_dict):
     poll_count = 0
     while True:
         nshows = 0
-        player_status = player.Audio_Pump()
+        player_status = player.audio_pump()
         poll_count = poll_count + 1
-        # if player.IsPlaying() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
+        # if player.is_playing() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
         #     continue
 
         if pPlayPause_old != tm.pPlayPause.value():
@@ -202,10 +202,10 @@ def main_loop(player, coll_dict):
                 return
 
         # Throttle Downstream polling
-        if (player.IsPlaying()) and (poll_count % 10 != 0):
+        if (player.is_playing()) and (poll_count % 10 != 0):
             continue
 
-        if player.IsStopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
+        if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
             print("Resuming playing")
             resume_playing = -1
             player.play()
@@ -216,7 +216,7 @@ def main_loop(player, coll_dict):
                 print("Rewind DOWN")
             else:
                 print("Rewind UP")
-                if player.IsPlaying():
+                if player.is_playing():
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.rewind()
 
@@ -226,7 +226,7 @@ def main_loop(player, coll_dict):
                 print("FFwd DOWN")
             else:
                 print("FFwd UP")
-                if player.IsPlaying():
+                if player.is_playing():
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.ffwd()
 
