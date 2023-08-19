@@ -54,7 +54,8 @@ d. Test with MicroPython code
   
 6) DACs that don't need a master clock: MAX98357A, UDA1334A, PCM5102
 
-7) To load code using mip: mip.install("github:eichblatt/litestream/timemachine/package.json")
+7) To load code using mip: 
+First - connect to WiFi. Then mip.install("github:eichblatt/litestream/timemachine/package.json")
 
 8) To see detailed memory usage: import micropython    micropython.mem_info(1)
 
