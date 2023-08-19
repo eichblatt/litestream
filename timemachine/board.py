@@ -38,10 +38,47 @@ pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 pLED = Pin(48, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
+
+knob_sense = 0
+try:
+    kf = open("/.knob_sense", "r")
+    knob_sense = int(kf.readline().strip())
+    if (knob_sense < 0) or (knob_sense > 7):
+        print(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
+        knob_sense = 0
+except Exception:
+    knob_sense = 0
+
+year_pins = (40, 42)
+month_pins = (39, 18)
+day_pins = (7, 8)
+
+# Month
+m = RotaryIRQ(
+    month_pins[knob_sense & 1],
+    month_pins[~knob_sense & 1],
+    min_val=1,
+    max_val=12,
+    reverse=False,
+    range_mode=RotaryIRQ.RANGE_BOUNDED,
+    pull_up=True,
+    half_step=False,
+)
+# Day
+d = RotaryIRQ(
+    day_pins[(knob_sense >> 1) & 1],
+    day_pins[~(knob_sense >> 1) & 1],
+    min_val=1,
+    max_val=31,
+    reverse=False,
+    range_mode=RotaryIRQ.RANGE_BOUNDED,
+    pull_up=True,
+    half_step=False,
+)
 # Year
 y = RotaryIRQ(
-    40,
-    42,
+    year_pins[(knob_sense >> 2) & 1],
+    year_pins[~(knob_sense >> 2) & 1],
     min_val=1966,
     max_val=1995,
     reverse=False,
@@ -49,10 +86,6 @@ y = RotaryIRQ(
     pull_up=True,
     half_step=False,
 )
-# Month
-m = RotaryIRQ(39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
-# Day
-d = RotaryIRQ(7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
 
 PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
 PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]

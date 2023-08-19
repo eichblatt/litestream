@@ -1,0 +1,11 @@
+Portal URL:
+https://portal.azure.com/#@steveeichblattgmail.onmicrosoft.com/resource/subscriptions/872c5911-be4c-4b97-bb45-a5ad95df00df/resourceGroups/msdocs-python-webapp-quickstart/providers/Microsoft.Web/sites/msdocs-python-webapp-quickstart-SLE/appServices
+
+This is running a service on this URL
+
+https://msdocs-python-webapp-quickstart-sle.azurewebsites.net/tracklist/1977-05-13?collections=DeadAndCompany,GratefulDead&ntape=0
+
+
+I downloaded a program to manage data remotely stored on Azure. It is called storage-explorer. It opens a GUI which I don't understand yet.
+Instructions here https://azure.microsoft.com/en-us/products/storage/storage-explorer/
+
