@@ -355,6 +355,8 @@ class AudioPlayer:
         self.advance_track()
 
     def stop(self, reset_head=True):
+        if self.PLAY_STATE == self.STOPPED:
+            return
         self.PLAY_STATE = self.STOPPED
         if reset_head:
             self.current_track = 0
