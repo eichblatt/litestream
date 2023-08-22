@@ -1,6 +1,10 @@
 {
     "urls": [
         [
+            "audioPlayer.py",
+            "github:eichblatt/litestream/timemachine/audioPlayer.py"
+        ],
+        [
             "__init__.py",
             "github:eichblatt/litestream/timemachine/__init__.py"
         ],
@@ -11,10 +15,6 @@
         [
             "boot.py",
             "github:eichblatt/litestream/timemachine/boot.py"
-        ],
-        [
-            "audioPlayer.py",
-            "github:eichblatt/litestream/timemachine/audioPlayer.py"
         ],
         [
             "utils.py",
