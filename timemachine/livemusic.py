@@ -41,8 +41,8 @@ import board as tm
 import utils
 
 
-# API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
-API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
+API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
+# API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://192.168.1.251:5000' # westmain
 # API = 'http://westmain:5000' # westmain
 # API = 'http://deadstreamv3:5000'
