@@ -616,10 +616,8 @@ class AudioPlayer:
                         self.DEBUG and print("end of playlist")
                         self.FinishedDecoding = True
 
-                    #break
+                    return
 
-            # Was here
-                
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
             if not self.StartedPlaying and self.OutBuffer.get_read_available() / 44100 / 2 / 2 > 1:
                 self.DEBUG and print("************ Initiate Playing ************")
