@@ -20,6 +20,12 @@ then gcloud init
 A product that runs the flask app.
 
 ## Deploying the service
+First, authenticate:
+(env) : ~/projects/deadstream/cloud_server ; gcloud auth application-default login
+
+ This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
+
+Then deploy
 : ~/projects/deadstream/cloud_server ; gcloud app deploy  # This takes forever, but it works.
 
 See the server at https://console.cloud.google.com/appengine/services?serviceId=default&versionId=20230826t203020&authuser=1&project=able-folio-397115
