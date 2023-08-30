@@ -40,6 +40,9 @@ https://console.cloud.google.com/storage/browser/spertilo-data;tab=objects?proje
 #Public URL 
 https://storage.googleapis.com/spertilo-data/vcs/GratefulDead_vcs.json
 
+# Credentials
+
+saved to /home/steve/.config/gcloud/application_default_credentials.json
 # Running the app
 
 I want to move the app.py and app.yaml into a sub-folder. Also include requirements.txt in that folder. The requirements will include the deadstream project (api_server branch if necessary).
