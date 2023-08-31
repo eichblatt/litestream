@@ -3,29 +3,36 @@
 spertilo
 cloud.google.com
 
+```
 install gcloud 
 
 sudo apt-get install apt-transport-https ca-certificates gnupg curl sudo
+```
 
 https://cloud.google.com/sdk/docs/install#deb
 
 then gcloud init
 
 # Usage
+
+```
 (env) steve@prim:~/deadstream$ gcloud storage buckets list
 
 (env) steve@prim:~$ gcloud storage cp GratefulDead_vcs.json gs://spertilo-data/vcs/GratefulDead_vcs.json
+```
 
 # App Engine
 A product that runs the flask app.
 
 ## Deploying the service
 First, authenticate:
-(env) : ~/projects/deadstream/cloud_server ; gcloud auth application-default login
+
+`(env) : ~/projects/deadstream/cloud_server ; gcloud auth application-default login`
 
  This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
 
 Then deploy
+
 `: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info # This takes forever, but it works.`
 
 ### NOTE it seems like I need to authenticate and keep the browser open to run this?
@@ -37,8 +44,9 @@ also, gcloud app browse should open the server in the browser.
 # Deleting the Staging bucket (by mistake)
 I deleted the staging bucket, and had to re-create it before I could deploy the app again.
 This is the command to repair it:
-`: ~/projects/deadstream/cloud_server ; gcloud beta app repair`
 
+`: ~/projects/deadstream/cloud_server ; gcloud beta app repair`
+Whew!
 # Note
 
 Location of bucket in cloud 
@@ -62,16 +70,19 @@ API = "https://able-folio-397115.ue.r.appspot.com"
 
 See https://github.com/googleapis/python-storage/blob/main/samples/snippets/storage_activate_hmac_key.py
 
-pip install google-cloud-storage
+`pip install google-cloud-storage`
+
 ## Authentication
-(env) : ~/projects/deadstream/cloud_server ; gcloud auth application-default login
+
+`(env) : ~/projects/deadstream/cloud_server ; gcloud auth application-default login`
 
  This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
 
 within python:
+```
 In [8]: from google.cloud import storage
 In [7]: storage_client = storage.Client(project='able-folio-397115')
-
+```
 ## Example of copying a file
 
 https://github.com/googleapis/python-storage/blob/main/samples/snippets/storage_copy_file.py
