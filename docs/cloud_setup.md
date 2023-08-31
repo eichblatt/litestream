@@ -31,9 +31,9 @@ First, authenticate:
 
  This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
 
-Then deploy
+Then deploy (this takes forever, but it works)
 
-`: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info # This takes forever, but it works.`
+`: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info `
 
 ### NOTE it seems like I need to authenticate and keep the browser open to run this?
 
