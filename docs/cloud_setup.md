@@ -26,13 +26,18 @@ First, authenticate:
  This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
 
 Then deploy
-: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info # This takes forever, but it works.
+`: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info # This takes forever, but it works.`
 
 ### NOTE it seems like I need to authenticate and keep the browser open to run this?
 
 See the server at https://console.cloud.google.com/appengine/services?serviceId=default&versionId=20230826t203020&authuser=1&project=able-folio-397115
 
 also, gcloud app browse should open the server in the browser.
+
+# Deleting the Staging bucket (by mistake)
+I deleted the staging bucket, and had to re-create it before I could deploy the app again.
+This is the command to repair it:
+`: ~/projects/deadstream/cloud_server ; gcloud beta app repair`
 
 # Note
 
