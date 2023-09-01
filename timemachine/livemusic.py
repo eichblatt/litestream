@@ -23,6 +23,7 @@ import re
 import network
 import sys
 import time
+from collections import OrderedDict
 from mrequests import mrequests as requests
 
 import machine
@@ -42,6 +43,7 @@ import utils
 
 
 API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
+CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 # API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://192.168.1.251:5000' # westmain
 # API = 'http://westmain:5000' # westmain
@@ -62,28 +64,53 @@ def best_tape(collection, key_date):
     pass
 
 
-def select_date(collections, key_date, ntape=0):
+def select_date(coll_dict, key_date, ntape=0):
     print(f"selecting show from {key_date}")
-    collstring = ",".join(collections)
-    api_request = f"{API}/tracklist/{key_date}?collections={collstring}&ntape={ntape}"
-    print(f"API request is {api_request}")
-    resp = requests.get(api_request).json()
+    for collection, cdict in coll_dict.items():
+        if cdict.get(key_date, None):
+            break
+
+    tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+    resp = requests.get(tape_ids_url)
+    if resp.status_code == 200:
+        tape_ids = resp.json()
+        best_tape = tape_ids[0][0]
+        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{best_tape}/trackdata.json"
+        resp = requests.get(trackdata_url).json()
+    else:
+        api_request = f"{API}/tracklist/{key_date}?collections={collection}&ntape={ntape}"
+        print(f"API request is {api_request}")
+        resp = requests.get(api_request).json()
     collection = resp["collection"]
     tracklist = resp["tracklist"]
-    api_request = f"{API}/urls/{key_date}?collections={collstring}&ntape={ntape}"
-    resp = requests.get(api_request).json()
     urls = resp["urls"]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
 
-def get_tape_ids(collections, key_date):
+def get_tape_ids(coll_dict, key_date):
     print(f"getting tape_ids from {key_date}")
-    collstring = ",".join(collections)
-    api_request = f"{API}/tape_ids/{key_date}?collections={collstring}"
-    print(f"API request is {api_request}")
-    tape_ids = requests.get(api_request).json()
-    return tape_ids
+    key_date_colls = []
+    for collection, cdict in coll_dict.items():
+        if cdict.get(key_date, None):
+            key_date_colls.append(collection)
+            url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+            resp = requests.get(url)
+            if resp.status_code == 200:
+                tape_ids = [[collection, x[0]] for x in resp.json()]
+            elif resp.status_code == 404:
+                api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
+                tape_ids = requests.get(api_request).json()
+            else:
+                raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
+    sorted_tape_ids = []
+    while len(tape_ids) > 0:
+        for coll in coll_dict.keys():
+            for iid, id in enumerate(tape_ids):
+                if id[0] == coll:
+                    sorted_tape_ids.append(tape_ids.pop(iid))
+                    break
+    return sorted_tape_ids
 
 
 def get_next_tih(date, valid_dates, valid_tihs=[]):
@@ -266,7 +293,7 @@ def main_loop(player, coll_dict):
                 print("                 Longpress of select")
                 select_press_time = time.ticks_ms()
                 if ntape == 0:
-                    tape_ids = get_tape_ids(coll_dict.keys(), key_date)
+                    tape_ids = get_tape_ids(coll_dict, key_date)
                 ntape = (ntape + 1) % len(tape_ids)
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
@@ -402,23 +429,21 @@ def main_loop(player, coll_dict):
 
 
 def add_vcs(coll):
-    os.mkdir("metadata") if not utils.path_exists("metadata") else None
-    ids_path = f"metadata/{coll}_vcs.json"
-    print(f"Loading collection {coll} from {ids_path}")
-    api_request = f"{API}/vcs/{coll}"
-    resp = requests.get(api_request).json()
+    vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
+    resp = requests.get(vcs_url)
+    if resp.status_code == 200:
+        vcs = resp.json()
+    else:
+        api_request = f"{API}/vcs/{coll}"
+        print(f"API request is {api_request}")
+        resp = requests.get(api_request).json()
     vcs = resp[coll]
-    print(f"vcs: {vcs}")
-    with open(ids_path, "w") as f:
-        json.dump(vcs, f)
+    print(f"vcs loaded with : {len(list(vcs[coll].keys()))} dates")
+    return vcs
 
 
 def load_vcs(coll):
-    ids_path = f"metadata/{coll}_vcs.json"
-    if not utils.path_exists(ids_path):
-        add_vcs(coll)
-    print(f"Loading collection {coll} from {ids_path}")
-    data = json.load(open(ids_path, "r"))
+    data = add_vcs(coll)
     return data
 
 
@@ -453,7 +478,7 @@ def run():
             json.dump(collection_list, f)
     show_collections(collection_list)
 
-    coll_dict = {}
+    coll_dict = OrderedDict({})
     min_year = tm.y._min_val
     max_year = tm.y._max_val
     for coll in collection_list:
