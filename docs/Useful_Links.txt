@@ -65,3 +65,7 @@ To send to GitHub: git push
 
 Micropython Issues
 https://github.com/orgs/micropython/discussions/12223
+
+# Buying an ESP32
+https://www.aliexpress.us/item/3256804431007418.html
+Color: ESP32-S3 N16R8
