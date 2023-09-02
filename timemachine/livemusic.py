@@ -42,12 +42,10 @@ import board as tm
 import utils
 
 
-API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
+# API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-# API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
-# API = 'http://192.168.1.251:5000' # westmain
+API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
-# API = 'http://deadstreamv3:5000'
 COLLECTION_LIST_PATH = "collection_list.json"
 AUTO_PLAY = False
 
@@ -77,13 +75,19 @@ def select_date(coll_dict, key_date, ntape=0):
         best_tape = tape_ids[0][0]
         trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{best_tape}/trackdata.json"
         resp = requests.get(trackdata_url).json()
+        collection = resp["collection"]
+        tracklist = resp["tracklist"]
+        urls = resp["urls"]
     else:
         api_request = f"{API}/tracklist/{key_date}?collections={collection}&ntape={ntape}"
         print(f"API request is {api_request}")
         resp = requests.get(api_request).json()
-    collection = resp["collection"]
-    tracklist = resp["tracklist"]
-    urls = resp["urls"]
+        collection = resp["collection"]
+        tracklist = resp["tracklist"]
+        api_request = f"{API}/urls/{key_date}?collections={collection}&ntape={ntape}"
+        print(f"API request is {api_request}")
+        resp = requests.get(api_request).json()
+        urls = resp["urls"]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -266,7 +270,7 @@ def main_loop(player, coll_dict):
                     pass
                 elif key_date in valid_dates:
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
-                    collection, tracklist, urls = select_date(coll_dict.keys(), key_date, ntape)
+                    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.stop(reset_head=False)
                     player.set_playlist(tracklist, urls)
