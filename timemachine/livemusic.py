@@ -429,16 +429,16 @@ def main_loop(player, coll_dict):
 
 
 def add_vcs(coll):
+    print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
     resp = requests.get(vcs_url)
     if resp.status_code == 200:
         vcs = resp.json()
     else:
+        print(f"status was {resp.status_code}")
         api_request = f"{API}/vcs/{coll}"
         print(f"API request is {api_request}")
-        resp = requests.get(api_request).json()
-    vcs = resp[coll]
-    print(f"vcs loaded with : {len(list(vcs[coll].keys()))} dates")
+        vcs = requests.get(api_request).json()[coll]
     return vcs
 
 
