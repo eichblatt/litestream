@@ -114,7 +114,7 @@ idf.py -B build-GENERIC_S3_SPIRAM_OCT menuconfig (if required. See notes for set
 make submodules
 export IDF_TARGET=esp32s3
 make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT clean
-make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT  USER_C_MODULES=~/modules/micropython.cmake
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
 
 
 Flash the chip
