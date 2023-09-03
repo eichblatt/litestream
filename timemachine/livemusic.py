@@ -63,9 +63,10 @@ def best_tape(collection, key_date):
 
 
 def select_date(coll_dict, key_date, ntape=0):
-    print(f"selecting show from {key_date}")
-    for collection, cdict in coll_dict.items():
-        if cdict.get(key_date, None):
+    print(f"selecting show from {key_date}. Collections {coll_dict.keys()}")
+    # for collection, cdict in coll_dict.items():
+    for collection in coll_dict.keys():
+        if key_date in coll_dict[collection].keys():
             break
 
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
@@ -270,6 +271,7 @@ def main_loop(player, coll_dict):
                     pass
                 elif key_date in valid_dates:
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
+                    player.stop()
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.stop(reset_head=False)
