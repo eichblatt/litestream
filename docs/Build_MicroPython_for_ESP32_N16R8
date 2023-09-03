@@ -72,7 +72,7 @@ nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
 Change:
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB.csv" (or partitions-16MiB-ota.csv)
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB-ota.csv" (or partitions-16MiB.csv)
 
 
 Change the TCP parameters for faster download
@@ -113,8 +113,8 @@ cd micropython/ports/esp32
 idf.py -B build-GENERIC_S3_SPIRAM_OCT menuconfig (if required. See notes for setting to make interrupts work)
 make submodules
 export IDF_TARGET=esp32s3
-make BOARD=GENERIC_S3_SPIRAM_OCT clean
-make BOARD=GENERIC_S3_SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT clean
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT  USER_C_MODULES=~/modules/micropython.cmake
 
 
 Flash the chip
