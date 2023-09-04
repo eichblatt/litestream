@@ -69,10 +69,6 @@
             "github:eichblatt/litestream/timemachine/mrequests/mrequests.py"
         ],
         [
-            "mrequests/mrequests.py",
-            "github:eichblatt/litestream/timemachine/mrequests/mrequests.py"
-        ],
-        [
             "mrequests/urlencode.mpy",
             "github:eichblatt/litestream/timemachine/mrequests/urlencode.mpy"
         ],
