@@ -166,7 +166,7 @@ Check that it worked
 To check free space: import os   os.statvfs('/'). Should show something like (4096, 4096, 3584, 3580, 3580, 0, 0, 0, 0, 255).  
 File system block size, Fragment size, Size of fs in f_frsize units, Number of free blocks, Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, Number of free inodes for unprivileged users, Mount flags, Maximum filename length
 So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
-To see free memory: import gc    gc.mem_free()   Should be approx. 8,187,648 = 7.8 MB
+To see free memory: import gc    gc.mem_free()   Should be approx. 8,187,648 = 7.8 MB - However, changes have happened - read this https://github.com/orgs/micropython/discussions/12316
 To check version: import platform     platform.platform()
 
 Notes:
