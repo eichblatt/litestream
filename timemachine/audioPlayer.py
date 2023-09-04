@@ -345,7 +345,7 @@ class AudioPlayer:
         self.ntracks = len(tracklist)
         self.tracklist = tracklist
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
-        urllist = [x if not (x.endswith("silence.ogg")) else setbreak_url for x in urllist]
+        urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
         self.playlist = urllist
         if self.ntracks > 0:
             self.current_track = 0
