@@ -271,7 +271,6 @@ def main_loop(player, coll_dict):
                     pass
                 elif key_date in valid_dates:
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
-                    player.stop()
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
                     player.stop(reset_head=False)
