@@ -139,5 +139,5 @@ timemachine/wifi_cred.json
 timemachine/livemusic.py
 utils/DejaVuSansMono-Bold.ttf
 google_chat.md
-timemachine/oggPlayer.py.bak
-timemachine/audioPlayer2.py
+timemachine/*.bak
+MicropythonFirmware/latest_broken/*
