@@ -74,12 +74,6 @@ def test_update():
     tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
-    tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
-    tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)
-    tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
-
-    start_time = time.ticks_ms()
     pSelect_old = True
     pStop_old = True
     update_code = False
@@ -87,11 +81,18 @@ def test_update():
     try:
         import livemusic
 
+        wifi = utils.connect_wifi()
         livemusic.test_update()
     except Exception as e:
         print(f"UpdateException {e}")
         return False
 
+    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
+    tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
+    tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)
+    tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
+
+    start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()

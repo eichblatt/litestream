@@ -481,6 +481,7 @@ def test_update():
     max_year = max(int(max(coll_dates)[:4]), max_year)
     tm.y._min_val = min_year
     tm.y._max_val = max_year
+    print(f"Max year {max_year}, Min year {min_year}")
     assert (max_year - min_year) >= 29
 
 
