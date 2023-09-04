@@ -255,7 +255,7 @@ class AudioPlayer:
         self.current_track = self.next_track = self.track_being_read = None
 
         # Size of the chunks of decoded audio that we will send to I2S
-        self.ChunkSize = 100 * 1024
+        self.ChunkSize = 50 * 1024
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
         InBufferSize = 120 * 1024
