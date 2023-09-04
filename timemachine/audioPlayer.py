@@ -494,7 +494,7 @@ class AudioPlayer:
                     if header == b"\r\n":
                         break
 
-            self.current_track_bytes_read = offset
+        self.current_track_bytes_read = offset
 
     #######################################################################################################################################
 
