@@ -111,7 +111,7 @@ cd ~
 . ~/esp/esp-idf/export.sh
 cd micropython/ports/esp32
 idf.py -B build-ESP32_GENERIC_S3 menuconfig (if required. See notes for setting to make interrupts work)
-make BOARD_VARIANT=SPIRAM_OCT submodules
+make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT submodules
 export IDF_TARGET=esp32s3
 make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT clean
 make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=~/modules/micropython.cmake
@@ -119,7 +119,7 @@ make BOARD=ESP32_GENERIC_S3 BOARD_VARIANT=SPIRAM_OCT USER_C_MODULES=~/modules/mi
 
 Flash the chip
 ==============
-Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-GENERIC_S3_SPIRAM_OCT
+Previous steps will build micropython.bin in ~/micropython/ports/esp32/build-ESP32_GENERIC_S3-SPIRAM_OCT
 bootloader.bin is under that in bootloader directory, partition-table.bin is in partition_table directory
 
 There is also a combined firmware.bin which is the three files above combined into one. If using the combined file, flash it at 0x00 offset
