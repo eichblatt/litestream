@@ -316,7 +316,7 @@ def basic_main():
 def run_livemusic():
     import livemusic
 
-    utils.mark_partition()  # If we make it this far, the firmware is good.
+    # utils.mark_partition()  # If we make it this far, the firmware is good.
     while True:
         livemusic.run()
         choice = reconfigure()
