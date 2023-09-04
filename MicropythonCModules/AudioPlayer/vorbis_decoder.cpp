@@ -15,7 +15,7 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 02.07.2023
+ *  Updated on: 29.08.2023
  */
 //----------------------------------------------------------------------------------------------------------------------
 //                                     O G G    I M P L.
@@ -24,13 +24,15 @@
 #include "lookup.h"
 #include "alloca.h"
 
-/*#define __malloc_heap_psram(size) \
+#define __malloc_heap_psram(size) \
     heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 #define __calloc_heap_psram(ch, size) \
-    heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)*/
+    heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 
-#define __malloc_heap_psram(size) mymalloc(size)
-#define __calloc_heap_psram(ch, size) mycalloc(ch, size)
+//#define __malloc_heap_psram(size) mymalloc(size)
+//#define __calloc_heap_psram(ch, size) mycalloc(ch, size)
+
+#define malloc(size) __malloc_heap_psram(size)
 
 void* mymalloc(size_t size)
 {
@@ -109,9 +111,8 @@ vorbis_info_mode_t    *s_mode_param = NULL;
 vorbis_dsp_state_t    *s_dsp_state = NULL;
 
 bool VORBISDecoder_AllocateBuffers(){
-    //esp_err_t heap_caps_register_failed_alloc_callback(esp_alloc_failed_hook_t callback);
-    s_vorbisSegmentTable = (uint16_t*)malloc(256 * sizeof(uint16_t));
-    s_vorbisChbuf = (char*)malloc(256);
+    s_vorbisSegmentTable = (uint16_t*)__calloc_heap_psram(256, sizeof(uint16_t));
+    s_vorbisChbuf = (char*)__calloc_heap_psram(256, sizeof(char));
     s_lastSegmentTable = (uint8_t*)__malloc_heap_psram(1024);
     VORBISsetDefaults();
     return true;
@@ -222,7 +223,10 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                 else{
                     log_e("no \"vorbis\" something went wrong %i", len);
                 }
-                s_pageNr = 3;
+                // log_w("s_vorbisSegmentTableSize %d", s_vorbisSegmentTableSize);
+                // Normally the segment table has two entries, the first for comments and the second for the codebooks
+                if(!s_vorbisSegmentTableSize) {;}//there is no further segment for codebooks -> skip it
+                else s_pageNr = 3;
             }
             else if(s_pageNr == 3){ // setup header
                 int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
@@ -275,12 +279,21 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                         s_f_oggContinuedPage = false;
                     }
                     else{ // last segment without continued Page
-                        bitReader_setData(s_lastSegmentTable, s_lastSegmentTableLen);
-                        ret = vorbis_dsp_synthesis(s_lastSegmentTable, s_lastSegmentTableLen, outbuf);
-                        uint16_t outBuffSize = 2048 * 2;
-                        s_vorbisValidSamples = vorbis_dsp_pcmout(outbuf, outBuffSize);
-                        s_lastSegmentTableLen = 0;
-                        if(ret == OV_ENOTAUDIO || ret == 0 ) ret = VORBIS_CONTINUE; // if no error send continue
+                        if(s_lastSegmentTableLen){
+                            bitReader_setData(s_lastSegmentTable, s_lastSegmentTableLen);
+                            ret = vorbis_dsp_synthesis(s_lastSegmentTable, s_lastSegmentTableLen, outbuf);
+                            uint16_t outBuffSize = 2048 * 2;
+                            s_vorbisValidSamples = vorbis_dsp_pcmout(outbuf, outBuffSize);
+                            s_lastSegmentTableLen = 0;
+                            if(ret == OV_ENOTAUDIO || ret == 0 ) ret = VORBIS_CONTINUE; // if no error send continue
+                        }
+                        else{
+                            bitReader_setData(inbuf, len);
+                            ret = vorbis_dsp_synthesis(inbuf, len, outbuf);
+                            uint16_t outBuffSize = 2048 * 2;
+                            s_vorbisValidSamples = vorbis_dsp_pcmout(outbuf, outBuffSize);
+                            ret = 0;
+                        }
                     }
                 }
                 else {  // not s_f_parseOggDone
@@ -492,7 +505,6 @@ int parseVorbisCodebook(){
     int ret = 0;
 
     s_nrOfCodebooks = bitReader(8) +1;
-
     s_codebooks = (codebook_t*) __calloc_heap_psram(s_nrOfCodebooks, sizeof(*s_codebooks));
 
     for(i = 0; i < s_nrOfCodebooks; i++){
@@ -932,7 +944,7 @@ _eofout:
 //---------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
-int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen){ //}, bool exact){ M.A.
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen){ //, bool exact){ M.A.
     bool exact = false; //M.A.
     int result = 0;  // seek for str in buffer or in header up to baselen, not nullterninated
     if (strlen(str) > baselen) return -1; // if exact == true seekstr in buffer must have "\0" at the end
@@ -3088,7 +3100,6 @@ int32_t *_vorbis_window(int left) {
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
-//void mdct_unroll_lap(int n0, int n1, int lW, int W, int *in, int *right, const int *w0, const int *w1, short int *out, M.A.
 void mdct_unroll_lap(int n0, int n1, int lW, int W, int32_t *in, int32_t *right, const int32_t *w0, const int32_t *w1, short int *out,
                      int step, int start, /* samples, this frame */
                      int end /* samples, this frame */) {
