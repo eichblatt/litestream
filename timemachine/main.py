@@ -281,9 +281,8 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
     tm.tft.write(pfont_med, "Loading", 0, 80, yellow_color)
-    # uversion = sys.version.replace("MicroPython", "").trim()
-    # tm.tft.write(pfont_small, f"{uversion[:15]}", 0, 100, yellow_color)
-    # tm.tft.write(pfont_small, f"{uversion[:-15]}", 0, 115, yellow_color)
+    uversion = sys.version.split(" ")[2]
+    tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
 
     start_time = time.ticks_ms()
     pSelect_old = True
