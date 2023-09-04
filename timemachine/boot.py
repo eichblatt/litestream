@@ -119,10 +119,4 @@ if isdir("/test_download"):
 import main
 
 wifi = main.basic_main()  # Connect wifi, allow reconfigure
-try:
-    main.run_livemusic()
-except:
-    import utils
-
-    utils.reload("main")
-    main.run_livemusic()
+main.run_livemusic()
