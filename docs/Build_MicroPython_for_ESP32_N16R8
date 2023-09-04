@@ -145,9 +145,7 @@ cd to $HOME/projects/litestream
 # sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/projects/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 
 # New Command
-```
-: (idf4.4_py3.10_env) ~/projects/litestream/MicropythonFirmware/v1.20.0-74-g53cb07357 ; sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./firmware.bin
-```
+: (idf4.4_py3.10_env) ~/projects/litestream/MicropythonFirmware/v1.20.0-74-g53cb07357 ; sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 
 This fails, but i should be able to figure it out.
 

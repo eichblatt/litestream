@@ -84,6 +84,14 @@ def test_update():
     pStop_old = True
     update_code = False
 
+    try:
+        import livemusic
+
+        livemusic.test_update()
+    except Exception as e:
+        print(f"UpdateException {e}")
+        return False
+
     while time.ticks_ms() < (start_time + 60_000):
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -303,12 +311,9 @@ def basic_main():
 
 
 def run_livemusic():
-    try:
-        print("Trying to run livemusic main")
-        import livemusic
-    except Exception:
-        print("livemusic.py is not imported!!")
+    import livemusic
 
+    utils.mark_partition()  # If we make it this far, the firmware is good.
     while True:
         livemusic.run()
         choice = reconfigure()

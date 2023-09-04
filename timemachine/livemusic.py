@@ -474,6 +474,16 @@ def show_collections(collection_list):
     time.sleep(1)
 
 
+def test_update():
+    vcs = load_vcs("GratefulDead")
+    coll_dates = vcs.keys()
+    min_year = min(int(min(coll_dates)[:4]), min_year)
+    max_year = max(int(max(coll_dates)[:4]), max_year)
+    tm.y._min_val = min_year
+    tm.y._max_val = max_year
+    assert (max_year - min_year) >= 29
+
+
 def run():
     """run the livemusic controls"""
     if utils.path_exists(COLLECTION_LIST_PATH):
