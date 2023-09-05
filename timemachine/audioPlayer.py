@@ -276,9 +276,9 @@ class AudioPlayer:
         self.FinishedDecoding = False
         self.InHeader = True
 
-        if self.ntracks > 0:
-            self.current_track = 0
-            self.next_track = 1 if self.ntracks > 1 else None
+        # if self.ntracks > 0:
+        #    self.current_track = 0
+        #    self.next_track = 1 if self.ntracks > 1 else None
 
         # A list of offsets into the InBuffer where the tracks end. This tells the decoder when to move onto the next track by decoding the next header
         self.TrackEnds = []
@@ -306,8 +306,9 @@ class AudioPlayer:
         if BytesToPlay == 0:
             if self.FinishedDecoding:  # End of playlist
                 self.DEBUG and print("Finished Playing")
-                self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-                self.reset_player()
+                self.stop()
+                # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
+                # self.reset_player()
                 return
             else:  # Buffer starved
                 # The output buffer can get starved if the network is slow, or if we write too much debug output
@@ -327,9 +328,10 @@ class AudioPlayer:
             self.OutBuffer.bytes_wasRead(BytesToPlay)
         except Exception as e:
             self.DEBUG and print("Buffer error. Stopping playback loop", e)
-            self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-            self.current_track = 0
-            self.reset_player()
+            self.stop()
+            # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
+            # self.current_track = 0
+            # self.reset_player()
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
@@ -388,14 +390,14 @@ class AudioPlayer:
             self.read_header(self.current_track)
             self.PLAY_STATE = self.PLAYING
         elif self.PLAY_STATE == self.PLAYING:
-            self.DEBUG and print(f"Playing URL {self.playlist[self.current_track]}")
+            print(f"Playing URL {self.playlist[self.current_track]}")
         elif self.PLAY_STATE == self.PAUSED:
-            self.DEBUG and print(f"Un-pausing URL {self.playlist[self.current_track]}")
+            print(f"Un-pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = self.PLAYING
             self.play_chunk()  # Kick off the playback loop
 
     def pause(self):
-        self.DEBUG and print(f"Pausing URL {self.playlist[self.current_track]}")
+        print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == self.PLAYING:
             self.PLAY_STATE = self.PAUSED
 
@@ -416,11 +418,11 @@ class AudioPlayer:
         if reset_head:
             self.current_track = 0
             self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+            print(self.track_status())
             self.callbacks["display"](*self.track_names())
         self.reset_player()
 
     def advance_track(self, increment=1):
-        print("Advance")
         if not 0 <= (self.current_track + increment) <= self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
@@ -428,11 +430,12 @@ class AudioPlayer:
 
         self.current_track += increment
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+        print(self.track_status())
         self.callbacks["display"](*self.track_names())
-        if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
-            self.PLAY_STATE = self.STOPPED
-            self.reset_player()
-            self.play()
+        # if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
+        #    self.PLAY_STATE = self.STOPPED
+        #    self.reset_player()
+        #    self.play()
 
     def is_paused(self):
         return self.PLAY_STATE == self.PAUSED
@@ -611,9 +614,9 @@ class AudioPlayer:
             self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
             # If we get a I2S completed interrupt here it could mess up the buffer. So disable interrupts.
-            #state = machine.disable_irq()
-            #self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
-            #machine.enable_irq(state)
+            # state = machine.disable_irq()
+            # self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
+            # machine.enable_irq(state)
 
             if Result == 0:
                 # self.DEBUG and print("Read Packet success. Result:", Result, ", Bytes Left:", BytesLeft, ", Audio Samples:", AudioSamples)
@@ -632,7 +635,7 @@ class AudioPlayer:
             # Check if we have decoded to the end of the current track
             if len(self.TrackEnds) > 0:  # Do we have any end-of-track markers stored?
                 if self.InBuffer.get_readPos() == self.TrackEnds[0]:  # We have finished decoding the current track
-                    self.DEBUG and print("Finished decoding track", self.current_track, " - ", end="")
+                    print("Finished decoding track", self.current_track, " - ", end="")
                     self.TrackEnds.pop(0)  # Remove the current end-of-track marker from the list
                     Player.Vorbis_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
                     # self.audio_out.deinit() # Don't close I2S here, as it still has to play the last part of the track
@@ -641,9 +644,11 @@ class AudioPlayer:
                         self.DEBUG and print("starting decode of track", self.current_track + 1)
                         self.current_track += 1
                         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+                        print(self.track_status())
                         self.callbacks["display"](*self.track_names())
                         self.InHeader = True
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
+                        print(self.track_status())
                         self.DEBUG and print("end of playlist")
                         self.FinishedDecoding = True
 

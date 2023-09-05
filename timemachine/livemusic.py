@@ -189,7 +189,7 @@ def main_loop(player, coll_dict):
     power_press_time = 0
     stop_press_time = 0
     resume_playing = -1
-    resume_playing_delay = 500
+    resume_playing_delay = 1000
     ntape = 0
     valid_dates = set()
     for c in collections:
