@@ -611,12 +611,13 @@ class AudioPlayer:
             self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
             # If we get a I2S completed interrupt here it could mess up the buffer. So disable interrupts.
-            state = machine.disable_irq()
+            #state = machine.disable_irq()
             self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
-            machine.enable_irq(state)
+            #machine.enable_irq(state)
 
             if Result == 0:
                 # self.DEBUG and print("Read Packet success. Result:", Result, ", Bytes Left:", BytesLeft, ", Audio Samples:", AudioSamples)
+                self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
                 pass
             elif Result == 100:
                 # self.DEBUG and print("Need more data. Bytes Left:", BytesLeft)
