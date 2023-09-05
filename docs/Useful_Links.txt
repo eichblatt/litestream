@@ -10,7 +10,7 @@ File system block size, Fragment size, Size of fs in f_frsize units, Number of f
 Number of free blocks for unprivileged users, Number of inodes, Number of free inodes, 
 Number of free inodes for unprivileged users, Mount flags, Maximum filename length
 So file system size is 4096 x 3584 = 14 MB and free space is 4096 x 3580 = 13.98 MB
-To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB
+To see free memory: import gc    gc.mem_free()   Should be approx. 8,125,472 = 7.75 MB - Note: this has changed with v1.21. See https://github.com/orgs/micropython/discussions/12316
 
 3) To debug inside MicroPython .c files use mp_printf(&mp_plat_print, "Test:%u\n", TestVariable);
 
@@ -63,9 +63,17 @@ First - connect to WiFi. Then mip.install("github:eichblatt/litestream/timemachi
 Local: git status,  git add,  git clone url foldername,  git commit xxxx -m "message" 
 To send to GitHub: git push
 
-Micropython Issues
+10) Micropython Issues
 https://github.com/orgs/micropython/discussions/12223
 
-# Buying an ESP32
+11) Buying an ESP32
 https://www.aliexpress.us/item/3256804431007418.html
 Color: ESP32-S3 N16R8
+
+12) Turning off the NeoPixel LED on the dev board
+from machine import Pin
+from neopixel import NeoPixel
+pin = Pin(48, Pin.OUT)  # set GPIO48 to output to drive NeoPixels
+np = NeoPixel(pin, 1)   # create NeoPixel driver on GPIO48 for 1 pixel
+np[0] = (0, 0, 0)       # set the LED to black
+np.write()              # write data to all pixels
