@@ -298,6 +298,13 @@ class AudioPlayer:
             self.sock.close()
             self.sock = None
 
+    def __repr__(self):
+        tstat = self.track_status()
+        bytes = tstat["bytes_read"]
+        length = tstat["length"]
+        ratio = bytes / length
+        return f'Playing track: {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
+
     @micropython.native
     def play_chunk(self):  # Don't be tempted to just put this function directly in to i2s_callback(). Weird errors occur...
         BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
@@ -355,13 +362,19 @@ class AudioPlayer:
         self.playlist = urllist
         if self.ntracks > 0:
             self.current_track = 0
-            self.next_track = 1 if self.ntracks > 1 else None
+            self.next_track = self.set_next_track()
         self.callbacks["display"](*self.track_names())
 
     def track_status(self):
         if self.current_track is None:
-            return None
-        return {"current_track": self.current_track, "next_track": self.next_track, "ntracks": self.ntracks}
+            return {}
+        return {
+            "current_track": self.current_track,
+            "next_track": self.next_track,
+            "ntracks": self.ntracks,
+            "bytes_read": self.current_track_bytes_read,
+            "length": self.current_track_length,
+        }
 
     def track_names(self):
         if self.current_track is None:
@@ -417,10 +430,14 @@ class AudioPlayer:
         self.PLAY_STATE = self.STOPPED
         if reset_head:
             self.current_track = 0
-            self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
-            print(self.track_status())
+            self.next_track = self.set_next_track()
+            print(self)
             self.callbacks["display"](*self.track_names())
         self.reset_player()
+
+    def set_next_track(self):
+        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+        return self.next_track
 
     def advance_track(self, increment=1):
         if not 0 <= (self.current_track + increment) <= self.ntracks:
@@ -429,8 +446,8 @@ class AudioPlayer:
             return
 
         self.current_track += increment
-        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
-        print(self.track_status())
+        self.next_track = self.set_next_track()
+        print(self)
         self.callbacks["display"](*self.track_names())
         # if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
         #    self.PLAY_STATE = self.STOPPED
@@ -449,6 +466,13 @@ class AudioPlayer:
     def read_header(self, trackno, offset=0, port=80):
         TimeStart = time.ticks_ms()
         self.track_being_read = trackno
+        """
+        # This will cause the display to be slightly ahead of audio, but it's better than never updating the display
+        if self.track_being_read == 1 + self.current_track:
+            self.current_track = self.track_being_read
+            self.next_track = self.set_next_track()
+            self.callbacks["display"](*self.track_names())
+        """
         url = self.playlist[trackno]
         _, _, host, path = url.split("/", 3)
         addr = socket.getaddrinfo(host, port)[0][-1]
@@ -531,15 +555,14 @@ class AudioPlayer:
                         self.current_track_bytes_read += data
                         self.InBuffer.bytes_wasWritten(data)
 
-                        if (
-                            data == 0
-                        ):  # Peer closed socket. This can be because of End-of-stream or it can happen in a long pause before our socket closes
+                        # Peer closed socket. This can be because of End-of-stream or it can happen in a long pause before our socket closes
+                        if data == 0:
                             if self.current_track_length == self.current_track_bytes_read:  # End of track
-                                self.TrackEnds.append(
-                                    self.InBuffer.get_writePos()
-                                )  # Store the end-of-track marker for this track
+                                # Store the end-of-track marker for this track
+                                self.TrackEnds.append(self.InBuffer.get_writePos())
                                 self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
                                 self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
+
                                 if self.track_being_read + 1 < self.ntracks:
                                     self.DEBUG and print("reading next track")
                                     self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
@@ -643,12 +666,12 @@ class AudioPlayer:
                     if self.current_track + 1 < self.ntracks:  # Start decode of next track
                         self.DEBUG and print("starting decode of track", self.current_track + 1)
                         self.current_track += 1
-                        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
-                        print(self.track_status())
+                        self.next_track = self.set_next_track()
+                        # print(self)
                         self.callbacks["display"](*self.track_names())
                         self.InHeader = True
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
-                        print(self.track_status())
+                        # print(self)
                         self.DEBUG and print("end of playlist")
                         self.FinishedDecoding = True
 
