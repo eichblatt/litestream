@@ -303,7 +303,15 @@ class AudioPlayer:
         bytes = tstat["bytes_read"]
         length = tstat["length"]
         ratio = bytes / length
-        return f'Playing track: {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
+        if self.PLAY_STATE == self.PLAYING:
+            status = "Playing"
+        elif self.PLAY_STATE == self.PAUSED:
+            status = "Paused"
+        elif self.PLAY_STATE == self.STOPPED:
+            status = "Stopped"
+        else:
+            status = " !?! "
+        return f'{status} track: {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
 
     @micropython.native
     def play_chunk(self):  # Don't be tempted to just put this function directly in to i2s_callback(). Weird errors occur...
