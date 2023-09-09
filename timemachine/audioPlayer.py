@@ -81,9 +81,8 @@ class InRingBuffer:
     # How many bytes can we add to the buffer before filling it
     def get_write_available(self):
         if self._writePos > self._readPos:
-            BytesInOverflow = max(
-                self.OverflowSize - self._readPos, 0
-            )  # If the read_pos is within the overflow area return the num bytes in there, else zero
+            # If the read_pos is within the overflow area return the num bytes in there, else zero
+            BytesInOverflow = max(self.OverflowSize - self._readPos, 0)
             return self.BufferSize + self.OverflowSize - self._writePos - BytesInOverflow
         elif self._writePos < self._readPos:
             return self._readPos - self._writePos
@@ -180,7 +179,7 @@ class OutRingBuffer:
     # How many bytes can we add to the buffer before filling it. Note this function can change the writePos
     def get_write_available(self):
         if self._writePos > self._readPos:  # We are writing ahead of the read pointer
-            if self.BufferSize - self._writePos < 4096:  # Not enough space to write 4096 contiguous bytes, so wrap around
+            if (self.BufferSize - self._writePos) < 4096:  # Not enough space to write 4096 contiguous bytes, so wrap around
                 self._writePos = 0
                 return self._readPos  # We wrapped, so can write up to readpos
             else:  # There is enough room to write 4096 bytes, so we can write up to the end of the buffer as we are ahead of the read pointer
@@ -191,16 +190,21 @@ class OutRingBuffer:
             if self.BytesInBuffer > 0:  # The buffer is full
                 return 0  # No bytes available to write
             else:  # The buffer is empty, but we are not necessarily writing at the beginning
+                # Steve : What if we're here, and it's less than 4096 from the end of the buffer?
                 return self.BufferSize - self._writePos  # We can write up to the end of the buffer
 
     # Tell the buffer how many bytes we just wrote. Must call this after every write to the buffer
     def bytes_wasWritten(self, count):
         if self._writePos < self._readPos:
-            assert self._writePos + count <= self._readPos, "OutBuffer Overwrite"
+            assert (
+                self._writePos + count <= self._readPos
+            ), f"OutBuffer Overwrite Readpos. Count: {count}. WritePos: {self._writePos}. ReadPos:{self._readPos}"
         self.BytesInBuffer += count
-        assert self.BytesInBuffer <= self.BufferSize, "OutBuffer Overflow"
+        assert (
+            self.BytesInBuffer <= self.BufferSize
+        ), f"OutBuffer Overflow End. Count: {count}. BytesInBuffer {self.BytesInBuffer}. Size: {self.BufferSize}"
         self._writePos += count  # The caller must call get_write_available before calling this, so we should never overwrite the end of the buffer
-        assert self._writePos <= self.BufferSize, "Outbuffer Overflow2"  # We wrote past the end of the buffer
+        assert self._writePos <= self.BufferSize, f"Outbuffer Overflow2 write_pos {self._writePos}"
 
         if self._writePos > self._endPos:  # Update the high water mark of the buffer
             self._endPos = self._writePos

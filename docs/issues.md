@@ -17,6 +17,14 @@ Line 191 is the first `assert` statement in the clause below:
         self.BytesInBuffer += count
         assert self.BytesInBuffer <= self.BufferSize, "OutBuffer Overflow"
 ```
+I see the same error when playing 1989-07-17, track 4
+```
+Playing track: 4/25. Read 5078458/5210196 (97.47%) of track 4
+Playing track: 4/25. Read 30020/7748142 (0.39%) of track 5
+File "/lib/audioPlayer.py", line 199, in bytes_wasWritten
+AssertionError: OutBuffer Overwrite
+```
+**NOTE** This happened at the track boundary. That is probably not a coincidence.
 
 ## 2023-09-07
 
@@ -43,3 +51,7 @@ The computer must have woken up Jama which was connected to the device. It can't
 
 At the end of the tape the triangle needs to disappear.
 
+## 2023-09-09
+
+### Make Autoplay work
+Right now, you have to select the date and then play the show. I'd like selecting a date to automatically play it.
