@@ -253,6 +253,7 @@ class AudioPlayer:
         self.PLAY_STATE = self.STOPPED
         self.sock = None
         self.audio_out = None
+        self.playlist_started = False
         self.Player = Player
 
         self.playlist = self.tracklist = []
@@ -319,7 +320,7 @@ class AudioPlayer:
         else:
             status = " !?! "
         retstring = f"{status} track"
-        if self.PLAY_STATE > self.STOPPED:
+        if self.PLAY_STATE != self.STOPPED:
             retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
         return retstring
 
@@ -332,6 +333,7 @@ class AudioPlayer:
             if self.FinishedDecoding:  # End of playlist
                 self.DEBUG and print("Finished Playing")
                 self.stop()
+                self.playlist_started = False
                 # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
                 # self.reset_player()
                 return
@@ -479,6 +481,7 @@ class AudioPlayer:
         return self.PLAY_STATE == self.PLAYING
 
     def read_header(self, trackno, offset=0, port=80):
+        self.playlist_started = True
         TimeStart = time.ticks_ms()
         self.track_being_read = trackno
         """
