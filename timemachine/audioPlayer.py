@@ -16,7 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import network, time, Player, socket
+import network, time, socket
+import Player as Decoder
 from machine import Pin, I2S
 import machine
 
@@ -254,7 +255,7 @@ class AudioPlayer:
         self.sock = None
         self.audio_out = None
         self.playlist_started = False
-        self.Player = Player
+        self.Decoder = Decoder
 
         self.playlist = self.tracklist = []
         self.ntracks = 0
@@ -284,10 +285,6 @@ class AudioPlayer:
         self.FinishedDecoding = False
         self.InHeader = True
 
-        # if self.ntracks > 0:
-        #    self.current_track = 0
-        #    self.next_track = 1 if self.ntracks > 1 else None
-
         # A list of offsets into the InBuffer where the tracks end. This tells the decoder when to move onto the next track by decoding the next header
         self.TrackEnds = []
 
@@ -300,13 +297,15 @@ class AudioPlayer:
         self.OutBuffer.InitBuffer()
 
         # This frees up all the buffers that the decoder allocated, and resets its state
-        Player.Vorbis_Close()
+        Decoder.Vorbis_Close()
 
         if self.sock is not None:
             self.sock.close()
             self.sock = None
 
     def __repr__(self):
+        if not self.playlist_started:
+            return "Playlist not started"
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
@@ -334,15 +333,12 @@ class AudioPlayer:
                 self.DEBUG and print("Finished Playing")
                 self.stop()
                 self.playlist_started = False
-                # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-                # self.reset_player()
                 return
             else:  # Buffer starved
                 # The output buffer can get starved if the network is slow, or if we write too much debug output
                 self.DEBUG and print("Play buffer starved")
-                self.PlayLoopRunning = (
-                    False  # Set this flag to re-start the player loop when the decoder has generated enough data
-                )
+                # Set this flag to re-start the player loop when the decoder has generated enough data
+                self.PlayLoopRunning = False
                 return
 
         Offset = self.OutBuffer.get_readPos()
@@ -433,12 +429,10 @@ class AudioPlayer:
 
     def rewind(self):
         self.DEBUG and print("in rewind")
-        self.stop(reset_head=False)
         self.advance_track(-1)
 
     def ffwd(self):
         self.DEBUG and print("in ffwd")
-        self.stop(reset_head=False)
         self.advance_track()
 
     def stop(self, reset_head=True):
@@ -462,6 +456,7 @@ class AudioPlayer:
                 self.stop()
             return
 
+        self.stop(reset_head=False)
         self.current_track += increment
         self.next_track = self.set_next_track()
         print(self)
@@ -607,12 +602,12 @@ class AudioPlayer:
             return
 
         if self.InHeader:
-            if self.Player.Vorbis_Init():
+            if self.Decoder.Vorbis_Init():
                 self.DEBUG and print("Decoder Init success")
             else:
                 raise RuntimeError("Decoder Init failed")
 
-            FoundSyncWordAt = Player.Vorbis_Start(
+            FoundSyncWordAt = Decoder.Vorbis_Start(
                 self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
             )
 
@@ -646,7 +641,7 @@ class AudioPlayer:
 
             Counter += 1
             # It takes about 14ms to decode 1024 samples, which is about 23ms worth of audio. So, not a lot of headroom.
-            Result, BytesLeft, AudioSamples = self.Player.Vorbis_Decode(
+            Result, BytesLeft, AudioSamples = self.Decoder.Vorbis_Decode(
                 self.InBuffer.Buffer[self.InBuffer.get_readPos() :],
                 InBytesAvailable,
                 self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
@@ -678,7 +673,7 @@ class AudioPlayer:
                 if self.InBuffer.get_readPos() == self.TrackEnds[0]:  # We have finished decoding the current track
                     print("Finished decoding track", self.current_track, " - ", end="")
                     self.TrackEnds.pop(0)  # Remove the current end-of-track marker from the list
-                    Player.Vorbis_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
+                    Decoder.Vorbis_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
                     # self.audio_out.deinit() # Don't close I2S here, as it still has to play the last part of the track
 
                     if self.current_track + 1 < self.ntracks:  # Start decode of next track
@@ -701,7 +696,7 @@ class AudioPlayer:
                 self.DEBUG and print("************ Initiate Playing ************")
 
                 # Get info about this stream
-                channels, sample_rate, bits_per_sample, bit_rate = self.Player.Vorbis_GetInfo()
+                channels, sample_rate, bits_per_sample, bit_rate = self.Decoder.Vorbis_GetInfo()
                 self.DEBUG and print("Channels:", channels)
                 self.DEBUG and print("Sample Rate:", sample_rate)
                 self.DEBUG and print("Bits per Sample:", bits_per_sample)
