@@ -309,7 +309,7 @@ class AudioPlayer:
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
-        ratio = bytes / min(length, 1)
+        ratio = bytes / max(length, 1)
         if self.PLAY_STATE == self.PLAYING:
             status = "Playing"
         elif self.PLAY_STATE == self.PAUSED:
