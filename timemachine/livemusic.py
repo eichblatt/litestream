@@ -152,7 +152,7 @@ nshows_color = st7789.color565(0, 100, 255)
 def update_display(player):
     display_tracks(*player.track_names())
     if not player.playlist_started:
-        utils.clear_bbox(utils.playstate_bbox)
+        utils.clear_bbox(playpause_bbox)
     elif player.PLAY_STATE == player.STOPPED:
         tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
     elif player.PLAY_STATE == player.PLAYING:
