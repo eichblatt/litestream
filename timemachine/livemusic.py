@@ -149,6 +149,18 @@ play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
 
+def update_display(player):
+    display_tracks(*player.track_names())
+    if not player.playlist_started:
+        utils.clear_bbox(playpause_bbox)
+    elif player.PLAY_STATE == player.STOPPED:
+        tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+    elif player.PLAY_STATE == player.PLAYING:
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+    elif player.PLAY_STATE == player.PAUSED:
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
+
+
 def display_tracks(current_track_name, next_track_name):
     utils.clear_bbox(tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
@@ -267,7 +279,7 @@ def main_loop(player, coll_dict):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                if (key_date == selected_date) and (player.PLAY_STATE > 0):  # We're already on this date
+                if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif key_date in valid_dates:
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
@@ -340,7 +352,8 @@ def main_loop(player, coll_dict):
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
             print(player)
-            display_tracks(*player.track_names())
+            update_display(player)
+            # display_tracks(*player.track_names())
 
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
@@ -424,12 +437,14 @@ def main_loop(player, coll_dict):
                     tm.tft.write(
                         pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
                     )  # no need to clear this.
-                display_tracks(*player.track_names())
+                update_display(player)
+                # display_tracks(*player.track_names())
             except KeyError:
                 utils.clear_bbox(venue_bbox)
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
-                display_tracks(*player.track_names())
+                update_display(player)
+                # display_tracks(*player.track_names())
                 pass
         # time.sleep_ms(50)
 
