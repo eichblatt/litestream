@@ -24,14 +24,19 @@ sck_pin = Pin(13)  # Serial clock output
 ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
 
+# ---------------------------------------------     InRingBuffer     ------------------------------------------ #
+#
 # For the buffer between the network and the decoder we use a Ring Buffer with an exta "overflow" area at the beginning.
-# If the space between readPos and the end of the buffer is less than OverflowSize then we copy data from the end of the buffer to the overflow area so that the mp3/Vorbis frame is always completed.
+# If the space between readPos and the end of the buffer is less than OverflowSize then we copy data from the end
+# of the buffer to the overflow area so that the mp3/Vorbis frame is always completed.
 #
 # Notes:
-# 1) We only ever write to the main buffer area. The buffer itself handles copying data to the overflow area when required, transparently to the consumer of the buffer
-# 2) If there are x bytes of data in the overflow area, we limit the write to x bytes less than the main buffer so that the total data available is always <= BufferSize
+# 1) We only write to the main buffer area. The buffer object copies data to the overflow area when required.
+# 2) When there are x bytes of data in the overflow area, we limit the write to x bytes less than the main buffer so
+#       that the total data available is always <= BufferSize
 # 3) Calling get_read_available() can change the readPos if it copies data to the overflow area
-# 4) After every read and write you must call bytes_wasRead or bytes_wasWritten respectively to update the read and write pointers
+# 4) After every read and write you must call bytes_wasRead() or bytes_wasWritten() respectively to update the read
+#       and write pointers
 #
 #
 #   0                          OverflowSize              readPos                   writePos          BufferSize + OverflowSize
@@ -97,7 +102,8 @@ class InRingBuffer:
     def get_readPos(self):
         return self._readPos
 
-    # How many bytes can we read from the buffer before it is empty. If there are less than "OverflowSize" bytes available at the end of the buffer, move the bytes at the end of the buffer into the overflow area.
+    # How many bytes can we read from the buffer before it is empty. If there are less than "OverflowSize" bytes
+    # available at the end of the buffer, move the bytes at the end of the buffer into the overflow area.
     # Note this function can change the readPos
     def get_read_available(self):
         if self._writePos > self._readPos:
@@ -112,9 +118,8 @@ class InRingBuffer:
                     return self.BufferSize + self.OverflowSize - self._readPos
                 else:  # The data left to read is smaller than the overflow buffer, so move it to the overflow buffer and update the readPos
                     bytesToMove = self.BufferSize + self.OverflowSize - self._readPos
-                    self.Buffer[(self.OverflowSize - bytesToMove) : self.OverflowSize] = self.Buffer[
-                        -bytesToMove:
-                    ]  # Move the last bytes into the overflow area
+                    # Move the last bytes into the overflow area
+                    self.Buffer[(self.OverflowSize - bytesToMove) : self.OverflowSize] = self.Buffer[-bytesToMove:]
                     self._readPos = self.OverflowSize - bytesToMove
                     return bytesToMove + self._writePos - self.OverflowSize
 
@@ -125,16 +130,18 @@ class InRingBuffer:
         self._readPos = self._readPos + count
 
 
-####################### End of InRingBuffer #######################
-
-
-# For the buffer between the decoder and the I2S output we use a Ring Buffer. Because the decoder must always be able to write one full frame (1024 samples = 4096 bytes at 16 bit stereo) we only return get_write_available if we have at least 4096 bytes available.
+# ---------------------------------------------     OutRingBuffer     ------------------------------------------ #
+#
+# For the buffer between the decoder and the I2S output we use a Ring Buffer. Because the decoder must always be able to write one full frame
+# (1024 samples = 4096 bytes at 16 bit stereo) we only return get_write_available if we have at least 4096 bytes available.
 # If there are less than 4096 bytes available, then the writer has to wait until the reader has freed up enough space (done in the I2S callback)
-# Because this means we won't always fill the buffer before wrapping, we keep track of a "high water mark" (_endPos) to let the reader know how far to read before it wraps
+# Because this means we won't always fill the buffer before wrapping, we keep track of a "high water mark" (_endPos) to let the reader know how
+# far to read before it wraps
 #
 # Notes:
-# If read_pos is near the end of outBuffer then get_read_available only shows a little bit of data even though the write pointer has wrapped and written lots more.
-# Therefore, be careful about checking get_read_available as an indicator of buffer fullness - use get_bytes_in_buffer() instead
+# If read_pos is near the end of outBuffer then get_read_available() only shows a little bit of data even though the write pointer
+# has wrapped and written lots more.
+# Therefore, be careful about checking get_read_available() as an indicator of buffer fullness - use get_bytes_in_buffer() instead
 #
 #   0              readPos                 writePos                                                        BufferSize
 #   |<---freeSpace--->|<------dataLength----->|<-----------------------freeSpace------------------------------->|
@@ -302,7 +309,7 @@ class AudioPlayer:
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
-        ratio = bytes / length
+        ratio = bytes / min(length, 1)
         if self.PLAY_STATE == self.PLAYING:
             status = "Playing"
         elif self.PLAY_STATE == self.PAUSED:
@@ -311,7 +318,10 @@ class AudioPlayer:
             status = "Stopped"
         else:
             status = " !?! "
-        return f'{status} track: {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
+        retstring = f"{status} track"
+        if self.PLAY_STATE > self.STOPPED:
+            retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
+        return retstring
 
     @micropython.native
     def play_chunk(self):  # Don't be tempted to just put this function directly in to i2s_callback(). Weird errors occur...
@@ -344,9 +354,6 @@ class AudioPlayer:
         except Exception as e:
             self.DEBUG and print("Buffer error. Stopping playback loop", e)
             self.stop()
-            # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-            # self.current_track = 0
-            # self.reset_player()
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
