@@ -324,7 +324,7 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} track"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {self.track_being_read}'
+            retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}'
         return retstring
 
     @micropython.native
@@ -389,6 +389,7 @@ class AudioPlayer:
             "current_track": self.current_track,
             "next_track": self.next_track,
             "ntracks": self.ntracks,
+            "track_being_read": self.track_being_read,
             "bytes_read": self.current_track_bytes_read,
             "length": self.current_track_length,
         }
@@ -483,13 +484,15 @@ class AudioPlayer:
         self.playlist_started = True
         TimeStart = time.ticks_ms()
         self.track_being_read = trackno
-        """
+
+        # STEVE
         # This will cause the display to be slightly ahead of audio, but it's better than never updating the display
-        if self.track_being_read == 1 + self.current_track:
-            self.current_track = self.track_being_read
-            self.next_track = self.set_next_track()
-            self.callbacks["display"](*self.track_names())
-        """
+        # if self.track_being_read != self.current_track:
+        #     self.current_track = self.track_being_read
+        #     self.next_track = self.set_next_track()
+        #     self.callbacks["display"](*self.track_names())
+        # END STEVE
+
         url = self.playlist[trackno]
         _, _, host, path = url.split("/", 3)
         addr = socket.getaddrinfo(host, port)[0][-1]
