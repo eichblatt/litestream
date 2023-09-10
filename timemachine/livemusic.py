@@ -295,7 +295,7 @@ def main_loop(player, coll_dict):
                     utils.clear_bbox(playpause_bbox)
                     tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(selected_date_bbox)
-                    selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
+                    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
                     print(f"Selected date string {selected_date_str}")
                     tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
                     if AUTO_PLAY:
@@ -394,7 +394,7 @@ def main_loop(player, coll_dict):
             else:
                 day_new = min(28, day_new)
 
-        date_new = f"{month_new:2d}-{day_new:02d}-{year_new%100:02d}"
+        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
         key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
         key_date = set_date(key_date)
         if year_old != year_new:

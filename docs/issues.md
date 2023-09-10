@@ -27,6 +27,14 @@ AssertionError: OutBuffer Overwrite
 **NOTE** This happened at the track boundary. That is probably not a coincidence.
 **Update 2023-09-09:** I have added some text to the Assertion Error message, for next time we see this error.
 
+==Update from Mike==
+
+I'm pretty sure the OutBuffer overwrite is from the interrupt firing just as we are reading the value of the Outbuffer in the decode loop...
+It needs to be protected with a mutex, but I ran out of time to figure out it
+Probably best to do it in the outbuffer class. Whenever readpointer and writepointer get updated it needs a mutex
+Inbuffer doesn't need it because it is never accessed from an interrupt
+
+
 ## 2023-09-07
 ### ~~Long-press of select no longer working.~~
 This is working.
@@ -159,3 +167,36 @@ Traceback (most recent call last):
 KeyboardInterrupt: 
 MicroPython v1.20.0-438-g65f0cb11a-dirty on 2023-09-04; Generic ESP32S3 module with Octal-SPIRAM with ESP32S3
 Type "help()" for more information.
+
+### Set Break as current track
+The set break is the "track being read" for about 4 minutes, and then it starts reading the next track.
+```
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10 # 1 Minute
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10 # 2 Minutes
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10 # 3 Minutes
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 71558/71558 (100.00%) of track 10
+Playing track: 10/24. Read 82781/3522582 (2.35%) of track 11
+Playing track: 10/24. Read 83926/3522582 (2.38%) of track 11 # 4 Minutes
+Playing track: 10/24. Read 85084/3522582 (2.42%) of track 11
+Playing track: 10/24. Read 86241/3522582 (2.45%) of track 11
+Playing track: 10/24. Read 87389/3522582 (2.48%) of track 11
+```
+Because of this, I don't want to have the display show the "track_being_read". However, this would be a good solution otherwise.
