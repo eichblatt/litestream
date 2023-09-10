@@ -619,8 +619,10 @@ class AudioPlayer:
             )
 
             if FoundSyncWordAt >= 0:
-                self.DEBUG and print("Decoder Start success. Sync word at", FoundSyncWordAt)
+                print("Decoder Start success. Sync word at", FoundSyncWordAt)
                 self.InHeader = False
+                self.current_track = self.track_being_read
+                self.next_track = self.set_next_track()
             else:
                 raise RuntimeError("Decoder Start failed")
 
