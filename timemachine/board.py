@@ -97,7 +97,7 @@ FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 # Configure display driver
 def conf_screen(rotation=0, buffer_size=0, options=0):
     return st7789.ST7789(
-        SPI(1, baudrate=40000000, sck=Pin(12), mosi=Pin(11)),
+        SPI(1, baudrate=40_000_000, sck=Pin(12), mosi=Pin(11)),
         128,
         160,
         reset=Pin(4, Pin.OUT),
