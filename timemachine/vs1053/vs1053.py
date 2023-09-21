@@ -393,7 +393,8 @@ class VS1053:
             # callback during waiting periods or after 960 bytes if dreq never goes False.
             # This is a fault condition where the VS1053 wants data faster than we can
             # provide it.
-            while (not dreq()) or cnt > 30:  # 960 byte backstop
+            # while (not dreq()) or cnt > 30:  # 960 byte backstop
+            while (not dreq()) or cnt > 30_000:  # 960 byte backstop
                 cnt = 0
                 if cancnt == 0 and cancb():  # Not cancelling. Check callback when waiting on dreq.
                     cancnt = 1  # Send at least one more buffer
