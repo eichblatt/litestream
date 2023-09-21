@@ -46,4 +46,9 @@ def main(songs):
             player.play(f)
 
 
-main(["/lib/01Tuning.mp3"])
+# main(["/lib/01Tuning.mp3"])
+# main(['/data/gd75-08-13d1t01.ogg'])
+# main(['/data/gd75-08-13d1t02.ogg'])
+# main(['/data/gd75-08-13d1t02.mp3'])
+# main(['/data/gd75-08-13d1t01.ogg','/data/gd75-08-13d1t02.ogg'])
+# main(['/data/gd75-08-13d1t01.mp3','/data/gd75-08-13d1t02.mp3'])

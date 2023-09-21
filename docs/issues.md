@@ -265,3 +265,15 @@ Because of this, I don't want to have the display show the "track_being_read". H
 ## 2023-09-11
 ### Need to Stop Player Before Selecting a New Date
 As soon as select is pressed on a new date, **stop the player** similar to what happens with Ffwd and Rewind.
+
+## 2023-09-20
+### VS1053 decoder chip working!
+
+However, it's ogg coverage is spotty. For example, it will play 8/13/75 track01 fine, but won't play track02.  Maybe there is a patch.
+
+Also, there is a noticeable gap between tracks, even if both are mp3. However, according to http://www.vsdsp-forum.com/phpbb/viewtopic.php?t=1671
+PS. In MP3 there is no problem to play files back to back without pause between files ... IF you are very careful to send only complete MP3 blocks: no extra bytes, no missing bytes, no garbage at the beginning or end of the file (like ID3 tags, make your microcontroller code to strip these) and all MP3 files have the same sample rate.
+
+### Can we run VS1053 in a non-blocking way?
+
+Current code is simply playing in a tight loop, with no way to do anything else. Can we play chunks of larger than 32 bytes, and pump it from a method like audio_pump?

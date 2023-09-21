@@ -221,7 +221,7 @@ class VS1053:
             self.soft_reset()
             return
         if self._read_reg(_SCI_HDAT0) or self._read_reg(_SCI_HDAT1):
-            raise RuntimeError("Invalid HDAT value.")
+            raise RuntimeError(f"Invalid HDAT value. {hex(self._read_reg(_SCI_HDAT0))} or {hex(self._read_reg(_SCI_HDAT1))}")
 
     def write(self, buf):
         while not self._dreq():  # minimise for speed
