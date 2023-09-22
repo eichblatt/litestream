@@ -380,6 +380,21 @@ class VS1053:
 
     # Should check for short reads at EOF. Loop is time critical so I skip
     # this check. Sending a few bytes of old data has no obvious consequence.
+
+    @micropython.native
+    def play_chunk(self, inBuffer):
+        bytesRead = 0
+        while self._dreq():
+            # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
+            # At 128Kbps this will take 40ms - at higher rates, less.
+            readPos = inBuffer.get_readPos()
+            self._xdcs(0)  # Fast write
+            self._spi.write(inBuffer.Buffer[readPos : readPos + 32])
+            self._xdcs(1)
+            inBuffer.bytes_wasRead(32)
+            bytesRead = bytesRead + 32
+        return bytesRead
+
     @micropython.native
     def play(self, s, buf=bytearray(32)):
         cancb = self._cancb
