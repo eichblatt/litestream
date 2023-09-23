@@ -16,6 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+"""
 import st7789
 import vga1_16x32 as font
 import fonts.vga1_bold_16x16 as bfont
@@ -157,7 +158,7 @@ pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
 pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
 pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 
-pLED = Pin(48, Pin.OUT)
+# pLED = Pin(48, Pin.OUT) # Using for 1053's XDCS
 
 PowerLED = False
 
@@ -177,3 +178,4 @@ y = RotaryIRQ(
 m = RotaryIRQ(39, 18, min_val=1, max_val=12, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
 # Day
 d = RotaryIRQ(7, 8, min_val=1, max_val=31, reverse=False, range_mode=RotaryIRQ.RANGE_BOUNDED, pull_up=True, half_step=False)
+"""

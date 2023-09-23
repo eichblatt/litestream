@@ -35,7 +35,7 @@ pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
 pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
 pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 
-pLED = Pin(48, Pin.OUT)
+# pLED = Pin(48, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
 
