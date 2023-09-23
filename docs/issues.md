@@ -271,9 +271,30 @@ As soon as select is pressed on a new date, **stop the player** similar to what 
 
 However, it's ogg coverage is spotty. For example, it will play 8/13/75 track01 fine, but won't play track02.  Maybe there is a patch.
 
-Also, there is a noticeable gap between tracks, even if both are mp3. However, according to http://www.vsdsp-forum.com/phpbb/viewtopic.php?t=1671
+Also, there is a **noticeable gap between tracks**, even if both are mp3. However, according to http://www.vsdsp-forum.com/phpbb/viewtopic.php?t=1671
 PS. In MP3 there is no problem to play files back to back without pause between files ... IF you are very careful to send only complete MP3 blocks: no extra bytes, no missing bytes, no garbage at the beginning or end of the file (like ID3 tags, make your microcontroller code to strip these) and all MP3 files have the same sample rate.
 
 ### Can we run VS1053 in a non-blocking way?
-
 Current code is simply playing in a tight loop, with no way to do anything else. Can we play chunks of larger than 32 bytes, and pump it from a method like audio_pump?
+
+## 2023-09-22
+### Duty Cycle of VS1053 Audio Pump
+We have to pump the vs1053 every 70 ms or so. The whole pumping takes about 30 ms, so it is busy 30% of the time.
+
+### Playing Full Shows
+So far, the VS1053 has been able to play every mp3 file that it has seen. It doesn't play ogg very well at all. Patch? I'm not sure. For now, I'm going with mp3.
+
+### Can't Play and See Screen at the Same Time
+The screen and the VS1053 share a PCI bus, and for some reason, once I start pumping audio to the chip, I can't update the screen. For now, that means I can't run headless. 
+See https://docs.micropython.org/en/latest/esp32/quickref.html#hardware-spi-bus
+
+Note:
+```
+MicroPython >>> player.decoder._spi
+
+SPI(id=2, baudrate=11428571, polarity=0, phase=0, bits=8, firstbit=0, sck=12, mosi=11, miso=13)
+
+MicroPython >>> tm.screen_spi
+
+SPI(id=1, baudrate=40000000, polarity=0, phase=0, bits=8, firstbit=0, sck=12, mosi=11, miso=13)
+```
