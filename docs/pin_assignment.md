@@ -1,9 +1,10 @@
 # Pin Assignments
 |Pin (GPIO) | component | Function | comments |
 | -  | -        | - |  -       |
+| 0 | VS1053 | XDCS | |
 | 1 | button | ffwd |
 | 2 | button | playPause | 
-| 4 | screen/vs1053 | reset | Is it ok to share these? |
+| 4 | screen | reset | |
 | 5 | screen | backlight | 
 | 6 | screen | dc | power? |
 | 7 | knob | day |
@@ -25,5 +26,6 @@
 | 39 | knob | month|
 | 40 | knob | year |
 | 42 | knob | year | 
+| 45 | VS1053 | reset |
 | 47 | button | select | 
-| 48 | button/VS1053 | led/XDCS | Is it ok to share? |
+| 48 | button | led |  |

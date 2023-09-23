@@ -37,7 +37,7 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import network
 
-import audioPlayer
+import audioPlayer_1053 as audioPlayer
 import board as tm
 import utils
 
@@ -89,6 +89,7 @@ def select_date(coll_dict, key_date, ntape=0):
         print(f"API request is {api_request}")
         resp = requests.get(api_request).json()
         urls = resp["urls"]
+    urls = [x.replace(".ogg", ".mp3") for x in urls]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -500,16 +501,7 @@ def test_update():
     assert (max_year - min_year) >= 29
 
 
-def run():
-    """run the livemusic controls"""
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    else:
-        collection_list = ["GratefulDead"]
-        with open(COLLECTION_LIST_PATH, "w") as f:
-            json.dump(collection_list, f)
-    show_collections(collection_list)
-
+def get_coll_dict(collection_list):
     coll_dict = OrderedDict({})
     min_year = tm.y._min_val
     max_year = tm.y._max_val
@@ -520,7 +512,20 @@ def run():
         max_year = max(int(max(coll_dates)[:4]), max_year)
         tm.y._min_val = min_year
         tm.y._max_val = max_year
+    return coll_dict
 
+
+def run():
+    """run the livemusic controls"""
+    if utils.path_exists(COLLECTION_LIST_PATH):
+        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
+    else:
+        collection_list = ["GratefulDead"]
+        with open(COLLECTION_LIST_PATH, "w") as f:
+            json.dump(collection_list, f)
+    show_collections(collection_list)
+
+    coll_dict = get_coll_dict(collection_list)
     print(f"Loaded collections {coll_dict.keys()}")
     player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks})
     main_loop(player, coll_dict)

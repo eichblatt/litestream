@@ -156,10 +156,10 @@ class AudioPlayer:
 
         # Create the decoder object on the SPI bus, as device 2 (screen is device 1)
         dcd_spi = SPI(2, sck=Pin(12), mosi=Pin(11), miso=Pin(13))
-        reset = Pin(4, Pin.OUT, value=1)  # Active low hardware reset
+        reset = Pin(45, Pin.OUT, value=1)  # Active low hardware reset
         xcs = Pin(17, Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet
         # sdcs = Pin(10, Pin.OUT, value=1)  # SD card CS
-        xdcs = Pin(48, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
+        xdcs = Pin(0, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
         dreq = Pin(14, Pin.IN)  # Active high data request
         self.decoder = vs1053.VS1053(dcd_spi, reset, dreq, xdcs, xcs, cancb=self.decoder_callback)
 
