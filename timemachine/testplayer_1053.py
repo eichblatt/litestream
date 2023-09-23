@@ -1,4 +1,5 @@
 import audioPlayer_1053 as Player
+import time
 
 player = Player.AudioPlayer()
 # player.set_playlist(["silence"], ["https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"])
@@ -20,13 +21,14 @@ playlist_urls = (
 )
 print(list(zip(playlist_titles, playlist_urls)))
 # player.set_playlist(['t1','t2'],["https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t01.mp3","https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t02.mp3"])
-player.set_playlist(playlist_titles, playlist_urls)
+player.set_playlist(playlist_titles * 10, playlist_urls * 10)
 player.decoder.reset()
 print(hex(player.decoder.mode()))
 player.play()
 i = 0
 while True:
     player.audio_pump()
+    time.sleep_ms(40)
+    if (i % 1000) == 0:
+        print(f".{player}")
     i = i + 1
-    if (i % 10000) == 0:
-        print(f".", end="")

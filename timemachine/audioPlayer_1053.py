@@ -464,7 +464,7 @@ class AudioPlayer:
             Counter += 1
             try:
                 bytes_sent = self.decoder.play_chunk(self.InBuffer)
-                print(f"Bytes sent {bytes_sent}")
+                # print(f"Bytes sent {bytes_sent}")
             except Exception:
                 raise RuntimeError("Decode Packet failed")
 
