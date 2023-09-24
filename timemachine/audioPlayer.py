@@ -161,10 +161,11 @@ class InRingBuffer:
 
 
 class OutRingBuffer:
-    def __init__(self, RingBufferSize):
+    def __init__(self, RingBufferSize, screen_off_callback):
         self.Bytes = bytearray(RingBufferSize)  # An array to hold the decoded audio data
         self.BufferSize = RingBufferSize
         self.Buffer = memoryview(self.Bytes)
+        self.screen_off_callback = screen_off_callback
         self.InitBuffer()
 
     def InitBuffer(self):
@@ -196,9 +197,12 @@ class OutRingBuffer:
     # Tell the buffer how many bytes we just wrote. Must call this after every write to the buffer
     def bytes_wasWritten(self, count):
         if self._writePos < self._readPos:
-            assert (
-                self._writePos + count <= self._readPos
-            ), f"OutBuffer Overwrite Readpos. Count: {count}. WritePos: {self._writePos}. ReadPos:{self._readPos}"
+            # Turn off the screen
+            if not self._writePos + count <= self._readPos:
+                self.screen_off_callback()
+                assert (
+                    False
+                ), f"OutBuffer Overwrite Readpos. Count: {count}. WritePos: {self._writePos}. ReadPos:{self._readPos}"
         self.BytesInBuffer += count
         assert (
             self.BytesInBuffer <= self.BufferSize
@@ -279,7 +283,7 @@ class AudioPlayer:
 
         # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
         OutBufferSize = 900 * 1024
-        self.OutBuffer = OutRingBuffer(OutBufferSize)
+        self.OutBuffer = OutRingBuffer(OutBufferSize, callbacks.get("screen_off", lambda: None))
 
         self.reset_player()
 
