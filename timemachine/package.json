@@ -9,6 +9,10 @@
             "github:eichblatt/litestream/timemachine/audioPlayer.py"
         ],
         [
+            "audioPlayer_1053.py",
+            "github:eichblatt/litestream/timemachine/audioPlayer_1053.py"
+        ],
+        [
             "board.py",
             "github:eichblatt/litestream/timemachine/board.py"
         ],
