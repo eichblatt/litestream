@@ -328,6 +328,7 @@ class AudioPlayer:
     def read_header(self, trackno, offset=0, port=80):
         self.playlist_started = True
         TimeStart = time.ticks_ms()
+        print(f"read_header starting at {TimeStart}")
         self.track_being_read = trackno
 
         url = self.playlist[trackno]
@@ -338,10 +339,12 @@ class AudioPlayer:
             self.sock.close()
 
         self.sock = socket.socket()
+        print(f"read_header socket {TimeStart - time.ticks_ms()}")
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
         self.sock.setblocking(False)  # Tell the socket to return straight away (async)
+        print(f"read_header socket connected {TimeStart - time.ticks_ms()}")
 
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
         self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
@@ -356,6 +359,7 @@ class AudioPlayer:
                     self.current_track_length = int(header.split(b"/", 1)[1])
             if header == b"\r\n":
                 break
+        print(f"read_header response {TimeStart - time.ticks_ms()}")
 
         # Check if the response is a redirect. If so, kill the socket and re-open it on the redirected host/path
         if b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
@@ -365,7 +369,7 @@ class AudioPlayer:
                 new_host, new_port, new_path = self.parse_redirect_location(redirect_location)
                 self.sock.close()
                 # Establish a new socket connection to the server
-                self.DEBUG and print("Redirecting to", new_host, new_port, new_path, "Offset", offset)
+                print(f"Redirecting to {new_host}, {new_port}, {new_path}, Offset, {offset} {TimeStart - time.ticks_ms()}")
                 self.sock = socket.socket()
                 addr = socket.getaddrinfo(new_host, new_port)[0][-1]
                 self.sock.connect(addr)
@@ -373,6 +377,7 @@ class AudioPlayer:
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 self.sock.send(bytes(f"GET /{new_path} HTTP/1.1\r\nHost: {new_host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
+                print(f"read_header sent info {TimeStart - time.ticks_ms()}")
 
                 # Skip the response headers
                 while True:
@@ -383,9 +388,11 @@ class AudioPlayer:
                         # EOF is indistinguishable from the host closing a socket when we pause too long
                         if header.startswith(b"Content-Range:"):
                             self.current_track_length = int(header.split(b"/", 1)[1])
+                        print(f"read_header track_length read {TimeStart - time.ticks_ms()}")
 
                     if header == b"\r\n":
                         break
+                    print(f"read_header read line {TimeStart - time.ticks_ms()}")
 
         self.current_track_bytes_read = offset
 
@@ -460,7 +467,7 @@ class AudioPlayer:
                 break
 
             # Don't stay in the loop too long or we affect the responsiveness of the main app
-            if time.ticks_diff(time.ticks_ms(), TimeStart) > 30:
+            if time.ticks_diff(time.ticks_ms(), TimeStart) > 50:
                 break
 
             Counter += 1
