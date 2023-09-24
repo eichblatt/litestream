@@ -148,7 +148,8 @@ class AudioPlayer:
         self.ChunkSize = 50 * 1024  # We should be able to set this to 100 * 1024. New firmware doesn't like it.
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
-        InBufferSize = 120 * 1024
+        # InBufferSize = 120 * 1024
+        InBufferSize = 240 * 1024  # Since we don't need a huge outbuffer, let's expand this.
 
         # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 4096
