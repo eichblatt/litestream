@@ -155,7 +155,7 @@ class AudioPlayer:
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
         # Create the decoder object on the SPI bus, as device 2 (screen is device 1)
-        dcd_spi = SPI(2, sck=Pin(12), mosi=Pin(11), miso=Pin(13))
+        dcd_spi = SPI(1, sck=Pin(12), mosi=Pin(11), miso=Pin(13))
         # dcd_spi = SoftSPI(2, sck=Pin(42), mosi=Pin(41), miso=Pin(46))
         reset = Pin(45, Pin.OUT, value=1)  # Active low hardware reset
         xcs = Pin(17, Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet

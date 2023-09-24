@@ -22,7 +22,8 @@ __version__ = (0, 1, 4)
 # 12.288/7 = 1.75MHz
 _INITIAL_BAUDRATE = const(1_000_000)
 # 12.288*3.5/4 = 10.752MHz for data read (using _SCI_CLOCKF,0x8800)
-_DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
+# _DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
+_DATA_BAUDRATE = const(10_000_000)
 # actual rate is 9MHz shared with SD card - sdcard.py uses 1.32MHz.
 _SCI_BAUDRATE = const(5_000_000)
 
@@ -140,8 +141,11 @@ class VS1053:
             sd = sdcard.SDCard(spi, sdcs)
             vfs = os.VfsFat(sd)
             os.mount(vfs, mp)
-        self._spi.init(baudrate=_DATA_BAUDRATE)
+        self.spi_init()
 
+    def spi_init(self):
+        self._spi.init(baudrate=_DATA_BAUDRATE)
+        
     def _wait_ready(self):
         self._xdcs(1)
         self._xcs(1)
@@ -383,6 +387,7 @@ class VS1053:
 
     @micropython.native
     def play_chunk(self, inBuffer):
+        self.spi_init()
         bytesRead = 0
         while self._dreq():
             # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
@@ -401,6 +406,7 @@ class VS1053:
         cancnt = 0
         cnt = 0
         dreq = self._dreq
+        self.spi_init()
         while s.readinto(buf):  # Read <=32 bytes
             cnt += 1
             # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
