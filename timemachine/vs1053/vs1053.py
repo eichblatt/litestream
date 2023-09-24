@@ -145,6 +145,7 @@ class VS1053:
 
     def spi_init(self):
         self._spi.init(baudrate=_DATA_BAUDRATE)
+
         
     def _wait_ready(self):
         self._xdcs(1)
@@ -271,6 +272,7 @@ class VS1053:
             self._xcs(1)
             s.write(mvr[2:])  # Data 10.8.4 MSB first
         self._overrun = max(self._overrun, n)
+        self._spi.init(baudrate=_DATA_BAUDRATE)
         return n  # Samples written
 
     # Patch for recording. Data 10.8.1
@@ -415,6 +417,7 @@ class VS1053:
             # This is a fault condition where the VS1053 wants data faster than we can
             # provide it.
             # while (not dreq()) or cnt > 30:  # 960 byte backstop
+            self._spi.init(baudrate=_DATA_BAUDRATE)
             while (not dreq()) or cnt > 30_000:  # 960 byte backstop
                 cnt = 0
                 if cancnt == 0 and cancb():  # Not cancelling. Check callback when waiting on dreq.

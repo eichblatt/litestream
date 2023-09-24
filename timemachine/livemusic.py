@@ -151,6 +151,7 @@ nshows_color = st7789.color565(0, 100, 255)
 
 
 def update_display(player):
+    utils.init_screen()
     display_tracks(*player.track_names())
     if not player.playlist_started:
         utils.clear_bbox(playpause_bbox)
@@ -163,6 +164,7 @@ def update_display(player):
 
 
 def display_tracks(current_track_name, next_track_name):
+    utils.init_screen()
     utils.clear_bbox(tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
@@ -170,6 +172,7 @@ def display_tracks(current_track_name, next_track_name):
 
 
 def play_pause(player):
+    utils.init_screen()
     utils.clear_bbox(playpause_bbox)
     if player.is_playing():
         player.pause()
@@ -233,6 +236,7 @@ def main_loop(player, coll_dict):
                 print("Stop DOWN")
             else:
                 player.stop()
+                utils.init_screen()
                 tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 stop_press_time = time.ticks_ms()
                 print("Stop UP")
@@ -283,6 +287,7 @@ def main_loop(player, coll_dict):
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif key_date in valid_dates:
+                    utils.init_screen()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
@@ -313,6 +318,7 @@ def main_loop(player, coll_dict):
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 ntape = (ntape + 1) % len(tape_ids)
+                utils.init_screen()
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                 # vcs = coll_dict[tape_ids[ntape][0]][key_date]
@@ -349,6 +355,7 @@ def main_loop(player, coll_dict):
         vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
             pvcs_line = vcs_line
+            utils.init_screen()
             utils.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
@@ -432,7 +439,7 @@ def main_loop(player, coll_dict):
                     tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
                 print(f"vcs is {vcs}")
                 utils.clear_bbox(venue_bbox)
-                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)  # no need to clear this.
+                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                 utils.clear_bbox(nshows_bbox)
                 if nshows > 1:
                     tm.tft.write(

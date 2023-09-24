@@ -208,7 +208,7 @@ def update_code():
     tm.tft.write(pfont_med, " code", 0, 70, red_color)
 
     try:
-        mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev", target="test_download")
+        mip.install("github:eichblatt/litestream/timemachine/package.json", version="vs1053", target="test_download")
         print("rebooting")
         machine.reset()
     except Exception as e:
