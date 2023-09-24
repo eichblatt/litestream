@@ -94,8 +94,6 @@ RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
 _SCREEN_BAUDRATE = 10_000_000
-# _SCREEN_BAUDRATE = 40_000_000
-
 
 screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 

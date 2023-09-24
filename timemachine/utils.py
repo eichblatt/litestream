@@ -86,19 +86,16 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
-_SCREEN_BAUDRATE = const(10_000_000)
-
+_SCREEN_BAUDRATE = 10_000_000
 
 def init_screen():
-    tm.screen_spi.deinit()
+    # tm.screen_spi.deinit()
     tm.screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-
-
+    
 def clear_bbox(bbox):
     init_screen()
     tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
     tm.screen_spi.deinit()
-
 
 def clear_area(x, y, width, height):
     init_screen()
@@ -110,10 +107,16 @@ def clear_screen():
     clear_area(0, 0, 160, 128)
 
 
+def clear_area(x, y, width, height):
+    init_screen()
+    tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
+
+
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()
-    init_screen()
+    else:
+        init_screen()
     text = msg.split("\n")
     for i, line in enumerate(text):
         tm.tft.write(font, line, x, y + (i * text_height), color)

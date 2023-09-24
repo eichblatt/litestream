@@ -141,11 +141,12 @@ class VS1053:
             sd = sdcard.SDCard(spi, sdcs)
             vfs = os.VfsFat(sd)
             os.mount(vfs, mp)
-        self._spi.init(baudrate=_DATA_BAUDRATE)
+        self.spi_init()
 
     def spi_init(self):
         self._spi.init(baudrate=_DATA_BAUDRATE)
 
+        
     def _wait_ready(self):
         self._xdcs(1)
         self._xcs(1)
@@ -407,6 +408,7 @@ class VS1053:
         cancnt = 0
         cnt = 0
         dreq = self._dreq
+        self.spi_init()
         while s.readinto(buf):  # Read <=32 bytes
             cnt += 1
             # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
