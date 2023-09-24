@@ -93,10 +93,11 @@ StopPoly = [(0, 0), (0, 15), (15, 15), (15, 0)]
 RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
-SCREEN_BAUDRATE = 40_000_000
+_SCREEN_BAUDRATE = 10_000_000
+# _SCREEN_BAUDRATE = 40_000_000
 
 
-screen_spi = SPI(1, baudrate=SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
+screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
 
 # Configure display driver
@@ -119,6 +120,7 @@ def conf_screen(rotation=0, buffer_size=0, options=0):
 
 tft = conf_screen(1, buffer_size=64 * 64 * 2)
 tft.init()
+screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
 
 

@@ -22,7 +22,8 @@ __version__ = (0, 1, 4)
 # 12.288/7 = 1.75MHz
 _INITIAL_BAUDRATE = const(1_000_000)
 # 12.288*3.5/4 = 10.752MHz for data read (using _SCI_CLOCKF,0x8800)
-_DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
+# _DATA_BAUDRATE = const(10_752_000)  # Speed for data transfers. On Pyboard D
+_DATA_BAUDRATE = const(10_000_000)
 # actual rate is 9MHz shared with SD card - sdcard.py uses 1.32MHz.
 _SCI_BAUDRATE = const(5_000_000)
 
@@ -140,6 +141,9 @@ class VS1053:
             sd = sdcard.SDCard(spi, sdcs)
             vfs = os.VfsFat(sd)
             os.mount(vfs, mp)
+        self._spi.init(baudrate=_DATA_BAUDRATE)
+
+    def spi_init(self):
         self._spi.init(baudrate=_DATA_BAUDRATE)
 
     def _wait_ready(self):
@@ -267,6 +271,7 @@ class VS1053:
             self._xcs(1)
             s.write(mvr[2:])  # Data 10.8.4 MSB first
         self._overrun = max(self._overrun, n)
+        self._spi.init(baudrate=_DATA_BAUDRATE)
         return n  # Samples written
 
     # Patch for recording. Data 10.8.1
@@ -383,6 +388,7 @@ class VS1053:
 
     @micropython.native
     def play_chunk(self, inBuffer):
+        self.spi_init()
         bytesRead = 0
         while self._dreq():
             # When running, dreq goes True when on-chip buffer can hold about 640 bytes.
@@ -393,6 +399,7 @@ class VS1053:
             self._xdcs(1)
             inBuffer.bytes_wasRead(32)
             bytesRead = bytesRead + 32
+        self._spi.deinit()
         return bytesRead
 
     @micropython.native
@@ -409,6 +416,7 @@ class VS1053:
             # This is a fault condition where the VS1053 wants data faster than we can
             # provide it.
             # while (not dreq()) or cnt > 30:  # 960 byte backstop
+            self._spi.init(baudrate=_DATA_BAUDRATE)
             while (not dreq()) or cnt > 30_000:  # 960 byte backstop
                 cnt = 0
                 if cancnt == 0 and cancb():  # Not cancelling. Check callback when waiting on dreq.
