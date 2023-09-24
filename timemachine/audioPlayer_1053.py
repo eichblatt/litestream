@@ -216,10 +216,10 @@ class AudioPlayer:
         self.ntracks = len(tracklist)
         self.tracklist = tracklist
         ### TEMPORARY ###
-        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
-        urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
-        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.ogg"
-        urllist = [x if not (x.endswith("silence0.ogg")) else encorebreak_url for x in urllist]
+        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.mp3"
+        urllist = [x if not (x.endswith("silence600.mp3")) else setbreak_url for x in urllist]
+        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.mp3"
+        urllist = [x if not (x.endswith("silence0.mp3")) else encorebreak_url for x in urllist]
         ### TEMPORARY ###
         self.playlist = urllist
         if self.ntracks > 0:
