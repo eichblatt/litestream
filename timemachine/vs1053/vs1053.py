@@ -399,7 +399,6 @@ class VS1053:
             self._xdcs(1)
             inBuffer.bytes_wasRead(32)
             bytesRead = bytesRead + 32
-        self._spi.deinit()
         return bytesRead
 
     @micropython.native
