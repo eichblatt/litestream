@@ -88,19 +88,19 @@ nshows_color = st7789.color565(0, 100, 255)
 
 _SCREEN_BAUDRATE = 10_000_000
 
+
 def init_screen():
-    # tm.screen_spi.deinit()
     tm.screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-    
+
+
 def clear_bbox(bbox):
     init_screen()
     tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
-    tm.screen_spi.deinit()
+
 
 def clear_area(x, y, width, height):
     init_screen()
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
-    tm.screen_spi.deinit()
 
 
 def clear_screen():
@@ -120,7 +120,6 @@ def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, cle
     text = msg.split("\n")
     for i, line in enumerate(text):
         tm.tft.write(font, line, x, y + (i * text_height), color)
-    tm.screen_spi.deinit()
 
 
 def select_option(message, choices):

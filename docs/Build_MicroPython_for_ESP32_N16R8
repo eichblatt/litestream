@@ -136,15 +136,17 @@ idf.py -p COM13 flash
 For Steve:
 =============================
 first source the file  $HOME/esp/esp-idf/export.sh
+: ~ ; source $HOME/esp/esp-idf/export.sh 
 Note: Make sure to disconnect from Jama before you flash!
 
-cd to $HOME/projects/litestream
+: ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/activate
 
 # old command
 # sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/projects/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 
 # New Command
+cd to the MicropythonFirmware folder to flash.
 : (idf4.4_py3.10_env) ~/projects/litestream/MicropythonFirmware/v1.20.0-74-g53cb07357 ; sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 
 This fails, but i should be able to figure it out.
@@ -152,6 +154,18 @@ This fails, but i should be able to figure it out.
 I think the problem is that I don't have the "pyserial" package installed **in the venv that I'm working in**. I have installed it, but it doesn't seem to be aware of it.
 
 (idf4.4_py3.10_env) : ~/projects/litestream ; pip3 install pyserial
+
+Installing the Software
+=======================
+Log into the device with Jama, and connect to WiFi.
+import mip
+
+mip.install("github:eichblatt/litestream/timemachine/package.json", version="vs1053", target="test_download")
+
+where "version" is the branch or tag, and "target" is the folder to put the code into.
+
+Then, copy the boot.py from the target folder to the root folder, so that it will run when booting up.
+
 
 Connecting the device from PyMakr
 =================================
