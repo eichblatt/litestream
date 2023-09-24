@@ -112,6 +112,14 @@ def clear_area(x, y, width, height):
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
 
 
+def screen_off():
+    tm.tft.off()
+
+
+def screen_on():
+    tm.tft.off()
+
+
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()

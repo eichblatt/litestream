@@ -534,5 +534,5 @@ def run():
 
     coll_dict = get_coll_dict(collection_list)
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks})
+    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks, "screen_off": utils.screen_off})
     main_loop(player, coll_dict)
