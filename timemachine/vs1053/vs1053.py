@@ -146,7 +146,6 @@ class VS1053:
     def spi_init(self):
         self._spi.init(baudrate=_DATA_BAUDRATE)
 
-        
     def _wait_ready(self):
         self._xdcs(1)
         self._xcs(1)

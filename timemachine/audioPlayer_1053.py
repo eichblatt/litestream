@@ -149,7 +149,7 @@ class AudioPlayer:
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
         # InBufferSize = 120 * 1024
-        InBufferSize = 240 * 1024  # Since we don't need a huge outbuffer, let's expand this.
+        InBufferSize = 480 * 1024  # Since we don't need a huge outbuffer, let's expand this.
 
         # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 4096
@@ -204,12 +204,11 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} track"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}'
+            retstring += f': Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]} {tstat["current_track"]}/{tstat["ntracks"]}'
+            retstring += f': byte rate {tstat["byte_rate"]}, decode time {tstat["decode_time"]}'
         return retstring
 
     def decoder_callback(self):
-        print(".", end="")
-        time.sleep_ms(75)
         return False
 
     def set_playlist(self, tracklist, urllist):
@@ -238,6 +237,8 @@ class AudioPlayer:
             "track_being_read": self.track_being_read,
             "bytes_read": self.current_track_bytes_read,
             "length": self.current_track_length,
+            "decode_time": self.decoder.decode_time(),
+            "byte_rate": self.decoder.byte_rate(),
         }
 
     def track_names(self):
@@ -340,12 +341,12 @@ class AudioPlayer:
             self.sock.close()
 
         self.sock = socket.socket()
-        print(f"read_header socket {TimeStart - time.ticks_ms()}")
+        self.feed_decoder()
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
         self.sock.setblocking(False)  # Tell the socket to return straight away (async)
-        print(f"read_header socket connected {TimeStart - time.ticks_ms()}")
+        self.feed_decoder()
 
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
         self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
@@ -354,46 +355,51 @@ class AudioPlayer:
         response_headers = b""
         while True:
             header = self.sock.readline()
+            self.feed_decoder(timeout=10)
             if header is not None:
                 response_headers += header.decode("utf-8")
                 if header.startswith(b"Content-Range:"):
                     self.current_track_length = int(header.split(b"/", 1)[1])
             if header == b"\r\n":
                 break
-        print(f"read_header response {TimeStart - time.ticks_ms()}")
 
         # Check if the response is a redirect. If so, kill the socket and re-open it on the redirected host/path
         if b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
             redirect_location = self.get_redirect_location(response_headers)
             if redirect_location:
                 # Extract the new host, port, and path from the redirect location
+                self.feed_decoder(timeout=10)
                 new_host, new_port, new_path = self.parse_redirect_location(redirect_location)
                 self.sock.close()
                 # Establish a new socket connection to the server
-                print(f"Redirecting to {new_host}, {new_port}, {new_path}, Offset, {offset} {TimeStart - time.ticks_ms()}")
+                print(f"Redirecting to {new_host}, {new_port}, {new_path}, Offset, {offset} {time.ticks_ms() - TimeStart}")
+                self.feed_decoder(timeout=10)
                 self.sock = socket.socket()
                 addr = socket.getaddrinfo(new_host, new_port)[0][-1]
+                self.feed_decoder(timeout=10)
                 self.sock.connect(addr)
                 self.sock.setblocking(False)  # Return straight away
+                self.feed_decoder(timeout=10)
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 self.sock.send(bytes(f"GET /{new_path} HTTP/1.1\r\nHost: {new_host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
-                print(f"read_header sent info {TimeStart - time.ticks_ms()}")
+                self.feed_decoder(timeout=10)
 
                 # Skip the response headers
                 while True:
                     header = self.sock.readline()
+                    self.feed_decoder(timeout=10)
 
                     if header is not None:
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                         # EOF is indistinguishable from the host closing a socket when we pause too long
                         if header.startswith(b"Content-Range:"):
                             self.current_track_length = int(header.split(b"/", 1)[1])
-                        print(f"read_header track_length read {TimeStart - time.ticks_ms()}")
+                        print(f"read_header track_length read {time.ticks_ms() - TimeStart}")
 
                     if header == b"\r\n":
                         break
-                    print(f"read_header read line {TimeStart - time.ticks_ms()}")
+                    print(f"read_header read line {time.ticks_ms() - TimeStart}")
 
         self.current_track_bytes_read = offset
 
@@ -454,6 +460,11 @@ class AudioPlayer:
             return
 
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
+        self.feed_decoder(debug=False)
+
+    def feed_decoder(self, timeout=50, debug=True):
+        TimeStart = time.ticks_ms()
+        debug and print(f"   feed_decoder {TimeStart}")
         Counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
         while True:
             InBytesAvailable = self.InBuffer.get_read_available()
@@ -468,12 +479,15 @@ class AudioPlayer:
                 break
 
             # Don't stay in the loop too long or we affect the responsiveness of the main app
-            if time.ticks_diff(time.ticks_ms(), TimeStart) > 50:
+            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
+                debug and print(f"   feed_decoder timing out after {time.ticks_ms() - TimeStart}")
                 break
 
             Counter += 1
             try:
                 bytes_sent = self.decoder.play_chunk(self.InBuffer)
+                if bytes_sent == 0:
+                    return
                 # print(f"Bytes sent {bytes_sent}")
             except Exception:
                 raise RuntimeError("Decode Packet failed")
