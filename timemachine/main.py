@@ -40,16 +40,6 @@ COLLECTION_LIST_PATH = "collection_list.json"
 API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 
 
-def copy_file(src, dest):
-    print(f"Copying {src} to {dest}")
-    f_in = open(src, "r")
-    f_out = open(dest, "w")
-    for line in f_in.readlines():
-        f_out.write(line)
-    f_in.close()
-    f_out.close()
-
-
 def factory_reset():
     print("Reseting to factory settings")
     utils.remove_dir("./lib")

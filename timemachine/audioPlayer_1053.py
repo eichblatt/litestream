@@ -461,6 +461,8 @@ class AudioPlayer:
         self.feed_decoder()
 
     def feed_decoder(self, timeout=50, debug=False):
+        if not self.is_playing():
+            return
         TimeStart = time.ticks_ms()
         debug and print(f"   feed_decoder {TimeStart}")
         Counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
