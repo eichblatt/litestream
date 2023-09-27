@@ -341,7 +341,7 @@ class AudioPlayer:
             self.sock.close()
 
         self.sock = socket.socket()
-        self.feed_decoder()
+        self.feed_decoder(debug=True)
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
@@ -395,11 +395,9 @@ class AudioPlayer:
                         # EOF is indistinguishable from the host closing a socket when we pause too long
                         if header.startswith(b"Content-Range:"):
                             self.current_track_length = int(header.split(b"/", 1)[1])
-                        print(f"read_header track_length read {time.ticks_ms() - TimeStart}")
 
                     if header == b"\r\n":
                         break
-                    print(f"read_header read line {time.ticks_ms() - TimeStart}")
 
         self.current_track_bytes_read = offset
 
@@ -460,9 +458,9 @@ class AudioPlayer:
             return
 
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
-        self.feed_decoder(debug=False)
+        self.feed_decoder()
 
-    def feed_decoder(self, timeout=50, debug=True):
+    def feed_decoder(self, timeout=50, debug=False):
         TimeStart = time.ticks_ms()
         debug and print(f"   feed_decoder {TimeStart}")
         Counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
