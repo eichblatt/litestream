@@ -86,12 +86,20 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
+_SCREEN_BAUDRATE = 10_000_000
+
+
+def init_screen():
+    tm.screen_spi.init(baudrate=_SCREEN_BAUDRATE)
+
 
 def clear_bbox(bbox):
+    init_screen()
     tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
 
 
 def clear_area(x, y, width, height):
+    init_screen()
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
 
 
@@ -100,6 +108,7 @@ def clear_screen():
 
 
 def clear_area(x, y, width, height):
+    init_screen()
     tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
 
 
@@ -114,6 +123,8 @@ def screen_on():
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()
+    else:
+        init_screen()
     text = msg.split("\n")
     for i, line in enumerate(text):
         tm.tft.write(font, line, x, y + (i * text_height), color)
@@ -128,6 +139,7 @@ def select_option(message, choices):
     choice = ""
     first_time = True
     clear_screen()
+    # init_screen()
     select_bbox = Bbox(0, 20, 160, 128)
     tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
     while pSelect_old == tm.pSelect.value():
@@ -137,6 +149,7 @@ def select_option(message, choices):
             first_time = False
             step_old = step
             clear_bbox(select_bbox)
+            # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
                 tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, tracklist_color)
@@ -184,11 +197,13 @@ def select_chars(message, message2="", already=None):
         return value
 
     for i, msg in enumerate(message):
+        init_screen()
         tm.tft.write(pfont_small, f"{msg}", 0, i * text_height, stage_date_color)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         clear_bbox(message2_bbox)
+        init_screen()
         tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
 
     singleLetter = already is not None

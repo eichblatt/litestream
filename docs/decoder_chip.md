@@ -64,7 +64,7 @@ So it appears that the Dac is using pins
 
 
 ### Screen Pins
-The code to set up the screen in isn board.py
+The code to set up the screen is in board.py
 
 ```
 from machine import SPI,Pin
@@ -157,7 +157,7 @@ For a breakout board of a VS1053, see https://www.adafruit.com/product/1381
 
 
 ##### Asyncronous
-There is an asyncronous version which apparently works on the ESP32:
+There is an asyncronous version which apparently doesn't work on the ESP32:
 See https://github.com/peterhinch/micropython-vs1053/blob/master/ASYNC.md
 
 From section 6.1, `Test Results`, we see:
@@ -169,7 +169,7 @@ The ESP32, even at 240MHz, failed properly to decode any file. I suspect this is
 
 https://github.com/peterhinch/micropython-vs1053/blob/master/SYNCHRONOUS.md
 
-Section 7, `Plugins` describes how to install the pulgin for flac, and probably ogg. 
+Section 7, `Plugins` describes how to install the plugin for flac, and probably ogg. 
 Based on what I read http://www.vlsi.fi/en/support/software/vs10xxpatches.html, the VS1053 should already decode ogg.
 
 Key passages from the syncronous version:
@@ -321,3 +321,12 @@ This source https://github.com/adafruit/Adafruit_CircuitPython_VS1053 despairs t
 
 #### CircuitPython
 A similar variant of python, this project looks simple enough https://github.com/urish/vs1053-circuitpython
+
+
+# 2023-09-12 
+## Installed Micropython on the device.
+
+# 2023-09-19
+I got it working!! I had to solder together pins 33 and 34 on the VS1053 chip to get it out of MIDI mode. Argh!!
+
+It plays ogg, but it only played track 1 (not track 2) from 8/13/75. That could mean that this was a waste of time, but I want to spend a little time to see if I can get that working.
