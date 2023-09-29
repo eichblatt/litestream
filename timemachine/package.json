@@ -9,6 +9,10 @@
             "github:eichblatt/litestream/timemachine/audioPlayer.py"
         ],
         [
+            "audioPlayer_1053.py",
+            "github:eichblatt/litestream/timemachine/audioPlayer_1053.py"
+        ],
+        [
             "board.py",
             "github:eichblatt/litestream/timemachine/board.py"
         ],
@@ -91,6 +95,14 @@
         [
             "ota32/__init__.py",
             "github:eichblatt/litestream/timemachine/ota32/__init__.py"
+        ],
+        [
+            "vs1053/__init__.py",
+            "github:eichblatt/litestream/timemachine/vs1053/__init__.py"
+        ],
+        [
+            "vs1053/vs1053.py",
+            "github:eichblatt/litestream/timemachine/vs1053/vs1053.py"
         ]
     ],
     "version": "0.1.1"

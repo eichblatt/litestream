@@ -37,10 +37,14 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import network
 
-import audioPlayer
 import board as tm
 import utils
 
+ESP_DECODE = False
+if ESP_DECODE:
+    import audioPlayer
+else:
+    import audioPlayer_1053 as audioPlayer
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
@@ -89,6 +93,7 @@ def select_date(coll_dict, key_date, ntape=0):
         print(f"API request is {api_request}")
         resp = requests.get(api_request).json()
         urls = resp["urls"]
+    urls = [x.replace(".ogg", ".mp3") for x in urls]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -150,6 +155,7 @@ nshows_color = st7789.color565(0, 100, 255)
 
 
 def update_display(player):
+    utils.init_screen()
     display_tracks(*player.track_names())
     if not player.playlist_started:
         utils.clear_bbox(playpause_bbox)
@@ -162,6 +168,7 @@ def update_display(player):
 
 
 def display_tracks(current_track_name, next_track_name):
+    utils.init_screen()
     utils.clear_bbox(tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
     tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
@@ -169,6 +176,7 @@ def display_tracks(current_track_name, next_track_name):
 
 
 def play_pause(player):
+    utils.init_screen()
     utils.clear_bbox(playpause_bbox)
     if player.is_playing():
         player.pause()
@@ -201,7 +209,7 @@ def main_loop(player, coll_dict):
     power_press_time = 0
     stop_press_time = 0
     resume_playing = -1
-    resume_playing_delay = 1000
+    resume_playing_delay = 500
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -232,6 +240,7 @@ def main_loop(player, coll_dict):
                 print("Stop DOWN")
             else:
                 player.stop()
+                utils.init_screen()
                 tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 stop_press_time = time.ticks_ms()
                 print("Stop UP")
@@ -261,7 +270,7 @@ def main_loop(player, coll_dict):
                 print("Rewind DOWN")
             else:
                 print("Rewind UP")
-                if player.is_playing():
+                if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.rewind()
 
@@ -271,7 +280,7 @@ def main_loop(player, coll_dict):
                 print("FFwd DOWN")
             else:
                 print("FFwd UP")
-                if player.is_playing():
+                if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.ffwd()
 
@@ -282,6 +291,7 @@ def main_loop(player, coll_dict):
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif key_date in valid_dates:
+                    utils.init_screen()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
@@ -295,7 +305,7 @@ def main_loop(player, coll_dict):
                     utils.clear_bbox(playpause_bbox)
                     tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(selected_date_bbox)
-                    selected_date_str = f"{int(selected_date[5:7]):2d}-{selected_date[8:10]}-{selected_date[:4]}"
+                    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
                     print(f"Selected date string {selected_date_str}")
                     tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
                     if AUTO_PLAY:
@@ -312,6 +322,7 @@ def main_loop(player, coll_dict):
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 ntape = (ntape + 1) % len(tape_ids)
+                utils.init_screen()
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                 # vcs = coll_dict[tape_ids[ntape][0]][key_date]
@@ -348,6 +359,7 @@ def main_loop(player, coll_dict):
         vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
             pvcs_line = vcs_line
+            utils.init_screen()
             utils.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
@@ -394,7 +406,7 @@ def main_loop(player, coll_dict):
             else:
                 day_new = min(28, day_new)
 
-        date_new = f"{month_new:2d}-{day_new:02d}-{year_new%100:02d}"
+        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
         key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
         key_date = set_date(key_date)
         if year_old != year_new:
@@ -431,7 +443,7 @@ def main_loop(player, coll_dict):
                     tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
                 print(f"vcs is {vcs}")
                 utils.clear_bbox(venue_bbox)
-                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)  # no need to clear this.
+                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                 utils.clear_bbox(nshows_bbox)
                 if nshows > 1:
                     tm.tft.write(
@@ -500,16 +512,7 @@ def test_update():
     assert (max_year - min_year) >= 29
 
 
-def run():
-    """run the livemusic controls"""
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    else:
-        collection_list = ["GratefulDead"]
-        with open(COLLECTION_LIST_PATH, "w") as f:
-            json.dump(collection_list, f)
-    show_collections(collection_list)
-
+def get_coll_dict(collection_list):
     coll_dict = OrderedDict({})
     min_year = tm.y._min_val
     max_year = tm.y._max_val
@@ -520,7 +523,20 @@ def run():
         max_year = max(int(max(coll_dates)[:4]), max_year)
         tm.y._min_val = min_year
         tm.y._max_val = max_year
+    return coll_dict
 
+
+def run():
+    """run the livemusic controls"""
+    if utils.path_exists(COLLECTION_LIST_PATH):
+        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
+    else:
+        collection_list = ["GratefulDead"]
+        with open(COLLECTION_LIST_PATH, "w") as f:
+            json.dump(collection_list, f)
+    show_collections(collection_list)
+
+    coll_dict = get_coll_dict(collection_list)
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks})
+    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks, "screen_off": utils.screen_off})
     main_loop(player, coll_dict)
