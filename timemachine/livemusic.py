@@ -37,10 +37,14 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import network
 
-import audioPlayer_1053 as audioPlayer
 import board as tm
 import utils
 
+ESP_DECODE = False
+if ESP_DECODE:
+    import audioPlayer
+else:
+    import audioPlayer_1053 as audioPlayer
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
