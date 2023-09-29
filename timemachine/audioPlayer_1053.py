@@ -174,7 +174,7 @@ class AudioPlayer:
         self.InHeader = True
 
         # A list of offsets into the InBuffer where the tracks end. This tells the decoder when to move onto the next track by decoding the next header
-        self.TrackEnds = []
+        # self.TrackEnds = []
 
         # Keep track of how many bytes of the current track that we are streaming from the network
         # (this is potentially different to which track we are currently playing. We could be reading ahead of playing by one or more tracks)
@@ -202,10 +202,11 @@ class AudioPlayer:
             status = "Stopped"
         else:
             status = " !?! "
-        retstring = f"{status} track"
+        retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f': Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]} {tstat["current_track"]}/{tstat["ntracks"]}'
-            retstring += f': byte rate {tstat["byte_rate"]}, decode time {tstat["decode_time"]}'
+            retstring += f' Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            ms = f'{tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
+            retstring += f' byte rate {tstat["byte_rate"]}, time {ms}'
         return retstring
 
     def decoder_callback(self):
@@ -224,6 +225,7 @@ class AudioPlayer:
         self.playlist = urllist
         if self.ntracks > 0:
             self.current_track = 0
+            self.track_being_read = 0  # This isn't quite true.
             self.next_track = self.set_next_track()
         self.callbacks["display"](*self.track_names())
 
@@ -244,8 +246,11 @@ class AudioPlayer:
     def track_names(self):
         if self.current_track is None:
             return "", ""
-        current_name = self.tracklist[self.current_track]
+        current_name = self.tracklist[self.track_being_read]
+        self.next_track = self.set_next_track()
         next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
+        # current_name = self.tracklist[self.current_track]
+        # next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
         return current_name, next_name
 
     def get_redirect_location(self, headers):
@@ -265,17 +270,17 @@ class AudioPlayer:
     def play(self):
         if self.PLAY_STATE == self.STOPPED:
             self.InBuffer.InitBuffer()
-            self.read_header(self.current_track)
+            self.read_header(self.track_being_read)
             self.PLAY_STATE = self.PLAYING
         elif self.PLAY_STATE == self.PLAYING:
-            print(f"Playing URL {self.playlist[self.current_track]}")
+            print(f"Playing URL {self.playlist[self.track_being_read]}")
         elif self.PLAY_STATE == self.PAUSED:
-            print(f"Un-pausing URL {self.playlist[self.current_track]}")
+            print(f"Un-pausing URL {self.playlist[self.track_being_read]}")
             self.PLAY_STATE = self.PLAYING
             self.audio_pump()  # Kick off the playback loop
 
     def pause(self):
-        print(f"Pausing URL {self.playlist[self.current_track]}")
+        print(f"Pausing URL {self.playlist[self.track_being_read]}")
         if self.PLAY_STATE == self.PLAYING:
             self.PLAY_STATE = self.PAUSED
 
@@ -293,23 +298,25 @@ class AudioPlayer:
         self.PLAY_STATE = self.STOPPED
         if reset_head:
             self.current_track = 0
+            self.track_being_read = 0
             self.next_track = self.set_next_track()
             print(self)
             self.callbacks["display"](*self.track_names())
         self.reset_player()
 
     def set_next_track(self):
-        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+        # self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+        self.next_track = self.track_being_read + 1 if self.ntracks > (self.track_being_read + 1) else None
         return self.next_track
 
     def advance_track(self, increment=1):
-        if not 0 <= (self.current_track + increment) <= self.ntracks:
+        if not 0 <= (self.track_being_read + increment) <= self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
             return
 
         self.stop(reset_head=False)
-        self.current_track += increment
+        self.track_being_read += increment
         self.next_track = self.set_next_track()
         print(self)
         self.callbacks["display"](*self.track_names())
@@ -428,7 +435,7 @@ class AudioPlayer:
                         if data == 0:
                             if self.current_track_length == self.current_track_bytes_read:  # End of track
                                 # Store the end-of-track marker for this track
-                                self.TrackEnds.append(self.InBuffer.get_writePos())
+                                # self.TrackEnds.append(self.InBuffer.get_writePos())
                                 self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
                                 self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
 
@@ -493,6 +500,7 @@ class AudioPlayer:
                 raise RuntimeError("Decode Packet failed")
 
             # Check if we have decoded to the end of the current track
+            """
             if len(self.TrackEnds) > 0:  # Do we have any end-of-track markers stored?
                 if self.InBuffer.get_readPos() == self.TrackEnds[0]:  # We have finished decoding the current track
                     print("Finished decoding track", self.current_track, " - ", end="")
@@ -500,7 +508,7 @@ class AudioPlayer:
                     # self.audio_out.deinit() # Don't close I2S here, as it still has to play the last part of the track
 
                     if self.current_track + 1 < self.ntracks:  # Start decode of next track
-                        self.DEBUG and print("starting decode of track", self.current_track + 1)
+                        print("starting decode of track", self.current_track + 1)
                         self.current_track += 1
                         self.next_track = self.set_next_track()
                         # print(self)
@@ -508,7 +516,8 @@ class AudioPlayer:
                         self.InHeader = True
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         # print(self)
-                        self.DEBUG and print("end of playlist")
+                        print("end of playlist")
                         self.FinishedDecoding = True
 
                     return
+            """

@@ -298,3 +298,30 @@ MicroPython >>> tm.screen_spi
 
 SPI(id=1, baudrate=40000000, polarity=0, phase=0, bits=8, firstbit=0, sck=12, mosi=11, miso=13)
 ```
+## 2023-09-26
+### Ground Loop Problem?
+I am not sure if this is the same problem that I have. I am hearing buzzing when I power up the chip until it is reset, which is annoying.
+https://github.com/karawin/Ka-Radio32/issues/167
+
+## 2023-09-27
+### URL that Cannot Be Played
+https://archive.org/download/gd1972-07-21.148725.sbd.bear.dalton.miller.clugston.flac1648/gd72-07-21 s1t02 BTW.mp3
+All of the files from this show are unplayable.
+```
+PlayPause DOWN
+Peer close
+read_header starting at 643887
+   feed_decoder 643890
+Peer close
+read_header starting at 644128
+   feed_decoder 644130
+Peer close
+read_header starting at 644375
+   feed_decoder 644378
+Peer close
+read_header starting at 644619
+   feed_decoder 644621
+File "/lib/audioPlayer_1053.py", line 499, in feed_decoder
+RuntimeError: Decode Packet failed
+```
+I think this is due to **spaces in the URL**.

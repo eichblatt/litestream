@@ -37,7 +37,7 @@ import board as tm
 import utils
 
 COLLECTION_LIST_PATH = "collection_list.json"
-API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
+API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 
 
 def factory_reset():
