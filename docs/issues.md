@@ -324,4 +324,29 @@ read_header starting at 644619
 File "/lib/audioPlayer_1053.py", line 499, in feed_decoder
 RuntimeError: Decode Packet failed
 ```
-I think this is due to **spaces in the URL**.
+This is due to **spaces in the URL**. Fixed with `urllist = [x.replace(" ","%20") for x in urllist]`
+
+## 2023-09-29
+### Getting rid of ID3 tags from MP3 files
+These are probably causing gaps between tracks. Let's get rid of them.
+Here is how to do it with a file. 
+```
+In [36]: f = open('hurtsmetoo.mp3','rb')
+    ...: out = open('test.mp3','wb')
+    ...: marker = b"\xff\xfb"
+    ...: i = 0
+    ...: print(marker)
+    ...: while f.peek(2)[:2] != marker:
+    ...:     b = f.read(1)
+    ...:     i = i + 1
+    ...: print(f"i is {i}")
+    ...: 
+    ...: b = bytearray(f.read())
+    ...: out.write(b)
+    ...: 
+    ...: f.close()
+    ...: out.close()
+b'\xff\xfb'
+i is 78696
+```
+Now I just need to do it with a socket stream
