@@ -187,6 +187,7 @@ class AudioPlayer:
 
         self.InBuffer.InitBuffer()
         self.tags_stripped = False
+        self.decoder._end_play()  # clear out any data in VS1053 input buffer
 
         if self.sock is not None:
             self.sock.close()
@@ -196,6 +197,8 @@ class AudioPlayer:
         if not self.playlist_started:
             return "Playlist not started"
         tstat = self.track_status()
+        buffer_bytes = self.InBuffer.get_bytes_in_buffer()
+        buffer_size = self.InBuffer.BufferSize
         bytes = tstat["bytes_read"]
         length = tstat["length"]
         ratio = bytes / max(length, 1)
@@ -209,9 +212,9 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f' Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
-            ms = f'{tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
-            retstring += f" time {ms}"
+            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            retstring += f" Buffer: {buffer_bytes}({100*buffer_bytes/buffer_size:.0f}%)"
+            retstring += f' time {tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
         return retstring
 
     def decoder_callback(self):
@@ -430,14 +433,13 @@ class AudioPlayer:
         marker_pos = -1
         bytes_read = 0
 
-        print(f"in strip_tags - begin")
-        while (not found_marker) and (bytes_read < 100 * 1024):
-            print(f"strip tags bytes read = {bytes_read}")
+        while (not found_marker) and (bytes_read < 128 * 1024):
+            self.DEBUG and print(f"strip tags bytes read = {bytes_read}")
             bytes_read += self.sock.readinto(tag_buffer[1:], 1024)
             self.feed_decoder(timeout=10)
             for i in range(1024):
-                if i & 0xFF == 0:
-                    print(f"strip tags pos {i}: {hex(tag_buffer[i] << 8 | tag_buffer[i+1])}")
+                # if i & 0xFF == 0:
+                #     print(f"strip tags pos {i}: {hex(tag_buffer[i] << 8 | tag_buffer[i+1])}")
                 if (tag_buffer[i] << 8 | tag_buffer[i + 1]) == MP3_FRAME_MARKER:
                     found_marker = True
                     marker_pos = i
@@ -449,7 +451,12 @@ class AudioPlayer:
         else:
             raise Exception("Failed to strip tags")
         self.tags_stripped = True
-        return bytes_read, tag_buffer[marker_pos:]
+        self.current_track_bytes_read += bytes_read
+        remainder = tag_buffer[marker_pos:]
+        wp = self.InBuffer.get_writePos()
+        self.InBuffer.Buffer[wp : wp + len(remainder)] = remainder
+        self.InBuffer.bytes_wasWritten(len(remainder))
+        return
 
     @micropython.native
     def audio_pump(self):
@@ -465,12 +472,8 @@ class AudioPlayer:
                 try:  # We can get an exception here if we pause too long and the underlying socket gets closed
                     if not self.tags_stripped:
                         if self.InBuffer.get_bytes_in_buffer() > 64 * 1024:  # There is enough time in buffer to strip tags
-                            tag_bytes_read, remainder = self.strip_tags()
-                            wp = self.InBuffer.get_writePos()
-                            self.InBuffer.Buffer[wp : wp + len(remainder)] = remainder
-                            self.InBuffer.bytes_wasWritten(len(remainder))
+                            self.strip_tags()
                             BytesAvailable = self.InBuffer.get_write_available()
-                            self.current_track_bytes_read += tag_bytes_read
                         self.tags_stripped = True
                         print(self.InBuffer)
                     bytes_read = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)

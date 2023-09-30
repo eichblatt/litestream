@@ -210,7 +210,7 @@ class VS1053:
         return self._write_reg(_SCI_WRAM, data)
 
     # Datasheet section 10.5.1: procedure for normal end of play
-    def _end_play(self, buf):
+    def _end_play(self, buf=bytearray(32)):
         efb = self._read_ram(_END_FILL_BYTE) & 0xFF
         for n in range(len(buf)):
             buf[n] = efb

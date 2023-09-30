@@ -356,7 +356,7 @@ def main_loop(player, coll_dict):
                 time.sleep(0.1)
                 machine.reset()
 
-        vcs_line = ((time.ticks_ms() - select_press_time) // 10_000) % (1 + len(selected_vcs) // 16)
+        vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
             pvcs_line = vcs_line
             utils.init_screen()
