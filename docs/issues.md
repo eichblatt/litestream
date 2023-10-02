@@ -350,3 +350,23 @@ b'\xff\xfb'
 i is 78696
 ```
 Now I just need to do it with a socket stream
+**Solved**
+## 2023-09-30
+### Still Some Tiny Gaps
+MP3 Format information here:
+http://www.mp3-tech.org/programmer/frame_header.html
+It's harder that I would think to find good information about this.
+Test out a pair of files concatenated together using the file player.
+
+I created a file with the tail end of China Cat Sunflower, and the other the head of I Know You Rider. I stripped out tags and concatenated the files. But there is still a gap when I play it, either in the VS1053 or using ffplay or mplayer. So gluing mp3 files together, even on frame boundaries, does not work.
+
+Mplayer on my computer also cannot play the 2 tracks separately without a gap between them (ogg or mp3). But it DOES play them on gaplessly (ogg format) on the Time Machine.
+
+This has information about the LAME headers and gapless playback:
+https://wiki.hydrogenaud.io/index.php?title=MP3#VBRI.2C_XING.2C_and_LAME_headers
+
+This page describes the LAME tags, which should have a delay & padding values for gapless playback
+http://gabriel.mp3-tech.org/mp3infotag.html   **This is the most useful link on this subject**
+
+### Seeking
+Good info here https://stackoverflow.com/questions/60247805/seeking-within-mp3-file

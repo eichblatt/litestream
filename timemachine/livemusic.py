@@ -41,6 +41,7 @@ import board as tm
 import utils
 
 ESP_DECODE = False
+FORMAT = "mp3"
 if ESP_DECODE:
     import audioPlayer
 else:
@@ -93,7 +94,8 @@ def select_date(coll_dict, key_date, ntape=0):
         print(f"API request is {api_request}")
         resp = requests.get(api_request).json()
         urls = resp["urls"]
-    urls = [x.replace(".ogg", ".mp3") for x in urls]
+    if FORMAT == "mp3":
+        urls = [x.replace(".ogg", ".mp3") for x in urls]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -538,5 +540,5 @@ def run():
 
     coll_dict = get_coll_dict(collection_list)
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks, "screen_off": utils.screen_off})
+    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks, "screen_off": utils.screen_off}, format=FORMAT)
     main_loop(player, coll_dict)

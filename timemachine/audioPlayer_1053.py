@@ -133,7 +133,8 @@ class InRingBuffer:
 
 
 class AudioPlayer:
-    def __init__(self, callbacks={}, debug=False):
+    def __init__(self, callbacks={}, format="MP3", debug=False):
+        self.format = format
         self.STOPPED, self.PLAYING, self.PAUSED = 0, 1, 2
         self.callbacks = callbacks
         if not "display" in self.callbacks.keys():
@@ -426,6 +427,8 @@ class AudioPlayer:
     @micropython.native
     def strip_tags(self):
         # Remove everything in the stream up to the first occurence of \xfffb. Read one byte at a time.
+        if self.format.lower() != "mp3":
+            return
         TimeStart = time.ticks_ms()
         tag_buffer = memoryview(bytearray(1025))
         tag_buffer[0] = 0
