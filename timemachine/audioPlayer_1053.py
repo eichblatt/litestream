@@ -215,7 +215,10 @@ class AudioPlayer:
         if self.PLAY_STATE != self.STOPPED:
             retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["current_track"]}/{tstat["ntracks"]}'
             retstring += f" Buffer: {buffer_bytes}({100*buffer_bytes/buffer_size:.0f}%)"
-            retstring += f' time {tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
+            decode_hours = tstat["decode_time"] // 3600
+            decode_minutes = (tstat["decode_time"] % 3600) // 60
+            decode_seconds = tstat["decode_time"] % 60
+            retstring += f" time {decode_hours}:{decode_minutes:02d}:{decode_seconds:02d}"
         return retstring
 
     def decoder_callback(self):
