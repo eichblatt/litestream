@@ -51,6 +51,7 @@ import vs1053.vs1053 as vs1053
 #   |     <-- OverflowSize -->      |                        <-- BufferSize -->                                 |
 #   -------------------------------------------------------------------------------------------------------------
 #
+MP3_FRAME_MARKER = const(0xFFFB)
 
 
 class InRingBuffer:
@@ -65,6 +66,11 @@ class InRingBuffer:
         self.BytesInBuffer = 0
         self._readPos = self.OverflowSize  # The next byte we will read
         self._writePos = self.OverflowSize  # The next byte we will write
+
+    def __repr__(self):
+        retstr = f"Size: {self.BufferSize} + {self.OverflowSize}, readPos:{self._readPos}, writePos:{self._writePos}"
+        retstr += f" Bytes in buffer: {self.get_bytes_in_buffer()}. Write available:{self.get_write_available()}"
+        return retstr
 
     # Returns the pointer to where we can read from
     def get_writePos(self):
@@ -127,7 +133,8 @@ class InRingBuffer:
 
 
 class AudioPlayer:
-    def __init__(self, callbacks={}, debug=False):
+    def __init__(self, callbacks={}, format="MP3", debug=False):
+        self.format = format
         self.STOPPED, self.PLAYING, self.PAUSED = 0, 1, 2
         self.callbacks = callbacks
         if not "display" in self.callbacks.keys():
@@ -157,10 +164,8 @@ class AudioPlayer:
 
         # Create the decoder object on the SPI bus, as device 2 (screen is device 1)
         dcd_spi = SPI(1, sck=Pin(12), mosi=Pin(11), miso=Pin(13))
-        # dcd_spi = SoftSPI(2, sck=Pin(42), mosi=Pin(41), miso=Pin(46))
         reset = Pin(45, Pin.OUT, value=1)  # Active low hardware reset
         xcs = Pin(17, Pin.OUT, value=1)  # Labelled CS on PCB, xcs on chip datasheet
-        # sdcs = Pin(10, Pin.OUT, value=1)  # SD card CS
         xdcs = Pin(0, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
         dreq = Pin(14, Pin.IN)  # Active high data request
         self.decoder = vs1053.VS1053(dcd_spi, reset, dreq, xdcs, xcs, cancb=self.decoder_callback)
@@ -182,6 +187,8 @@ class AudioPlayer:
         self.current_track_length = 0
 
         self.InBuffer.InitBuffer()
+        self.tags_stripped = False
+        self.decoder._end_play()  # clear out any data in VS1053 input buffer
 
         if self.sock is not None:
             self.sock.close()
@@ -191,6 +198,8 @@ class AudioPlayer:
         if not self.playlist_started:
             return "Playlist not started"
         tstat = self.track_status()
+        buffer_bytes = self.InBuffer.get_bytes_in_buffer()
+        buffer_size = self.InBuffer.BufferSize
         bytes = tstat["bytes_read"]
         length = tstat["length"]
         ratio = bytes / max(length, 1)
@@ -204,9 +213,9 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f' Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
-            ms = f'{tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
-            retstring += f' byte rate {tstat["byte_rate"]}, time {ms}'
+            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            retstring += f" Buffer: {buffer_bytes}({100*buffer_bytes/buffer_size:.0f}%)"
+            retstring += f' time {tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
         return retstring
 
     def decoder_callback(self):
@@ -222,6 +231,7 @@ class AudioPlayer:
         encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.mp3"
         urllist = [x if not (x.endswith("silence0.mp3")) else encorebreak_url for x in urllist]
         ### TEMPORARY ###
+        urllist = [x.replace(" ", "%20") for x in urllist]
         self.playlist = urllist
         if self.ntracks > 0:
             self.current_track = 0
@@ -337,7 +347,11 @@ class AudioPlayer:
     def read_header(self, trackno, offset=0, port=80):
         self.playlist_started = True
         TimeStart = time.ticks_ms()
-        print(f"read_header starting at {TimeStart}")
+        print(f"read_header track {trackno} starting at time {TimeStart}, offset {offset}")
+        # In case we are reading a new track, set the flag to strip the tags before putting in InBuffer
+        if offset == 0:
+            self.tags_stripped = False
+
         self.track_being_read = trackno
 
         url = self.playlist[trackno]
@@ -411,28 +425,71 @@ class AudioPlayer:
     #######################################################################################################################################
 
     @micropython.native
+    def strip_tags(self):
+        # Remove everything in the stream up to the first occurence of \xfffb. Read one byte at a time.
+        if self.format.lower() != "mp3":
+            return
+        TimeStart = time.ticks_ms()
+        tag_buffer = memoryview(bytearray(1025))
+        tag_buffer[0] = 0
+        found_marker = False
+        marker_pos = -1
+        bytes_read = 0
+
+        while (not found_marker) and (bytes_read < 128 * 1024):
+            self.DEBUG and print(f"strip tags bytes read = {bytes_read}")
+            bytes_read += self.sock.readinto(tag_buffer[1:], 1024)
+            self.feed_decoder(timeout=10)
+            for i in range(1024):
+                # if i & 0xFF == 0:
+                #     print(f"strip tags pos {i}: {hex(tag_buffer[i] << 8 | tag_buffer[i+1])}")
+                if (tag_buffer[i] << 8 | tag_buffer[i + 1]) == MP3_FRAME_MARKER:
+                    found_marker = True
+                    marker_pos = i
+                    break
+            if not found_marker:
+                tag_buffer[0] = tag_buffer[1024]
+        if marker_pos >= 0:
+            print(f"tags stripped. Read {bytes_read} bytes in {(time.ticks_ms() - TimeStart)/1000:.3f} sec")
+        else:
+            raise Exception("Failed to strip tags")
+        self.tags_stripped = True
+        self.current_track_bytes_read += bytes_read
+        remainder = tag_buffer[marker_pos:]
+        wp = self.InBuffer.get_writePos()
+        self.InBuffer.Buffer[wp : wp + len(remainder)] = remainder
+        self.InBuffer.bytes_wasWritten(len(remainder))
+        return
+
+    @micropython.native
     def audio_pump(self):
         if self.is_stopped():
             return
 
         TimeStart = time.ticks_ms()
-
+        tag_bytes_read = 0
         # If there is any free space in the input buffer then add any data available from the network.
         if self.sock is not None:  # If there is no socket than we have already read to the end of the playlist
             if (BytesAvailable := self.InBuffer.get_write_available()) > 0:
+                # print(self.InBuffer)
                 try:  # We can get an exception here if we pause too long and the underlying socket gets closed
-                    # Read real data into the InBuffer
-                    data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
+                    if not self.tags_stripped:
+                        if self.InBuffer.get_bytes_in_buffer() > 64 * 1024:  # There is enough time in buffer to strip tags
+                            self.strip_tags()
+                            BytesAvailable = self.InBuffer.get_write_available()
+                        self.tags_stripped = True
+                        print(self.InBuffer)
+                    bytes_read = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
 
                     # Is there new data available? The readinto will return None if there is no data available, or 0 if the socket is closed
-                    if data is not None:
+                    if bytes_read is not None:
                         # Keep track of how many bytes of the current file we have read.
                         # We will need this if the user pauses for too long and we need to request the current track from the server again
-                        self.current_track_bytes_read += data
-                        self.InBuffer.bytes_wasWritten(data)
+                        self.InBuffer.bytes_wasWritten(bytes_read)
+                        self.current_track_bytes_read += bytes_read
 
                         # Peer closed socket. This can be because of End-of-stream or it can happen in a long pause before our socket closes
-                        if data == 0:
+                        if bytes_read == 0:
                             if self.current_track_length == self.current_track_bytes_read:  # End of track
                                 # Store the end-of-track marker for this track
                                 # self.TrackEnds.append(self.InBuffer.get_writePos())
@@ -451,11 +508,10 @@ class AudioPlayer:
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
-
                 except Exception as e:
                     # The user probably paused too long and the underlying socket got closed
                     # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
-                    self.DEBUG and print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
+                    print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
 
                     # Start reading the current track again, but at the offset where we were up to
                     self.read_header(self.track_being_read, self.current_track_bytes_read)
@@ -467,7 +523,7 @@ class AudioPlayer:
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
         self.feed_decoder()
 
-    def feed_decoder(self, timeout=50, debug=False):
+    def feed_decoder(self, timeout=25, debug=False):
         if not self.is_playing():
             return
         TimeStart = time.ticks_ms()

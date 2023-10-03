@@ -253,7 +253,8 @@ class OutRingBuffer:
 
 
 class AudioPlayer:
-    def __init__(self, callbacks={}, debug=False):
+    def __init__(self, callbacks={}, format="ogg", debug=False):
+        self.format = format
         self.STOPPED, self.PLAYING, self.PAUSED = 0, 1, 2
         self.callbacks = callbacks
         if not "display" in self.callbacks.keys():

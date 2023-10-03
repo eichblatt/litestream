@@ -1,4 +1,17 @@
-# Pin Assignments
+# Pin Assignments For VS1053
+|ESP 32 (GPIO) | VS1053 | comments |
+| -  | -        | -    |
+| 3V3 | 5V | |
+| GND | DGND | |
+| 0 | XDCS | |
+| 11 | MOSI | |
+| 12 | SCK | |
+| 13 | MISO | |
+| 14 | DREQ | |
+| 17 | XCS | |
+| 45 | RESET | |
+
+# Big List
 |Pin (GPIO) | component | Function | comments |
 | -  | -        | - |  -       |
 | 0 | VS1053 | XDCS | |
