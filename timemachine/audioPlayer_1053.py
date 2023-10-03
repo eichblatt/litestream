@@ -149,7 +149,7 @@ class AudioPlayer:
         self.ntracks = 0
 
         # The index of the current track in the playlist that we are playing
-        self.current_track = self.next_track = self.track_being_read = None
+        self.next_track = self.current_track = None
 
         # Size of the chunks of decoded audio that we will send to I2S
         self.ChunkSize = 50 * 1024  # We should be able to set this to 100 * 1024. New firmware doesn't like it.
@@ -213,7 +213,7 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["current_track"]}/{tstat["ntracks"]}'
             retstring += f" Buffer: {buffer_bytes}({100*buffer_bytes/buffer_size:.0f}%)"
             retstring += f' time {tstat["decode_time"]//60:02d}:{tstat["decode_time"]%60:02d}'
         return retstring
@@ -234,8 +234,7 @@ class AudioPlayer:
         urllist = [x.replace(" ", "%20") for x in urllist]
         self.playlist = urllist
         if self.ntracks > 0:
-            self.current_track = 0
-            self.track_being_read = 0  # This isn't quite true.
+            self.current_track = 0  # This isn't quite true.
             self.next_track = self.set_next_track()
         self.callbacks["display"](*self.track_names())
 
@@ -243,10 +242,9 @@ class AudioPlayer:
         if self.current_track is None:
             return {}
         return {
-            "current_track": self.current_track,
             "next_track": self.next_track,
             "ntracks": self.ntracks,
-            "track_being_read": self.track_being_read,
+            "current_track": self.current_track,
             "bytes_read": self.current_track_bytes_read,
             "length": self.current_track_length,
             "decode_time": self.decoder.decode_time(),
@@ -256,11 +254,9 @@ class AudioPlayer:
     def track_names(self):
         if self.current_track is None:
             return "", ""
-        current_name = self.tracklist[self.track_being_read]
+        current_name = self.tracklist[self.current_track]
         self.next_track = self.set_next_track()
         next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
-        # current_name = self.tracklist[self.current_track]
-        # next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
         return current_name, next_name
 
     def get_redirect_location(self, headers):
@@ -280,17 +276,17 @@ class AudioPlayer:
     def play(self):
         if self.PLAY_STATE == self.STOPPED:
             self.InBuffer.InitBuffer()
-            self.read_header(self.track_being_read)
+            self.read_header(self.current_track)
             self.PLAY_STATE = self.PLAYING
         elif self.PLAY_STATE == self.PLAYING:
-            print(f"Playing URL {self.playlist[self.track_being_read]}")
+            print(f"Playing URL {self.playlist[self.current_track]}")
         elif self.PLAY_STATE == self.PAUSED:
-            print(f"Un-pausing URL {self.playlist[self.track_being_read]}")
+            print(f"Un-pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = self.PLAYING
             self.audio_pump()  # Kick off the playback loop
 
     def pause(self):
-        print(f"Pausing URL {self.playlist[self.track_being_read]}")
+        print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == self.PLAYING:
             self.PLAY_STATE = self.PAUSED
 
@@ -308,32 +304,28 @@ class AudioPlayer:
         self.PLAY_STATE = self.STOPPED
         if reset_head:
             self.current_track = 0
-            self.track_being_read = 0
             self.next_track = self.set_next_track()
             print(self)
             self.callbacks["display"](*self.track_names())
         self.reset_player()
 
     def set_next_track(self):
-        # self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
-        self.next_track = self.track_being_read + 1 if self.ntracks > (self.track_being_read + 1) else None
+        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
         return self.next_track
 
     def advance_track(self, increment=1):
-        if not 0 <= (self.track_being_read + increment) <= self.ntracks:
+        if self.current_track is None:
+            return
+        if not 0 <= (self.current_track + increment) <= self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
             return
 
         self.stop(reset_head=False)
-        self.track_being_read += increment
+        self.current_track += increment
         self.next_track = self.set_next_track()
         print(self)
         self.callbacks["display"](*self.track_names())
-        # if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
-        #    self.PLAY_STATE = self.STOPPED
-        #    self.reset_player()
-        #    self.play()
 
     def is_paused(self):
         return self.PLAY_STATE == self.PAUSED
@@ -352,7 +344,7 @@ class AudioPlayer:
         if offset == 0:
             self.tags_stripped = False
 
-        self.track_being_read = trackno
+        self.current_track = trackno
 
         url = self.playlist[trackno]
         _, _, host, path = url.split("/", 3)
@@ -427,7 +419,7 @@ class AudioPlayer:
     @micropython.native
     def strip_tags(self):
         # Remove everything in the stream up to the first occurence of \xfffb. Read one byte at a time.
-        if self.format.lower() != "mp3":
+        if self.format != "mp3":
             return
         TimeStart = time.ticks_ms()
         tag_buffer = memoryview(bytearray(1025))
@@ -464,7 +456,7 @@ class AudioPlayer:
     @micropython.native
     def audio_pump(self):
         if self.is_stopped():
-            return
+            return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
         TimeStart = time.ticks_ms()
         tag_bytes_read = 0
@@ -496,9 +488,9 @@ class AudioPlayer:
                                 self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
                                 self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
 
-                                if self.track_being_read + 1 < self.ntracks:
+                                if self.current_track + 1 < self.ntracks:
                                     self.DEBUG and print("reading next track")
-                                    self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
+                                    self.read_header(self.current_track + 1)  # We can read the header of the next track now
                                     self.current_track_bytes_read = 0
                                 else:
                                     self.DEBUG and print("end of playlist")
@@ -514,14 +506,15 @@ class AudioPlayer:
                     print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
 
                     # Start reading the current track again, but at the offset where we were up to
-                    self.read_header(self.track_being_read, self.current_track_bytes_read)
+                    self.read_header(self.current_track, self.current_track_bytes_read)
 
         # If we are decoding the header, some of the initial packets are up to 2kB
         if self.InHeader and self.InBuffer.get_bytes_in_buffer() < 4096:
-            return
+            return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
         self.feed_decoder()
+        return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
     def feed_decoder(self, timeout=25, debug=False):
         if not self.is_playing():

@@ -562,7 +562,7 @@ class AudioPlayer:
     @micropython.native
     def audio_pump(self):
         if self.is_stopped():
-            return
+            return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
         TimeStart = time.ticks_ms()
 
@@ -611,7 +611,7 @@ class AudioPlayer:
 
         # If we are decoding the header, some of the initial packets are up to 2kB
         if self.InHeader and self.InBuffer.get_bytes_in_buffer() < 4096:
-            return
+            return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
         if self.InHeader:
             if self.Decoder.Vorbis_Init():
@@ -702,7 +702,7 @@ class AudioPlayer:
                         self.DEBUG and print("end of playlist")
                         self.FinishedDecoding = True
 
-                    return
+                    return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
             # Don't check self.OutBuffer.get_read_available here
@@ -736,3 +736,5 @@ class AudioPlayer:
                 # Start the playback loop by playing the first chunk. The callback will play the next chunk when it returns
                 self.play_chunk()
                 self.PlayLoopRunning = True  # So that we don't call this again
+
+        return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize

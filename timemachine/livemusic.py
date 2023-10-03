@@ -189,6 +189,15 @@ def play_pause(player):
     return player.PLAY_STATE
 
 
+def audio_pump(player, Nmax=1, fill_level=0.25):
+    ipump = 1
+    buffer_fill = player.audio_pump()
+    while (buffer_fill < fill_level) and ipump < Nmax:
+        ipump += 1
+        buffer_fill = player.audio_pump()
+    return buffer_fill
+
+
 def main_loop(player, coll_dict):
     year_old = -1
     month_old = -1
@@ -223,7 +232,7 @@ def main_loop(player, coll_dict):
     poll_count = 0
     while True:
         nshows = 0
-        player_status = player.audio_pump()
+        buffer_fill = audio_pump(player, 5)
         poll_count = poll_count + 1
         # if player.is_playing() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
         #     continue
@@ -260,6 +269,7 @@ def main_loop(player, coll_dict):
         # Throttle Downstream polling
         # if (player.is_playing()) and (poll_count % 10 != 0):
         #    continue
+        buffer_fill = player.audio_pump()
 
         if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
             print("Resuming playing")
@@ -460,7 +470,8 @@ def main_loop(player, coll_dict):
                 update_display(player)
                 # display_tracks(*player.track_names())
                 pass
-        # time.sleep_ms(50)
+
+        audio_pump(player, Nmax=100)  # Try to keep buffer filled.
 
 
 def add_vcs(coll):
