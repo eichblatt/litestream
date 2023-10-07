@@ -496,6 +496,7 @@ class AudioPlayer:
     def is_playing(self):
         return self.PLAY_STATE == self.PLAYING
 
+    @micropython.native
     def read_header(self, trackno, offset=0, port=80):
         self.playlist_started = True
         # TimeStart = time.ticks_ms()
