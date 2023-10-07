@@ -70,6 +70,11 @@ class InRingBuffer:
         self._readPos = self.OverflowSize  # The next byte we will read
         self._writePos = self.OverflowSize  # The next byte we will write
 
+    def __repr__(self):
+        retstr = f"Size: {self.BufferSize} + {self.OverflowSize}, readPos:{self._readPos}, writePos:{self._writePos}"
+        retstr += f" Bytes in buffer: {self.get_bytes_in_buffer()}. Write available:{self.get_write_available()}"
+        return retstr
+
     # Returns the pointer to where we can read from
     def get_writePos(self):
         return self._writePos
@@ -318,6 +323,10 @@ class AudioPlayer:
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
+        inbuffer_bytes = self.InBuffer.get_bytes_in_buffer()
+        inbuffer_size = self.InBuffer.BufferSize
+        outbuffer_bytes = self.OutBuffer.get_bytes_in_buffer()
+        outbuffer_size = self.OutBuffer.BufferSize
         ratio = bytes / max(length, 1)
         if self.PLAY_STATE == self.PLAYING:
             status = "Playing"
@@ -327,9 +336,11 @@ class AudioPlayer:
             status = "Stopped"
         else:
             status = " !?! "
-        retstring = f"{status} track"
+        retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f': {tstat["current_track"]}/{tstat["ntracks"]}. Read {bytes}/{length} ({100*ratio:2.2f}%) of track {tstat["track_being_read"]}'
+            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            retstring += f" InBuffer: {inbuffer_bytes}({100*inbuffer_bytes/inbuffer_size:.0f}%)"
+            retstring += f" OutBuffer: {outbuffer_bytes}({100*outbuffer_bytes/outbuffer_size:.0f}%)"
         return retstring
 
     @micropython.native

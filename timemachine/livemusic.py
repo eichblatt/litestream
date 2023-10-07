@@ -78,8 +78,9 @@ def select_date(coll_dict, key_date, ntape=0):
     resp = requests.get(tape_ids_url)
     if resp.status_code == 200:
         tape_ids = resp.json()
-        best_tape = tape_ids[0][0]
-        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{best_tape}/trackdata.json"
+        ntapes = len(tape_ids)
+        selected_tape = tape_ids[ntape % ntapes][0]
+        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape}/trackdata.json"
         resp = requests.get(trackdata_url).json()
         collection = resp["collection"]
         tracklist = resp["tracklist"]
@@ -344,10 +345,9 @@ def main_loop(player, coll_dict):
                 print(f"display string is {display_str}")
                 if len(display_str) > 18:
                     display_str = display_str[:11] + display_str[-6:]
-                tm.tft.write(
-                    pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color
-                )  # no need to clear this.
+                tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
+                collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
 
         if pPower_old != tm.pPower.value():
             pPower_old = tm.pPower.value()
@@ -477,6 +477,7 @@ def main_loop(player, coll_dict):
 def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
+    print(vcs_url)
     resp = requests.get(vcs_url)
     if resp.status_code == 200:
         vcs = resp.json()

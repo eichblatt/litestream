@@ -378,6 +378,11 @@ def set_datetime():
         except OSError:
             time.sleep(0.3)
             pass
+        except OverflowError:
+            time.sleep(0.3)
+            pass
+        except Exception:
+            pass
     if time_set:
         return time.localtime()
     else:
