@@ -281,14 +281,14 @@ class AudioPlayer:
         self.ChunkSize = 50 * 1024  # We should be able to set this to 100 * 1024. New firmware doesn't like it.
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
-        InBufferSize = 120 * 1024
+        InBufferSize = 420 * 1024
 
         # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 4096
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
         # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
-        OutBufferSize = 900 * 1024
+        OutBufferSize = 300 * 1024
         self.OutBuffer = OutRingBuffer(OutBufferSize, callbacks.get("screen_off", lambda: None))
 
         self.reset_player()
@@ -757,15 +757,12 @@ class AudioPlayer:
                         self.FinishedDecoding = True
 
                     buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
-                    return buffer_level
+                    break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
             # Don't check self.OutBuffer.get_read_available here
-            if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
-                self.init_playback(debug)
-                self.PlayLoopRunning = True  # So that we don't call this again
-            buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
-            return buffer_level
-
+        if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
+            self.init_playback(debug)
+            self.PlayLoopRunning = True  # So that we don't call this again
         buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
         return buffer_level
