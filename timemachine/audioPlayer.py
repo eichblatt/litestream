@@ -281,14 +281,14 @@ class AudioPlayer:
         self.ChunkSize = 50 * 1024  # We should be able to set this to 100 * 1024. New firmware doesn't like it.
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
-        InBufferSize = 120 * 1024
+        InBufferSize = 520 * 1024
 
         # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 4096
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
         # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
-        OutBufferSize = 900 * 1024
+        OutBufferSize = 200 * 1024
         self.OutBuffer = OutRingBuffer(OutBufferSize, callbacks.get("screen_off", lambda: None))
 
         self.reset_player()
@@ -643,6 +643,14 @@ class AudioPlayer:
                 raise RuntimeError("Decoder Start failed")
 
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
+        self.feed_decoder()
+        return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
+
+    def feed_decoder(self, timeout=30, debug=False):
+        if not self.is_playing():
+            return
+        TimeStart = time.ticks_ms()
+        debug and print(f"   feed_decoder {TimeStart}")
         Counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
         while True:
             # Do we have at least 4096 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
@@ -661,7 +669,8 @@ class AudioPlayer:
                 break
 
             # Don't stay in the loop too long or we affect the responsiveness of the main app
-            if time.ticks_diff(time.ticks_ms(), TimeStart) > 30:
+            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
+                debug and print(f"   feed_decoder timing out after {time.ticks_ms() - TimeStart}")
                 break
 
             Counter += 1
@@ -747,5 +756,3 @@ class AudioPlayer:
                 # Start the playback loop by playing the first chunk. The callback will play the next chunk when it returns
                 self.play_chunk()
                 self.PlayLoopRunning = True  # So that we don't call this again
-
-        return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
