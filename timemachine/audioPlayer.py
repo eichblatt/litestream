@@ -600,7 +600,7 @@ class AudioPlayer:
             # Make the I2S device asyncronous by defining a callback
             self.audio_out.irq(self.i2s_callback)
             # Start the playback loop by playing the first chunk. The callback will play the next chunk when it returns
-            self.play_chunk()
+        self.play_chunk()
 
     @micropython.native
     def audio_pump(self):
@@ -761,8 +761,9 @@ class AudioPlayer:
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
             # Don't check self.OutBuffer.get_read_available here
-        if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
-            self.init_playback(debug)
-            self.PlayLoopRunning = True  # So that we don't call this again
+            if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
+                self.init_playback(debug)
+                self.PlayLoopRunning = True  # So that we don't call this again
+
         buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
         return buffer_level
