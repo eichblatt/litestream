@@ -511,7 +511,9 @@ class AudioPlayer:
             self.sock.close()
 
         self.sock = socket.socket()
-        # self.feed_decoder(debug=True, fill_level=1, timeout=50)
+        if self.PlayLoopRunning:
+            outBuffer_level = self.feed_decoder(debug=True, fill_level=1.0, timeout=150)
+            print(f"outBuffer level {outBuffer_level}")
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
@@ -681,11 +683,11 @@ class AudioPlayer:
 
     @micropython.native
     def feed_decoder(self, timeout=30, fill_level=1.0, debug=False):
-        # buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
+        buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
         TimeStart = time.ticks_ms()
         counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
-        # while buffer_level < fill_level:
-        while True:
+        while buffer_level < fill_level:
+            # while True:
             debug and print(f"   feed_decoder -- level {buffer_level}/{fill_level} timeout {timeout}")
             # Do we have at least 4096 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
             if self.OutBuffer.get_write_available() < 4096:  # Note: this can change write_pos
@@ -716,6 +718,7 @@ class AudioPlayer:
             )
 
             self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
+            buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
 
             # If we get a I2S completed interrupt here it could mess up the buffer. So disable interrupts.
             # state = machine.disable_irq()
@@ -755,8 +758,6 @@ class AudioPlayer:
                         # print(self)
                         debug and print("end of playlist")
                         self.FinishedDecoding = True
-
-                    buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
