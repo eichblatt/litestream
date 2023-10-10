@@ -15,9 +15,7 @@ Flashing the ESP32
 first source the file  $HOME/esp/esp-idf/export.sh
 ```
 : ~ ; source $HOME/esp/esp-idf/export.sh 
-```
-Note: Make sure to disconnect from Jama before you flash!
-```
+
 : ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/activate
 : (idf4.4_py3.10_env) ~/projects/litestream ; pip3 install pyserial   # This only needs to be done once.
