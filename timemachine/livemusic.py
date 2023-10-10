@@ -40,8 +40,8 @@ import network
 import board as tm
 import utils
 
-ESP_DECODE = False
-FORMAT = "mp3"
+ESP_DECODE = True
+FORMAT = "ogg"
 if ESP_DECODE:
     import audioPlayer
 else:
