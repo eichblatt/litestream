@@ -25,10 +25,11 @@ first source the file  $HOME/esp/esp-idf/export.sh
 Installing the Software
 =======================
 Log into the device with Jama, and connect to WiFi.
+```
 import mip
 
 mip.install("github:eichblatt/litestream/timemachine/package.json", version="vs1053", target="test_download")
-
+```
 where "version" is the branch or tag, and "target" is the folder to put the code into.
 
 Then, copy the boot.py from the target folder to the root folder, so that it will run when booting up.
@@ -40,8 +41,11 @@ I got errors and had to rm -r ~/.espressif/ and then ./install.sh esp32,esp32s3 
 The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
 Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. Have to run menuconfig and set the single core flag (under ComponentConfig->FreeRTOS->Run FreeRTOS only on first Core) - not sure this is relevant any more
 If you get errors about wrong paths for the compiler, you may need to add the correct paths.
+```
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-g++:$PATH
-export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc:$PATH
+export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/
+bin/xtensa-esp32s3-elf-gcc:$PATH
+```
 e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_OCT clean" and build again.
 
 OTA Updates:
