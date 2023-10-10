@@ -512,7 +512,7 @@ class AudioPlayer:
 
         self.sock = socket.socket()
         if self.PlayLoopRunning:
-            outBuffer_level = self.feed_decoder(debug=True, fill_level=1.0, timeout=150)
+            outBuffer_level = self.feed_decoder(debug=True, fill_level=0.9, timeout=100)
             print(f"outBuffer level {outBuffer_level}")
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
