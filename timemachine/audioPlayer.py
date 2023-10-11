@@ -288,7 +288,7 @@ class AudioPlayer:
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
         # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
-        OutBufferSize = 300 * 1024
+        OutBufferSize = 600 * 1024
         self.OutBuffer = OutRingBuffer(OutBufferSize, callbacks.get("screen_off", lambda: None))
 
         self.reset_player()
@@ -500,10 +500,10 @@ class AudioPlayer:
     def read_header(self, trackno, offset=0, port=80):
         self.playlist_started = True
         # TimeStart = time.ticks_ms()
-        print(f"read_header track {trackno} starting at offset {offset}")
         self.track_being_read = trackno
 
         url = self.playlist[trackno]
+        print(f"read_header track {trackno}, {url} offset {offset}")
         _, _, host, path = url.split("/", 3)
         addr = socket.getaddrinfo(host, port)[0][-1]
 
