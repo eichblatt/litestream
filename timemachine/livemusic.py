@@ -40,8 +40,8 @@ import network
 import board as tm
 import utils
 
-ESP_DECODE = False
-FORMAT = "mp3"
+ESP_DECODE = True
+FORMAT = "ogg"
 if ESP_DECODE:
     import audioPlayer
 else:
@@ -78,8 +78,9 @@ def select_date(coll_dict, key_date, ntape=0):
     resp = requests.get(tape_ids_url)
     if resp.status_code == 200:
         tape_ids = resp.json()
-        best_tape = tape_ids[0][0]
-        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{best_tape}/trackdata.json"
+        ntapes = len(tape_ids)
+        selected_tape = tape_ids[ntape % ntapes][0]
+        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape}/trackdata.json"
         resp = requests.get(trackdata_url).json()
         collection = resp["collection"]
         tracklist = resp["tracklist"]
@@ -189,6 +190,15 @@ def play_pause(player):
     return player.PLAY_STATE
 
 
+def audio_pump(player, Nmax=1, fill_level=0.95):
+    ipump = 1
+    buffer_level = player.audio_pump()
+    while (buffer_level < fill_level) and ipump < Nmax:
+        ipump += 1
+        buffer_level = player.audio_pump()
+    return buffer_level
+
+
 def main_loop(player, coll_dict):
     year_old = -1
     month_old = -1
@@ -223,7 +233,7 @@ def main_loop(player, coll_dict):
     poll_count = 0
     while True:
         nshows = 0
-        player_status = player.audio_pump()
+        buffer_fill = audio_pump(player)
         poll_count = poll_count + 1
         # if player.is_playing() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
         #     continue
@@ -260,6 +270,8 @@ def main_loop(player, coll_dict):
         # Throttle Downstream polling
         # if (player.is_playing()) and (poll_count % 10 != 0):
         #    continue
+        buffer_fill = audio_pump(player, fill_level=0.3)
+        # buffer_fill = player.audio_pump()
 
         if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
             print("Resuming playing")
@@ -334,10 +346,9 @@ def main_loop(player, coll_dict):
                 print(f"display string is {display_str}")
                 if len(display_str) > 18:
                     display_str = display_str[:11] + display_str[-6:]
-                tm.tft.write(
-                    pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color
-                )  # no need to clear this.
+                tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
+                collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
 
         if pPower_old != tm.pPower.value():
             pPower_old = tm.pPower.value()
@@ -460,12 +471,14 @@ def main_loop(player, coll_dict):
                 update_display(player)
                 # display_tracks(*player.track_names())
                 pass
-        # time.sleep_ms(50)
+
+        audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
 
 def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
+    print(vcs_url)
     resp = requests.get(vcs_url)
     if resp.status_code == 200:
         vcs = resp.json()

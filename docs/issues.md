@@ -368,5 +368,6 @@ https://wiki.hydrogenaud.io/index.php?title=MP3#VBRI.2C_XING.2C_and_LAME_headers
 This page describes the LAME tags, which should have a delay & padding values for gapless playback
 http://gabriel.mp3-tech.org/mp3infotag.html   **This is the most useful link on this subject**
 
+Also https://lame.sourceforge.io/using.php , less useful.
 ### Seeking
 Good info here https://stackoverflow.com/questions/60247805/seeking-within-mp3-file
