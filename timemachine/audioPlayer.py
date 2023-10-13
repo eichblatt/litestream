@@ -207,7 +207,7 @@ class OutRingBuffer:
                 self.screen_off_callback()
                 assert (
                     False
-                ), f"OutBuffer Overwrite Readpos. Count: {count}. WritePos: {self._writePos}. ReadPos:{self._readPos}"
+                ), f"OutRingBuffer Overwrite Readpos. Count: {count}. WritePos: {self._writePos}. ReadPos:{self._readPos}"
         self.BytesInBuffer += count
         assert (
             self.BytesInBuffer <= self.BufferSize
@@ -241,9 +241,9 @@ class OutRingBuffer:
     # Tell the buffer how many bytes we just read. Must call this after every read from the buffer
     def bytes_wasRead(self, count):
         if self._readPos < self._writePos:
-            assert self._readPos + count <= self._writePos, "OutBuffer Overread"
+            assert self._readPos + count <= self._writePos, "OutRingBuffer Overread"
         self.BytesInBuffer -= count
-        assert self.BytesInBuffer >= 0, "OutBuffer Underflow"
+        assert self.BytesInBuffer >= 0, "OutRingBuffer Underflow"
         self._readPos += count  # The caller must call get_read_available before calling this, so we should never overwrite the end of the buffer
         assert self._readPos <= self._endPos, "Outbuffer Underflow2"  # We should never read past the high water mark
 
@@ -270,6 +270,7 @@ class AudioPlayer:
         self.audio_out = None
         self.playlist_started = False
         self.Decoder = Decoder
+        self.i2s_busy = False
 
         self.playlist = self.tracklist = []
         self.ntracks = 0
@@ -288,7 +289,7 @@ class AudioPlayer:
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
         # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
-        OutBufferSize = 600 * 1024
+        OutBufferSize = 900 * 1024
         self.OutBuffer = OutRingBuffer(OutBufferSize, callbacks.get("screen_off", lambda: None))
 
         self.reset_player()
@@ -345,12 +346,18 @@ class AudioPlayer:
 
     @micropython.native
     def play_chunk(self):  # Don't be tempted to just put this function directly in to i2s_callback(). Weird errors occur...
+        if self.PLAY_STATE != self.PLAYING:
+            return
+        if self.audio_out is None:
+            return
+        if self.i2s_busy:
+            return
         BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
 
         # We can get zero bytes to play if the buffer is starved, or when we reach the end of the playlist
         if BytesToPlay == 0:
             if self.FinishedDecoding:  # End of playlist
-                self.DEBUG and print("Finished Playing")
+                print("Finished Playing")
                 self.stop()
                 self.playlist_started = False
                 return
@@ -370,17 +377,22 @@ class AudioPlayer:
         try:
             self.OutBuffer.bytes_wasRead(BytesToPlay)
         except Exception as e:
-            self.DEBUG and print("Buffer error. Stopping playback loop", e)
+            print("Buffer error. Stopping playback loop", e)
             self.stop()
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
+        self.i2s_busy = True
         assert numout == BytesToPlay, "I2S write error"
 
     @micropython.native
     def i2s_callback(self, t):
         if self.PLAY_STATE == self.PLAYING:
             self.play_chunk()
+
+    @micropython.native
+    def i2s_callback2(self, t):
+        self.i2s_busy = False
 
     def set_playlist(self, tracklist, urllist):
         assert len(tracklist) == len(urllist)
@@ -512,13 +524,14 @@ class AudioPlayer:
 
         self.sock = socket.socket()
         if self.PlayLoopRunning:
-            outBuffer_level = self.feed_decoder(debug=True, fill_level=0.9, timeout=100)
-            print(f"outBuffer level {outBuffer_level}")
+            self.play_chunk()
+            # outBuffer_level = self.feed_decoder(debug=True, fill_level=0.3, timeout=100)
+            # print(f"outBuffer level {outBuffer_level}")
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
         self.sock.setblocking(False)  # Tell the socket to return straight away (async)
-        # self.feed_decoder(debug=True, fill_level=0.3)
+        self.feed_decoder(fill_level=0.3)
 
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
         self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
@@ -528,6 +541,7 @@ class AudioPlayer:
         while True:
             header = self.sock.readline()
             # self.feed_decoder(fill_level=0.3, timeout=10)
+            self.feed_decoder(fill_level=0.3)
             if header is not None:
                 response_headers += header.decode("utf-8")
                 if header.startswith(b"Content-Range:"):
@@ -540,18 +554,18 @@ class AudioPlayer:
             redirect_location = self.get_redirect_location(response_headers)
             if redirect_location:
                 # Extract the new host, port, and path from the redirect location
-                # self.feed_decoder()
+                self.feed_decoder()
                 new_host, new_port, new_path = self.parse_redirect_location(redirect_location)
                 self.sock.close()
                 # Establish a new socket connection to the server
                 self.DEBUG and print("Redirecting to", new_host, new_port, new_path, "Offset", offset)
-                # self.feed_decoder()
+                self.feed_decoder()
                 self.sock = socket.socket()
                 addr = socket.getaddrinfo(new_host, new_port)[0][-1]
-                # self.feed_decoder()
+                self.feed_decoder()
                 self.sock.connect(addr)
                 self.sock.setblocking(False)  # Return straight away
-                # self.feed_decoder()
+                self.feed_decoder()
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 self.sock.send(bytes(f"GET /{new_path} HTTP/1.1\r\nHost: {new_host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
@@ -559,7 +573,7 @@ class AudioPlayer:
                 # Skip the response headers
                 while True:
                     header = self.sock.readline()
-                    # self.feed_decoder()
+                    self.feed_decoder()
 
                     if header is not None:
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
@@ -600,15 +614,17 @@ class AudioPlayer:
             )
 
             # Make the I2S device asyncronous by defining a callback
-            self.audio_out.irq(self.i2s_callback)
+            # self.audio_out.irq(self.i2s_callback)
+            self.audio_out.irq(self.i2s_callback2)
             # Start the playback loop by playing the first chunk. The callback will play the next chunk when it returns
         self.play_chunk()
 
     @micropython.native
     def audio_pump(self):
         if self.is_stopped():
-            buffer_level = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
-            return buffer_level
+            buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
+            buffer_level_out = self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize
+            return min(buffer_level_in, buffer_level_out)
 
         TimeStart = time.ticks_ms()
 
@@ -657,7 +673,9 @@ class AudioPlayer:
 
         # If we are decoding the header, some of the initial packets are up to 2kB
         if self.InHeader and self.InBuffer.get_bytes_in_buffer() < 4096:
-            return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
+            buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
+            buffer_level_out = self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize
+            return min(buffer_level_in, buffer_level_out)
 
         if self.InHeader:
             if self.Decoder.Vorbis_Init():
@@ -678,14 +696,15 @@ class AudioPlayer:
                 raise RuntimeError("Decoder Start failed")
 
         # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
-        self.feed_decoder()
-        return self.InBuffer.get_bytes_in_buffer() / self.InBuffer.BufferSize
+        buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
+        buffer_level_out = self.feed_decoder()
+        return min(buffer_level_in, buffer_level_out)
 
     @micropython.native
     def feed_decoder(self, timeout=30, fill_level=1.0, debug=False):
         buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
         TimeStart = time.ticks_ms()
-        counter = 0  # Just for debugging. See how many times we run the loop in the 25ms
+        counter = 0  # Just for debugging. See how many times we run the loop before timeout
         while buffer_level < fill_level:
             # while True:
             debug and print(f"   feed_decoder -- level {buffer_level}/{fill_level} timeout {timeout}")
@@ -767,4 +786,5 @@ class AudioPlayer:
                 self.PlayLoopRunning = True  # So that we don't call this again
 
         buffer_level = self.OutBuffer.get_bytes_in_buffer() / self.OutBuffer.BufferSize
+        self.play_chunk()
         return buffer_level
