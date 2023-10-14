@@ -17,7 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import network, time, socket
-import Player as Decoder
+
+try:
+    import VorbisPlayer as Decoder
+except:
+    import Player as Decoder
 from machine import Pin, I2S
 import machine
 
