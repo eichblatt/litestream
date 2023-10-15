@@ -41,7 +41,6 @@ import board as tm
 import utils
 
 ESP_DECODE = True
-FORMAT = "ogg"
 if ESP_DECODE:
     import audioPlayer
 else:
@@ -95,8 +94,6 @@ def select_date(coll_dict, key_date, ntape=0):
         print(f"API request is {api_request}")
         resp = requests.get(api_request).json()
         urls = resp["urls"]
-    if FORMAT == "mp3":
-        urls = [x.replace(".ogg", ".mp3") for x in urls]
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -191,12 +188,13 @@ def play_pause(player):
 
 
 def audio_pump(player, Nmax=1, fill_level=0.95):
-    ipump = 1
-    buffer_level = player.audio_pump()
-    while (buffer_level < fill_level) and ipump < Nmax:
-        ipump += 1
-        buffer_level = player.audio_pump()
-    return buffer_level
+    player.audio_pump()
+    # ipump = 1
+    # buffer_level = player.audio_pump()
+    # while (buffer_level < fill_level) and ipump < Nmax:
+    #    ipump += 1
+    #    buffer_level = player.audio_pump()
+    # return buffer_level
 
 
 def main_loop(player, coll_dict):
@@ -553,5 +551,9 @@ def run():
 
     coll_dict = get_coll_dict(collection_list)
     print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks, "screen_off": utils.screen_off}, format=FORMAT)
-    main_loop(player, coll_dict)
+    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
+    try:
+        main_loop(player, coll_dict)
+    except Exception as e:
+        print(f"Error in playback loop {e}")
+    return -1
