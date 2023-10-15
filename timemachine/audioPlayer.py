@@ -730,7 +730,6 @@ class AudioPlayer:
 
             # Don't stay in the loop too long or we affect the responsiveness of the main app
             if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
-                debug and print(f"   feed_decoder timing out after {time.ticks_ms() - TimeStart}")
                 break
             counter += 1
 
