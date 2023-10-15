@@ -283,7 +283,7 @@ class AudioPlayer:
 
         self.reset_player()
 
-    def reset_player(self):
+    def reset_player(self, reset_head=True):
         self.PlayLoopRunning = False
         self.FinishedStreaming = False
         self.FinishedDecoding = False
@@ -293,9 +293,10 @@ class AudioPlayer:
         self.ID3Tag_size = 0
         self.Decoder = None
 
-        if self.ntracks > 0:
-            self.current_track = 0
-            self.next_track = 1 if self.ntracks > 1 else None
+        if reset_head:
+            if self.ntracks > 0:
+                self.current_track = 0
+                self.next_track = 1 if self.ntracks > 1 else None
 
         # A list of offsets into the InBuffer where the tracks end. This tells the decoder when to move onto the next track by decoding the next header
         self.TrackEnds = []
@@ -317,6 +318,8 @@ class AudioPlayer:
         if self.sock is not None:
             self.sock.close()
             self.sock = None
+
+        print(self)
 
     def __repr__(self):
         if not self.playlist_started:
@@ -464,12 +467,7 @@ class AudioPlayer:
         if self.PLAY_STATE == self.STOPPED:
             return
         self.PLAY_STATE = self.STOPPED
-        if reset_head:
-            self.current_track = 0
-            self.next_track = self.set_next_track()
-            print(self)
-            self.callbacks["display"](*self.track_names())
-        self.reset_player()
+        self.reset_player(reset_head)
 
     def set_next_track(self):
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
