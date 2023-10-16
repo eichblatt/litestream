@@ -8,7 +8,10 @@ https://github.com/jczic/ESP32-MPY-Jama#penguin-linux-version-instructions
 
 ```
 # change to the directory you want to install Jama
-: ~ ; cd projects
+: ~ ; cd $HOME/projects
+# If the projects directory doesn't exist, make it
+: ~ ; mkdir $HOME/projects
+: ~ ; cd $HOME/projects
 : ~/projects ; 
 # clone the repository:
 : ~/projects ; git clone https://github.com/jczic/ESP32-MPY-Jama
