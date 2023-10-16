@@ -16,7 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import network, time, MP3Player, VorbisPlayer, socket
+import network, time, socket
+
+try:
+    import MP3Player, VorbisPlayer
+except ImportError:
+    import Player as VorbisPlayer
 from machine import Pin, I2S
 import machine
 import gc

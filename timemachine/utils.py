@@ -131,6 +131,8 @@ def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, cle
 
 
 def select_option(message, choices):
+    if len(choices) == 0:
+        return ""
     pSelect_old = True
     tm.y._value = tm.y._min_val
     tm.d._value = tm.d._min_val
