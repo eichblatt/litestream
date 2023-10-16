@@ -28,7 +28,7 @@ Log into the device with Jama, and connect to WiFi.
 ```
 import mip
 
-mip.install("github:eichblatt/litestream/timemachine/package.json", version="vs1053", target="test_download")
+mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev", target="test_download")
 ```
 where "version" is the branch or tag, and "target" is the folder to put the code into.
 
