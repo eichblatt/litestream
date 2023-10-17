@@ -31,6 +31,7 @@ from mrequests import mrequests as requests
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
+STATE_PATH = "latest_state.json"
 
 
 def reload(mod):
@@ -477,3 +478,22 @@ def update_firmware():
         return -1
 
     return 0
+
+
+def save_state(state):
+    with open(STATE_PATH, "w") as f:
+        json.dump(state, f)
+
+
+def load_state():
+    if path_exists(STATE_PATH):
+        state = json.load(open(STATE_PATH, "r"))
+        collection_list = state.get("collection_list", "GratefulDead")
+        selected_date = state.get("start_date", "1975-08-13")
+    else:
+        collection_list = ["GratefulDead"]
+        selected_date = "1975-08-13"
+        state = {"collection_list": collection_list, "selected_date": selected_date}
+        with open(STATE_PATH, "w") as f:
+            json.dump(state, f)
+    return state

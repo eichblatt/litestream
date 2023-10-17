@@ -197,7 +197,7 @@ def audio_pump(player, Nmax=1, fill_level=0.95):
     # return buffer_level
 
 
-def main_loop(player, coll_dict):
+def main_loop(player, coll_dict, state):
     year_old = -1
     month_old = -1
     day_old = -1
@@ -206,7 +206,7 @@ def main_loop(player, coll_dict):
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
-    key_date = set_date("1975-08-13")
+    key_date = set_date(state["selected_date"])
     selected_date = key_date
     collection = "GratefulDead"
     tracklist = []
@@ -312,6 +312,8 @@ def main_loop(player, coll_dict):
                     ntape = 0
 
                     selected_date = key_date
+                    state["selected_date"] = selected_date
+                    utils.save_state(state)
                     selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
                     utils.clear_bbox(playpause_bbox)
@@ -541,19 +543,14 @@ def get_coll_dict(collection_list):
 
 def run():
     """run the livemusic controls"""
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    else:
-        collection_list = ["GratefulDead"]
-        with open(COLLECTION_LIST_PATH, "w") as f:
-            json.dump(collection_list, f)
-    show_collections(collection_list)
+    state = utils.load_state()
+    show_collections(state["collection_list"])
 
-    coll_dict = get_coll_dict(collection_list)
+    coll_dict = get_coll_dict(state["collection_list"])
     print(f"Loaded collections {coll_dict.keys()}")
     player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
     try:
-        main_loop(player, coll_dict)
+        main_loop(player, coll_dict, state)
     except Exception as e:
         print(f"Error in playback loop {e}")
     return -1
