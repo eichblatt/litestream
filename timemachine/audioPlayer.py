@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import network, time, socket
 
 try:
-    import MP3Player, VorbisPlayer
+    import MP3Decoder, VorbisDecoder
 except ImportError:
-    import Player as VorbisPlayer
+    import VorbisPlayer as VorbisDecoder
 from machine import Pin, I2S
 import machine
 import gc
@@ -317,8 +317,8 @@ class AudioPlayer:
         self.OutBuffer.InitBuffer()
 
         # This frees up all the buffers that the decoder allocated, and resets its state
-        MP3Player.MP3_Close()
-        VorbisPlayer.Vorbis_Close()
+        MP3Decoder.MP3_Close()
+        VorbisDecoder.Vorbis_Close()
 
         if self.sock is not None:
             self.sock.close()
@@ -683,9 +683,9 @@ class AudioPlayer:
 
         if self.InHeader:
             if self.Decoder == self.MP3:
-                ret = MP3Player.MP3_Init()
+                ret = MP3Decoder.MP3_Init()
             elif self.Decoder == self.OGGVORBIS:
-                ret = VorbisPlayer.Vorbis_Init()
+                ret = VorbisDecoder.Vorbis_Init()
 
             if ret:
                 self.DEBUG and print("Decoder Init success")
@@ -697,7 +697,7 @@ class AudioPlayer:
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
             elif self.Decoder == self.OGGVORBIS:
-                FoundSyncWordAt = VorbisPlayer.Vorbis_Start(
+                FoundSyncWordAt = VorbisDecoder.Vorbis_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
 
@@ -742,13 +742,13 @@ class AudioPlayer:
             t = time.ticks_ms()
 
             if self.Decoder == self.MP3:
-                Result, BytesLeft, AudioSamples = MP3Player.MP3_Decode(
+                Result, BytesLeft, AudioSamples = MP3Decoder.MP3_Decode(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :],
                     InBytesAvailable,
                     self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
                 )
             elif self.Decoder == self.OGGVORBIS:
-                Result, BytesLeft, AudioSamples = VorbisPlayer.Vorbis_Decode(
+                Result, BytesLeft, AudioSamples = VorbisDecoder.Vorbis_Decode(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :],
                     InBytesAvailable,
                     self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
@@ -792,8 +792,8 @@ class AudioPlayer:
                 if self.current_track_bytes_decoded == self.TrackEnds[0]:  # We have finished decoding the current track
                     print("Finished decoding track", self.current_track, " - ", end="")
                     self.TrackEnds.pop(0)  # Remove the current end-of-track marker from the list
-                    MP3Player.MP3_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
-                    VorbisPlayer.Vorbis_Close()
+                    MP3Decoder.MP3_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
+                    VorbisDecoder.Vorbis_Close()
                     # self.audio_out.deinit() # Don't close I2S here, as it still has to play the last part of the track
 
                     if self.current_track + 1 < self.ntracks:  # Start decode of next track
@@ -814,9 +814,9 @@ class AudioPlayer:
 
                 # Get info about this stream
                 if self.Decoder == self.MP3:
-                    channels, sample_rate, bits_per_sample, bit_rate = MP3Player.MP3_GetInfo()
+                    channels, sample_rate, bits_per_sample, bit_rate = MP3Decoder.MP3_GetInfo()
                 elif self.Decoder == self.OGGVORBIS:
-                    channels, sample_rate, bits_per_sample, bit_rate = VorbisPlayer.Vorbis_GetInfo()
+                    channels, sample_rate, bits_per_sample, bit_rate = VorbisDecoder.Vorbis_GetInfo()
 
                 self.DEBUG and print("Channels:", channels)
                 self.DEBUG and print("Sample Rate:", sample_rate)
