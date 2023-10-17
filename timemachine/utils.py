@@ -31,7 +31,7 @@ from mrequests import mrequests as requests
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
-STATE_PATH = "latest_state.json"
+STATE_PATH = "/latest_state.json"
 
 
 def reload(mod):

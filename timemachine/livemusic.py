@@ -222,6 +222,7 @@ def main_loop(player, coll_dict, state):
     resume_playing_delay = 500
     ntape = 0
     valid_dates = set()
+    date_set_time = time.ticks_ms()
     for c in collections:
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
     del c
@@ -295,6 +296,12 @@ def main_loop(player, coll_dict, state):
                 if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.ffwd()
+
+        # set the knobs to the most recently selected date after 20 seconds of inaction
+        if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), date_set_time) > 20_000):
+            print(f"setting key_date to {selected_date}")
+            key_date = set_date(selected_date)
+            date_set_time = time.ticks_ms()
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
