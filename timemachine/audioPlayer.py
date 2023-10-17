@@ -22,6 +22,7 @@ try:
     import MP3Decoder, VorbisDecoder
 except ImportError:
     import VorbisPlayer as VorbisDecoder
+    import MP3Player as MP3Decoder
 from machine import Pin, I2S
 import machine
 import gc
@@ -693,7 +694,7 @@ class AudioPlayer:
                 raise RuntimeError("Decoder Init failed")
 
             if self.Decoder == self.MP3:
-                FoundSyncWordAt = MP3Player.MP3_Start(
+                FoundSyncWordAt = MP3Decoder.MP3_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
             elif self.Decoder == self.OGGVORBIS:
