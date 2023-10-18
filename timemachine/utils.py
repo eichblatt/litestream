@@ -121,6 +121,14 @@ def screen_on():
     tm.tft.off()
 
 
+def poll_for_select(timeout=600):
+    start_time = time.ticks_ms()
+    pSelect_old = True
+    while (pSelect_old == tm.pSelect.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
+        time.sleep(0.2)
+    return
+
+
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()
