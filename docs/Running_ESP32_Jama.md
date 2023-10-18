@@ -23,12 +23,28 @@ https://github.com/jczic/ESP32-MPY-Jama#penguin-linux-version-instructions
 # initialize python venv:
 : ~/projects/ESP32-MPY-Jama ; python3 -m venv venv
 : ~/projects/ESP32-MPY-Jama ; . venv/bin/activate
-: ~/projects/ESP32-MPY-Jama ; pip3 install wheel setuptools
-: ~/projects/ESP32-MPY-Jama ; pip3 install pyserial pywebview[qt] pycairo PyGObject pyinstaller
+: (venv) ~/projects/ESP32-MPY-Jama ; pip3 install wheel setuptools
+: (venv) ~/projects/ESP32-MPY-Jama ; pip3 install pyserial pywebview[qt] pycairo PyGObject pyinstaller
 ```
+## Linux dialout group
+We also need to set up the port that Jama will use to connect to the device. This port, by default, does not allow users to connect to it. 
+We only need to change this once. 
+First, you need to add your user to the `dialout` group, then set the read/write permission for the port, `/dev/ttyACM0`
+```
+: (venv) ~/projects/ESP32-MPY-Jama ; sudo adduser steve dialout
+: (venv) ~/projects/ESP32-MPY-Jama ; sudo chmod a+rw /dev/ttyACM0
+```
+Verify that this worked:
+```
+: (venv) ~/projects/ESP32-MPY-Jama ; ls -ld /dev/ttyACM0
+crw-rw---- 1 root dialout 166, 0 Oct 18 17:14 /dev/ttyACM0
+: (venv) ~/projects/ESP32-MPY-Jama ; groups
+steve adm dialout cdrom sudo dip plugdev lpadmin lxd sambashare
+```
+The groups output should include `dialout`
 
 # Running the Program
-====================
+=====================
 ```
 : ~ ; cd ~/projects/ESP32-MPY-Jama/
 : ~/projects/ESP32-MPY-Jama ; . venv/bin/activate

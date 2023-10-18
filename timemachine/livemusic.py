@@ -52,13 +52,16 @@ API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 COLLECTION_LIST_PATH = "collection_list.json"
 AUTO_PLAY = False
+DATE_SET_TIME = time.ticks_ms()
 
 
 def set_date(date):
+    global DATE_SET_TIME
     tm.y._value = int(date[:4])
     tm.m._value = int(date[5:7])
     tm.d._value = int(date[8:10])
     key_date = f"{tm.y.value()}-{tm.m.value():02d}-{tm.d.value():02d}"
+    DATE_SET_TIME = time.ticks_ms()
     return key_date
 
 
@@ -298,10 +301,9 @@ def main_loop(player, coll_dict, state):
                 player.ffwd()
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
-        if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), date_set_time) > 20_000):
+        if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
             print(f"setting key_date to {selected_date}")
             key_date = set_date(selected_date)
-            date_set_time = time.ticks_ms()
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -416,68 +418,69 @@ def main_loop(player, coll_dict, state):
         year_new = tm.y.value()
         month_new = tm.m.value()
         day_new = tm.d.value()
-        if (month_new in [4, 6, 9, 11]) and (day_new > 30):
-            day_new = 30
-        if (month_new == 2) and (day_new > 28):
-            if year_new % 4 == 0:
-                day_new = min(29, day_new)
-                if (year_new % 100 == 0) and (year_new % 400 != 0):
-                    day_new = min(28, day_new)
-            else:
-                day_new = min(28, day_new)
-
-        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
-        key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
-        key_date = set_date(key_date)
-        if year_old != year_new:
-            year_old = year_new
-            print("year =", year_new)
-
-        if month_old != month_new:
-            month_old = month_new
-            print("month =", month_new)
-
-        if day_old != day_new:
-            day_old = day_new
-            print("day =", day_new)
-
-        if date_old != date_new:
-            utils.clear_bbox(stage_date_bbox)
-            tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
-            # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
-            date_old = date_new
-            print(f"date = {date_new} or {key_date}")
-            try:
-                if key_date in valid_dates:
-                    for c in list(coll_dict.keys()):
-                        if key_date in coll_dict[c].keys():
-                            nshows += 1
-                            collection = c
-                            vcs = coll_dict[collection][f"{key_date}"]
-                            utils.clear_bbox(artist_bbox)
-                            tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+            if (month_new in [4, 6, 9, 11]) and (day_new > 30):
+                day_new = 30
+            if (month_new == 2) and (day_new > 28):
+                if year_new % 4 == 0:
+                    day_new = min(29, day_new)
+                    if (year_new % 100 == 0) and (year_new % 400 != 0):
+                        day_new = min(28, day_new)
                 else:
-                    vcs = ""
-                    collection = ""
+                    day_new = min(28, day_new)
+
+            date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
+            key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
+            key_date = set_date(key_date)
+            if year_old != year_new:
+                year_old = year_new
+                print("year =", year_new)
+
+            if month_old != month_new:
+                month_old = month_new
+                print("month =", month_new)
+
+            if day_old != day_new:
+                day_old = day_new
+                print("day =", day_new)
+
+            if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
+                utils.clear_bbox(stage_date_bbox)
+                tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
+                # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
+                date_old = date_new
+                print(f"date = {date_new} or {key_date}")
+                try:
+                    if key_date in valid_dates:
+                        for c in list(coll_dict.keys()):
+                            if key_date in coll_dict[c].keys():
+                                nshows += 1
+                                collection = c
+                                vcs = coll_dict[collection][f"{key_date}"]
+                                utils.clear_bbox(artist_bbox)
+                                tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                    else:
+                        vcs = ""
+                        collection = ""
+                        utils.clear_bbox(artist_bbox)
+                        tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
+                    print(f"vcs is {vcs}")
+                    utils.clear_bbox(venue_bbox)
+                    tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+                    utils.clear_bbox(nshows_bbox)
+                    if nshows > 1:
+                        tm.tft.write(
+                            pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
+                        )  # no need to clear this.
+                    update_display(player)
+                    # display_tracks(*player.track_names())
+                except KeyError:
+                    utils.clear_bbox(venue_bbox)
                     utils.clear_bbox(artist_bbox)
-                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
-                print(f"vcs is {vcs}")
-                utils.clear_bbox(venue_bbox)
-                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
-                utils.clear_bbox(nshows_bbox)
-                if nshows > 1:
-                    tm.tft.write(
-                        pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
-                    )  # no need to clear this.
-                update_display(player)
-                # display_tracks(*player.track_names())
-            except KeyError:
-                utils.clear_bbox(venue_bbox)
-                utils.clear_bbox(artist_bbox)
-                tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
-                update_display(player)
-                # display_tracks(*player.track_names())
-                pass
+                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                    update_display(player)
+                    # display_tracks(*player.track_names())
+                    pass
 
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
