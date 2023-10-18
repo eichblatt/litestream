@@ -42,6 +42,7 @@ crw-rw---- 1 root dialout 166, 0 Oct 18 17:14 /dev/ttyACM0
 steve adm dialout cdrom sudo dip plugdev lpadmin lxd sambashare
 ```
 The groups output should include `dialout`
+Then, you **need to reboot** for this to take effect.
 
 # Running the Program
 =====================
