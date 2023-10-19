@@ -562,7 +562,8 @@ def run():
     try:
         main_loop(player, coll_dict, state)
     except Exception as e:
-        print(f"Error in playback loop {e}")
-        utils.write("".join(e.value[i : i + 20] + "\n" for i in range(0, len(e.value), 20)))
+        msg = f"Error in playback loop {e}"
+        print(msg)
+        utils.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
         utils.poll_for_select()
     return -1
