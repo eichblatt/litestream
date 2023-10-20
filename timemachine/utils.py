@@ -31,6 +31,7 @@ from mrequests import mrequests as requests
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
+STATE_PATH = "/latest_state.json"
 
 
 def reload(mod):
@@ -118,6 +119,14 @@ def screen_off():
 
 def screen_on():
     tm.tft.off()
+
+
+def poll_for_select(timeout=600):
+    start_time = time.ticks_ms()
+    pSelect_old = True
+    while (pSelect_old == tm.pSelect.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
+        time.sleep(0.2)
+    return
 
 
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
@@ -440,7 +449,7 @@ def connect_wifi():
     return wifi
 
 
-def get_current_partition():
+def get_current_partition_name():
     from esp32 import Partition
 
     current_partition = Partition(Partition.RUNNING).info()[4]
@@ -450,7 +459,8 @@ def get_current_partition():
 def mark_partition():
     from esp32 import Partition
 
-    Partition.mark_app_valid_cancel_rollback()
+    current_partition = Partition(Partition.RUNNING)
+    current_partition.mark_app_valid_cancel_rollback()
 
 
 def update_firmware():
@@ -477,3 +487,22 @@ def update_firmware():
         return -1
 
     return 0
+
+
+def save_state(state):
+    with open(STATE_PATH, "w") as f:
+        json.dump(state, f)
+
+
+def load_state():
+    if path_exists(STATE_PATH):
+        state = json.load(open(STATE_PATH, "r"))
+        collection_list = state.get("collection_list", "GratefulDead")
+        selected_date = state.get("start_date", "1975-08-13")
+    else:
+        collection_list = ["GratefulDead"]
+        selected_date = "1975-08-13"
+        state = {"collection_list": collection_list, "selected_date": selected_date}
+        with open(STATE_PATH, "w") as f:
+            json.dump(state, f)
+    return state

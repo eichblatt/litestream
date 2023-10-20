@@ -217,7 +217,7 @@ def update_firmware():
     tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
     tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
 
-    current_partition = utils.get_current_partition()
+    current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
     status = utils.update_firmware()
 
@@ -306,7 +306,7 @@ def basic_main():
 def run_livemusic():
     import livemusic
 
-    # utils.mark_partition()  # If we make it this far, the firmware is good.
+    utils.mark_partition()  # If we make it this far, the firmware is good.
     while True:
         livemusic.run()
         choice = reconfigure()

@@ -52,13 +52,16 @@ API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 COLLECTION_LIST_PATH = "collection_list.json"
 AUTO_PLAY = False
+DATE_SET_TIME = time.ticks_ms()
 
 
 def set_date(date):
+    global DATE_SET_TIME
     tm.y._value = int(date[:4])
     tm.m._value = int(date[5:7])
     tm.d._value = int(date[8:10])
     key_date = f"{tm.y.value()}-{tm.m.value():02d}-{tm.d.value():02d}"
+    DATE_SET_TIME = time.ticks_ms()
     return key_date
 
 
@@ -197,7 +200,7 @@ def audio_pump(player, Nmax=1, fill_level=0.95):
     # return buffer_level
 
 
-def main_loop(player, coll_dict):
+def main_loop(player, coll_dict, state):
     year_old = -1
     month_old = -1
     day_old = -1
@@ -206,7 +209,7 @@ def main_loop(player, coll_dict):
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
-    key_date = set_date("1975-08-13")
+    key_date = set_date(state["selected_date"])
     selected_date = key_date
     collection = "GratefulDead"
     tracklist = []
@@ -222,6 +225,7 @@ def main_loop(player, coll_dict):
     resume_playing_delay = 500
     ntape = 0
     valid_dates = set()
+    date_set_time = time.ticks_ms()
     for c in collections:
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
     del c
@@ -296,6 +300,11 @@ def main_loop(player, coll_dict):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 player.ffwd()
 
+        # set the knobs to the most recently selected date after 20 seconds of inaction
+        if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
+            print(f"setting key_date to {selected_date}")
+            key_date = set_date(selected_date)
+
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
@@ -312,6 +321,8 @@ def main_loop(player, coll_dict):
                     ntape = 0
 
                     selected_date = key_date
+                    state["selected_date"] = selected_date
+                    utils.save_state(state)
                     selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
                     utils.clear_bbox(playpause_bbox)
@@ -407,68 +418,69 @@ def main_loop(player, coll_dict):
         year_new = tm.y.value()
         month_new = tm.m.value()
         day_new = tm.d.value()
-        if (month_new in [4, 6, 9, 11]) and (day_new > 30):
-            day_new = 30
-        if (month_new == 2) and (day_new > 28):
-            if year_new % 4 == 0:
-                day_new = min(29, day_new)
-                if (year_new % 100 == 0) and (year_new % 400 != 0):
-                    day_new = min(28, day_new)
-            else:
-                day_new = min(28, day_new)
-
-        date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
-        key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
-        key_date = set_date(key_date)
-        if year_old != year_new:
-            year_old = year_new
-            print("year =", year_new)
-
-        if month_old != month_new:
-            month_old = month_new
-            print("month =", month_new)
-
-        if day_old != day_new:
-            day_old = day_new
-            print("day =", day_new)
-
-        if date_old != date_new:
-            utils.clear_bbox(stage_date_bbox)
-            tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
-            # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
-            date_old = date_new
-            print(f"date = {date_new} or {key_date}")
-            try:
-                if key_date in valid_dates:
-                    for c in list(coll_dict.keys()):
-                        if key_date in coll_dict[c].keys():
-                            nshows += 1
-                            collection = c
-                            vcs = coll_dict[collection][f"{key_date}"]
-                            utils.clear_bbox(artist_bbox)
-                            tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+            if (month_new in [4, 6, 9, 11]) and (day_new > 30):
+                day_new = 30
+            if (month_new == 2) and (day_new > 28):
+                if year_new % 4 == 0:
+                    day_new = min(29, day_new)
+                    if (year_new % 100 == 0) and (year_new % 400 != 0):
+                        day_new = min(28, day_new)
                 else:
-                    vcs = ""
-                    collection = ""
+                    day_new = min(28, day_new)
+
+            date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
+            key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
+            key_date = set_date(key_date)
+            if year_old != year_new:
+                year_old = year_new
+                print("year =", year_new)
+
+            if month_old != month_new:
+                month_old = month_new
+                print("month =", month_new)
+
+            if day_old != day_new:
+                day_old = day_new
+                print("day =", day_new)
+
+            if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
+                utils.clear_bbox(stage_date_bbox)
+                tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
+                # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
+                date_old = date_new
+                print(f"date = {date_new} or {key_date}")
+                try:
+                    if key_date in valid_dates:
+                        for c in list(coll_dict.keys()):
+                            if key_date in coll_dict[c].keys():
+                                nshows += 1
+                                collection = c
+                                vcs = coll_dict[collection][f"{key_date}"]
+                                utils.clear_bbox(artist_bbox)
+                                tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                    else:
+                        vcs = ""
+                        collection = ""
+                        utils.clear_bbox(artist_bbox)
+                        tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
+                    print(f"vcs is {vcs}")
+                    utils.clear_bbox(venue_bbox)
+                    tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+                    utils.clear_bbox(nshows_bbox)
+                    if nshows > 1:
+                        tm.tft.write(
+                            pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
+                        )  # no need to clear this.
+                    update_display(player)
+                    # display_tracks(*player.track_names())
+                except KeyError:
+                    utils.clear_bbox(venue_bbox)
                     utils.clear_bbox(artist_bbox)
-                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
-                print(f"vcs is {vcs}")
-                utils.clear_bbox(venue_bbox)
-                tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
-                utils.clear_bbox(nshows_bbox)
-                if nshows > 1:
-                    tm.tft.write(
-                        pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
-                    )  # no need to clear this.
-                update_display(player)
-                # display_tracks(*player.track_names())
-            except KeyError:
-                utils.clear_bbox(venue_bbox)
-                utils.clear_bbox(artist_bbox)
-                tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
-                update_display(player)
-                # display_tracks(*player.track_names())
-                pass
+                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                    update_display(player)
+                    # display_tracks(*player.track_names())
+                    pass
 
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -541,19 +553,17 @@ def get_coll_dict(collection_list):
 
 def run():
     """run the livemusic controls"""
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    else:
-        collection_list = ["GratefulDead"]
-        with open(COLLECTION_LIST_PATH, "w") as f:
-            json.dump(collection_list, f)
-    show_collections(collection_list)
+    state = utils.load_state()
+    show_collections(state["collection_list"])
 
-    coll_dict = get_coll_dict(collection_list)
+    coll_dict = get_coll_dict(state["collection_list"])
     print(f"Loaded collections {coll_dict.keys()}")
     player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
     try:
-        main_loop(player, coll_dict)
+        main_loop(player, coll_dict, state)
     except Exception as e:
-        print(f"Error in playback loop {e}")
+        msg = f"Error in playback loop {e}"
+        print(msg)
+        utils.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
+        utils.poll_for_select()
     return -1
