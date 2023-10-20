@@ -449,7 +449,7 @@ def connect_wifi():
     return wifi
 
 
-def get_current_partition():
+def get_current_partition_name():
     from esp32 import Partition
 
     current_partition = Partition(Partition.RUNNING).info()[4]
@@ -459,7 +459,8 @@ def get_current_partition():
 def mark_partition():
     from esp32 import Partition
 
-    Partition.mark_app_valid_cancel_rollback()
+    current_partition = Partition(Partition.RUNNING)
+    current_partition.mark_app_valid_cancel_rollback()
 
 
 def update_firmware():
