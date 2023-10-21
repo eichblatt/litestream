@@ -26,8 +26,6 @@ import time
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 
-from mrequests import mrequests as requests
-
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"

@@ -77,26 +77,32 @@ def select_date(coll_dict, key_date, ntape=0):
             break
 
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
-    resp = requests.get(tape_ids_url)
-    if resp.status_code == 200:
-        tape_ids = resp.json()
-        ntapes = len(tape_ids)
-        selected_tape = tape_ids[ntape % ntapes][0]
-        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape}/trackdata.json"
-        resp = requests.get(trackdata_url).json()
-        collection = resp["collection"]
-        tracklist = resp["tracklist"]
-        urls = resp["urls"]
-    else:
-        api_request = f"{API}/tracklist/{key_date}?collections={collection}&ntape={ntape}"
-        print(f"API request is {api_request}")
-        resp = requests.get(api_request).json()
-        collection = resp["collection"]
-        tracklist = resp["tracklist"]
-        api_request = f"{API}/urls/{key_date}?collections={collection}&ntape={ntape}"
-        print(f"API request is {api_request}")
-        resp = requests.get(api_request).json()
-        urls = resp["urls"]
+    try:
+        resp = requests.get(tape_ids_url)
+        if resp.status_code == 200:
+            tape_ids = resp.json()
+            ntapes = len(tape_ids)
+            selected_tape = tape_ids[ntape % ntapes][0]
+            trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape}/trackdata.json"
+            resp = requests.get(trackdata_url)
+            response = resp.json()
+            collection = response["collection"]
+            tracklist = response["tracklist"]
+            urls = response["urls"]
+        else:
+            api_request = f"{API}/tracklist/{key_date}?collections={collection}&ntape={ntape}"
+            print(f"API request is {api_request}")
+            resp = requests.get(api_request)
+            response = resp.json()
+            collection = response["collection"]
+            tracklist = response["tracklist"]
+            api_request = f"{API}/urls/{key_date}?collections={collection}&ntape={ntape}"
+            print(f"API request is {api_request}")
+            resp = requests.get(api_request)
+            response = resp.json()
+            urls = response["urls"]
+    finally:
+        resp.close()
     print(f"URLs: {urls}")
     return collection, tracklist, urls
 
@@ -108,14 +114,18 @@ def get_tape_ids(coll_dict, key_date):
         if cdict.get(key_date, None):
             key_date_colls.append(collection)
             url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
-            resp = requests.get(url)
-            if resp.status_code == 200:
-                tape_ids = [[collection, x[0]] for x in resp.json()]
-            elif resp.status_code == 404:
-                api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
-                tape_ids = requests.get(api_request).json()
-            else:
-                raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
+            try:
+                resp = requests.get(url)
+                if resp.status_code == 200:
+                    tape_ids = [[collection, x[0]] for x in resp.json()]
+                elif resp.status_code == 404:
+                    api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
+                    resp = requests.get(api_request)
+                    tape_ids = resp.json()
+                else:
+                    raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
+            finally:
+                resp.close()
     sorted_tape_ids = []
     while len(tape_ids) > 0:
         for coll in coll_dict.keys():
@@ -489,14 +499,18 @@ def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
     print(vcs_url)
-    resp = requests.get(vcs_url)
-    if resp.status_code == 200:
-        vcs = resp.json()
-    else:
-        print(f"status was {resp.status_code}")
-        api_request = f"{API}/vcs/{coll}"
-        print(f"API request is {api_request}")
-        vcs = requests.get(api_request).json()[coll]
+    try:
+        resp = requests.get(vcs_url)
+        if resp.status_code == 200:
+            vcs = resp.json()
+        else:
+            print(f"status was {resp.status_code}")
+            api_request = f"{API}/vcs/{coll}"
+            print(f"API request is {api_request}")
+            resp = requests.get(api_request)
+            vcs = resp.json()[coll]
+    finally:
+        resp.close()
     return vcs
 
 
