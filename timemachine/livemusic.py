@@ -17,10 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # Display driver: https://github.com/russhughes/st7789_mpy
-import json
-import os
+import gc
 import re
-import network
 import sys
 import time
 from collections import OrderedDict
@@ -33,9 +31,6 @@ import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
-from machine import SPI, Pin
-from rotary_irq_esp import RotaryIRQ
-import network
 
 import board as tm
 import utils
@@ -51,7 +46,7 @@ CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 COLLECTION_LIST_PATH = "collection_list.json"
-AUTO_PLAY = False
+AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 
 
@@ -253,7 +248,7 @@ def main_loop(player, coll_dict, state):
         #     continue
         if player.is_playing():
             tm.screen_on_time = time.ticks_ms()
-        elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (30 * 60_000):
+        elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
             tm.tft.off()
 
         if pPlayPause_old != tm.pPlayPause.value():
@@ -332,9 +327,9 @@ def main_loop(player, coll_dict, state):
                 elif key_date in valid_dates:
                     utils.init_screen()
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
+                    player.stop()
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
                     vcs = coll_dict[collection][key_date]
-                    player.stop(reset_head=False)
                     player.set_playlist(tracklist, urls)
                     ntape = 0
 
@@ -350,6 +345,7 @@ def main_loop(player, coll_dict, state):
                     print(f"Selected date string {selected_date_str}")
                     tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
                     if AUTO_PLAY:
+                        gc.collect()
                         play_pause(player)
                 print("Select DOWN")
             else:
@@ -393,12 +389,14 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 1_000:
+            if time.ticks_diff(time.ticks_ms(), power_press_time) > 1_000:
+                print("Power DOWN -- stopping")
                 power_press_time = time.ticks_ms()
-                print("Power DOWN -- exiting")
+                PowerLED = 0
+                player.stop()
                 tm.tft.off()
-                time.sleep(0.1)
-                machine.reset()
+                # time.sleep(0.1)
+                # machine.reset()
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
