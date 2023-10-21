@@ -364,8 +364,9 @@ class AudioPlayer:
         if BytesToPlay == 0:
             if self.FinishedDecoding:  # End of playlist
                 print("Finished Playing")
-                self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-                self.reset_player()
+                self.stop()
+                # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
+                # self.reset_player()
                 return
             else:  # Buffer starved
                 # The output buffer can get starved if the network is slow, or if we write too much debug output
@@ -626,10 +627,11 @@ class AudioPlayer:
                                     self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
                                     self.current_track_bytes_read = 0
                                 else:
-                                    self.DEBUG and print("end of playlist")
+                                    print("end of playlist")
                                     self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
                                     self.sock.close()
                                     self.sock = None
+                                    self.stop()
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
@@ -806,6 +808,7 @@ class AudioPlayer:
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         print("end of playlist")
                         self.FinishedDecoding = True
+                        self.stop()
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.

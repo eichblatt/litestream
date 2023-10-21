@@ -20,6 +20,7 @@ import os
 
 import machine
 import st7789
+import time
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 
@@ -120,6 +121,7 @@ tft = conf_screen(1, buffer_size=64 * 64 * 2)
 tft.init()
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
+screen_on_time = time.ticks_ms()
 
 
 stage_date_color = st7789.color565(255, 255, 0)
