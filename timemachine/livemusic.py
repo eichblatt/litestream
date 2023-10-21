@@ -184,15 +184,13 @@ def display_tracks(current_track_name, next_track_name):
 
 
 def play_pause(player):
-    # utils.init_screen()
     utils.clear_bbox(playpause_bbox)
     if player.is_playing():
         player.pause()
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
     else:  # initial state or stopped
         player.play()
-        tm.tft.on()
-        tm.screen_on_time = time.ticks_ms()
+        tm.power(1)
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
     return player.PLAY_STATE
 
@@ -212,7 +210,6 @@ def main_loop(player, coll_dict, state):
     month_old = -1
     day_old = -1
     date_old = ""
-    PowerLED = 1
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
@@ -226,7 +223,6 @@ def main_loop(player, coll_dict, state):
     vcs = selected_vcs = ""
     pvcs_line = 0
     select_press_time = 0
-    power_press_time = 0
     stop_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
@@ -249,7 +245,7 @@ def main_loop(player, coll_dict, state):
         if player.is_playing():
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
-            tm.tft.off()
+            tm.power(0)
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
@@ -264,9 +260,10 @@ def main_loop(player, coll_dict, state):
             if pStop_old:
                 print("Stop DOWN")
             else:
-                player.stop()
-                utils.init_screen()
-                tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+                if tm.power():
+                    player.stop()
+                    tm.tft.on()
+                    tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 stop_press_time = time.ticks_ms()
                 print("Stop UP")
 
@@ -299,7 +296,9 @@ def main_loop(player, coll_dict, state):
                 print("Rewind UP")
                 if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
-                player.rewind()
+                if tm.power():
+                    player.rewind()
+                    tm.tft.on()
 
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
@@ -309,7 +308,9 @@ def main_loop(player, coll_dict, state):
                 print("FFwd UP")
                 if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
-                player.ffwd()
+                if tm.power():
+                    player.ffwd()
+                    tm.tft.on()
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
         if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
@@ -320,12 +321,10 @@ def main_loop(player, coll_dict, state):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                tm.tft.on()
-                tm.screen_on_time = time.ticks_ms()
+                # tm.power(1)
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
-                elif key_date in valid_dates:
-                    utils.init_screen()
+                elif (key_date in valid_dates) and tm.power():
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     player.stop()
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
@@ -359,7 +358,6 @@ def main_loop(player, coll_dict, state):
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 ntape = (ntape + 1) % len(tape_ids)
-                utils.init_screen()
                 utils.clear_bbox(artist_bbox)
                 tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                 # vcs = coll_dict[tape_ids[ntape][0]][key_date]
@@ -374,34 +372,21 @@ def main_loop(player, coll_dict, state):
                 collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
 
         if pPower_old != tm.pPower.value():
+            # Press of Power button
             pPower_old = tm.pPower.value()
-            tm.pLED.value(PowerLED)
-            if not PowerLED:
-                tm.tft.off()
-            else:
-                tm.tft.on()
-                tm.screen_on_time = time.ticks_ms()
             if pPower_old:
                 print("Power DOWN")
             else:
-                PowerLED = not PowerLED
-                power_press_time = time.ticks_ms()
+                if tm.power():
+                    player.pause()
+                    tm.power(0)
+                else:
+                    tm.power(1)
                 print("Power UP -- screen")
-
-        if not tm.pPower.value():
-            if time.ticks_diff(time.ticks_ms(), power_press_time) > 1_000:
-                print("Power DOWN -- stopping")
-                power_press_time = time.ticks_ms()
-                PowerLED = 0
-                player.stop()
-                tm.tft.off()
-                # time.sleep(0.1)
-                # machine.reset()
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
             pvcs_line = vcs_line
-            # utils.init_screen()
             utils.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
@@ -422,6 +407,7 @@ def main_loop(player, coll_dict, state):
             if pMSw_old:
                 print("Month DOWN")
             else:
+                tm.tft.off()  # screen off while playing
                 print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
@@ -439,8 +425,7 @@ def main_loop(player, coll_dict, state):
         month_new = tm.m.value()
         day_new = tm.d.value()
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
-            tm.tft.on()
-            tm.screen_on_time = time.ticks_ms()
+            tm.power(1)
             if (month_new in [4, 6, 9, 11]) and (day_new > 30):
                 day_new = 30
             if (month_new == 2) and (day_new > 28):
