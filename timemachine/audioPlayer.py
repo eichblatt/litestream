@@ -458,8 +458,8 @@ class AudioPlayer:
             self.play_chunk()  # Kick off the playback loop
 
     def pause(self):
-        print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == self.PLAYING:
+            print(f"Pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = self.PAUSED
 
     def rewind(self):
@@ -477,11 +477,15 @@ class AudioPlayer:
         self.reset_player(reset_head)
 
     def set_next_track(self):
+        if self.current_track is None:
+            return None
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
         self.DEBUG and print(f"next track set to {self.next_track}")
         return self.next_track
 
     def advance_track(self, increment=1):
+        if self.current_track is None:
+            return
         if not 0 <= (self.current_track + increment) <= self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
@@ -508,6 +512,8 @@ class AudioPlayer:
 
     @micropython.native
     def read_header(self, trackno, offset=0, port=80):
+        if trackno is None:
+            return
         self.playlist_started = True
         # TimeStart = time.ticks_ms()
         self.track_being_read = trackno

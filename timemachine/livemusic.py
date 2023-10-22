@@ -223,7 +223,7 @@ def main_loop(player, coll_dict, state):
     vcs = selected_vcs = ""
     pvcs_line = 0
     select_press_time = 0
-    stop_press_time = 0
+    power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
     ntape = 0
@@ -264,18 +264,7 @@ def main_loop(player, coll_dict, state):
                     player.stop()
                     tm.tft.on()
                     tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
-                stop_press_time = time.ticks_ms()
                 print("Stop UP")
-
-        if not tm.pStop.value():
-            if (time.ticks_ms() - stop_press_time) > 1_500:
-                stop_press_time = time.ticks_ms()
-                print("Power UP -- back to reconfigure")
-                utils.clear_screen()
-                tm.tft.off()
-                time.sleep(2)
-                # sys.exit()
-                return
 
         # Throttle Downstream polling
         # if (player.is_playing()) and (poll_count % 10 != 0):
@@ -382,7 +371,17 @@ def main_loop(player, coll_dict, state):
                     tm.power(0)
                 else:
                     tm.power(1)
+                power_press_time = time.ticks_ms()
                 print("Power UP -- screen")
+
+        if not tm.pPower.value():
+            if (time.ticks_ms() - power_press_time) > 1_500:
+                power_press_time = time.ticks_ms()
+                print("Power UP -- back to reconfigure")
+                utils.clear_screen()
+                tm.tft.off()
+                # time.sleep(2)
+                return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
