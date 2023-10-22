@@ -240,7 +240,7 @@ def reconfigure():
             "FactoryReset",
             "Reboot",
             "Exit",
-            "Cancel",
+            "Return to Player",
         ],
     )
     if choice == "Collections":

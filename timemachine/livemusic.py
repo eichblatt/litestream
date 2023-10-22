@@ -132,7 +132,6 @@ def get_tape_ids(coll_dict, key_date):
 
 
 def get_next_tih(date, valid_dates, valid_tihs=[]):
-    print("Getting next Today In History date")
     dt = time.localtime()
     tih_pattern = f"{dt[1]:02d}-{dt[2]:02d}"
     if len(valid_tihs) == 0:
@@ -314,6 +313,7 @@ def main_loop(player, coll_dict, state):
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif (key_date in valid_dates) and tm.power():
+                    utils.clear_bbox(playpause_bbox)
                     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
                     player.stop()
                     collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
@@ -326,7 +326,6 @@ def main_loop(player, coll_dict, state):
                     utils.save_state(state)
                     selected_vcs = vcs
                     utils.clear_bbox(venue_bbox)
-                    utils.clear_bbox(playpause_bbox)
                     tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(selected_date_bbox)
                     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
@@ -335,15 +334,15 @@ def main_loop(player, coll_dict, state):
                     if AUTO_PLAY:
                         gc.collect()
                         play_pause(player)
-                print("Select DOWN")
+                print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
-                print("Select UP")
+                print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
                 print("                 Longpress of select")
-                select_press_time = time.ticks_ms()
+                select_press_time = time.ticks_ms() + 1_000
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 ntape = (ntape + 1) % len(tape_ids)
@@ -358,7 +357,6 @@ def main_loop(player, coll_dict, state):
                     display_str = display_str[:11] + display_str[-6:]
                 tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
-                collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
 
         if pPower_old != tm.pPower.value():
             # Press of Power button
@@ -470,7 +468,6 @@ def main_loop(player, coll_dict, state):
                         collection = ""
                         utils.clear_bbox(artist_bbox)
                         tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
-                    print(f"vcs is {vcs}")
                     utils.clear_bbox(venue_bbox)
                     tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(nshows_bbox)
@@ -575,5 +572,6 @@ def run():
         msg = f"Error in playback loop {e}"
         print(msg)
         utils.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-        utils.poll_for_select()
+        utils.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small)
+        utils.poll_for_select(timeout=12 * 3600)
     return -1
