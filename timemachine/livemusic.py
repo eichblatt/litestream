@@ -438,22 +438,17 @@ def main_loop(player, coll_dict, state):
             key_date = set_date(key_date)
             if year_old != year_new:
                 year_old = year_new
-                print("year =", year_new)
 
             if month_old != month_new:
                 month_old = month_new
-                print("month =", month_new)
 
             if day_old != day_new:
                 day_old = day_new
-                print("day =", day_new)
 
             if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
                 utils.clear_bbox(stage_date_bbox)
-                tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)  # no need to clear this.
-                # tm.tft.text(font, f"{date_new}", 0, 0, stage_date_color, st7789.BLACK) # no need to clear this.
+                tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)
                 date_old = date_new
-                print(f"date = {date_new} or {key_date}")
                 try:
                     if key_date in valid_dates:
                         for c in list(coll_dict.keys()):
@@ -472,19 +467,13 @@ def main_loop(player, coll_dict, state):
                     tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
                     utils.clear_bbox(nshows_bbox)
                     if nshows > 1:
-                        tm.tft.write(
-                            pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color
-                        )  # no need to clear this.
+                        tm.tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color)
                     update_display(player)
-                    # display_tracks(*player.track_names())
                 except KeyError:
                     utils.clear_bbox(venue_bbox)
                     utils.clear_bbox(artist_bbox)
                     tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
                     update_display(player)
-                    # display_tracks(*player.track_names())
-                    pass
-
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
 
