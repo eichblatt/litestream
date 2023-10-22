@@ -222,6 +222,7 @@ def main_loop(player, coll_dict, state):
     vcs = selected_vcs = ""
     pvcs_line = 0
     select_press_time = 0
+    date_changed_time = 0
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
@@ -421,8 +422,18 @@ def main_loop(player, coll_dict, state):
         year_new = tm.y.value()
         month_new = tm.m.value()
         day_new = tm.d.value()
+
+        # HACK
+        # In case of a lot of fast knob-turning, the sound can go out. This hack "handles" this
+        dtime = time.ticks_diff(time.ticks_ms(), date_changed_time)
+        if (dtime > 2_000) and (dtime < 2_250):
+            date_changed_time = date_changed_time - 250
+            if player.is_playing():
+                player.play_chunk()
+        # End of HACK
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
             tm.power(1)
+            date_changed_time = time.ticks_ms()
             if (month_new in [4, 6, 9, 11]) and (day_new > 30):
                 day_new = 30
             if (month_new == 2) and (day_new > 28):
