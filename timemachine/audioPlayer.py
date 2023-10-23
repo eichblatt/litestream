@@ -769,9 +769,9 @@ class AudioPlayer:
                 self.current_track_bytes_decoded = self.current_track_bytes_decoded + InBytesAvailable - BytesLeft
                 self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
-                if self.Decoder == self.MP3:
+                if self.Decoder == self.MP3 and Result == 0:
                     self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
-                elif self.Decoder == self.OGGVORBIS:
+                elif self.Decoder == self.OGGVORBIS and Result == 0:
                     self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
                 # self.DEBUG and print("Read Packet success. Result:", Result, ", Bytes Left:", BytesLeft, ", Audio Samples:", AudioSamples)
                 pass
