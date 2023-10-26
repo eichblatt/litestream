@@ -45,7 +45,6 @@ else:
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
-COLLECTION_LIST_PATH = "collection_list.json"
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 
@@ -226,6 +225,7 @@ def main_loop(player, coll_dict, state):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
+    prev_chunks_played = 0
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -234,7 +234,6 @@ def main_loop(player, coll_dict, state):
     valid_dates = list(sorted(valid_dates))
     tm.screen_on_time = time.ticks_ms()
     utils.clear_screen()
-
     poll_count = 0
     while True:
         nshows = 0
@@ -266,9 +265,6 @@ def main_loop(player, coll_dict, state):
                     tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
                 print("Stop UP")
 
-        # Throttle Downstream polling
-        # if (player.is_playing()) and (poll_count % 10 != 0):
-        #    continue
         buffer_fill = audio_pump(player, fill_level=0.3)
         # buffer_fill = player.audio_pump()
 
@@ -426,10 +422,15 @@ def main_loop(player, coll_dict, state):
         # HACK
         # In case of a lot of fast knob-turning, the sound can go out. This hack "handles" this
         dtime = time.ticks_diff(time.ticks_ms(), date_changed_time)
-        if (dtime > 2_000) and (dtime < 2_250):
-            date_changed_time = date_changed_time - 250
-            if player.is_playing():
-                player.play_chunk()
+        if (dtime < 5_000) and (player.is_playing()) and ((poll_count % 1024) == 0):
+            chunks_played = player.chunks_played
+            if chunks_played == prev_chunks_played:
+                try:
+                    print("kickstarting playchunk after dropped interrupt")
+                    player.play_chunk()
+                except Exception as e:
+                    print(f"failed to play chunk {e}")
+            prev_chunks_played = chunks_played
         # End of HACK
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
             tm.power(1)

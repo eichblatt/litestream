@@ -487,6 +487,16 @@ def update_firmware():
     return 0
 
 
+def get_collection_list():
+    return load_state()["collection_list"]
+
+
+def set_collection_list(collection_list):
+    state = load_state()
+    state["collection_list"] = collection_list
+    save_state(state)
+
+
 def save_state(state):
     with open(STATE_PATH, "w") as f:
         json.dump(state, f)

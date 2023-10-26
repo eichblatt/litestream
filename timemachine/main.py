@@ -36,7 +36,6 @@ import network
 import board as tm
 import utils
 
-COLLECTION_LIST_PATH = "collection_list.json"
 API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 
 
@@ -123,10 +122,7 @@ def configure_collections():
     if choice == "Cancel":
         return
 
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
-    else:
-        collection_list = []
+    collection_list = utils.get_collection_list()
 
     print(f"current collection_list is {collection_list}")
     if choice == "Add Collection":
@@ -145,9 +141,7 @@ def configure_collections():
             if choice2 == "Finished":
                 keepGoing = False
 
-            coll_file = open(COLLECTION_LIST_PATH, "w")
-            json.dump(collection_list, coll_file)
-            coll_file.close()
+            utils.set_collection_list(collection_list)
 
     elif choice == "Remove Collection":
         keepGoing = True
@@ -158,18 +152,13 @@ def configure_collections():
             choice2 = utils.select_option("Year/Select", choices)
             if choice2 == "Finished":
                 keepGoing = False
-            coll_file = open(COLLECTION_LIST_PATH, "w")
-            json.dump(collection_list, coll_file)
-            coll_file.close()
+            utils.set_collection_list(collection_list)
 
-    print(f"Collection List set to {collection_list} written to {COLLECTION_LIST_PATH}")
     return
 
 
 def add_collection(all_collections):
-    collection_list = []
-    if utils.path_exists(COLLECTION_LIST_PATH):
-        collection_list = json.load(open(COLLECTION_LIST_PATH, "r"))
+    collection_list = utils.get_collection_list()
 
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)

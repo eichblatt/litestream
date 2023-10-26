@@ -31,6 +31,17 @@ First, authenticate:
 
  This opened a browser, which I needed to log into to authenticate. Will this work without authentication from within the google cloud?
 
+Install the app locally in a tmp folder (so that we don't upload the _entire repository_ to the google cloud)
+
+`(env) : ~/projects/deadstream/ ; cp -R cloud_server tmp`
+`(env) : ~/projects/deadstream/ ; cd tmp`
+`(env) : ~/projects/deadstream/tmp ; pip install -r requirements.txt`
+
+Test the local version, if you want to make sure it does what it is supposed to:
+
+`(env) : ~/projects/deadstream/tmp ; flask run`
+
+Go back to the cloud_server folder and deploy from there.
 Then deploy (this takes forever, but it works)
 
 `: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info `
