@@ -10,6 +10,18 @@ Install ESP-IDF
 ```
 Note: if you get weird errors try rm -rf ~/esp & rm -rf ~/.espressif & PATH=$(getconf PATH) and start again
 
+Download the firmware
+=============================
+clone the litestream repo
+```
+: ~ ; cd ~/projects
+: ~/projects ; git clone https://github.com/eichblatt/litestream.git
+: ~/projects ; cd litestream
+: ~/projects/litestream ; cd MicropythonFirmware/latest
+: ~/projects/litestream/MicropythonFirmware/latest ; ls
+bootloader.bin  micropython.bin  micropython.sha  partition-table.bin
+```
+
 Flashing the ESP32
 =============================
 first source the file  $HOME/esp/esp-idf/export.sh
