@@ -36,7 +36,13 @@ first source the file  $HOME/esp/esp-idf/export.sh
 ```
 Installing the Software
 =======================
-Log into the device with Jama, and connect to WiFi.
+Log into the device with Jama
+```
+: ~ ; cd ~/projects/ESP32-MPY-Jama/
+: ~/projects/ESP32-MPY-Jama ; . venv/bin/activate
+: (jama_env) ~/ESP32-MPY-Jama ; python3 src/app.py 
+```
+Connect to Wifi on the Jama. Then in the REPL, run these commands:
 ```
 import mip
 
