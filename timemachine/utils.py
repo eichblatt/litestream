@@ -26,8 +26,6 @@ import time
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 
-from mrequests import mrequests as requests
-
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
@@ -487,6 +485,16 @@ def update_firmware():
         return -1
 
     return 0
+
+
+def get_collection_list():
+    return load_state()["collection_list"]
+
+
+def set_collection_list(collection_list):
+    state = load_state()
+    state["collection_list"] = collection_list
+    save_state(state)
 
 
 def save_state(state):

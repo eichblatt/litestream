@@ -80,7 +80,7 @@ pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
 pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
 pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 pLED = Pin(48, Pin.OUT)
-#Pin(5, Pin.OUT)
+# Pin(5, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
 # Year
@@ -121,10 +121,10 @@ tft.fill(st7789.BLACK)
 
 Player = audioPlayer.AudioPlayer(debug=True)
 urllist = [
-    #"https://archive.org/download/gd1991-09-12.149847.sbd.cm.miller.flac16/02%20Hell%20In%20A%20Bucket.mp3",
-    #"http://192.168.1.124/Intro.ogg",
-    #"https://archive.org/download/gd76-09-23.sbd.backus.14687.sbeok.shnf/gd1976-09-23d1t01.ogg",
-    #"https://archive.org/download/gd1989-07-19.fob.nak300.holtz.jaz.106492.flac16/GD1989-07-19trk01.ogg",
+    # "https://archive.org/download/gd1991-09-12.149847.sbd.cm.miller.flac16/02%20Hell%20In%20A%20Bucket.mp3",
+    # "http://192.168.1.124/Intro.ogg",
+    # "https://archive.org/download/gd76-09-23.sbd.backus.14687.sbeok.shnf/gd1976-09-23d1t01.ogg",
+    # "https://archive.org/download/gd1989-07-19.fob.nak300.holtz.jaz.106492.flac16/GD1989-07-19trk01.ogg",
     "https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t01.ogg",
     "https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t02.ogg",
     "https://archive.org/download/gd75-08-13.fm.vernon.23661.sbeok.shnf/gd75-08-13d1t03.ogg",
@@ -145,7 +145,7 @@ while True:
     except Exception as e:
         print("Decoder error ", e)
         sys.exit()
-    
+
     if pPower_old != pPower.value():
         pPower_old = pPower.value()
         pLED.value(PowerLED)

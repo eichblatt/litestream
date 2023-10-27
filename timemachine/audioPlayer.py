@@ -298,6 +298,7 @@ class AudioPlayer:
         self.I2SAvailable = True
         self.ID3Tag_size = 0
         self.Decoder = None
+        self.chunks_played = 0
 
         if reset_head:
             if self.ntracks > 0:
@@ -364,8 +365,9 @@ class AudioPlayer:
         if BytesToPlay == 0:
             if self.FinishedDecoding:  # End of playlist
                 print("Finished Playing")
-                self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-                self.reset_player()
+                self.stop()
+                # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
+                # self.reset_player()
                 return
             else:  # Buffer starved
                 # The output buffer can get starved if the network is slow, or if we write too much debug output
@@ -388,6 +390,7 @@ class AudioPlayer:
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
+        self.chunks_played += 1
         assert numout == BytesToPlay, "I2S write error"
 
     @micropython.native
@@ -420,6 +423,7 @@ class AudioPlayer:
             "ntracks": self.ntracks,
             "track_being_read": self.track_being_read,
             "bytes_read": self.current_track_bytes_read,
+            "chunks_played": self.chunks_played,
             "length": self.current_track_length,
         }
 
@@ -457,8 +461,8 @@ class AudioPlayer:
             self.play_chunk()  # Kick off the playback loop
 
     def pause(self):
-        print(f"Pausing URL {self.playlist[self.current_track]}")
         if self.PLAY_STATE == self.PLAYING:
+            print(f"Pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = self.PAUSED
 
     def rewind(self):
@@ -476,11 +480,15 @@ class AudioPlayer:
         self.reset_player(reset_head)
 
     def set_next_track(self):
+        if self.current_track is None:
+            return None
         self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
         self.DEBUG and print(f"next track set to {self.next_track}")
         return self.next_track
 
     def advance_track(self, increment=1):
+        if self.current_track is None:
+            return
         if not 0 <= (self.current_track + increment) <= self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
@@ -507,6 +515,8 @@ class AudioPlayer:
 
     @micropython.native
     def read_header(self, trackno, offset=0, port=80):
+        if trackno is None:
+            return
         self.playlist_started = True
         # TimeStart = time.ticks_ms()
         self.track_being_read = trackno
@@ -626,10 +636,11 @@ class AudioPlayer:
                                     self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
                                     self.current_track_bytes_read = 0
                                 else:
-                                    self.DEBUG and print("end of playlist")
+                                    print("end of playlist")
                                     self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
                                     self.sock.close()
                                     self.sock = None
+                                    self.stop()
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
@@ -761,9 +772,9 @@ class AudioPlayer:
                 self.current_track_bytes_decoded = self.current_track_bytes_decoded + InBytesAvailable - BytesLeft
                 self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
-                if self.Decoder == self.MP3:
+                if self.Decoder == self.MP3 and Result == 0:
                     self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
-                elif self.Decoder == self.OGGVORBIS:
+                elif self.Decoder == self.OGGVORBIS and Result == 0:
                     self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
                 # self.DEBUG and print("Read Packet success. Result:", Result, ", Bytes Left:", BytesLeft, ", Audio Samples:", AudioSamples)
                 pass
@@ -806,6 +817,7 @@ class AudioPlayer:
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         print("end of playlist")
                         self.FinishedDecoding = True
+                        self.stop()
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.

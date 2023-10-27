@@ -20,6 +20,7 @@ import os
 
 import machine
 import st7789
+import time
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 
@@ -120,6 +121,8 @@ tft = conf_screen(1, buffer_size=64 * 64 * 2)
 tft.init()
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
+screen_on_time = time.ticks_ms()
+board_on = 1
 
 
 stage_date_color = st7789.color565(255, 255, 0)
@@ -127,3 +130,22 @@ yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
+
+
+def power(state=None):
+    global screen_on_time
+    global board_on
+
+    if state is None:
+        return board_on
+    elif state in (0, 1):
+        pLED.value(state)
+        board_on = state
+        if state:
+            tft.on()
+            screen_on_time = time.ticks_ms()
+        else:
+            tft.off()
+    else:
+        raise ValueError(f"invalid power state {state}")
+    return state

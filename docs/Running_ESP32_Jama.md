@@ -53,3 +53,11 @@ Then, you **need to reboot** for this to take effect.
 ```
 Starts ESP32 MPY-Jama v1.2.0 on Linux
 **NOTE** After flashing an image, you have to press the BOOT and/or the RESET button on the breakout board.
+
+# Install the Software
+=====================
+```
+import mip
+mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev")
+copy_file('/lib/boot.py','/boot.py')
+```
