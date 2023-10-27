@@ -28,12 +28,15 @@ Log into the device with Jama, and connect to WiFi.
 ```
 import mip
 
-mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev", target="test_download")
+mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev")
+
 ```
 where "version" is the branch or tag, and "target" is the folder to put the code into.
 
 Then, copy the boot.py from the target folder to the root folder, so that it will run when booting up.
-
+```
+copy_file('/lib/boot.py','/boot.py')
+```
 
 Notes:
 ======

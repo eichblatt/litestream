@@ -7,3 +7,5 @@ Examples can be found here:
 https://github.com/micropython/micropython/tree/master/examples/bluetooth
 In particular:
 https://github.com/micropython/micropython/blob/master/examples/bluetooth/ble_simple_central.py
+and 
+https://github.com/micropython/micropython/blob/master/examples/bluetooth/ble_temperature_central.py
