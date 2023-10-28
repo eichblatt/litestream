@@ -227,6 +227,8 @@ def reconfigure():
             "Wifi",
             "Update Firmware",
             "FactoryReset",
+            "Test Buttons",
+            "Calibrate Knobs",
             "Reboot",
             "Exit",
             "Return to Player",
@@ -236,6 +238,10 @@ def reconfigure():
         configure_collections()
     elif choice == "Wifi":
         wifi = configure_wifi()
+    elif choice == "Calibrate Knobs":
+        tm.calibrate_knobs()
+    elif choice == "Test Buttons":
+        tm.self_test()
     elif choice == "Update Code":
         update_code()
     elif choice == "Update Firmware":
@@ -267,18 +273,6 @@ def basic_main():
     pSelect_old = True
     pStop_old = True
     configure = False
-
-    while time.ticks_ms() < (start_time + 5000):
-        if pSelect_old != tm.pSelect.value():
-            pSelect_old = tm.pSelect.value()
-            configure = True
-            print(f"{time.ticks_ms()} Select button Pressed!!")
-            break
-
-        if pStop_old != tm.pStop.value():
-            pStop_old = tm.pStop.value()
-            print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
-            return
 
     wifi = utils.connect_wifi()
     if configure:
