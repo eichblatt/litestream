@@ -151,6 +151,28 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
     return date
 
 
+def select_key_date(key_date, player, coll_dict, state, ntape):
+    tm.clear_bbox(tm.playpause_bbox)
+    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
+    player.stop()
+    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
+    vcs = coll_dict[collection][key_date]
+    player.set_playlist(tracklist, urls)
+    ntape = 0
+
+    selected_date = key_date
+    state["selected_date"] = selected_date
+    utils.save_state(state)
+    selected_vcs = vcs
+    tm.clear_bbox(tm.venue_bbox)
+    tm.tft.write(pfont_small, f"{selected_vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
+    tm.clear_bbox(tm.selected_date_bbox)
+    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
+    print(f"Selected date string {selected_date_str}")
+    tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
+    return collection, selected_date, selected_vcs
+
+
 def update_display(player):
     tm.init_screen()
     display_tracks(*player.track_names())
@@ -242,6 +264,10 @@ def main_loop(player, coll_dict, state):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
+                if player.PLAY_STATE == player.STOPPED:
+                    if (key_date in valid_dates) and tm.power():
+                        collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                        vcs = selected_vcs
                 play_pause(player)
                 print("PlayPause UP")
 
@@ -301,24 +327,8 @@ def main_loop(player, coll_dict, state):
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif (key_date in valid_dates) and tm.power():
-                    tm.clear_bbox(tm.playpause_bbox)
-                    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
-                    player.stop()
-                    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
-                    vcs = coll_dict[collection][key_date]
-                    player.set_playlist(tracklist, urls)
-                    ntape = 0
-
-                    selected_date = key_date
-                    state["selected_date"] = selected_date
-                    utils.save_state(state)
-                    selected_vcs = vcs
-                    tm.clear_bbox(tm.venue_bbox)
-                    tm.tft.write(pfont_small, f"{selected_vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
-                    tm.clear_bbox(tm.selected_date_bbox)
-                    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
-                    print(f"Selected date string {selected_date_str}")
-                    tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
+                    collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                    vcs = selected_vcs
                     if AUTO_PLAY:
                         gc.collect()
                         play_pause(player)
