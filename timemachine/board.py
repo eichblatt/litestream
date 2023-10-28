@@ -23,6 +23,7 @@ import st7789
 import time
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
+import fonts.NotoSans_24 as pfont_med
 
 
 # Set up pins
@@ -99,6 +100,82 @@ _SCREEN_BAUDRATE = 10_000_000
 screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
 
+class Bbox:
+    """Bounding Box -- Initialize with corners."""
+
+    def __init__(self, x0, y0, x1, y1):
+        self.corners = (x0, y0, x1, y1)
+        self.x0, self.y0, self.x1, self.y1 = self.corners
+        self.width = self.x1 - self.x0
+        self.height = self.y1 - self.y0
+        self.origin = self.corners[:2]
+        self.topright = self.corners[-2:]
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return f"Bbox: x0 {self.x0},y0 {self.y0},x1 {self.x1},y1 {self.y1}"
+
+    def __getitem__(self, key):
+        return self.corners[key]
+
+    def size(self):
+        return (int(self.height), int(self.width))
+
+    def center(self):
+        return (int((self.x0 + self.x1) / 2), int((self.y0 + self.y1) / 2))
+
+    def shift(self, d):
+        return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
+
+
+stage_date_bbox = Bbox(0, 0, 160, 32)
+nshows_bbox = Bbox(150, 32, 160, 48)
+venue_bbox = Bbox(0, 32, 160, 32 + 20)
+artist_bbox = Bbox(0, 52, 160, 52 + 20)
+tracklist_bbox = Bbox(0, 70, 160, 112)
+selected_date_bbox = Bbox(15, 112, 145, 128)
+playpause_bbox = Bbox(145, 113, 160, 128)
+
+stage_date_color = st7789.color565(255, 255, 0)
+yellow_color = st7789.color565(255, 255, 0)
+tracklist_color = st7789.color565(0, 255, 255)
+play_color = st7789.color565(255, 0, 0)
+nshows_color = st7789.color565(0, 100, 255)
+
+
+def init_screen():
+    screen_spi.init(baudrate=_SCREEN_BAUDRATE)
+
+
+def clear_bbox(bbox):
+    init_screen()
+    tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
+
+
+def clear_area(x, y, width, height):
+    init_screen()
+    tft.fill_rect(x, y, width, height, st7789.BLACK)
+
+
+def clear_screen():
+    clear_area(0, 0, 160, 128)
+
+
+def clear_area(x, y, width, height):
+    init_screen()
+    tft.fill_rect(x, y, width, height, st7789.BLACK)
+
+
+def screen_off():
+    tft.off()
+
+
+def screen_on():
+    tft.off()
+
+
 # Configure display driver
 def conf_screen(rotation=0, buffer_size=0, options=0):
     return st7789.ST7789(
@@ -149,3 +226,37 @@ def power(state=None):
     else:
         raise ValueError(f"invalid power state {state}")
     return state
+
+
+def calibrate():
+    pass
+
+
+def self_test():
+    buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
+    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "MSw", "DSw", "YSw"]
+    for button, name in zip(buttons, button_names):
+        utils.write()
+    pass
+
+
+def poll_for_button(button, timeout=600):
+    start_time = time.ticks_ms()
+    pSelect_old = True
+    while (pSelect_old == button.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
+        time.sleep(0.05)
+    return
+
+
+def poll_for_select(timeout=600):
+    poll_for_button(pSelect)
+
+
+def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
+    if clear:
+        clear_screen()
+    else:
+        init_screen()
+    text = msg.split("\n")
+    for i, line in enumerate(text):
+        tft.write(font, line, x, y + (i * text_height), color)

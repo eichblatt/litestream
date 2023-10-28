@@ -105,7 +105,7 @@ def test_update():
 
 
 def _collection_names():
-    utils.write("Getting all\ncollection\nnames", font=pfont_small)
+    tm.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     print(f"API request is {api_request}")
@@ -182,7 +182,7 @@ def update_code():
     print("Updating code")
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
-    utils.clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
     tm.tft.write(pfont_med, " code", 0, 70, red_color)
 
@@ -202,7 +202,7 @@ def update_firmware():
 
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
-    utils.clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
     tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
 
@@ -253,7 +253,7 @@ def basic_main():
     """
     print("in basic_main")
     tm.tft.on()
-    utils.clear_screen()
+    tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
@@ -288,7 +288,7 @@ def basic_main():
         print(f"Date set to {dt}")
         tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     time.sleep(2)
-    utils.clear_screen()
+    tm.clear_screen()
     return wifi
 
 
