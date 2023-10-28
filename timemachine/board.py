@@ -272,7 +272,7 @@ def self_test():
     for button, name in zip(buttons, button_names):
         write("Press")
         write(f"{name}", 0, 25, color=yellow_color, clear=False)
-        write("Button", 0, 50)
+        write("Button", 0, 50, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
     time.sleep(2)

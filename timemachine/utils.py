@@ -96,7 +96,7 @@ def select_chars(message, message2="", already=None):
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
     step = step_old = 0
-    text_height = 18
+    text_height = 17
     screen_width = 16
     tm.clear_screen()
     y_origin = len(message) * text_height
@@ -275,7 +275,7 @@ def get_wifi_cred(wifi):
     choices = sorted(set(choices), key=choices.index)
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
-    passkey = select_chars("Input Passkey for {choice}\n(Day,Year), Select\n ", "Stop to End")
+    passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
 
