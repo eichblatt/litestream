@@ -241,15 +241,16 @@ def calibrate_knobs():
     print("Running knob calibration")
     knob_sense = get_knob_sense()
     print(f"knob_sense before is {knob_sense}")
-    for knob, name, bit in zip([m, d, y], ["Month", "Day", "Year"], (2, 1, 0)):
+    change = 0
+    for knob, name, bit in zip([m, d, y], ["Month", "Day", "Year"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         write("Rotate")
-        write(f"{name}", 0, 40, color=yellow_color, clear=False)
-        write("knob Forward", 0, 65, clear=False)
+        write(f"{name}", 0, 25, color=yellow_color, clear=False)
+        write("Knob Forward", 0, 50, clear=False)
         while prev_value == knob.value():
             time.sleep(0.05)
-        change = int(knob.value() < prev_value) << bit
+        change = change | int(knob.value() < prev_value) << bit
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
     write("Knobs\nCalibrated")
@@ -257,6 +258,7 @@ def calibrate_knobs():
         kf = open(KNOB_SENSE_PATH, "w")
         kf.write(f"{knob_sense}")
     except Exception:
+        print(f"Exception writing {KNOB_SENSE_PATH}")
         knob_sense = 0
     finally:
         kf.close()
@@ -269,17 +271,20 @@ def self_test():
     button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Month", "Day", "Year"]
     for button, name in zip(buttons, button_names):
         write("Press")
-        write(f"{name}", 0, 40, color=yellow_color, clear=False)
+        write(f"{name}", 0, 25, color=yellow_color, clear=False)
+        write("Button", 0, 50)
         poll_for_button(button)
     write("Button Test\nPassed")
     time.sleep(2)
     return
 
 
-def poll_for_button(button, timeout=600):
+def poll_for_button(button, timeout=None):
     start_time = time.ticks_ms()
     pSelect_old = True
-    while (pSelect_old == button.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
+    while pSelect_old == button.value():
+        if (timeout is not None) and (time.ticks_diff(time.ticks_ms(), start_time) > (timeout * 1000)):
+            break
         time.sleep(0.05)
     return
 

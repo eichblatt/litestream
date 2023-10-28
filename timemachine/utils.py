@@ -275,7 +275,7 @@ def get_wifi_cred(wifi):
     choices = sorted(set(choices), key=choices.index)
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
-    passkey = select_chars("Input Passkey for {choice}\nSelect. Stop to End\n ")
+    passkey = select_chars("Input Passkey for {choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
 
@@ -317,8 +317,6 @@ def connect_wifi():
         log.write("Already connected") if log is not None else None
         return wifi
 
-    yellow_color = st7789.color565(255, 255, 0)
-    tm.write("Connecting\nWiFi....", color=yellow_color)
     if path_exists(WIFI_CRED_PATH):
         wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:
@@ -328,6 +326,7 @@ def connect_wifi():
         tm.self_test()
         tm.calibrate_knobs()
 
+    tm.write("Connecting\nWiFi....", color=yellow_color)
     attempts = 0
     max_attempts = 7
     while (not wifi.isconnected()) & (attempts <= max_attempts):
