@@ -26,6 +26,7 @@ from rotary_irq_esp import RotaryIRQ
 import fonts.NotoSans_24 as pfont_med
 
 
+KNOB_SENSE_PATH = "/.knob_sense"
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -41,20 +42,28 @@ pLED = Pin(48, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
 
-knob_sense = 0
-try:
-    kf = open("/.knob_sense", "r")
-    knob_sense = int(kf.readline().strip())
-    if (knob_sense < 0) or (knob_sense > 7):
-        print(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
-        knob_sense = 0
-except Exception:
-    knob_sense = 0
 
 year_pins = (40, 42)
 month_pins = (39, 18)
 day_pins = (7, 8)
 
+
+def get_knob_sense():
+    knob_sense = 0
+    try:
+        kf = open(KNOB_SENSE_PATH, "r")
+        knob_sense = int(kf.readline().strip())
+        if (knob_sense < 0) or (knob_sense > 7):
+            print(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
+            knob_sense = 0
+    except Exception:
+        knob_sense = 0
+    finally:
+        kf.close()
+    return knob_sense
+
+
+knob_sense = get_knob_sense()
 # Month
 m = RotaryIRQ(
     month_pins[knob_sense & 1],
@@ -228,16 +237,43 @@ def power(state=None):
     return state
 
 
-def calibrate():
-    pass
+def calibrate_knobs():
+    print("Running knob calibration")
+    knob_sense = get_knob_sense()
+    print(f"knob_sense before is {knob_sense}")
+    for knob, name, bit in zip([m, d, y], ["Month", "Day", "Year"], (2, 1, 0)):
+        knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
+        prev_value = knob.value()
+        write("Rotate")
+        write(f"{name}", 0, 40, color=yellow_color, clear=False)
+        write("knob Forward", 0, 65, clear=False)
+        while prev_value == knob.value():
+            time.sleep(0.05)
+        change = int(knob.value() < prev_value) << bit
+    knob_sense = knob_sense ^ change
+    print(f"knob sense change: {change}. Value after {knob_sense}")
+    write("Knobs\nCalibrated")
+    try:
+        kf = open(KNOB_SENSE_PATH, "w")
+        kf.write(f"{knob_sense}")
+    except Exception:
+        knob_sense = 0
+    finally:
+        kf.close()
+    return knob_sense
 
 
 def self_test():
+    print("Running self_test")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
-    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "MSw", "DSw", "YSw"]
+    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Month", "Day", "Year"]
     for button, name in zip(buttons, button_names):
-        utils.write()
-    pass
+        write("Press")
+        write(f"{name}", 0, 40, color=yellow_color, clear=False)
+        poll_for_button(button)
+    write("Button Test\nPassed")
+    time.sleep(2)
+    return
 
 
 def poll_for_button(button, timeout=600):
@@ -246,10 +282,6 @@ def poll_for_button(button, timeout=600):
     while (pSelect_old == button.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
         time.sleep(0.05)
     return
-
-
-def poll_for_select(timeout=600):
-    poll_for_button(pSelect)
 
 
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):

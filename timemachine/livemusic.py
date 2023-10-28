@@ -151,7 +151,6 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
     return date
 
 
-
 def update_display(player):
     tm.init_screen()
     display_tracks(*player.track_names())
@@ -570,5 +569,5 @@ def run():
         print(msg)
         tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
         tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small)
-        tm.poll_for_select(timeout=12 * 3600)
+        tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1

@@ -325,6 +325,8 @@ def connect_wifi():
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
             json.dump(wifi_cred, f)
+        tm.self_test()
+        tm.calibrate_knobs()
 
     attempts = 0
     max_attempts = 7
