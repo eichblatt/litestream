@@ -597,6 +597,24 @@ class AudioPlayer:
         self.current_track_bytes_read = offset
 
     #######################################################################################################################################
+    @micropython.native
+    def handle_end_of_track(self):
+        # Store the end-of-track marker for this track
+        gc.collect()
+        self.TrackEnds.append(self.current_track_length)
+        self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
+        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
+        if self.track_being_read + 1 < self.ntracks:
+            print("reading next track")
+            self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
+            self.current_track_bytes_read = 0
+        else:
+            print("end of playlist")
+            self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
+            self.sock.close()
+            self.sock = None
+            self.stop()
+        return
 
     @micropython.native
     def audio_pump(self):
@@ -615,6 +633,8 @@ class AudioPlayer:
                     data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
 
                     # Is there new data available? The readinto will return None if there is no data available, or 0 if the socket is closed
+                    if self.current_track_length == self.current_track_bytes_read:
+                        data = 0
                     if data is not None:
                         # Keep track of how many bytes of the current file we have read.
                         # We will need this if the user pauses for too long and we need to request the current track from the server again
@@ -623,41 +643,12 @@ class AudioPlayer:
 
                         # Peer closed socket. This can be because of End-of-stream or it can happen in a long pause before our socket closes
                         if data == 0:
-                            gc.collect()
                             # End of track
                             if self.current_track_length == self.current_track_bytes_read:
-                                # Store the end-of-track marker for this track
-                                self.TrackEnds.append(self.current_track_length)
-                                self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
-                                self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
-                                if self.track_being_read + 1 < self.ntracks:
-                                    print("reading next track")
-                                    self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
-                                    self.current_track_bytes_read = 0
-                                else:
-                                    print("end of playlist")
-                                    self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
-                                    self.sock.close()
-                                    self.sock = None
-                                    self.stop()
+                                self.handle_end_of_track()
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
-                    elif self.current_track_length == self.current_track_bytes_read:
-                        # Store the end-of-track marker for this track
-                        self.TrackEnds.append(self.current_track_length)
-                        self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
-                        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
-                        if self.track_being_read + 1 < self.ntracks:
-                            print("reading next track")
-                            self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
-                            self.current_track_bytes_read = 0
-                        else:
-                            print("end of playlist")
-                            self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
-                            self.sock.close()
-                            self.sock = None
-                            self.stop()
 
                 except Exception as e:
                     # The user probably paused too long and the underlying socket got closed
