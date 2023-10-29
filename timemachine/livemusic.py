@@ -113,22 +113,26 @@ def select_date(coll_dict, key_date, ntape=0):
 def get_tape_ids(coll_dict, key_date):
     print(f"getting tape_ids from {key_date}")
     key_date_colls = []
+    tape_ids = []
     for collection, cdict in coll_dict.items():
         if cdict.get(key_date, None):
             key_date_colls.append(collection)
             url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+            print(f"URL is {url}")
             try:
+                resp = None
                 resp = requests.get(url)
                 if resp.status_code == 200:
-                    tape_ids = [[collection, x[0]] for x in resp.json()]
+                    tape_ids = tape_ids + [[collection, x[0]] for x in resp.json()]
                 elif resp.status_code == 404:
                     api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
+                    print(f"api_request is {api_request}")
                     resp = requests.get(api_request)
-                    tape_ids = resp.json()
+                    tape_ids = tape_ids + resp.json()
                 else:
                     raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
             finally:
-                resp.close()
+                resp.close() if resp is not None else None
     sorted_tape_ids = []
     while len(tape_ids) > 0:
         for coll in coll_dict.keys():
@@ -350,6 +354,7 @@ def main_loop(player, coll_dict, state):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
+                player.stop()
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
@@ -358,6 +363,7 @@ def main_loop(player, coll_dict, state):
                 select_press_time = time.ticks_ms() + 1_000
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
+                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
                 ntape = (ntape + 1) % len(tape_ids)
                 tm.clear_bbox(tm.artist_bbox)
                 tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
