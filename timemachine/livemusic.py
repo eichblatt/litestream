@@ -19,12 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import re
-import sys
 import time
 from collections import OrderedDict
 from mrequests import mrequests as requests
 
-import machine
+# import micropython # Use micropython.mem_info() to see memory available.
 import st7789
 import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font

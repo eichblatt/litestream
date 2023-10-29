@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import network, time, socket
+import time, socket
 
 try:
     import MP3Decoder, VorbisDecoder
@@ -24,7 +24,6 @@ except ImportError:
     import VorbisPlayer as VorbisDecoder
     import MP3Player as MP3Decoder
 from machine import Pin, I2S
-import machine
 import gc
 
 sck_pin = Pin(13)  # Serial clock output
@@ -632,7 +631,7 @@ class AudioPlayer:
                                 self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
                                 self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
                                 if self.track_being_read + 1 < self.ntracks:
-                                    self.DEBUG and print("reading next track")
+                                    print("reading next track")
                                     self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
                                     self.current_track_bytes_read = 0
                                 else:
@@ -644,6 +643,21 @@ class AudioPlayer:
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
+                    elif self.current_track_length == self.current_track_bytes_read:
+                        # Store the end-of-track marker for this track
+                        self.TrackEnds.append(self.current_track_length)
+                        self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
+                        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
+                        if self.track_being_read + 1 < self.ntracks:
+                            print("reading next track")
+                            self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
+                            self.current_track_bytes_read = 0
+                        else:
+                            print("end of playlist")
+                            self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
+                            self.sock.close()
+                            self.sock = None
+                            self.stop()
 
                 except Exception as e:
                     # The user probably paused too long and the underlying socket got closed
