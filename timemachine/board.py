@@ -50,16 +50,22 @@ day_pins = (7, 8)
 
 def get_knob_sense():
     knob_sense = 0
+    kf = None
     try:
         kf = open(KNOB_SENSE_PATH, "r")
         knob_sense = int(kf.readline().strip())
         if (knob_sense < 0) or (knob_sense > 7):
             print(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
             knob_sense = 0
+        kf.close()
     except Exception:
         knob_sense = 0
-    finally:
+        kf = open(KNOB_SENSE_PATH, "w")
+        kf.write(f"{knob_sense}")
         kf.close()
+    finally:
+        if kf is not None:
+            kf.close()
     return knob_sense
 
 

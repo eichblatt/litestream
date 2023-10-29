@@ -72,9 +72,12 @@ def best_tape(collection, key_date):
 def select_date(coll_dict, key_date, ntape=0):
     print(f"selecting show from {key_date}. Collections {coll_dict.keys()}")
     # for collection, cdict in coll_dict.items():
+    valid_collections = []
     for collection in coll_dict.keys():
         if key_date in coll_dict[collection].keys():
-            break
+            valid_collections.append(collection)
+    collection = valid_collections[ntape % len(valid_collections)]
+    ntape = ntape // len(valid_collections)
 
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
     try:
@@ -206,6 +209,20 @@ def play_pause(player):
     return player.PLAY_STATE
 
 
+def get_next_show(key_date, valid_dates, coll_name, coll_dict):
+    coll_names = list(coll_dict.keys())
+    c_index = coll_names.index(coll_name)
+    for date in valid_dates:
+        if date >= key_date:
+            if (date == key_date) and (c_index < len(coll_names)):
+                for c in coll_names[c_index + 1 :]:
+                    if date in coll_dict[c].keys():
+                        return key_date, c
+            key_date = set_date(date)
+            break
+    return key_date, coll_name
+
+
 def audio_pump(player, Nmax=1, fill_level=0.95):
     player.audio_pump()
     # ipump = 1
@@ -227,8 +244,6 @@ def main_loop(player, coll_dict, state):
     key_date = set_date(state["selected_date"])
     selected_date = key_date
     collection = "GratefulDead"
-    tracklist = []
-    urls = []
     collections = list(coll_dict.keys())
     current_collection = ""
     vcs = selected_vcs = ""
@@ -410,6 +425,7 @@ def main_loop(player, coll_dict, state):
             if pDSw_old:
                 print("Day DOWN")
             else:
+                # key_date, collection = get_next_show(key_date, valid_dates, coll_name, coll_dict)
                 for date in valid_dates:
                     if date > key_date:
                         key_date = set_date(date)
@@ -464,15 +480,14 @@ def main_loop(player, coll_dict, state):
                 date_old = date_new
                 try:
                     if key_date in valid_dates:
+                        nshows = 0
                         for c in list(coll_dict.keys()):
                             if key_date in coll_dict[c].keys():
+                                collection = c if nshows == 0 else collection
                                 nshows += 1
-                                collection = c
-                                vcs = coll_dict[collection][f"{key_date}"]
-                                tm.clear_bbox(tm.artist_bbox)
-                                tm.tft.write(
-                                    pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color
-                                )
+                        vcs = coll_dict[collection][f"{key_date}"]
+                        tm.clear_bbox(tm.artist_bbox)
+                        tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                     else:
                         vcs = ""
                         collection = ""
