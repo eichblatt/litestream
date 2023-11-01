@@ -51,15 +51,12 @@ def get_knob_sense():
     try:
         kf = open(KNOB_SENSE_PATH, "r")
         knob_sense = int(kf.readline().strip())
-        if (knob_sense < 0) or (knob_sense > 7):
-            print(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
-            knob_sense = 0
-        kf.close()
+        if knob_sense != (knob_sense & 0x7):
+            raise ValueError(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
     except Exception:
         knob_sense = 0
         kf = open(KNOB_SENSE_PATH, "w")
         kf.write(f"{knob_sense}")
-        kf.close()
     finally:
         if kf is not None:
             kf.close()
@@ -69,8 +66,8 @@ def get_knob_sense():
 knob_sense = get_knob_sense()
 # Month
 m = RotaryIRQ(
-    month_pins[knob_sense & 1],
-    month_pins[~knob_sense & 1],
+    month_pins[knob_sense & 0x1],
+    month_pins[~knob_sense & 0x1],
     min_val=1,
     max_val=12,
     reverse=False,
@@ -80,8 +77,8 @@ m = RotaryIRQ(
 )
 # Day
 d = RotaryIRQ(
-    day_pins[(knob_sense >> 1) & 1],
-    day_pins[~(knob_sense >> 1) & 1],
+    day_pins[(knob_sense >> 1) & 0x1],
+    day_pins[~(knob_sense >> 1) & 0x1],
     min_val=1,
     max_val=31,
     reverse=False,
@@ -91,8 +88,8 @@ d = RotaryIRQ(
 )
 # Year
 y = RotaryIRQ(
-    year_pins[(knob_sense >> 2) & 1],
-    year_pins[~(knob_sense >> 2) & 1],
+    year_pins[(knob_sense >> 2) & 0x1],
+    year_pins[~(knob_sense >> 2) & 0x1],
     min_val=1966,
     max_val=1995,
     reverse=False,
@@ -253,7 +250,7 @@ def calibrate_knobs():
         write("Knob Forward", 0, 50, clear=False)
         while prev_value == knob.value():
             time.sleep(0.05)
-        change = change | int(knob.value() < prev_value) << bit
+        change = (change | int(knob.value() < prev_value) << bit) & 0x7
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
     write("Knobs\nCalibrated")
