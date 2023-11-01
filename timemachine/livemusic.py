@@ -256,7 +256,6 @@ def main_loop(player, coll_dict, state):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
-    prev_chunks_played = 0
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -441,19 +440,6 @@ def main_loop(player, coll_dict, state):
         month_new = tm.m.value()
         day_new = tm.d.value()
 
-        # HACK
-        # In case of a lot of fast knob-turning, the sound can go out. This hack "handles" this
-        dtime = time.ticks_diff(time.ticks_ms(), date_changed_time)
-        if (dtime < 5_000) and (player.is_playing()) and ((poll_count % 1024) == 0):
-            chunks_played = player.chunks_played
-            if chunks_played == prev_chunks_played:
-                try:
-                    print("kickstarting playchunk after dropped interrupt")
-                    player.play_chunk()
-                except Exception as e:
-                    print(f"failed to play chunk {e}")
-            prev_chunks_played = chunks_played
-        # End of HACK
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
             tm.power(1)
             date_changed_time = time.ticks_ms()

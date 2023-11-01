@@ -297,7 +297,6 @@ class AudioPlayer:
         self.I2SAvailable = True
         self.ID3Tag_size = 0
         self.Decoder = None
-        self.chunks_played = 0
 
         if reset_head:
             if self.ntracks > 0:
@@ -389,7 +388,6 @@ class AudioPlayer:
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
-        self.chunks_played += 1
         assert numout == BytesToPlay, "I2S write error"
 
     @micropython.native
@@ -422,7 +420,6 @@ class AudioPlayer:
             "ntracks": self.ntracks,
             "track_being_read": self.track_being_read,
             "bytes_read": self.current_track_bytes_read,
-            "chunks_played": self.chunks_played,
             "length": self.current_track_length,
         }
 
