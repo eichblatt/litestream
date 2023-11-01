@@ -1,5 +1,6 @@
 // Include MicroPython API.
 #include "py/runtime.h"
+//#include "esp_timer.h"
 #include "stdint.h"
 #include "vorbis_decoder.h" // Modified from https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/vorbis_decoder
 
@@ -86,7 +87,10 @@ STATIC mp_obj_t Vorbis_Decode(mp_obj_t InBuffer, mp_obj_t BytesLeft, mp_obj_t Ou
     int BytesLeftInBuffer = mp_obj_get_int(BytesLeft);
 
     int OutputSamples = 0;
+    //printf("====");
+    //long long t = esp_timer_get_time() / 1000;
     int m_decodeError = VORBISDecode((byte*)InBufferInfo.buf, &BytesLeftInBuffer, (short*)OutBufferInfo.buf);
+    //printf("%lld\n", (esp_timer_get_time() / 1000) - t);
 
     //if (m_decodeError != -1)
     OutputSamples = VORBISGetOutputSamps();
@@ -120,7 +124,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(Vorbis_Close_obj, Vorbis_Close);
 // All identifiers and strings are written as MP_QSTR_xxx and will be
 // optimized to word-sized integers by the build system (interned strings).
 STATIC const mp_rom_map_elem_t module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_Player) },
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_VorbisDecoder) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Init), MP_ROM_PTR(&Vorbis_Init_obj) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Start), MP_ROM_PTR(&Vorbis_Start_obj) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_GetInfo), MP_ROM_PTR(&Vorbis_GetInfo_obj) },
@@ -130,10 +134,10 @@ STATIC const mp_rom_map_elem_t module_globals_table[] = {
 STATIC MP_DEFINE_CONST_DICT(module_globals, module_globals_table);
 
 // Define module object.
-const mp_obj_module_t user_cmodule = {
+const mp_obj_module_t user_cmoduleVorbis = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t *)&module_globals,
 };
 
 // Register the module to make it available in Python.
-MP_REGISTER_MODULE(MP_QSTR_Player, user_cmodule);
+MP_REGISTER_MODULE(MP_QSTR_VorbisDecoder, user_cmoduleVorbis);

@@ -15,7 +15,7 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 29.08.2023
+ *  Updated on: 05.09.2023
  */
 //----------------------------------------------------------------------------------------------------------------------
 //                                     O G G    I M P L.
@@ -29,38 +29,6 @@
 #define __calloc_heap_psram(ch, size) \
     heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 
-//#define __malloc_heap_psram(size) mymalloc(size)
-//#define __calloc_heap_psram(ch, size) mycalloc(ch, size)
-
-#define malloc(size) __malloc_heap_psram(size)
-
-void* mymalloc(size_t size)
-{
-    //void* pointer = malloc(size);
-    void* pointer = heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
-    printf("Malloccing %u ", size);
-    
-    if (pointer == nullptr)
-        printf("Got NULL pointer\n");
-    else
-        printf("Got pointer\n");
-
-    return pointer;
-}
-
-void* mycalloc(size_t size1, size_t size2)
-{
-    //void* pointer = calloc(size1, size2);
-    void* pointer = heap_caps_calloc_prefer(size1, size2, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
-    printf("Calloccing %u %u. Total:%u", size1, size2, size1 * size2);
-    
-    if (pointer == nullptr)
-        printf("Got NULL pointer\n");
-    else
-        printf("Got pointer\n");
-
-    return pointer;
-}
 
 // global vars
 bool      s_f_vorbisParseOgg = false;
@@ -756,7 +724,7 @@ int vorbis_book_unpack(codebook_t *s) {
     switch(bitReader(1)) {
         case 0:
             /* unordered */
-            lengthlist = (char *)malloc(sizeof(*lengthlist) * s->entries);
+            lengthlist = (char *)__malloc_heap_psram(sizeof(*lengthlist) * s->entries);
 
             /* allocated but unused entries? */
             if(bitReader(1)) {
@@ -792,7 +760,7 @@ int vorbis_book_unpack(codebook_t *s) {
                 int32_t length = bitReader(5) + 1;
 
                 s->used_entries = s->entries;
-                lengthlist = (char *)malloc(sizeof(*lengthlist) * s->entries);
+                lengthlist = (char *)__malloc_heap_psram(sizeof(*lengthlist) * s->entries);
 
                 for(i = 0; i < s->entries;) {
                     int32_t num = bitReader(_ilog(s->entries - i));

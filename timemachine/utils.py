@@ -24,12 +24,17 @@ import st7789
 import time
 
 import fonts.NotoSans_18 as pfont_small
-import fonts.NotoSans_24 as pfont_med
 
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
 STATE_PATH = "/latest_state.json"
+
+stage_date_color = st7789.color565(255, 255, 0)
+yellow_color = st7789.color565(255, 255, 0)
+tracklist_color = st7789.color565(0, 255, 255)
+play_color = st7789.color565(255, 0, 0)
+nshows_color = st7789.color565(0, 100, 255)
 
 
 def reload(mod):
@@ -39,102 +44,6 @@ def reload(mod):
     del z
     del sys.modules[mod]
     return __import__(mod)
-
-
-class Bbox:
-    """Bounding Box -- Initialize with corners."""
-
-    def __init__(self, x0, y0, x1, y1):
-        self.corners = (x0, y0, x1, y1)
-        self.x0, self.y0, self.x1, self.y1 = self.corners
-        self.width = self.x1 - self.x0
-        self.height = self.y1 - self.y0
-        self.origin = self.corners[:2]
-        self.topright = self.corners[-2:]
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __repr__(self):
-        return f"Bbox: x0 {self.x0},y0 {self.y0},x1 {self.x1},y1 {self.y1}"
-
-    def __getitem__(self, key):
-        return self.corners[key]
-
-    def size(self):
-        return (int(self.height), int(self.width))
-
-    def center(self):
-        return (int((self.x0 + self.x1) / 2), int((self.y0 + self.y1) / 2))
-
-    def shift(self, d):
-        return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
-
-
-stage_date_bbox = Bbox(0, 0, 160, 32)
-nshows_bbox = Bbox(150, 32, 160, 48)
-venue_bbox = Bbox(0, 32, 160, 32 + 20)
-artist_bbox = Bbox(0, 52, 160, 52 + 20)
-tracklist_bbox = Bbox(0, 70, 160, 110)
-selected_date_bbox = Bbox(15, 113, 145, 128)
-playpause_bbox = Bbox(145, 113, 160, 128)
-
-stage_date_color = st7789.color565(255, 255, 0)
-yellow_color = st7789.color565(255, 255, 0)
-tracklist_color = st7789.color565(0, 255, 255)
-play_color = st7789.color565(255, 0, 0)
-nshows_color = st7789.color565(0, 100, 255)
-
-_SCREEN_BAUDRATE = 10_000_000
-
-
-def init_screen():
-    tm.screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-
-
-def clear_bbox(bbox):
-    init_screen()
-    tm.tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
-
-
-def clear_area(x, y, width, height):
-    init_screen()
-    tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
-
-
-def clear_screen():
-    clear_area(0, 0, 160, 128)
-
-
-def clear_area(x, y, width, height):
-    init_screen()
-    tm.tft.fill_rect(x, y, width, height, st7789.BLACK)
-
-
-def screen_off():
-    tm.tft.off()
-
-
-def screen_on():
-    tm.tft.off()
-
-
-def poll_for_select(timeout=600):
-    start_time = time.ticks_ms()
-    pSelect_old = True
-    while (pSelect_old == tm.pSelect.value()) and (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
-        time.sleep(0.2)
-    return
-
-
-def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
-    if clear:
-        clear_screen()
-    else:
-        init_screen()
-    text = msg.split("\n")
-    for i, line in enumerate(text):
-        tm.tft.write(font, line, x, y + (i * text_height), color)
 
 
 def select_option(message, choices):
@@ -147,9 +56,9 @@ def select_option(message, choices):
     text_height = 16
     choice = ""
     first_time = True
-    clear_screen()
+    tm.clear_screen()
     # init_screen()
-    select_bbox = Bbox(0, 20, 160, 128)
+    select_bbox = tm.Bbox(0, 20, 160, 128)
     tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
@@ -157,7 +66,7 @@ def select_option(message, choices):
             i = j = 0
             first_time = False
             step_old = step
-            clear_bbox(select_bbox)
+            tm.clear_bbox(select_bbox)
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
@@ -187,14 +96,14 @@ def select_chars(message, message2="", already=None):
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
     step = step_old = 0
-    text_height = 18
+    text_height = 17
     screen_width = 16
-    clear_screen()
+    tm.clear_screen()
     y_origin = len(message) * text_height
 
-    select_bbox = Bbox(0, y_origin, 160, y_origin + text_height)
-    selected_bbox = Bbox(0, y_origin + text_height, 160, y_origin + 2 * text_height)
-    message2_bbox = Bbox(0, y_origin + 2 * text_height, 160, 128)
+    select_bbox = tm.Bbox(0, y_origin, 160, y_origin + text_height)
+    selected_bbox = tm.Bbox(0, y_origin + text_height, 160, y_origin + 2 * text_height)
+    message2_bbox = tm.Bbox(0, y_origin + 2 * text_height, 160, 128)
 
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value, tm.y._value)):
         value = (tens - start_vals[0]) * 10 + (ones - start_vals[1])
@@ -206,13 +115,13 @@ def select_chars(message, message2="", already=None):
         return value
 
     for i, msg in enumerate(message):
-        init_screen()
+        tm.init_screen()
         tm.tft.write(pfont_small, f"{msg}", 0, i * text_height, stage_date_color)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
-        clear_bbox(message2_bbox)
-        init_screen()
+        tm.clear_bbox(message2_bbox)
+        tm.init_screen()
         tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
 
     singleLetter = already is not None
@@ -233,7 +142,7 @@ def select_chars(message, message2="", already=None):
                 break
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
-                clear_bbox(selected_bbox)
+                tm.clear_bbox(selected_bbox)
                 tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
             # step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1)
             step = decade_value(tm.d.value(), tm.y.value(), (0, len(charset) + 1))
@@ -241,7 +150,7 @@ def select_chars(message, message2="", already=None):
                 cursor = 0
                 first_time = False
                 step_old = step
-                clear_bbox(select_bbox)
+                tm.clear_bbox(select_bbox)
 
                 # Write the Delete character
                 cursor += tm.tft.write(
@@ -288,7 +197,7 @@ def select_chars(message, message2="", already=None):
                 choice = charset[step - 1]  # -1 for the delete character.
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
-            clear_bbox(selected_bbox)
+            tm.clear_bbox(selected_bbox)
             tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
         if singleLetter:
             print(f"singleLetter chosen {selected}")
@@ -296,7 +205,7 @@ def select_chars(message, message2="", already=None):
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
-    clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
     tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, st7789.RED)
     time.sleep(0.3)
@@ -366,7 +275,7 @@ def get_wifi_cred(wifi):
     choices = sorted(set(choices), key=choices.index)
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
-    passkey = select_chars("Input Passkey for {choice}\nSelect. Stop to End\n ")
+    passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
 
@@ -408,15 +317,16 @@ def connect_wifi():
         log.write("Already connected") if log is not None else None
         return wifi
 
-    yellow_color = st7789.color565(255, 255, 0)
-    write("Connecting\nWiFi....", color=yellow_color)
     if path_exists(WIFI_CRED_PATH):
         wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
     else:
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
             json.dump(wifi_cred, f)
+        tm.self_test()
+        tm.calibrate_knobs()
 
+    tm.write("Connecting\nWiFi....", color=yellow_color)
     attempts = 0
     max_attempts = 7
     while (not wifi.isconnected()) & (attempts <= max_attempts):

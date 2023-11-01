@@ -15,5 +15,9 @@ typedef long long int64_t;
 #define log_e(format, ...) void() //TAG, format, ##__VA_ARGS__) //ESP_LOGE
 #define log_w(format, ...) void() //TAG, format, ##__VA_ARGS__)
 
+#define PROGMEM
+#define pgm_read_word *
+#define pgm_read_byte *
+
 #include <esp_heap_caps.h>
 #include <string.h>

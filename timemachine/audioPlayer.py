@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import network, time, socket
+import time, socket
 
 try:
     import MP3Decoder, VorbisDecoder
@@ -24,7 +24,6 @@ except ImportError:
     import VorbisPlayer as VorbisDecoder
     import MP3Player as MP3Decoder
 from machine import Pin, I2S
-import machine
 import gc
 
 sck_pin = Pin(13)  # Serial clock output
@@ -598,6 +597,24 @@ class AudioPlayer:
         self.current_track_bytes_read = offset
 
     #######################################################################################################################################
+    @micropython.native
+    def handle_end_of_track(self):
+        # Store the end-of-track marker for this track
+        gc.collect()
+        self.TrackEnds.append(self.current_track_length)
+        self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
+        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
+        if self.track_being_read + 1 < self.ntracks:
+            print("reading next track")
+            self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
+            self.current_track_bytes_read = 0
+        else:
+            print("end of playlist")
+            self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
+            self.sock.close()
+            self.sock = None
+            self.stop()
+        return
 
     @micropython.native
     def audio_pump(self):
@@ -616,6 +633,8 @@ class AudioPlayer:
                     data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
 
                     # Is there new data available? The readinto will return None if there is no data available, or 0 if the socket is closed
+                    if self.current_track_length == self.current_track_bytes_read:
+                        data = 0
                     if data is not None:
                         # Keep track of how many bytes of the current file we have read.
                         # We will need this if the user pauses for too long and we need to request the current track from the server again
@@ -624,23 +643,9 @@ class AudioPlayer:
 
                         # Peer closed socket. This can be because of End-of-stream or it can happen in a long pause before our socket closes
                         if data == 0:
-                            gc.collect()
                             # End of track
                             if self.current_track_length == self.current_track_bytes_read:
-                                # Store the end-of-track marker for this track
-                                self.TrackEnds.append(self.current_track_length)
-                                self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
-                                self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
-                                if self.track_being_read + 1 < self.ntracks:
-                                    self.DEBUG and print("reading next track")
-                                    self.read_header(self.track_being_read + 1)  # We can read the header of the next track now
-                                    self.current_track_bytes_read = 0
-                                else:
-                                    print("end of playlist")
-                                    self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
-                                    self.sock.close()
-                                    self.sock = None
-                                    self.stop()
+                                self.handle_end_of_track()
                             else:  # Peer closed its socket, but not at the end of the track
                                 print("Peer close")
                                 raise RuntimeError("Peer closed socket")  # Will be caught by the 'except' below
@@ -817,7 +822,6 @@ class AudioPlayer:
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         print("end of playlist")
                         self.FinishedDecoding = True
-                        self.stop()
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.

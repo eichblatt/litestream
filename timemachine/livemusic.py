@@ -19,12 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import re
-import sys
 import time
 from collections import OrderedDict
 from mrequests import mrequests as requests
 
-import machine
+# import micropython # Use micropython.mem_info() to see memory available.
 import st7789
 import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font
@@ -48,6 +47,12 @@ API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 
+stage_date_color = st7789.color565(255, 255, 0)
+yellow_color = st7789.color565(255, 255, 0)
+tracklist_color = st7789.color565(0, 255, 255)
+play_color = st7789.color565(255, 0, 0)
+nshows_color = st7789.color565(0, 100, 255)
+
 
 def set_date(date):
     global DATE_SET_TIME
@@ -66,9 +71,12 @@ def best_tape(collection, key_date):
 def select_date(coll_dict, key_date, ntape=0):
     print(f"selecting show from {key_date}. Collections {coll_dict.keys()}")
     # for collection, cdict in coll_dict.items():
+    valid_collections = []
     for collection in coll_dict.keys():
         if key_date in coll_dict[collection].keys():
-            break
+            valid_collections.append(collection)
+    collection = valid_collections[ntape % len(valid_collections)]
+    ntape = ntape // len(valid_collections)
 
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
     try:
@@ -104,22 +112,26 @@ def select_date(coll_dict, key_date, ntape=0):
 def get_tape_ids(coll_dict, key_date):
     print(f"getting tape_ids from {key_date}")
     key_date_colls = []
+    tape_ids = []
     for collection, cdict in coll_dict.items():
         if cdict.get(key_date, None):
             key_date_colls.append(collection)
             url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+            print(f"URL is {url}")
             try:
+                resp = None
                 resp = requests.get(url)
                 if resp.status_code == 200:
-                    tape_ids = [[collection, x[0]] for x in resp.json()]
+                    tape_ids = tape_ids + [[collection, x[0]] for x in resp.json()]
                 elif resp.status_code == 404:
                     api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
+                    print(f"api_request is {api_request}")
                     resp = requests.get(api_request)
-                    tape_ids = resp.json()
+                    tape_ids = tape_ids + resp.json()
                 else:
                     raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
             finally:
-                resp.close()
+                resp.close() if resp is not None else None
     sorted_tape_ids = []
     while len(tape_ids) > 0:
         for coll in coll_dict.keys():
@@ -145,52 +157,73 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
     return date
 
 
-stage_date_bbox = utils.Bbox(0, 0, 160, 32)
-nshows_bbox = utils.Bbox(150, 32, 160, 48)
-venue_bbox = utils.Bbox(0, 32, 160, 32 + 20)
-artist_bbox = utils.Bbox(0, 52, 160, 52 + 20)
-tracklist_bbox = utils.Bbox(0, 72, 160, 112)
-selected_date_bbox = utils.Bbox(15, 112, 145, 128)
-playpause_bbox = utils.Bbox(145, 113, 160, 128)
+def select_key_date(key_date, player, coll_dict, state, ntape):
+    tm.clear_bbox(tm.playpause_bbox)
+    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
+    player.stop()
+    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
+    vcs = coll_dict[collection][key_date]
+    player.set_playlist(tracklist, urls)
+    ntape = 0
 
-stage_date_color = st7789.color565(255, 255, 0)
-yellow_color = st7789.color565(255, 255, 0)
-tracklist_color = st7789.color565(0, 255, 255)
-play_color = st7789.color565(255, 0, 0)
-nshows_color = st7789.color565(0, 100, 255)
+    selected_date = key_date
+    state["selected_date"] = selected_date
+    utils.save_state(state)
+    selected_vcs = vcs
+    tm.clear_bbox(tm.venue_bbox)
+    tm.tft.write(pfont_small, f"{selected_vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
+    tm.clear_bbox(tm.selected_date_bbox)
+    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
+    print(f"Selected date string {selected_date_str}")
+    tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
+    return collection, selected_date, selected_vcs
 
 
 def update_display(player):
-    utils.init_screen()
+    tm.init_screen()
     display_tracks(*player.track_names())
     if not player.playlist_started:
-        utils.clear_bbox(playpause_bbox)
+        tm.clear_bbox(tm.playpause_bbox)
     elif player.PLAY_STATE == player.STOPPED:
-        tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.PLAY_STATE == player.PLAYING:
-        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.PLAY_STATE == player.PAUSED:
-        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
 def display_tracks(current_track_name, next_track_name):
-    utils.init_screen()  # Do we need this if not sharing SPI bus?
-    utils.clear_bbox(tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
+    tm.init_screen()  # Do we need this if not sharing SPI bus?
+    tm.clear_bbox(tm.tracklist_bbox)
+    tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)
+    tm.tft.write(pfont_small, f"{next_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.center()[1], tracklist_color)
     return
 
 
 def play_pause(player):
-    utils.clear_bbox(playpause_bbox)
+    tm.clear_bbox(tm.playpause_bbox)
     if player.is_playing():
         player.pause()
-        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
     else:  # initial state or stopped
         player.play()
         tm.power(1)
-        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     return player.PLAY_STATE
+
+
+def get_next_show(key_date, valid_dates, coll_name, coll_dict):
+    coll_names = list(coll_dict.keys())
+    c_index = coll_names.index(coll_name)
+    for date in valid_dates:
+        if date >= key_date:
+            if (date == key_date) and (c_index < len(coll_names)):
+                for c in coll_names[c_index + 1 :]:
+                    if date in coll_dict[c].keys():
+                        return key_date, c
+            key_date = set_date(date)
+            break
+    return key_date, coll_name
 
 
 def audio_pump(player, Nmax=1, fill_level=0.95):
@@ -214,8 +247,6 @@ def main_loop(player, coll_dict, state):
     key_date = set_date(state["selected_date"])
     selected_date = key_date
     collection = "GratefulDead"
-    tracklist = []
-    urls = []
     collections = list(coll_dict.keys())
     current_collection = ""
     vcs = selected_vcs = ""
@@ -233,7 +264,7 @@ def main_loop(player, coll_dict, state):
     del c
     valid_dates = list(sorted(valid_dates))
     tm.screen_on_time = time.ticks_ms()
-    utils.clear_screen()
+    tm.clear_screen()
     poll_count = 0
     while True:
         nshows = 0
@@ -251,6 +282,10 @@ def main_loop(player, coll_dict, state):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
+                if player.PLAY_STATE == player.STOPPED:
+                    if (key_date in valid_dates) and tm.power():
+                        collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                        vcs = selected_vcs
                 play_pause(player)
                 print("PlayPause UP")
 
@@ -262,7 +297,7 @@ def main_loop(player, coll_dict, state):
                 if tm.power():
                     player.stop()
                     tm.tft.on()
-                    tm.tft.fill_polygon(tm.StopPoly, playpause_bbox.x0, playpause_bbox.y0, play_color)
+                    tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
                 print("Stop UP")
 
         buffer_fill = audio_pump(player, fill_level=0.3)
@@ -310,30 +345,15 @@ def main_loop(player, coll_dict, state):
                 if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
                     pass
                 elif (key_date in valid_dates) and tm.power():
-                    utils.clear_bbox(playpause_bbox)
-                    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, st7789.RED)
-                    player.stop()
-                    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
-                    vcs = coll_dict[collection][key_date]
-                    player.set_playlist(tracklist, urls)
-                    ntape = 0
-
-                    selected_date = key_date
-                    state["selected_date"] = selected_date
-                    utils.save_state(state)
-                    selected_vcs = vcs
-                    utils.clear_bbox(venue_bbox)
-                    tm.tft.write(pfont_small, f"{selected_vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
-                    utils.clear_bbox(selected_date_bbox)
-                    selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
-                    print(f"Selected date string {selected_date_str}")
-                    tm.tft.write(date_font, selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0)
+                    collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                    vcs = selected_vcs
                     if AUTO_PLAY:
                         gc.collect()
                         play_pause(player)
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
+                player.stop()
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
@@ -342,17 +362,18 @@ def main_loop(player, coll_dict, state):
                 select_press_time = time.ticks_ms() + 1_000
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
+                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
                 ntape = (ntape + 1) % len(tape_ids)
-                utils.clear_bbox(artist_bbox)
-                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                tm.clear_bbox(tm.artist_bbox)
+                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                 # vcs = coll_dict[tape_ids[ntape][0]][key_date]
-                utils.clear_bbox(venue_bbox)
+                tm.clear_bbox(tm.venue_bbox)
                 display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*", "~", tape_ids[ntape][1])
                 display_str = re.sub(r"\d\d-\d\d-\d\d\.*", "~", display_str)
                 print(f"display string is {display_str}")
                 if len(display_str) > 18:
                     display_str = display_str[:11] + display_str[-6:]
-                tm.tft.write(pfont_small, f"{display_str}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+                tm.tft.write(pfont_small, f"{display_str}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -373,7 +394,7 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 1_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                utils.clear_screen()
+                tm.clear_screen()
                 tm.tft.off()
                 # time.sleep(2)
                 return
@@ -381,9 +402,9 @@ def main_loop(player, coll_dict, state):
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
         if (vcs == selected_vcs) & (vcs_line != pvcs_line):
             pvcs_line = vcs_line
-            utils.clear_bbox(venue_bbox)
+            tm.clear_bbox(tm.venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
-            tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
+            tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
             print(player)
             update_display(player)
             # display_tracks(*player.track_names())
@@ -409,6 +430,7 @@ def main_loop(player, coll_dict, state):
             if pDSw_old:
                 print("Day DOWN")
             else:
+                # key_date, collection = get_next_show(key_date, valid_dates, coll_name, coll_dict)
                 for date in valid_dates:
                     if date > key_date:
                         key_date = set_date(date)
@@ -458,33 +480,36 @@ def main_loop(player, coll_dict, state):
                 day_old = day_new
 
             if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
-                utils.clear_bbox(stage_date_bbox)
+                tm.clear_bbox(tm.stage_date_bbox)
                 tm.tft.write(large_font, f"{date_new}", 0, 0, stage_date_color)
                 date_old = date_new
                 try:
                     if key_date in valid_dates:
+                        nshows = 0
                         for c in list(coll_dict.keys()):
                             if key_date in coll_dict[c].keys():
+                                collection = c if nshows == 0 else collection
                                 nshows += 1
-                                collection = c
-                                vcs = coll_dict[collection][f"{key_date}"]
-                                utils.clear_bbox(artist_bbox)
-                                tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                        vcs = coll_dict[collection][f"{key_date}"]
+                        tm.clear_bbox(tm.artist_bbox)
+                        tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                     else:
                         vcs = ""
                         collection = ""
-                        utils.clear_bbox(artist_bbox)
-                        tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, tracklist_color)
-                    utils.clear_bbox(venue_bbox)
-                    tm.tft.write(pfont_small, f"{vcs}", venue_bbox.x0, venue_bbox.y0, stage_date_color)
-                    utils.clear_bbox(nshows_bbox)
+                        tm.clear_bbox(tm.artist_bbox)
+                        tm.tft.write(
+                            pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tracklist_color
+                        )
+                    tm.clear_bbox(tm.venue_bbox)
+                    tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
+                    tm.clear_bbox(tm.nshows_bbox)
                     if nshows > 1:
-                        tm.tft.write(pfont_small, f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, nshows_color)
+                        tm.tft.write(pfont_small, f"{nshows}", tm.nshows_bbox.x0, tm.nshows_bbox.y0, nshows_color)
                     update_display(player)
                 except KeyError:
-                    utils.clear_bbox(venue_bbox)
-                    utils.clear_bbox(artist_bbox)
-                    tm.tft.write(pfont_small, f"{current_collection}", artist_bbox.x0, artist_bbox.y0, stage_date_color)
+                    tm.clear_bbox(tm.venue_bbox)
+                    tm.clear_bbox(tm.artist_bbox)
+                    tm.tft.write(pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -493,6 +518,7 @@ def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
     print(vcs_url)
+    resp = None
     try:
         resp = requests.get(vcs_url)
         if resp.status_code == 200:
@@ -504,7 +530,8 @@ def add_vcs(coll):
             resp = requests.get(api_request)
             vcs = resp.json()[coll]
     finally:
-        resp.close()
+        if resp is not None:
+            resp.close()
     return vcs
 
 
@@ -525,7 +552,7 @@ def show_collections(collection_list):
     ncoll = len(collection_list)
     message = f"Loading {ncoll} Collections"
     print(message)
-    utils.clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_med, message, 0, 0, st7789.RED)
     for i, coll in enumerate(collection_list[:5]):
         tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
@@ -572,7 +599,7 @@ def run():
     except Exception as e:
         msg = f"Error in playback loop {e}"
         print(msg)
-        utils.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-        utils.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small)
-        utils.poll_for_select(timeout=12 * 3600)
+        tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
+        tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
+        tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1

@@ -105,7 +105,7 @@ def test_update():
 
 
 def _collection_names():
-    utils.write("Getting all\ncollection\nnames", font=pfont_small)
+    tm.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     print(f"API request is {api_request}")
@@ -182,7 +182,7 @@ def update_code():
     print("Updating code")
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
-    utils.clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
     tm.tft.write(pfont_med, " code", 0, 70, red_color)
 
@@ -202,7 +202,7 @@ def update_firmware():
 
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
-    utils.clear_screen()
+    tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
     tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
 
@@ -227,6 +227,8 @@ def reconfigure():
             "Wifi",
             "Update Firmware",
             "FactoryReset",
+            "Test Buttons",
+            "Calibrate Knobs",
             "Reboot",
             "Exit",
             "Return to Player",
@@ -236,6 +238,10 @@ def reconfigure():
         configure_collections()
     elif choice == "Wifi":
         wifi = configure_wifi()
+    elif choice == "Calibrate Knobs":
+        tm.calibrate_knobs()
+    elif choice == "Test Buttons":
+        tm.self_test()
     elif choice == "Update Code":
         update_code()
     elif choice == "Update Firmware":
@@ -253,7 +259,7 @@ def basic_main():
     """
     print("in basic_main")
     tm.tft.on()
-    utils.clear_screen()
+    tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
@@ -268,18 +274,6 @@ def basic_main():
     pStop_old = True
     configure = False
 
-    while time.ticks_ms() < (start_time + 5000):
-        if pSelect_old != tm.pSelect.value():
-            pSelect_old = tm.pSelect.value()
-            configure = True
-            print(f"{time.ticks_ms()} Select button Pressed!!")
-            break
-
-        if pStop_old != tm.pStop.value():
-            pStop_old = tm.pStop.value()
-            print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
-            return
-
     wifi = utils.connect_wifi()
     if configure:
         reconfigure()
@@ -288,7 +282,7 @@ def basic_main():
         print(f"Date set to {dt}")
         tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     time.sleep(2)
-    utils.clear_screen()
+    tm.clear_screen()
     return wifi
 
 

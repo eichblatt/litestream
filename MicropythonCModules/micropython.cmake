@@ -4,5 +4,5 @@
 # used to prefix subdirectories.
 
 # Add the C example.
-include(${CMAKE_CURRENT_LIST_DIR}/AudioPlayer/micropython.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/AudioDecoder/micropython.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)
