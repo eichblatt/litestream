@@ -15,7 +15,8 @@ git clone -b vx.xx.x --recursive https://github.com/micropython/micropython.git 
 cd ~/micropython/mpy-cross/
 make
 
-Set up the C modules (Display Driver and Audio Player) - only need to do this once
+
+Set up the C modules (Display Driver and Audio Decoder) - only need to do this once
 ==================================================================================
 cd $HOME
 mkdir modules
@@ -27,12 +28,12 @@ Add the following lines:
 # Paths are absolute, and ${CMAKE_CURRENT_LIST_DIR} can be
 # used to prefix subdirectories.
 # Add the C example.
-include(${CMAKE_CURRENT_LIST_DIR}/AudioPlayer/micropython.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/AudioDecoder/micropython.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)
 
 The Display Driver folder is copied into the modules directory in the next step. 
-Also copy the files for the Audio Player to the modules directory.
-See the MicropythonCModules folder in this GitHub repository for the Audio Player files.
+Also copy the files for the Audio Decoder to the modules directory.
+See the MicropythonCModules folder in this GitHub repository for the Audio Decoder files.
 
 
 Install ST7789 Display driver (from https://github.com/russhughes/st7789_mpy)
@@ -65,9 +66,26 @@ Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the
 #endif
 
 
+Fix the knob-twiddling bug
+==========================
+nano ~/micropython/ports/esp32/mpconfigport.h
+Add the following:
+#define MICROPY_SCHEDULER_STATIC_NODES (1)
+
+nano ~/micropython/ports/esp32/machine_i2s.c
+Add an "mp_sched_node_t I2S_node;" member to machine_i2s_obj_t
+Add a new function:
+STATIC void call_I2S_callback(mp_sched_node_t *node) {
+    machine_i2s_obj_t *self = (machine_i2s_obj_t*)((uintptr_t)node - offsetof(machine_i2s_obj_t, I2S_node));
+    mp_call_function_1(self->callback_for_non_blocking, MP_OBJ_FROM_PTR(self));
+}
+In the FreeRTOS background task, replace the call to mp_sched_schedule with one to mp_sched_schedule_node:
+mp_sched_schedule_node(&self->I2S_node, call_I2S_callback);
+
+
 Change the settings to enable the full 16MB of flash, the 8MB of SPIRAM and use the OTA partition scheme
 ========================================================================================================
-nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
+nano ~/micropython/ports/esp32/boards/ESP32_GENERIC_S3/sdkconfig.board
 
 Change:
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=
@@ -77,7 +95,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-16MiB-ota.csv" (or partitions
 
 Change the TCP parameters for faster download
 =============================================
-nano ~/micropython/ports/esp32/boards/GENERIC_S3_SPIRAM_OCT/sdkconfig.board
+nano ~/micropython/ports/esp32/boards/ESP32_GENERIC_S3/sdkconfig.board
 
 Add the following lines:
 #
@@ -128,7 +146,7 @@ C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5
 or
 /home/mikealex/.espressif/python_env/idf4.4_py3.8_env/bin/python ../../../esp/esp-idf/components/esptool_py/esptool/esptool.py -p (PORT) -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 build-GENERIC_S3_N16R8/bootloader/bootloader.bin 0x8000 build-GENERIC_S3_N16R8/partition_table/partition-table.bin 0x10000 build-GENERIC_S3_N16R8/micropython.bin
 or
-idf.py -p COM13 flash
+idf.py -p COM4 flash
 
 (If you need to erase flash, the command is C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\esptool_py\4.5.1\esptool -p COM4 -b 460800 erase_flash)
 
@@ -186,7 +204,7 @@ Notes:
 ======
 I got errors and had to rm -r ~/.espressif/ and then ./install.sh esp32,esp32s3 again
 The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
-Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. Have to run menuconfig and set the single core flag (under ComponentConfig->FreeRTOS->Run FreeRTOS only on first Core) - not sure this is relevant any more
+No longer true? Keeping for posterity. Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. Have to run menuconfig and set the single core flag (under ComponentConfig->FreeRTOS->Run FreeRTOS only on first Core) - not sure this is relevant any more
 If you get errors about wrong paths for the compiler, you may need to add the correct paths.
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-g++:$PATH
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc:$PATH
