@@ -518,6 +518,7 @@ def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
     vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
     print(vcs_url)
+    resp = None
     try:
         resp = requests.get(vcs_url)
         if resp.status_code == 200:
@@ -529,7 +530,8 @@ def add_vcs(coll):
             resp = requests.get(api_request)
             vcs = resp.json()[coll]
     finally:
-        resp.close()
+        if resp is not None:
+            resp.close()
     return vcs
 
 
