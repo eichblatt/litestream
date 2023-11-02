@@ -399,9 +399,9 @@ class AudioPlayer:
         self.ntracks = len(tracklist)
         self.tracklist = tracklist
         ### TEMPORARY ###
-        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
+        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.{current_format}"
         urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
-        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.ogg"
+        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.{current_format}"
         urllist = [x if not (x.endswith("silence0.ogg")) else encorebreak_url for x in urllist]
         ### TEMPORARY ###
         urllist = [x.replace(" ", "%20") for x in urllist]
@@ -519,6 +519,7 @@ class AudioPlayer:
 
         url = self.playlist[trackno]
 
+        url = url.format(current_format=("mp3" if self.Decoder == self.MP3 else "ogg"))
         if url.lower().endswith(".mp3"):
             self.Decoder = self.MP3
         elif url.lower().endswith(".ogg"):
