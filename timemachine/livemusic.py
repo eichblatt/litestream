@@ -68,15 +68,16 @@ def best_tape(collection, key_date):
     pass
 
 
-def select_date(coll_dict, key_date, ntape=0):
+def select_date(coll_dict, key_date, ntape=0, collection=None):
     print(f"selecting show from {key_date}. Collections {coll_dict.keys()}")
     # for collection, cdict in coll_dict.items():
-    valid_collections = []
-    for collection in coll_dict.keys():
-        if key_date in coll_dict[collection].keys():
-            valid_collections.append(collection)
-    collection = valid_collections[ntape % len(valid_collections)]
-    ntape = ntape // len(valid_collections)
+    if collection is None:
+        valid_collections = []
+        for coll in coll_dict.keys():
+            if key_date in coll_dict[coll].keys():
+                valid_collections.append(coll)
+        collection = valid_collections[ntape % len(valid_collections)]
+        ntape = ntape // len(valid_collections)
 
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
     try:
@@ -157,22 +158,21 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
     return date
 
 
-def select_key_date(key_date, player, coll_dict, state, ntape):
+def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=None):
     tm.clear_bbox(tm.playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
     player.stop()
-    collection, tracklist, urls = select_date(coll_dict, key_date, ntape)
+    collection, tracklist, urls = select_date(coll_dict, key_date, ntape, key_collection)
     vcs = coll_dict[collection][key_date]
     player.set_playlist(tracklist, urls)
     ntape = 0
 
     selected_date = key_date
     state["selected_date"] = selected_date
+    state["selected_collection"] = collection
     utils.save_state(state)
     selected_vcs = vcs
-    tm.clear_bbox(tm.venue_bbox)
-    tm.tft.write(pfont_small, f"{selected_vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
-    tm.clear_bbox(tm.selected_date_bbox)
+    update_venue(selected_vcs)
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}")
     tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
@@ -212,7 +212,9 @@ def play_pause(player):
     return player.PLAY_STATE
 
 
+@micropython.native
 def get_next_show(key_date, valid_dates, coll_name, coll_dict):
+    print(f"getting next show {key_date}, {coll_name}")
     coll_names = list(coll_dict.keys())
     c_index = coll_names.index(coll_name)
     for date in valid_dates:
@@ -221,8 +223,10 @@ def get_next_show(key_date, valid_dates, coll_name, coll_dict):
                 for c in coll_names[c_index + 1 :]:
                     if date in coll_dict[c].keys():
                         return key_date, c
-            key_date = set_date(date)
-            break
+            elif date > key_date:
+                for c in coll_names:
+                    if date in coll_dict[c].keys():
+                        return date, c
     return key_date, coll_name
 
 
@@ -245,8 +249,8 @@ def main_loop(player, coll_dict, state):
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
     key_date = set_date(state["selected_date"])
+    collection = state["selected_collection"]
     selected_date = key_date
-    collection = "GratefulDead"
     collections = list(coll_dict.keys())
     current_collection = ""
     vcs = selected_vcs = ""
@@ -341,10 +345,16 @@ def main_loop(player, coll_dict, state):
             if pSelect_old:
                 print("short press of select")
                 # tm.power(1)
-                if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
+                if (
+                    (key_date == selected_date)
+                    and (collection == state["selected_collection"])
+                    and (player.PLAY_STATE != player.STOPPED)
+                ):  # We're already on this date
                     pass
                 elif (key_date in valid_dates) and tm.power():
-                    collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                    collection, selected_date, selected_vcs = select_key_date(
+                        key_date, player, coll_dict, state, ntape, collection
+                    )
                     vcs = selected_vcs
                     if AUTO_PLAY:
                         gc.collect()
@@ -427,14 +437,18 @@ def main_loop(player, coll_dict, state):
         if pDSw_old != tm.pDSw.value():
             pDSw_old = tm.pDSw.value()
             if pDSw_old:
-                print("Day DOWN")
-            else:
-                # key_date, collection = get_next_show(key_date, valid_dates, coll_name, coll_dict)
-                for date in valid_dates:
-                    if date > key_date:
-                        key_date = set_date(date)
-                        break
                 print("Day UP")
+            else:
+                date, collection = get_next_show(key_date, valid_dates, collection, coll_dict)
+                vcs = coll_dict[collection][date]
+                key_date = set_date(date)
+                print(f"vcs {vcs}. collection {collection}. date {date}")
+                update_venue(vcs, collection=collection)
+                # for date in valid_dates:
+                #     if date > key_date:
+                #        key_date = set_date(date)
+                #        break
+                print("Day DOWN")
 
         year_new = tm.y.value()
         month_new = tm.m.value()
@@ -486,11 +500,7 @@ def main_loop(player, coll_dict, state):
                         tm.tft.write(
                             pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tracklist_color
                         )
-                    tm.clear_bbox(tm.venue_bbox)
-                    tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
-                    tm.clear_bbox(tm.nshows_bbox)
-                    if nshows > 1:
-                        tm.tft.write(pfont_small, f"{nshows}", tm.nshows_bbox.x0, tm.nshows_bbox.y0, nshows_color)
+                    update_venue(vcs, nshows=nshows, collection=collection)
                     update_display(player)
                 except KeyError:
                     tm.clear_bbox(tm.venue_bbox)
@@ -498,6 +508,18 @@ def main_loop(player, coll_dict, state):
                     tm.tft.write(pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
+
+
+def update_venue(vcs, nshows=1, collection=None):
+    print("Updating venue")
+    tm.clear_bbox(tm.venue_bbox)
+    tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
+    tm.clear_bbox(tm.nshows_bbox)
+    if nshows > 1:
+        tm.tft.write(pfont_small, f"{nshows}", tm.nshows_bbox.x0, tm.nshows_bbox.y0, nshows_color)
+    if collection is not None:
+        tm.clear_bbox(tm.artist_bbox)
+        tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
 
 
 def add_vcs(coll):

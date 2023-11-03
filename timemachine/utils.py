@@ -417,10 +417,13 @@ def load_state():
         state = json.load(open(STATE_PATH, "r"))
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("start_date", "1975-08-13")
+        selected_collection = state.get("selected_collection", collection_list[0])
+        state = {"collection_list": collection_list, "selected_date": selected_date, "selected_collection": selected_collection}
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
-        state = {"collection_list": collection_list, "selected_date": selected_date}
-        with open(STATE_PATH, "w") as f:
-            json.dump(state, f)
+        selected_collection = collection_list[0]
+        state = {"collection_list": collection_list, "selected_date": selected_date, "selected_collection": selected_collection}
+    with open(STATE_PATH, "w") as f:
+        json.dump(state, f)
     return state
