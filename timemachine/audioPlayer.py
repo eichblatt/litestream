@@ -297,7 +297,6 @@ class AudioPlayer:
         self.I2SAvailable = True
         self.ID3Tag_size = 0
         self.Decoder = None
-        self.chunks_played = 0
 
         if reset_head:
             if self.ntracks > 0:
@@ -389,7 +388,6 @@ class AudioPlayer:
             return
 
         numout = self.audio_out.write(outbytes)  # Write the PCM data to the I2S device. Returns straight away
-        self.chunks_played += 1
         assert numout == BytesToPlay, "I2S write error"
 
     @micropython.native
@@ -401,9 +399,9 @@ class AudioPlayer:
         self.ntracks = len(tracklist)
         self.tracklist = tracklist
         ### TEMPORARY ###
-        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
+        setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.{current_format}"
         urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
-        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.ogg"
+        encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.{current_format}"
         urllist = [x if not (x.endswith("silence0.ogg")) else encorebreak_url for x in urllist]
         ### TEMPORARY ###
         urllist = [x.replace(" ", "%20") for x in urllist]
@@ -422,7 +420,6 @@ class AudioPlayer:
             "ntracks": self.ntracks,
             "track_being_read": self.track_being_read,
             "bytes_read": self.current_track_bytes_read,
-            "chunks_played": self.chunks_played,
             "length": self.current_track_length,
         }
 
@@ -522,6 +519,7 @@ class AudioPlayer:
 
         url = self.playlist[trackno]
 
+        url = url.format(current_format=("mp3" if self.Decoder == self.MP3 else "ogg"))
         if url.lower().endswith(".mp3"):
             self.Decoder = self.MP3
         elif url.lower().endswith(".ogg"):
