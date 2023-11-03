@@ -318,7 +318,8 @@ def connect_wifi():
         return wifi
 
     if path_exists(WIFI_CRED_PATH):
-        wifi_cred = json.load(open(WIFI_CRED_PATH, "r"))
+        with open(WIFI_CRED_PATH, "r") as f:
+            wifi_cred = json.load(f)
     else:
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
@@ -408,15 +409,18 @@ def set_collection_list(collection_list):
 
 
 def save_state(state):
+    # print(f"writing {state} to {STATE_PATH}")
     with open(STATE_PATH, "w") as f:
         json.dump(state, f)
+    return
 
 
 def load_state():
     if path_exists(STATE_PATH):
-        state = json.load(open(STATE_PATH, "r"))
+        with open(STATE_PATH, "r") as f:
+            state = json.load(f)
         collection_list = state.get("collection_list", "GratefulDead")
-        selected_date = state.get("start_date", "1975-08-13")
+        selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         state = {"collection_list": collection_list, "selected_date": selected_date, "selected_collection": selected_collection}
     else:

@@ -176,7 +176,8 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}")
     tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
-    return collection, selected_date, selected_vcs
+    return selected_vcs, state
+    # return collection, selected_date, selected_vcs, state
 
 
 def update_display(player):
@@ -287,7 +288,9 @@ def main_loop(player, coll_dict, state):
             else:
                 if player.PLAY_STATE == player.STOPPED:
                     if (key_date in valid_dates) and tm.power():
-                        collection, selected_date, selected_vcs = select_key_date(key_date, player, coll_dict, state, ntape)
+                        selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape)
+                        selected_date = state["selected_date"]
+                        collection = state["selected_collection"]
                         vcs = selected_vcs
                 play_pause(player)
                 print("PlayPause UP")
@@ -345,16 +348,13 @@ def main_loop(player, coll_dict, state):
             if pSelect_old:
                 print("short press of select")
                 # tm.power(1)
-                if (
-                    (key_date == selected_date)
-                    and (collection == state["selected_collection"])
-                    and (player.PLAY_STATE != player.STOPPED)
-                ):  # We're already on this date
-                    pass
+                if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
+                    if state.get("selected_collection", collection) == collection:
+                        pass
                 elif (key_date in valid_dates) and tm.power():
-                    collection, selected_date, selected_vcs = select_key_date(
-                        key_date, player, coll_dict, state, ntape, collection
-                    )
+                    selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection)
+                    selected_date = state["selected_date"]
+                    collection = state["selected_collection"]
                     vcs = selected_vcs
                     if AUTO_PLAY:
                         gc.collect()
