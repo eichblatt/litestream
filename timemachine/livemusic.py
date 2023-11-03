@@ -215,19 +215,27 @@ def play_pause(player):
 
 @micropython.native
 def get_next_show(key_date, valid_dates, coll_name, coll_dict):
-    print(f"getting next show {key_date}, {coll_name}")
     coll_names = list(coll_dict.keys())
+    if not (coll_name in coll_names):
+        coll_name = coll_names[0]
+    print(f"getting next show {key_date}, {coll_name}")
     c_index = coll_names.index(coll_name)
-    for date in valid_dates:
+
+    start_index = 0
+    for i, date in enumerate(valid_dates):
         if date >= key_date:
-            if (date == key_date) and (c_index < len(coll_names)):
-                for c in coll_names[c_index + 1 :]:
-                    if date in coll_dict[c].keys():
-                        return key_date, c
-            elif date > key_date:
-                for c in coll_names:
-                    if date in coll_dict[c].keys():
-                        return date, c
+            start_index = i
+            break
+    print(f"start_index {start_index}/{len(valid_dates)-1}")
+    for i, date in enumerate(valid_dates[start_index:] + valid_dates[:start_index]):
+        if (i == 0) and ((c_index + 1) < len(coll_names)):
+            for c in coll_names[c_index + 1 :]:
+                if date in coll_dict[c].keys():
+                    return date, c
+        elif i > 0:
+            for c in coll_names:
+                if date in coll_dict[c].keys():
+                    return date, c
     return key_date, coll_name
 
 
@@ -266,7 +274,7 @@ def main_loop(player, coll_dict, state):
     for c in collections:
         valid_dates = valid_dates | set(list(coll_dict[c].keys()))
     del c
-    valid_dates = list(sorted(valid_dates))
+    valid_dates = sorted(list(valid_dates))
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     poll_count = 0
