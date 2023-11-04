@@ -276,7 +276,7 @@ class AudioPlayer:
         self.ChunkSize = 70 * 1024
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
-        InBufferSize = 120 * 1024
+        InBufferSize = 160 * 1024
 
         # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 5000
@@ -354,8 +354,14 @@ class AudioPlayer:
 
     @micropython.native
     def play_chunk(self):
-        if self.PLAY_STATE != self.PLAYING:
+        if (
+            (self.PLAY_STATE != self.PLAYING)
+            or (not self.I2SAvailable)
+            or (not self.PlayLoopRunning)
+            or (self.OutBuffer.get_bytes_in_buffer() == 0)
+        ):
             return
+        self.I2SAvailable = False
 
         BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)  # Play what we have, up to the chunk size
 
@@ -509,6 +515,12 @@ class AudioPlayer:
     def is_playing(self):
         return self.PLAY_STATE == self.PLAYING
 
+    # @micropython.native
+    # def play_chunk_if_possible(self):
+    #    if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
+    #        self.I2SAvailable = False
+    #        self.play_chunk()
+
     @micropython.native
     def read_header(self, trackno, offset=0, port=80):
         if trackno is None:
@@ -533,12 +545,14 @@ class AudioPlayer:
         if self.sock is not None:  # We might have a socket already from the previous track
             self.sock.close()
 
+        self.play_chunk()
         self.sock = socket.socket()
 
         self.DEBUG and print("Getting", path, "from", host, "Port:", port)
         self.sock.connect(addr)
         self.sock.setblocking(False)  # Tell the socket to return straight away (async)
 
+        self.play_chunk()
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
         self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
 
@@ -546,10 +560,7 @@ class AudioPlayer:
         response_headers = b""
         while True:
             header = self.sock.readline()
-
-            if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
-                self.I2SAvailable = False
-                self.play_chunk()
+            self.play_chunk()
 
             if header is not None:
                 response_headers += header.decode("utf-8")
@@ -567,10 +578,12 @@ class AudioPlayer:
                 self.sock.close()
                 # Establish a new socket connection to the server
                 self.DEBUG and print("Redirecting to", new_host, new_port, new_path, "Offset", offset)
+                self.play_chunk()
                 self.sock = socket.socket()
                 addr = socket.getaddrinfo(new_host, new_port)[0][-1]
                 self.sock.connect(addr)
                 self.sock.setblocking(False)  # Return straight away
+                self.play_chunk()
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 self.sock.send(bytes(f"GET /{new_path} HTTP/1.1\r\nHost: {new_host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
@@ -578,10 +591,7 @@ class AudioPlayer:
                 # Skip the response headers
                 while True:
                     header = self.sock.readline()
-
-                    if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
-                        self.I2SAvailable = False
-                        self.play_chunk()
+                    self.play_chunk()
 
                     if header is not None:
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
@@ -656,9 +666,9 @@ class AudioPlayer:
                     # Start reading the current track again, but at the offset where we were up to
                     self.read_header(self.track_being_read, self.current_track_bytes_read)
 
-        if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
-            self.I2SAvailable = False
-            self.play_chunk()
+        #        if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
+        #            self.I2SAvailable = False
+        self.play_chunk()
 
         if self.AtTrackStart:
             if self.InBuffer.BytesInBuffer == 0:
@@ -725,10 +735,13 @@ class AudioPlayer:
                 # self.next_track = self.set_next_track()
             else:
                 raise RuntimeError("Decoder Start failed")
+        buffer_level_out = self.decode_chunk()
+        buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
+        return min(buffer_level_in, buffer_level_out)
 
-        # We have some data to decode. Repeatedly call the decoder to decode one chunk at a time from the InBuffer, and build up audio samples in Outbuffer.
-        timeout = 30
-        debug = self.DEBUG
+    @micropython.native
+    def decode_chunk(self, timeout=10):
+        TimeStart = time.ticks_ms()
         counter = 0  # Just for debugging. See how many times we run the loop before timeout
         while True:
             # Do we have at least 5000 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
@@ -754,7 +767,6 @@ class AudioPlayer:
             # For OggVorbis it takes about 14ms to decode 1024 samples, which is about 23ms worth of audio. Ratio 1:1.64 i.e. 1ms of decoding gives us 1.64ms of audio
             # For MP3 it takes about 18ms to decode 1152 samples, which is about 26ms worth of audio. Ratio: 1:1.44 i.e. 1ms of decoding gives us 1.44ms of audio
             # print(f"Decoding: {self.InBuffer.get_readPos()}", end=' ')
-            t = time.ticks_ms()
 
             if self.Decoder == self.MP3:
                 Result, BytesLeft, AudioSamples = MP3Decoder.MP3_Decode(
@@ -859,6 +871,5 @@ class AudioPlayer:
                 self.play_chunk()
                 self.PlayLoopRunning = True  # So that we don't call this again
 
-        buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
         buffer_level_out = self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize
-        return min(buffer_level_in, buffer_level_out)
+        return buffer_level_out

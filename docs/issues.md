@@ -371,3 +371,40 @@ http://gabriel.mp3-tech.org/mp3infotag.html   **This is the most useful link on 
 Also https://lame.sourceforge.io/using.php , less useful.
 ### Seeking
 Good info here https://stackoverflow.com/questions/60247805/seeking-within-mp3-file
+## 2023-11-04
+### From Grateful Dead 1993-04-04 (mp3 tape)
+
+Playing -- Read 11380700/13398492 (85%) of track 9/21 InBuffer: 4029(3%) OutBuffer: 239616(33%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Playing -- Read 11385080/13398492 (85%) of track 9/21 InBuffer: 3921(3%) OutBuffer: 0(0%)
+Peer close
+Socket Exception: Peer closed socket  Restarting track at offset 11475600
+Playing -- Read 11504800/13398492 (86%) of track 9/21 InBuffer: 30755(25%) OutBuffer: 19968(3%)
+Playing -- Read 11868340/13398492 (89%) of track 9/21 InBuffer: 24102(20%) OutBuffer: 711680(99%)
+Playing -- Read 11934040/13398492 (89%) of track 9/21 InBuffer: 3700(3%) OutBuffer: 0(0%)
+Playing -- Read 11934040/13398492 (89%) of track 9/21 InBuffer: 3700(3%) OutBuffer: 0(0%)
+Playing -- Read 11934040/13398492 (89%) of track 9/21 InBuffer: 3700(3%) OutBuffer: 0(0%)
+Playing -- Read 11934040/13398492 (89%) of track 9/21 InBuffer: 3700(3%) OutBuffer: 0(0%)
+Socket Exception: [Errno 113] ECONNABORTED  Restarting track at offset 11934040
+Error in playback loop -202
+
+This must be an http error code 202, meaning "Accepted". 
+
+
+### From Grateful Dead 1993-04-05 (mp3 tape)
+I see this output and hear some glitches.
+
+Playing -- Read 3836880/8471774 (45%) of track 1/20 InBuffer: 117810(96%) OutBuffer: 710656(99%)
+Playing -- Read 4063180/8471774 (48%) of track 1/20 InBuffer: 43737(36%) OutBuffer: 710656(99%)
+Playing -- Read 4248600/8471774 (50%) of track 1/20 InBuffer: 3522(3%) OutBuffer: 307712(43%)
+Playing -- Read 4456568/8471774 (53%) of track 1/20 InBuffer: 3906(3%) OutBuffer: 0(0%)
+Playing -- Read 4818000/8471774 (57%) of track 1/20 InBuffer: 9964(8%) OutBuffer: 410112(57%)
+Playing -- Read 5047220/8471774 (60%) of track 1/20 InBuffer: 3839(3%) OutBuffer: 0(0%)
+Playing -- Read 5365949/8471774 (63%) of track 1/20 InBuffer: 3618(3%) OutBuffer: 212480(30%)
+Playing -- Read 5704220/8471774 (67%) of track 1/20 InBuffer: 47056(38%) OutBuffer: 303104(42%)
+
+Lowering the timeout in decode_chunk to 10 ms fixed this problem, as far as I can tell.
