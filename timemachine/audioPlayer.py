@@ -370,8 +370,6 @@ class AudioPlayer:
             if self.FinishedDecoding:  # End of playlist
                 print("Finished Playing")
                 self.stop()
-                # self.PLAY_STATE = self.STOPPED  # Stop the playback loop
-                # self.reset_player()
                 return
             else:  # Buffer starved
                 # The output buffer can get starved if the network is slow, or if we write too much debug output
@@ -501,10 +499,6 @@ class AudioPlayer:
         self.next_track = self.set_next_track()
         print(self)
         self.callbacks["display"](*self.track_names())
-        # if self.PLAY_STATE == self.PLAYING:  # Play the track that we are advancing to if playing
-        #    self.PLAY_STATE = self.STOPPED
-        #    self.reset_player()
-        #    self.play()
 
     def is_paused(self):
         return self.PLAY_STATE == self.PAUSED
@@ -514,12 +508,6 @@ class AudioPlayer:
 
     def is_playing(self):
         return self.PLAY_STATE == self.PLAYING
-
-    # @micropython.native
-    # def play_chunk_if_possible(self):
-    #    if self.OutBuffer.get_bytes_in_buffer() > 0 and self.I2SAvailable and self.PlayLoopRunning:
-    #        self.I2SAvailable = False
-    #        self.play_chunk()
 
     @micropython.native
     def read_header(self, trackno, offset=0, port=80):
@@ -621,6 +609,7 @@ class AudioPlayer:
             self.FinishedStreaming = True  # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
             self.sock.close()
             self.sock = None
+            self.playlist_started = False
             self.stop()
         return
 
@@ -832,6 +821,7 @@ class AudioPlayer:
                     else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                         print("end of playlist")
                         self.FinishedDecoding = True
+                        self.playlist_started = False
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
