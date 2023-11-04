@@ -225,14 +225,13 @@ def reconfigure():
         [
             "Collections",
             "Update Code",
-            "Wifi",
             "Update Firmware",
-            "FactoryReset",
+            "Reboot",
+            "Wifi",
             "Test Buttons",
             "Calibrate Knobs",
-            "Reboot",
+            "FactoryReset",
             "Exit",
-            "Return to Player",
         ],
     )
     if choice == "Collections":

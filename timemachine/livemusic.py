@@ -183,8 +183,9 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
 def update_display(player):
     tm.init_screen()
     display_tracks(*player.track_names())
+    tm.clear_bbox(tm.playpause_bbox)
     if not player.playlist_started:
-        tm.clear_bbox(tm.playpause_bbox)
+        pass
     elif player.PLAY_STATE == player.STOPPED:
         tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.PLAY_STATE == player.PLAYING:
@@ -294,7 +295,7 @@ def main_loop(player, coll_dict, state):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
-                if player.PLAY_STATE == player.STOPPED:
+                if (player.PLAY_STATE == player.STOPPED) and (player.current_track == 0):
                     if (key_date in valid_dates) and tm.power():
                         selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape)
                         selected_date = state["selected_date"]
