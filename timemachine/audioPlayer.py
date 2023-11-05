@@ -744,7 +744,7 @@ class AudioPlayer:
         return min(buffer_level_in, buffer_level_out)
 
     @micropython.native
-    def decode_chunk(self, timeout=30):
+    def decode_chunk(self, timeout=15):
         TimeStart = time.ticks_ms()
         break_reason = 0
         break_reasons = {0: "Unknown", 1: "Out Buffer Full", 2: "Timeout", 3: "InBuffer Dry", 4: "Finished Decoding"}
@@ -760,14 +760,14 @@ class AudioPlayer:
                 break
             InBytesAvailable = self.InBuffer.get_read_available()
             # return if the InBuffer is at running dry.
-            if not self.FinishedStreaming and self.InBuffer.buffer_level() < 0.20:
-                break_reason = 3
-                break
+            # if not self.FinishedStreaming and self.InBuffer.buffer_level() < 0.20:
+            #    break_reason = 3
+            #    break
             # Normally, the decoder needs around 4096 bytes to decode the next packet.
             # However at the end of the playlist we have to let smaller packets through or the end of the last song will be cut off
-            # if not self.FinishedStreaming and self.InBuffer.get_bytes_in_buffer() < 4096:
-            #    break_reason = "InBuffer empty"
-            #    break
+            if not self.FinishedStreaming and self.InBuffer.get_bytes_in_buffer() < 4096:
+                break_reason = 3
+                break
             # We have finished streaming and decoding, but the play loop hasn't finished yet
             if InBytesAvailable == 0:
                 break_reason = 4
