@@ -89,6 +89,7 @@ class InRingBuffer:
         return self.BytesInBuffer
 
     # How many bytes can we add to the buffer before filling it
+    @micropython.native
     def get_write_available(self):
         if self._writePos > self._readPos:
             # If the read_pos is within the overflow area return the num bytes in there, else zero
@@ -115,6 +116,7 @@ class InRingBuffer:
     # How many bytes can we read from the buffer before it is empty. If there are less than "OverflowSize" bytes
     # available at the end of the buffer, move the bytes at the end of the buffer into the overflow area.
     # Note this function can change the readPos
+    @micropython.native
     def get_read_available(self):
         if self._writePos > self._readPos:
             return self._writePos - self._readPos
@@ -134,10 +136,15 @@ class InRingBuffer:
                     return bytesToMove + self._writePos - self.OverflowSize
 
     # Tell the buffer how many bytes we just read.  Must call this after every read from the buffer
+    @micropython.native
     def bytes_wasRead(self, count):
         self.BytesInBuffer -= count
         assert self.BytesInBuffer >= 0, "InBuffer Underflow"
         self._readPos = self._readPos + count
+
+    @micropython.native
+    def buffer_level(self):
+        return self.BytesInBuffer / self.BufferSize
 
 
 # ---------------------------------------------     OutRingBuffer     ------------------------------------------ #
@@ -183,6 +190,11 @@ class OutRingBuffer:
         self._writePos = 0  # The next byte we will write
         self._endPos = 0  # The last byte of the buffer that we have written
 
+    def __repr__(self):
+        retstr = f"Size: {self.BufferSize}, readPos:{self._readPos}, writePos:{self._writePos}"
+        retstr += f" Bytes in buffer: {self.get_bytes_in_buffer()}. Write available:{self.get_write_available()}"
+        return retstr
+
     def get_writePos(self):  # Returns the pointer to where we can read from
         return self._writePos
 
@@ -223,6 +235,7 @@ class OutRingBuffer:
         return self.BytesInBuffer
 
     # How many bytes can we read from the buffer before it is empty
+    @micropython.native
     def get_read_available(self):
         if self._readPos > self._writePos:  # We are reading ahead of the write pointer
             return self._endPos - self._readPos  # We can read all the way to the high water mark
@@ -235,6 +248,7 @@ class OutRingBuffer:
                 return 0  # No bytes available to read
 
     # Tell the buffer how many bytes we just read. Must call this after every read from the buffer
+    @micropython.native
     def bytes_wasRead(self, count):
         if self._readPos < self._writePos:
             assert self._readPos + count <= self._writePos, "OutBuffer Overread"
@@ -248,6 +262,10 @@ class OutRingBuffer:
             if self._readPos != self._writePos:  # If the reader caught up to the writer, then don't wrap in this case
                 self._readPos = 0  # Otherwise wrap
                 self._endPos = self._writePos  # The new high water mark is where the current writepos is
+
+    @micropython.native
+    def buffer_level(self):
+        return self.BytesInBuffer / self.BufferSize
 
 
 ####################### End of OutRingBuffer #######################
@@ -324,6 +342,7 @@ class AudioPlayer:
             self.sock.close()
             self.sock = None
 
+        self.consecutive_zeros = 0
         print(self)
 
     def __repr__(self):
@@ -332,10 +351,6 @@ class AudioPlayer:
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
-        inbuffer_bytes = self.InBuffer.get_bytes_in_buffer()
-        inbuffer_size = self.InBuffer.BufferSize
-        outbuffer_bytes = self.OutBuffer.get_bytes_in_buffer()
-        outbuffer_size = self.OutBuffer.BufferSize
         ratio = bytes / max(length, 1)
         if self.PLAY_STATE == self.PLAYING:
             status = "Playing"
@@ -348,8 +363,8 @@ class AudioPlayer:
         retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
             retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
-            retstring += f" InBuffer: {inbuffer_bytes}({100*inbuffer_bytes/inbuffer_size:.0f}%)"
-            retstring += f" OutBuffer: {outbuffer_bytes}({100*outbuffer_bytes/outbuffer_size:.0f}%)"
+            retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
+            retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
         return retstring
 
     @micropython.native
@@ -616,8 +631,8 @@ class AudioPlayer:
     @micropython.native
     def audio_pump(self):
         if self.is_stopped():
-            buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
-            buffer_level_out = self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize
+            buffer_level_in = self.InBuffer.buffer_level()
+            buffer_level_out = self.OutBuffer.buffer_level()
             return min(buffer_level_in, buffer_level_out)
 
         TimeStart = time.ticks_ms()
@@ -725,32 +740,39 @@ class AudioPlayer:
             else:
                 raise RuntimeError("Decoder Start failed")
         buffer_level_out = self.decode_chunk()
-        buffer_level_in = self.InBuffer.BytesInBuffer / self.InBuffer.BufferSize
+        buffer_level_in = self.InBuffer.buffer_level()
         return min(buffer_level_in, buffer_level_out)
 
     @micropython.native
-    def decode_chunk(self, timeout=10):
+    def decode_chunk(self, timeout=15):
         TimeStart = time.ticks_ms()
+        break_reason = 0
+        break_reasons = {0: "Unknown", 1: "Out Buffer Full", 2: "Timeout", 3: "InBuffer Dry", 4: "Finished Decoding"}
         counter = 0  # Just for debugging. See how many times we run the loop before timeout
         while True:
             # Do we have at least 5000 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
             if self.OutBuffer.get_write_available() < 5000:  # Note: this can change write_pos
+                break_reason = 1
                 break
-
+            # Don't stay in the loop too long or we affect the responsiveness of the main app
+            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
+                break_reason = 2
+                break
             InBytesAvailable = self.InBuffer.get_read_available()
-
-            # We have finished streaming and decoding, but the play loop hasn't finished yet
-            if InBytesAvailable == 0:
-                break
-
+            # return if the InBuffer is at running dry.
+            # if not self.FinishedStreaming and self.InBuffer.buffer_level() < 0.20:
+            #    break_reason = 3
+            #    break
             # Normally, the decoder needs around 4096 bytes to decode the next packet.
             # However at the end of the playlist we have to let smaller packets through or the end of the last song will be cut off
             if not self.FinishedStreaming and self.InBuffer.get_bytes_in_buffer() < 4096:
+                break_reason = 3
+                break
+            # We have finished streaming and decoding, but the play loop hasn't finished yet
+            if InBytesAvailable == 0:
+                break_reason = 4
                 break
 
-            # Don't stay in the loop too long or we affect the responsiveness of the main app
-            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
-                break
             counter += 1
 
             # For OggVorbis it takes about 14ms to decode 1024 samples, which is about 23ms worth of audio. Ratio 1:1.64 i.e. 1ms of decoding gives us 1.64ms of audio
@@ -860,6 +882,14 @@ class AudioPlayer:
                 # Start the playback loop by playing the first chunk. The callback will play the next chunk when it returns
                 self.play_chunk()
                 self.PlayLoopRunning = True  # So that we don't call this again
-
-        buffer_level_out = self.OutBuffer.BytesInBuffer / self.OutBuffer.BufferSize
-        return buffer_level_out
+        if self.DEBUG and ((counter > 0) or (break_reason != 1)):
+            print(f"Time {time.ticks_ms()}. Decoded {counter} chunks in ", end="")
+            print(f"{time.ticks_diff(time.ticks_ms(), TimeStart)} ms. {break_reasons[break_reason]}", end="")
+            if self.consecutive_zeros > 0:
+                print(f" after {self.consecutive_zeros} Buffer Fulls")
+                self.consecutive_zeros = 0
+            else:
+                print("")
+        else:
+            self.consecutive_zeros += 1
+        return self.OutBuffer.buffer_level()

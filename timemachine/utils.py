@@ -144,8 +144,14 @@ def select_chars(message, message2="", already=None):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
                 tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
-            # step = (tm.y.value() - tm.y._min_val) % (len(charset) + 1)
-            step = decade_value(tm.d.value(), tm.y.value(), (0, len(charset) + 1))
+            if len(already) > 0:  # start with cursor on the most recent character.
+                if first_time:
+                    d0, y0 = divmod(1 + charset.index(already[-1]), 10)
+                    d0 = tm.d._value - d0
+                    y0 = tm.y._value - y0
+                step = decade_value(tm.d.value(), tm.y.value(), (0, len(charset) + 1), (d0, y0))
+            else:
+                step = decade_value(tm.d.value(), tm.y.value(), (0, len(charset) + 1))
             if (step != step_old) or first_time:
                 cursor = 0
                 first_time = False
