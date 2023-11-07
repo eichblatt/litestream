@@ -378,7 +378,12 @@ def main_loop(player, coll_dict, state):
             if pPower_old:
                 print("Power DOWN")
             else:
-                if tm.power():
+                print(f"power state is {tm.power()}")
+                if tm.power() == 1:
+                    key_date = set_date(selected_date)
+                    year_new = year_old = tm.y._value
+                    month_new = month_old = tm.m._value
+                    day_new = day_old = tm.d._value
                     player.pause()
                     tm.power(0)
                 else:
@@ -387,7 +392,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 1_500:
+            if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.clear_screen()
@@ -492,7 +497,6 @@ def main_loop(player, coll_dict, state):
 
 
 def update_venue(vcs, nshows=1, collection=None):
-    print("Updating venue")
     tm.clear_bbox(tm.venue_bbox)
     tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
     tm.clear_bbox(tm.nshows_bbox)
