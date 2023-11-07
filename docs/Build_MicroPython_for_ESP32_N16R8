@@ -83,8 +83,21 @@ In the FreeRTOS background task, replace the call to mp_sched_schedule with one 
 mp_sched_schedule_node(&self->I2S_node, call_I2S_callback);
 
 
-Change the settings to enable the full 16MB of flash, the 8MB of SPIRAM and use the OTA partition scheme
-========================================================================================================
+Fix the SPI hang issue
+======================
+nano ~/micropython/ports/esp32/machine_hw_spi.c
+In machine_hw_spi_transfer() change the call to spi_device_queue_trans() to the following:
+
+if (spi_device_queue_trans(self->spi, transaction, portMAX_DELAY) != ESP_OK)
+{
+    mp_printf(&mp_plat_print,"SPIERR");
+    spi_device_release_bus(self->spi);
+    return;
+}
+
+
+Change the settings to enable the full 16MB of flash, and use the OTA partition scheme
+======================================================================================
 nano ~/micropython/ports/esp32/boards/ESP32_GENERIC_S3/sdkconfig.board
 
 Change:
