@@ -141,8 +141,8 @@ class Bbox:
 
 stage_date_bbox = Bbox(0, 0, 160, 32)
 nshows_bbox = Bbox(150, 32, 160, 48)
-venue_bbox = Bbox(0, 32, 160, 32 + 20)
-artist_bbox = Bbox(0, 52, 160, 52 + 20)
+venue_bbox = Bbox(0, 32, 160, 32 + 19)
+artist_bbox = Bbox(0, 51, 160, 51 + 19)
 tracklist_bbox = Bbox(0, 70, 160, 112)
 selected_date_bbox = Bbox(15, 112, 145, 128)
 playpause_bbox = Bbox(145, 113, 160, 128)
