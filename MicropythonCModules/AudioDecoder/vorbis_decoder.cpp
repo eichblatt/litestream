@@ -45,7 +45,7 @@ uint16_t  s_setupHeaderLength = 0;
 uint8_t   s_pageNr = 4;
 uint16_t  s_oggHeaderSize = 0;
 uint8_t   s_vorbisChannels = 0;
-uint16_t  s_vorbisSamplerate = 0;
+uint32_t  s_vorbisSamplerate = 0;
 uint16_t  s_lastSegmentTableLen = 0;
 uint8_t  *s_lastSegmentTable = NULL;
 uint32_t  s_vorbisBitRate = 0;
@@ -380,7 +380,7 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
     }
     s_vorbisChannels = channels;
 
-    if(sampleRate < 4096 || sampleRate > 64000){
+    if(sampleRate < 4096 || sampleRate > 96000){
         log_e("sampleRate is not valid sr=%i", sampleRate);
         return -1;
     }
