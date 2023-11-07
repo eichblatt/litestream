@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import time, socket
+import re, socket, time
 
 try:
     import MP3Decoder, VorbisDecoder
@@ -416,7 +416,7 @@ class AudioPlayer:
     def set_playlist(self, tracklist, urllist):
         assert len(tracklist) == len(urllist)
         self.ntracks = len(tracklist)
-        self.tracklist = tracklist
+        self.tracklist = [re.sub(r"^\d*[\.\)\- ]*", "", x) for x in tracklist]
         ### TEMPORARY ###
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.{current_format}"
         urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
