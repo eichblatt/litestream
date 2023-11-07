@@ -744,7 +744,7 @@ class AudioPlayer:
         return min(buffer_level_in, buffer_level_out)
 
     @micropython.native
-    def decode_chunk(self, timeout=15):
+    def decode_chunk(self, timeout=10):
         TimeStart = time.ticks_ms()
         break_reason = 0
         break_reasons = {0: "Unknown", 1: "Out Buffer Full", 2: "Timeout", 3: "InBuffer Dry", 4: "Finished Decoding"}

@@ -180,28 +180,6 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     # return collection, selected_date, selected_vcs, state
 
 
-def update_display(player):
-    tm.init_screen()
-    display_tracks(*player.track_names())
-    tm.clear_bbox(tm.playpause_bbox)
-    if not player.playlist_started:
-        pass
-    elif player.PLAY_STATE == player.STOPPED:
-        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    elif player.PLAY_STATE == player.PLAYING:
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    elif player.PLAY_STATE == player.PAUSED:
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
-
-
-def display_tracks(current_track_name, next_track_name):
-    tm.init_screen()  # Do we need this if not sharing SPI bus?
-    tm.clear_bbox(tm.tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.center()[1], tracklist_color)
-    return
-
-
 def play_pause(player):
     tm.clear_bbox(tm.playpause_bbox)
     if player.is_playing():
@@ -400,7 +378,12 @@ def main_loop(player, coll_dict, state):
             if pPower_old:
                 print("Power DOWN")
             else:
-                if tm.power():
+                print(f"power state is {tm.power()}")
+                if tm.power() == 1:
+                    key_date = set_date(selected_date)
+                    year_new = year_old = tm.y._value
+                    month_new = month_old = tm.m._value
+                    day_new = day_old = tm.d._value
                     player.pause()
                     tm.power(0)
                 else:
@@ -409,7 +392,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 1_500:
+            if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.clear_screen()
@@ -500,17 +483,11 @@ def main_loop(player, coll_dict, state):
                                 collection = c if nshows == 0 else collection
                                 nshows += 1
                         vcs = coll_dict[collection][f"{key_date}"]
-                        tm.clear_bbox(tm.artist_bbox)
-                        tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                     else:
                         vcs = ""
                         collection = ""
-                        tm.clear_bbox(tm.artist_bbox)
-                        tm.tft.write(
-                            pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tracklist_color
-                        )
                     update_venue(vcs, nshows=nshows, collection=collection)
-                    update_display(player)
+                    # update_display(player)
                 except KeyError:
                     tm.clear_bbox(tm.venue_bbox)
                     tm.clear_bbox(tm.artist_bbox)
@@ -520,7 +497,6 @@ def main_loop(player, coll_dict, state):
 
 
 def update_venue(vcs, nshows=1, collection=None):
-    print("Updating venue")
     tm.clear_bbox(tm.venue_bbox)
     tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
     tm.clear_bbox(tm.nshows_bbox)
@@ -529,6 +505,27 @@ def update_venue(vcs, nshows=1, collection=None):
     if collection is not None:
         tm.clear_bbox(tm.artist_bbox)
         tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
+
+
+def update_display(player):
+    display_tracks(*player.track_names())
+    tm.clear_bbox(tm.playpause_bbox)
+    if not player.playlist_started:
+        pass
+    elif player.PLAY_STATE == player.STOPPED:
+        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+    elif player.PLAY_STATE == player.PLAYING:
+        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+    elif player.PLAY_STATE == player.PAUSED:
+        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
+
+
+def display_tracks(current_track_name, next_track_name):
+    tm.init_screen()  # Do we need this if not sharing SPI bus?
+    tm.clear_bbox(tm.tracklist_bbox)
+    tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)
+    tm.tft.write(pfont_small, f"{next_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.center()[1], tracklist_color)
+    return
 
 
 def add_vcs(coll):
