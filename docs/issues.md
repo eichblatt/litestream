@@ -408,3 +408,11 @@ Playing -- Read 5365949/8471774 (63%) of track 1/20 InBuffer: 3618(3%) OutBuffer
 Playing -- Read 5704220/8471774 (67%) of track 1/20 InBuffer: 47056(38%) OutBuffer: 303104(42%)
 
 Lowering the timeout in decode_chunk to 10 ms fixed this problem, as far as I can tell.
+
+
+in 26 ms. Out Buffer Full
+Time 619098. Decoded 4 chunks in 35 ms. Timeout after 1683 Buffer Fulls
+Time 619133. Decoded 4 chunks in 33 ms. Timeout
+Time 619168. Decoded 4 chunks in 34 ms. Timeout
+Time 619215. Decoded 4 chunks in 46 ms. Out Buffer Full
+Time 619386. Decoded 4 chunks in 34 ms. Timeout after 770 Buffer Fulls

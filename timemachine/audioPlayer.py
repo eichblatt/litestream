@@ -281,6 +281,7 @@ class AudioPlayer:
         self.DEBUG = debug
         self.PLAY_STATE = self.STOPPED
         self.sock = None
+        self.audio_out.deinit()
         self.audio_out = None
         self.playlist_started = False
 
@@ -549,6 +550,7 @@ class AudioPlayer:
         if self.sock is not None:  # We might have a socket already from the previous track
             self.sock.close()
 
+        self.decode_chunk(timeout=50)
         self.play_chunk()
         self.sock = socket.socket()
 
@@ -582,6 +584,7 @@ class AudioPlayer:
                 self.sock.close()
                 # Establish a new socket connection to the server
                 self.DEBUG and print("Redirecting to", new_host, new_port, new_path, "Offset", offset)
+                self.decode_chunk(timeout=50)
                 self.play_chunk()
                 self.sock = socket.socket()
                 addr = socket.getaddrinfo(new_host, new_port)[0][-1]
