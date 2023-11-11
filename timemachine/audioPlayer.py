@@ -315,6 +315,7 @@ class AudioPlayer:
         self.I2SAvailable = True
         self.ID3Tag_size = 0
         self.Decoder = None
+        self.audio_out = None
 
         if reset_head:
             if self.ntracks > 0:
