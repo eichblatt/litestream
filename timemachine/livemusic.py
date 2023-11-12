@@ -46,6 +46,7 @@ API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
+# RESET_WHILE_SLEEPING = False
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -267,6 +268,15 @@ def main_loop(player, coll_dict, state):
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
             tm.power(0)
+            # if (
+            #     player.PLAY_STATE == player.STOPPED
+            #     and RESET_WHILE_SLEEPING
+            #     and (DATE_SET_TIME < tm.screen_on_time)  # This machine has been played since bootup.
+            #     and time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (4 * 3600_000)
+            # ):
+            #     print("Rebooting Machine proactively, since it hasn't played in 4 hours")
+            #    import machine
+            #    machine.reset()
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()

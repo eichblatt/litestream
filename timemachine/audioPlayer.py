@@ -281,7 +281,6 @@ class AudioPlayer:
         self.DEBUG = debug
         self.PLAY_STATE = self.STOPPED
         self.sock = None
-        self.audio_out.deinit()
         self.audio_out = None
         self.playlist_started = False
 
@@ -316,6 +315,8 @@ class AudioPlayer:
         self.I2SAvailable = True
         self.ID3Tag_size = 0
         self.Decoder = None
+        if self.audio_out is not None:
+            self.audio_out.deinit()
         self.audio_out = None
 
         if reset_head:
