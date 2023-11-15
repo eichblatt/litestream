@@ -279,6 +279,8 @@ def get_wifi_cred(wifi):
     choices = [x[0].decode().replace('"', "") for x in choices]
     choices = [x for x in choices if x != ""]
     choices = sorted(set(choices), key=choices.index)
+    if len(choices) == 0:
+        raise Exception("No Wifi Choices")
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
@@ -313,55 +315,51 @@ def set_datetime():
         return None
 
 
-def connect_wifi():
+def connect_wifi(calibrate=True):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
-    # log = open('connection_log.py','a')
-    log = None
     if wifi.isconnected():
-        log.write("Already connected") if log is not None else None
         return wifi
 
     if path_exists(WIFI_CRED_PATH):
         with open(WIFI_CRED_PATH, "r") as f:
             wifi_cred = json.load(f)
     else:
+        if calibrate:
+            tm.self_test()
+            tm.calibrate_knobs()
+
+        try:
+            disconnect_wifi()
+        except Exception as e:
+            print(e)
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
             json.dump(wifi_cred, f)
-        tm.self_test()
-        tm.calibrate_knobs()
 
     tm.write("Connecting\nWiFi....", color=yellow_color)
     attempts = 0
-    max_attempts = 7
+    max_attempts = 3
     while (not wifi.isconnected()) & (attempts <= max_attempts):
-        print("Attempting to connect to network")
-        log.write(f"Attempting to connect to network. attempt {attempts}/{max_attempts}\n") if log is not None else None
+        print(f"Attempting to connect to network. attempt {attempts}/{max_attempts}")
         try:
             wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
-            time.sleep(5)
         except Exception as e:
-            log.write(f"Exception {e}") if log is not None else None
-            pass
+            tm.clear_area(0, 50, 160, 30)
+            tm.write(f"Failed attempt\n{attempts}/{max_attempts}", y=50, color=yellow_color, font=pfont_small, clear=False)
+            print(f"Exception {e}")
+            time.sleep(3)
         attempts += 1
     if wifi.isconnected():
-        log.write(f"is connected") if log is not None else None
-        wifi.active(True)
-        wifi.config(pm=network.WLAN.PM_NONE)
+        tm.clear_area(0, 50, 160, 30)
+        tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
         return wifi
     else:
-        log.write(f"failed -- retrying") if log is not None else None
-        tm.tft.write(pfont_small, f"failed. Retrying", 0, 90, st7789.WHITE)
-        with open(f"{WIFI_CRED_PATH}.bak", "w") as f:
-            json.dump(wifi_cred, f)
-        log.write(f"removing wifi_cred") if log is not None else None
+        tm.write("failed.", y=80, color=st7789.RED, clear=False)
         os.remove(WIFI_CRED_PATH)
-        wifi = connect_wifi()
-
-    log.close() if log is not None else None
-    return wifi
+        time.sleep(2)
+        connect_wifi(calibrate=False)
 
 
 def get_current_partition_name():
@@ -428,12 +426,24 @@ def load_state():
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
-        state = {"collection_list": collection_list, "selected_date": selected_date, "selected_collection": selected_collection}
+        boot_mode = state.get("boot_mode", "normal")
+        state = {
+            "collection_list": collection_list,
+            "selected_date": selected_date,
+            "selected_collection": selected_collection,
+            "boot_mode": boot_mode,
+        }
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
         selected_collection = collection_list[0]
-        state = {"collection_list": collection_list, "selected_date": selected_date, "selected_collection": selected_collection}
+        boot_mode = "normal"
+        state = {
+            "collection_list": collection_list,
+            "selected_date": selected_date,
+            "selected_collection": selected_collection,
+            "boot_mode": boot_mode,
+        }
     with open(STATE_PATH, "w") as f:
         json.dump(state, f)
     return state
