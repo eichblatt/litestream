@@ -360,16 +360,6 @@ def connect_wifi(calibrate=True):
         os.remove(WIFI_CRED_PATH)
         time.sleep(2)
         connect_wifi(calibrate=False)
-    # else:
-    #     print(f"failed -- retrying")
-    #     tm.write("failed. Retrying", 0, 90, st7789.WHITE)
-    #     with open(f"{WIFI_CRED_PATH}.bak", "w") as f:
-    #         json.dump(wifi_cred, f)
-    #     print(f"removing wifi_cred")
-    #     os.remove(WIFI_CRED_PATH)
-    #     wifi = connect_wifi()
-
-    # return wifi
 
 
 def get_current_partition_name():
