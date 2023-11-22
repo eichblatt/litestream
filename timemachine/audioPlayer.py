@@ -29,6 +29,7 @@ import gc
 sck_pin = Pin(13)  # Serial clock output
 ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
+mute_pin = Pin(3, Pin.IN, Pin.PULL_UP)  # XSMT on DAC chip
 
 # ---------------------------------------------     InRingBuffer     ------------------------------------------ #
 #

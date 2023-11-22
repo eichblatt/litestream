@@ -243,6 +243,12 @@ def copy_file(src, dest):
     outfile.close()
 
 
+def remove_file(path):
+    if not path_exists(path):
+        return
+    os.remove(path)
+
+
 def remove_dir(path):
     if not path_exists(path):
         return
@@ -341,13 +347,19 @@ def connect_wifi(calibrate=True):
     tm.write("Connecting\nWiFi....", color=yellow_color)
     attempts = 0
     max_attempts = 3
-    while (not wifi.isconnected()) & (attempts <= max_attempts):
+    while (not wifi.isconnected()) and (attempts <= max_attempts):
         print(f"Attempting to connect to network. attempt {attempts}/{max_attempts}")
         try:
-            wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+            if attempts > 0:
+                time.sleep(1)
+                if not wifi.isconnected():
+                    wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+            else:
+                wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
         except Exception as e:
             tm.clear_area(0, 50, 160, 30)
-            tm.write(f"Failed attempt\n{attempts}/{max_attempts}", y=50, color=yellow_color, font=pfont_small, clear=False)
+            if attempts > 1:
+                tm.write(f"Failed attempt\n{attempts}/{max_attempts}", y=50, color=yellow_color, font=pfont_small, clear=False)
             print(f"Exception {e}")
             time.sleep(3)
         attempts += 1
