@@ -76,6 +76,7 @@ def test_update():
         print(f"UpdateException {e}")
         return False
 
+    tm.clear_screen()
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
     tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)

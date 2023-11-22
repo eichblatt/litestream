@@ -34,6 +34,12 @@ first source the file  $HOME/esp/esp-idf/export.sh
 : (idf4.4_py3.10_env) ~/projects/litestream ; cd MicropythonFirmware/latest
 : (idf4.4_py3.10_env) ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 ```
+**NOTE**:
+For the Serial Board version, I need to replace `/dev/ttyACM0` with `/dev/ttyUSB0`. The command becomes:
+```
+: (idf4.4_py3.10_env) ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf4.4_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
+```
+
 Installing the Software
 =======================
 Log into the device with Jama
