@@ -421,7 +421,6 @@ def main_loop(player, coll_dict, state):
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
             print(player)
             update_display(player)
-            # display_tracks(*player.track_names())
 
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
@@ -500,7 +499,6 @@ def main_loop(player, coll_dict, state):
                         vcs = ""
                         collection = ""
                     update_venue(vcs, nshows=nshows, collection=collection)
-                    # update_display(player)
                 except KeyError:
                     tm.clear_bbox(tm.venue_bbox)
                     tm.clear_bbox(tm.artist_bbox)
@@ -521,7 +519,7 @@ def update_venue(vcs, nshows=1, collection=None):
 
 
 def update_display(player):
-    display_tracks(*player.track_names())
+    # display_tracks(*player.track_names())
     tm.clear_bbox(tm.playpause_bbox)
     if not player.playlist_started:
         pass
