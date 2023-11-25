@@ -181,6 +181,10 @@ def add_collection(all_collections):
 
 def update_code():
     print("Updating code")
+    wifi = utils.connect_wifi()
+    if not wifi.isconnected():
+        print("Error -- not connected to wifi")
+        return
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
     tm.clear_screen()
