@@ -29,7 +29,7 @@ import gc
 sck_pin = Pin(13)  # Serial clock output
 ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
-mute_pin = Pin(3, Pin.IN, Pin.PULL_UP)  # XSMT on DAC chip
+mute_pin = Pin(3, Pin.OUT, value=1)  # XSMT on DAC chip
 
 # ---------------------------------------------     InRingBuffer     ------------------------------------------ #
 #
@@ -287,6 +287,7 @@ class AudioPlayer:
 
         self.playlist = self.tracklist = []
         self.ntracks = 0
+        self.mute_pin = mute_pin
 
         # The index of the current track in the playlist that we are playing (actually this is which track we are currently decoding - playback lags by the size of the OutBuffer)
         self.current_track = self.next_track = self.track_being_read = None
@@ -308,6 +309,7 @@ class AudioPlayer:
         self.reset_player()
 
     def reset_player(self, reset_head=True):
+        self.mute_audio()
         self.PlayLoopRunning = False
         self.FinishedStreaming = False
         self.FinishedDecoding = False
@@ -370,6 +372,12 @@ class AudioPlayer:
             retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
             retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
         return retstring
+
+    def mute_audio(self):
+        self.mute_pin(0)
+
+    def unmute_audio(self):
+        self.mute_pin(1)
 
     @micropython.native
     def play_chunk(self):
@@ -468,6 +476,7 @@ class AudioPlayer:
         return host, port, path
 
     def play(self):
+        self.unmute_audio()
         if self.PLAY_STATE == self.STOPPED:
             self.InBuffer.InitBuffer()
             self.read_header(self.current_track)
@@ -482,6 +491,7 @@ class AudioPlayer:
     def pause(self):
         if self.PLAY_STATE == self.PLAYING:
             print(f"Pausing URL {self.playlist[self.current_track]}")
+            self.mute_audio()
             self.PLAY_STATE = self.PAUSED
 
     def rewind(self):
