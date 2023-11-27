@@ -321,7 +321,7 @@ def set_datetime():
         return None
 
 
-def connect_wifi(calibrate=True):
+def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -345,24 +345,24 @@ def connect_wifi(calibrate=True):
             json.dump(wifi_cred, f)
 
     tm.write("Connecting\nWiFi....", color=yellow_color)
-    attempts = 0
-    max_attempts = 3
-    while (not wifi.isconnected()) and (attempts <= max_attempts):
-        print(f"Attempting to connect to network. attempt {attempts}/{max_attempts}")
-        try:
-            if attempts > 0:
-                time.sleep(1)
-                if not wifi.isconnected():
-                    wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
-            else:
-                wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
-        except Exception as e:
-            tm.clear_area(0, 50, 160, 30)
-            if attempts > 1:
-                tm.write(f"Failed attempt\n{attempts}/{max_attempts}", y=50, color=yellow_color, font=pfont_small, clear=False)
-            print(f"Exception {e}")
-            time.sleep(3)
-        attempts += 1
+
+    wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+    s = wifi.status()
+    wait_time = 0
+
+    while s == network.STAT_CONNECTING:
+        time.sleep_ms(retry_time)
+        wait_time += retry_time
+        if wifi.isconnected():
+            print(f"Returning connected after {wait_time} ms")
+            break
+        s = wifi.status()
+        print("Status", s)
+        if wait_time > timeout:
+            print(f"Timed out after {wait_time} ms")
+            wifi.disconnect()
+            break
+
     if wifi.isconnected():
         tm.clear_area(0, 50, 160, 30)
         tm.write("Connected", y=50, color=st7789.WHITE, clear=False)

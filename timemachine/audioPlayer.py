@@ -326,6 +326,7 @@ class AudioPlayer:
             if self.ntracks > 0:
                 self.current_track = 0
                 self.next_track = 1 if self.ntracks > 1 else None
+                self.callbacks["display"](*self.track_names())
 
         # A list of offsets into the InBuffer where the tracks end. This tells the decoder when to move onto the next track by decoding the next header
         self.TrackEnds = []
@@ -368,7 +369,7 @@ class AudioPlayer:
             status = " !?! "
         retstring = f"{status} --"
         if self.PLAY_STATE != self.STOPPED:
-            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]}'
+            retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]-1}'
             retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
             retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
         return retstring
