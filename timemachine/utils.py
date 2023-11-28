@@ -356,12 +356,11 @@ def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
         if wifi.isconnected():
             print(f"Returning connected after {wait_time} ms")
             break
-        s = wifi.status()
-        print("Status", s)
-        if wait_time > timeout:
+        elif wait_time > timeout:
             print(f"Timed out after {wait_time} ms")
             wifi.disconnect()
             break
+        s = wifi.status()
 
     if wifi.isconnected():
         tm.clear_area(0, 50, 160, 30)
