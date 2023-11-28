@@ -512,14 +512,14 @@ class AudioPlayer:
     def set_next_track(self):
         if self.current_track is None:
             return None
-        self.next_track = self.current_track + 1 if self.ntracks > (self.current_track + 1) else None
+        self.next_track = self.current_track + 1 if (self.ntracks > (self.current_track + 1)) else None
         self.DEBUG and print(f"next track set to {self.next_track}")
         return self.next_track
 
     def advance_track(self, increment=1):
         if self.current_track is None:
             return
-        if not 0 <= (self.current_track + increment) <= self.ntracks:
+        if not 0 <= (self.current_track + increment) < self.ntracks:
             if self.PLAY_STATE == self.PLAYING:
                 self.stop()
             return
@@ -527,8 +527,8 @@ class AudioPlayer:
         self.stop(reset_head=False)
         self.current_track += increment
         self.next_track = self.set_next_track()
-        print(self)
         self.callbacks["display"](*self.track_names())
+        print(self)
 
     def is_paused(self):
         return self.PLAY_STATE == self.PAUSED
