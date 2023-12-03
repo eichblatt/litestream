@@ -228,10 +228,10 @@ def reconfigure():
     choice = utils.select_option(
         "Reconfigure",
         [
+            "Reboot",
             "Collections",
             "Update Code",
             "Update Firmware",
-            "Reboot",
             "Wifi",
             "Test Buttons",
             "Calibrate Knobs",

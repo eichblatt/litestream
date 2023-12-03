@@ -217,7 +217,8 @@ Notes:
 ======
 I got errors and had to rm -r ~/.espressif/ and then ./install.sh esp32,esp32s3 again
 The ESP-IDF build system does not support spaces in the paths to either ESP-IDF or to projects
-No longer true? Keeping for posterity. Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. Have to run menuconfig and set the single core flag (under ComponentConfig->FreeRTOS->Run FreeRTOS only on first Core) - not sure this is relevant any more
+No longer true? Keeping for posterity. Micropython interrupts don't work on ESP32-S3 - see https://github.com/micropython/micropython/issues/8488. 
+    Have to run menuconfig and set the single core flag (under ComponentConfig->FreeRTOS->Run FreeRTOS only on first Core) - not sure this is relevant any more
 If you get errors about wrong paths for the compiler, you may need to add the correct paths.
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-g++:$PATH
 export PATH=/home/mikealex/.espressif/tools/xtensa-esp32s3-elf/esp-2021r2-patch5-8.4.0/xtensa-esp32s3-elf/bin/xtensa-esp32s3-elf-gcc:$PATH
