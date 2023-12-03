@@ -413,6 +413,10 @@ def update_firmware():
     return 0
 
 
+def get_tape_id():
+    return load_state()["selected_tape_id"]
+
+
 def get_collection_list():
     return load_state()["collection_list"]
 
@@ -437,22 +441,26 @@ def load_state():
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
+        selected_tape_id = state.get("selected_tape_id", "unknown")
         boot_mode = state.get("boot_mode", "normal")
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
+            "selected_tape_id": selected_tape_id,
             "boot_mode": boot_mode,
         }
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
         selected_collection = collection_list[0]
+        selected_tape_id = "unknown"
         boot_mode = "normal"
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
+            "selected_tape_id": selected_tape_id,
             "boot_mode": boot_mode,
         }
     with open(STATE_PATH, "w") as f:
