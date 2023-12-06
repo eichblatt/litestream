@@ -1,14 +1,6 @@
+
 #pragma once
-#pragma GCC optimize "Os"
-//#pragma pack(1)
-//#pragma GCC optimize "std=gnu++11"
-//#pragma GCC target "longcalls"
-//#pragma GCC optimize "function-sections"
-//#pragma GCC optimize "data-sections"
-////#pragma GCC optimize "reorder-blocks"
-////#pragma GCC optimize "no-jump-tables"
-////#pragma GCC optimize "no-tree-switch-conversion"
-//#pragma GCC optimize "no-rtti"
+//#pragma GCC optimize ("O3")
 //#pragma GCC diagnostic ignored "-Wnarrowing"
 
 /********************************************************************
@@ -28,7 +20,7 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 09.10.2023
+ *  Updated on: 03.12.2023
  */
 
 #ifdef __cplusplus
