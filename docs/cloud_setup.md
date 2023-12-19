@@ -314,3 +314,30 @@ def delete_bucket(bucket_name):
 ```
 # Also
 github copilot extension in vscode
+
+# Cloud Run
+
+The App Engine service worked great, but it runs 24/7 and costs about $1.50/day to keep it up.
+Most of the time, the server doesn't actually need to be running. It only needs to populate the files on the cloud when a new collection is added.
+
+I *think* that using CloudRun instead would enable the server to spin up and take requests only when a request for a URL is not available, for example when a new collection is needed.
+
+Instructions on how to set up a CloudRun job are pretty good. See
+
+https://console.cloud.google.com/run?tutorial=run--quickstart-github-repo&project=able-folio-397115
+
+I have created a new github repo, https://github.com/eichblatt/cloud_template which creates all this "docker" stuff. I'm not really sure what it is. But I _think_ that if I add my app.py to this repository, and put the dev branch of the deadstream repo as a requirement, (in requirements.txt), that it will do what I want.
+
+Derek also tells me that I want to use https triggering: 
+https://cloud.google.com/run/docs/triggering/https-request
+
+Similary, I could use this: https://cloud.google.com/functions/docs/calling/http which is even simpler.
+
+Also see this: https://cloud.google.com/run/docs/quickstarts/build-and-deploy/deploy-python-service
+
+
+Running gcloud command: run deploy hello-world-1 --project able-folio-397115 --image gcr.io/able-folio-397115/hello-world-1 --client-name Cloud Code for VS Code --client-version 2.2.0 --platform managed --region us-central1 --allow-unauthenticated --port 8080 --cpu 1 --memory 256Mi --concurrency 80 --timeout 300 --clear-env-vars
+
+## repos docker must be in google cloud
+I am unable to put a github link in the requirements.txt file, so I thin I'll need to port the entire repo over to google cloud.
+See https://cloud.google.com/artifact-registry/docs/python/store-python
