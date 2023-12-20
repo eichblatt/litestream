@@ -15,7 +15,7 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 04.12.2023
+ *  Updated on: 13.12.2023
  */
 //----------------------------------------------------------------------------------------------------------------------
 //                                     O G G    I M P L.
@@ -25,9 +25,50 @@
 #include "alloca.h"
 
 #define __malloc_heap_psram(size) \
-    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+    m_malloc(size)
+    //my_malloc(size)
+    //heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 #define __calloc_heap_psram(ch, size) \
-    heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+    memset(m_malloc(size * ch), 0, size * ch)
+    //my_calloc(ch, size)
+    //heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+
+#define free(obj) \
+    m_free(obj)
+    //my_free(obj)
+
+void my_free(void* p)
+{
+    printf("Freeing %p\n", p);
+    m_free(p);
+    printf("Freed\n");
+}
+
+void* my_malloc(size_t nbytes)
+{
+    //void* p = heap_caps_malloc_prefer(nbytes, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
+    void* p = m_malloc(nbytes);
+    if (p != NULL)
+        printf("malloced %u at %p\n", nbytes, p);
+    else
+        printf("Failed to malloc %u\n", nbytes);
+    return p;
+}
+
+void* my_calloc(size_t n, size_t elem_size) {
+    //void* p = heap_caps_calloc_prefer(n, elem_size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
+    const size_t nbytes = n * elem_size;
+    void* p = m_malloc(nbytes);
+    if (p != NULL) 
+    {
+        printf("calloced %u at %p\n", nbytes, p);
+        // Initialize memory to zero using memset
+        memset(p, 0, nbytes);
+    }
+    else
+        printf("Failed to calloc %u\n", nbytes);
+    return p;
+}
 
 
 // global vars
@@ -45,12 +86,18 @@ uint16_t  s_setupHeaderLength = 0;
 uint8_t   s_pageNr = 4;
 uint16_t  s_oggHeaderSize = 0;
 uint8_t   s_vorbisChannels = 0;
-uint16_t  s_vorbisSamplerate = 0;
+uint32_t  s_vorbisSamplerate = 0;
 uint16_t  s_lastSegmentTableLen = 0;
-uint8_t  *s_lastSegmentTable = NULL;
+
+#define s_lastSegmentTable mpVorbis->s_lastSegmentTable
+//uint8_t  *s_lastSegmentTable = NULL;
+
 uint32_t  s_vorbisBitRate = 0;
 uint32_t  s_vorbisSegmentLength = 0;
-char     *s_vorbisChbuf = NULL;
+
+#define s_vorbisChbuf mpVorbis->s_vorbisChbuf
+//char     *s_vorbisChbuf = NULL;
+
 int32_t   s_vorbisValidSamples = 0;
 uint8_t   s_vorbisOldMode = 0;
 uint32_t  s_blocksizes[2];
@@ -61,7 +108,9 @@ uint8_t   s_nrOfResidues = 0;
 uint8_t   s_nrOfMaps = 0;
 uint8_t   s_nrOfModes = 0;
 
-uint16_t *s_vorbisSegmentTable = NULL;
+#define s_vorbisSegmentTable mpVorbis->s_vorbisSegmentTable
+//uint16_t *s_vorbisSegmentTable = NULL;
+
 uint16_t  s_oggPage3Len = 0; // length of the current audio segment
 uint8_t   s_vorbisSegmentTableSize = 0;
 int16_t   s_vorbisSegmentTableRdPtr = -1;
@@ -70,13 +119,26 @@ float     s_vorbisCompressionRatio = 0;
 
 bitReader_t            s_bitReader;
 
-codebook_t            *s_codebooks = NULL;
-vorbis_info_floor_t  **s_floor_param = NULL;
-int8_t                *s_floor_type = NULL;
-vorbis_info_residue_t *s_residue_param = NULL;
-vorbis_info_mapping_t *s_map_param = NULL;
-vorbis_info_mode_t    *s_mode_param = NULL;
-vorbis_dsp_state_t    *s_dsp_state = NULL;
+#define s_codebooks mpVorbis->s_codebooks
+//codebook_t            *s_codebooks = NULL;
+
+#define s_floor_param mpVorbis->s_floor_param
+//vorbis_info_floor_t  **s_floor_param = NULL;
+
+#define s_floor_type mpVorbis->s_floor_type
+//int8_t                *s_floor_type = NULL;
+
+#define s_residue_param mpVorbis->s_residue_param
+//vorbis_info_residue_t *s_residue_param = NULL;
+
+#define s_map_param mpVorbis->s_map_param
+//vorbis_info_mapping_t *s_map_param = NULL;
+
+#define s_mode_param mpVorbis->s_mode_param
+//vorbis_info_mode_t    *s_mode_param = NULL;
+
+#define s_dsp_state mpVorbis->s_dsp_state
+//vorbis_dsp_state_t    *s_dsp_state = NULL;
 
 bool VORBISDecoder_AllocateBuffers(){
     s_vorbisSegmentTable = (uint16_t*)__calloc_heap_psram(256, sizeof(uint16_t));
@@ -123,13 +185,8 @@ void VORBISDecoder_FreeBuffers(){
 
     if(s_map_param){free(s_map_param); s_map_param = NULL;}
 
-
-    if(s_mode_param) {
-        if(s_mode_param){free(s_mode_param); s_mode_param = NULL;}
-    }
-
-
-
+    if(s_mode_param) {free(s_mode_param); s_mode_param = NULL;}
+    
     if(s_dsp_state){vorbis_dsp_destroy(s_dsp_state); s_dsp_state = NULL;}
 }
 void VORBISDecoder_ClearBuffers(){
@@ -146,6 +203,7 @@ void VORBISsetDefaults(){
     s_f_oggFirstPage = false;
     s_f_oggContinuedPage = false;
     s_f_oggLastPage = false;
+    if(s_dsp_state){vorbis_dsp_destroy(s_dsp_state); s_dsp_state = NULL;}
     s_vorbisChannels = 0;
     s_vorbisSamplerate = 0;
     s_vorbisBitRate = 0;
@@ -163,7 +221,6 @@ void VORBISsetDefaults(){
 //----------------------------------------------------------------------------------------------------------------------
 
 int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
-
     int ret = 0;
 
     if(s_f_vorbisParseOgg){
@@ -395,8 +452,8 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
     }
     s_vorbisChannels = channels;
 
-    if(sampleRate < 4096 || sampleRate > 64000){
-        log_e("sampleRate is not valid sr=%i", sampleRate);
+    if(sampleRate < 4096 || sampleRate > 96000){ //M.A.
+        log_e("sampleRate is not valid sr=%u", sampleRate);
         return -1;
     }
     s_vorbisSamplerate = sampleRate;
@@ -408,7 +465,6 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
 }
 //----------------------------------------------------------------------------------------------------------------------
 int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https://xiph.org/vorbis/doc/v-comment.html
-
     // first bytes are: '.vorbis'
     uint16_t pos = 7;
     uint32_t vendorLength       = *(inbuf + pos + 3) << 24; // lengt of vendor string, e.g. Xiph.Org libVorbis I 20070622
@@ -420,6 +476,7 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
        log_e("vorbis comment too long");
        return 0;
     }
+
     memcpy(s_vorbisChbuf, inbuf + 11, vendorLength);
     s_vorbisChbuf[vendorLength] = '\0';
     pos += 4 + vendorLength;
@@ -452,11 +509,16 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
         idx =        VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "artist=", 10);
         if(idx != 0) VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "ARTIST=", 10);
         if(idx == 0){
-            artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7);
+            artist = (char*)__malloc_heap_psram(commentLength - 7); //M.A.
+            artist = strncpy(artist, (const char*)(s_vorbisChbuf + 7), commentLength - 7);
+            //artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7);
         }
         idx =        VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "title=", 10);
         if(idx != 0) VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "TITLE=", 10);
-        if(idx == 0){ title = strndup((const char*)(s_vorbisChbuf + 6), commentLength - 6);
+        if(idx == 0){
+            title = (char*)__malloc_heap_psram(commentLength - 6); //M.A.
+            title = strncpy(title, (const char*)(s_vorbisChbuf + 6), commentLength - 6);
+            //title = strndup((const char*)(s_vorbisChbuf + 6), commentLength - 6);
         }
     }
     if(artist && title){
@@ -480,7 +542,6 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
 }
 //----------------------------------------------------------------------------------------------------------------------
 int parseVorbisCodebook(){
-
     s_bitReader.headptr += 7;
     s_bitReader.length = s_oggPage3Len;
 
@@ -847,7 +908,6 @@ int vorbis_book_unpack(codebook_t *s) {
                         if(s->q_val) {free(s->q_val), s->q_val = NULL;}
                         goto _errout;
                     }
-
                     if(s->q_val) {free(s->q_val), s->q_val = NULL;} /* about to go out of scope; _make_decode_table was using it */
                 }
                 else {
@@ -868,7 +928,6 @@ int vorbis_book_unpack(codebook_t *s) {
                     s->dec_type = 2;
                     s->dec_nodeb = _determine_node_bytes(s->used_entries, (_ilog(quantvals - 1) * s->dim + 8) / 8);
                     s->dec_leafw = _determine_leaf_words(s->dec_nodeb, (_ilog(quantvals - 1) * s->dim + 8) / 8);
-
                     ret = _make_decode_table(s, lengthlist, quantvals, maptype);
                     if(ret){
                         goto _errout;
@@ -891,7 +950,6 @@ int vorbis_book_unpack(codebook_t *s) {
             }
             else {
                 /* use dec_type 3: scalar offset into packed value array */
-
                 s->dec_type = 3;
                 s->dec_nodeb = _determine_node_bytes(s->used_entries, _ilog(s->used_entries - 1) / 8 + 1);
                 s->dec_leafw = _determine_leaf_words(s->dec_nodeb, _ilog(s->used_entries - 1) / 8 + 1);
@@ -1098,7 +1156,6 @@ int _make_decode_table(codebook_t *s, char *lengthlist, uint8_t quantvals, int m
 
         return 0;
     }
-
     work = (uint32_t *)__calloc_heap_psram((uint32_t)(s->used_entries * 2 - 2) , sizeof(*work));
     if(!work) log_e("oom");
 
@@ -1355,7 +1412,6 @@ void vorbis_book_clear(codebook_t *b) {
 }
 //---------------------------------------------------------------------------------------------------------------------
  vorbis_info_floor_t* floor0_info_unpack() {
-
     int               j;
 
     vorbis_info_floor_t *info = (vorbis_info_floor_t *)__malloc_heap_psram(sizeof(*info));
@@ -1384,7 +1440,6 @@ err_out:
 }
 //---------------------------------------------------------------------------------------------------------------------
 vorbis_info_floor_t* floor1_info_unpack() {
-
     int j, k, count = 0, maxclass = -1, rangebits;
 
     vorbis_info_floor_t *info = (vorbis_info_floor_t *)__calloc_heap_psram(1, sizeof(vorbis_info_floor_t));
@@ -1670,7 +1725,7 @@ void vorbis_dsp_destroy(vorbis_dsp_state_t *v) {
             }
             if(v->mdctright){free(v->mdctright); v->mdctright = NULL;}
         }
-        if(v){free(v); v = NULL;}
+        free(v);
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
