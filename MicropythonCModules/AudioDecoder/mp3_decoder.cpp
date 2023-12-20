@@ -6,6 +6,8 @@
  *  Updated on: 29.03.2023
  */
 #include "mp3_decoder.h"
+
+
 /* clip to range [-2^n, 2^n - 1] */
 #if 0 //Fast on ARM:
 #define CLIP_2N(y, n) { \
@@ -36,22 +38,43 @@ const uint8_t  m_NGRANS_MPEG1           =2;
 const uint8_t  m_NGRANS_MPEG2           =1;
 const uint32_t m_SQRTHALF               =0x5a82799a;  // sqrt(0.5) in Q31 format
 
+#define m_MP3FrameInfo mpMP3->m_MP3FrameInfo
+//MP3FrameInfo_t *m_MP3FrameInfo;
 
-MP3FrameInfo_t *m_MP3FrameInfo;
 SFBandTable_t m_SFBandTable;
 StereoMode_t m_sMode;  /* mono/stereo mode */
 MPEGVersion_t m_MPEGVersion;  /* version ID */
-FrameHeader_t *m_FrameHeader;
+
+#define m_FrameHeader mpMP3->m_FrameHeader
+//FrameHeader_t *m_FrameHeader;
+
 SideInfoSub_t m_SideInfoSub[m_MAX_NGRAN][m_MAX_NCHAN];
-SideInfo_t *m_SideInfo;
+
+#define m_SideInfo mpMP3->m_SideInfo
+//SideInfo_t *m_SideInfo;
+
 CriticalBandInfo_t m_CriticalBandInfo[m_MAX_NCHAN];  /* filled in dequantizer, used in joint stereo reconstruction */
-DequantInfo_t *m_DequantInfo;
-HuffmanInfo_t *m_HuffmanInfo;
-IMDCTInfo_t *m_IMDCTInfo;
+
+#define m_DequantInfo mpMP3->m_DequantInfo
+//DequantInfo_t *m_DequantInfo;
+
+#define m_HuffmanInfo mpMP3->m_HuffmanInfo
+//HuffmanInfo_t *m_HuffmanInfo;
+
+#define m_IMDCTInfo mpMP3->m_IMDCTInfo
+//IMDCTInfo_t *m_IMDCTInfo;
+
 ScaleFactorInfoSub_t m_ScaleFactorInfoSub[m_MAX_NGRAN][m_MAX_NCHAN];
-ScaleFactorJS_t *m_ScaleFactorJS;
-SubbandInfo_t *m_SubbandInfo;
-MP3DecInfo_t *m_MP3DecInfo;
+
+#define m_ScaleFactorJS mpMP3->m_ScaleFactorJS
+//ScaleFactorJS_t *m_ScaleFactorJS;
+
+#define m_SubbandInfo mpMP3->m_SubbandInfo
+//SubbandInfo_t *m_SubbandInfo;
+
+#define m_MP3DecInfo mpMP3->m_MP3DecInfo
+//MP3DecInfo_t *m_MP3DecInfo;
+
 
 const unsigned short huffTable[4242] PROGMEM = {
     /* huffTable01[9] */
@@ -1528,15 +1551,18 @@ void MP3Decoder_ClearBuffer(void) {
  *
  **********************************************************************************************************************/
 
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+//#ifdef CONFIG_IDF_TARGET_ESP32S3
     // ESP32-S3: If there is PSRAM, prefer it
     #define __malloc_heap_psram(size) \
-        heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
-#else
+        m_malloc(size)
+    //    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
+//#else
     // ESP32, PSRAM is too slow, prefer SRAM
-    #define __malloc_heap_psram(size) \
-        heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
-#endif
+  //  #define __malloc_heap_psram(size) 
+  //      heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
+//#endif
+#define free(obj) \
+    m_free(obj)
 
 bool MP3Decoder_AllocateBuffers(void) {
     if(!m_MP3DecInfo)       {m_MP3DecInfo    = (MP3DecInfo_t*)    __malloc_heap_psram(sizeof(MP3DecInfo_t)   );}
