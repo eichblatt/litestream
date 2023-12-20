@@ -1,6 +1,18 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #pragma once
-//#pragma GCC optimize ("O3")
+#pragma GCC optimize "Os"
+//#pragma pack(1)
+//#pragma GCC optimize "std=gnu++11"
+//#pragma GCC target "longcalls"
+//#pragma GCC optimize "function-sections"
+//#pragma GCC optimize "data-sections"
+////#pragma GCC optimize "reorder-blocks"
+////#pragma GCC optimize "no-jump-tables"
+////#pragma GCC optimize "no-tree-switch-conversion"
+//#pragma GCC optimize "no-rtti"
 //#pragma GCC diagnostic ignored "-Wnarrowing"
 
 /********************************************************************
@@ -20,14 +32,13 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 03.12.2023
+ *  Updated on: 09.10.2023
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 #include "Arduino.h"
+#include "Decoder.h"
 
 #define VI_FLOORB       2
 #define VIF_POSIT      63
@@ -98,7 +109,7 @@ typedef struct{
     uint8_t        class_subbook[8]; /* [VIF_CLASS][subs] */
 } floor1class_t;
 
-typedef struct{
+typedef struct _vorbis_info_floor{
     int            order;
     int32_t        rate;
     int32_t        barkmap;
@@ -149,7 +160,7 @@ typedef struct _vorbis_info_mapping{
     coupling_step_t *coupling;
 } vorbis_info_mapping_t;
 
-typedef struct {  // mode
+typedef struct _vorbis_info_mode{  // mode
     uint8_t blockflag;
     uint8_t mapping;
 } vorbis_info_mode_t;
