@@ -7,7 +7,10 @@ extern "C" {
 #pragma GCC optimize ("Os")
 
 #include "Arduino.h"
+#include "Decoder.h"
 #include "assert.h"
+#include "py/runtime.h"
+
 
 // static const uint8_t  m_HUFF_PAIRTABS          =32;
 // static const uint8_t  m_BLOCK_SIZE             =18;
