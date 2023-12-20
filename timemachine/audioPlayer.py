@@ -19,10 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import re, socket, time
 
 try:
-    import MP3Decoder, VorbisDecoder
+    import AudioDecoder
+
+    VorbisDecoder = AudioDecoder.VorbisDecoder()
+    MP3Decoder = AudioDecoder.MP3Decoder()
 except ImportError:
-    import VorbisPlayer as VorbisDecoder
-    import MP3Player as MP3Decoder
+    import MP3Decoder, VorbisDecoder
+
+    # import VorbisPlayer as VorbisDecoder
+    # import MP3Player as MP3Decoder
 from machine import Pin, I2S
 import gc
 

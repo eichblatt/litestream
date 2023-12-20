@@ -21,3 +21,4 @@ typedef long long int64_t;
 
 #include <esp_heap_caps.h>
 #include <string.h>
+#include "py/runtime.h"

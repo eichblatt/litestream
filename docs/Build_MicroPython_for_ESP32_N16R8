@@ -20,7 +20,7 @@ Set up the C modules (Display Driver and Audio Decoder) - only need to do this o
 ==================================================================================
 cd $HOME
 mkdir modules
-nano micropython.cmake
+nano ~/modules/micropython.cmake
 
 Add the following lines:
 # This top-level micropython.cmake is responsible for listing

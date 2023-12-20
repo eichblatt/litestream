@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #pragma once
 #pragma GCC optimize "Os"
 //#pragma pack(1)
@@ -31,11 +35,10 @@
  *  Updated on: 09.10.2023
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 #include "Arduino.h"
+#include "Decoder.h"
 
 #define VI_FLOORB       2
 #define VIF_POSIT      63
@@ -106,7 +109,7 @@ typedef struct{
     uint8_t        class_subbook[8]; /* [VIF_CLASS][subs] */
 } floor1class_t;
 
-typedef struct{
+typedef struct _vorbis_info_floor{
     int            order;
     int32_t        rate;
     int32_t        barkmap;
@@ -157,7 +160,7 @@ typedef struct _vorbis_info_mapping{
     coupling_step_t *coupling;
 } vorbis_info_mapping_t;
 
-typedef struct {  // mode
+typedef struct _vorbis_info_mode{  // mode
     uint8_t blockflag;
     uint8_t mapping;
 } vorbis_info_mode_t;

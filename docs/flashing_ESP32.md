@@ -30,14 +30,14 @@ first source the file  $HOME/esp/esp-idf/export.sh
 
 : ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
-: (idf5.0_py3.10_env) ~/projects/litestream ; pip3 install pyserial   # This only needs to be done once.
-: (idf5.0_py3.10_env) ~/projects/litestream ; cd MicropythonFirmware/latest
-: (idf5.0_py3.10_env) ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
+: idf5.0_py3.10_env ~/projects/litestream ; pip3 install pyserial   # This only needs to be done once.
+: idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
+: idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 ```
 **NOTE**:
 For the Serial Board version, I need to replace `/dev/ttyACM0` with `/dev/ttyUSB0`. The command becomes:
 ```
-: (idf5.0_py3.10_env) ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
+: idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 ```
 
 Installing the Software
@@ -46,7 +46,7 @@ Log into the device with Jama
 ```
 : ~ ; cd ~/projects/ESP32-MPY-Jama/
 : ~/projects/ESP32-MPY-Jama ; . venv/bin/activate
-: (jama_env) ~/ESP32-MPY-Jama ; python3 src/app.py 
+: jama_env ~/ESP32-MPY-Jama ; python3 src/app.py 
 ```
 Connect to Wifi on the Jama. Then in the REPL, run these commands:
 ```
