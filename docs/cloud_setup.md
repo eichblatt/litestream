@@ -341,3 +341,13 @@ Running gcloud command: run deploy hello-world-1 --project able-folio-397115 --i
 ## repos docker must be in google cloud
 I am unable to put a github link in the requirements.txt file, so I thin I'll need to port the entire repo over to google cloud.
 See https://cloud.google.com/artifact-registry/docs/python/store-python
+
+## creating a wheel
+```
+:  ~/projects/deadstream ; python3 setup.py bdist_wheel
+```
+This put the wheel in the dist folder.
+```
+: /home/steve/env ~/python-quickstart ; cp ~/projects/deadstream/dist/* dist/.
+: /home/steve/env ~/python-quickstart ; python3 -m twine upload --repository-url https://us-central1-python.pkg.dev/able-folio-397115/quickstart-python-repo/ dist/*
+```
