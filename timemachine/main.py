@@ -271,7 +271,8 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
     tm.tft.write(pfont_med, "Loading", 0, 80, yellow_color)
-    uversion = sys.version.split(" ")[2]
+    version_strings = sys.version.split(" ")
+    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
 
     start_time = time.ticks_ms()
@@ -286,7 +287,6 @@ def basic_main():
     if dt is not None:
         print(f"Date set to {dt}")
         tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
-    time.sleep(2)
     tm.clear_screen()
     return wifi
 
