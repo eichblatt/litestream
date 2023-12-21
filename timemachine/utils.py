@@ -21,6 +21,7 @@ import network
 import ntptime
 import os
 import st7789
+import sys
 import time
 
 import fonts.NotoSans_18 as pfont_small
@@ -38,8 +39,6 @@ nshows_color = st7789.color565(0, 100, 255)
 
 
 def reload(mod):
-    import sys
-
     z = __import__(mod)
     del z
     del sys.modules[mod]
@@ -345,6 +344,9 @@ def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
             json.dump(wifi_cred, f)
 
     tm.write("Connecting\nWiFi....", color=yellow_color)
+    version_strings = sys.version.split(" ")
+    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
+    tm.tft.write(pfont_small, f"{uversion}", 0, 45, st7789.WHITE)
 
     wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     s = wifi.status()
