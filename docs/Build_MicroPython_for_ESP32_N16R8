@@ -83,6 +83,13 @@ In the FreeRTOS background task, replace the call to mp_sched_schedule with one 
 mp_sched_schedule_node(&self->I2S_node, call_I2S_callback);
 
 
+Allow the AudioDecoder C module to use tracked memory allocation
+================================================================
+nano ~/micropython/ports/esp32/mpconfigport.h
+Add the following:
+#define MICROPY_TRACKED_ALLOC (1)
+
+
 Fix the SPI hang issue
 ======================
 nano ~/micropython/ports/esp32/machine_hw_spi.c
