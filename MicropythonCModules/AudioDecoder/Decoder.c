@@ -3,7 +3,6 @@
 
 ////////////////////////// Vorbis functions //////////////////////////
 
-Vorbis_Decoder_obj_t *mpVorbis;
 const mp_obj_type_t Vorbis_Decoder_type;
 
 STATIC void Decoder_Vorbis_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -21,7 +20,6 @@ STATIC mp_obj_t Decoder_Vorbis_make_new(const mp_obj_type_t *type, size_t n_args
     self->base.type = &Vorbis_Decoder_type;
     //self->a = mp_obj_get_int(args[0]);
     //self->b = mp_obj_get_int(args[1]);
-    mpVorbis = self;
     return MP_OBJ_FROM_PTR(self);
 }
 
@@ -38,18 +36,6 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_sum_obj, 4, 4, Decoder_sum);*/
 
 STATIC mp_obj_t Decoder_Vorbis_Init(mp_obj_t self_in)
 {
-    Vorbis_Decoder_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    self->s_lastSegmentTable = NULL;
-    self->s_vorbisSegmentTable = NULL;
-    self->s_vorbisChbuf = NULL;
-    self->s_map_param = NULL;
-    self->s_mode_param = NULL;
-    self->s_floor_param = NULL;
-    self->s_residue_param = NULL;
-    self->s_codebooks = NULL;
-    self->s_floor_type = NULL;
-    self->s_dsp_state = NULL;
-
     int Result;
     Result = VORBISDecoder_AllocateBuffers();
 
@@ -170,7 +156,6 @@ const mp_obj_type_t Vorbis_Decoder_type = {
 
 ////////////////////////// MP3 functions //////////////////////////
 
-MP3_Decoder_obj_t *mpMP3;
 const mp_obj_type_t MP3_Decoder_type;
 
 STATIC void Decoder_MP3_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -187,7 +172,6 @@ STATIC mp_obj_t Decoder_MP3_make_new(const mp_obj_type_t *type, size_t n_args, s
     mp_arg_check_num(n_args, n_kw, 0, 0, true);
     MP3_Decoder_obj_t *self = m_new_obj(MP3_Decoder_obj_t);
     self->base.type = &MP3_Decoder_type;
-    mpMP3 = self;
     return MP_OBJ_FROM_PTR(self);
 }
 
