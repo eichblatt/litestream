@@ -36,7 +36,6 @@ extern "C" {
  */
 
 
-
 #include "Arduino.h"
 #include "Decoder.h"
 
