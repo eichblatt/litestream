@@ -25,16 +25,18 @@
 #include "alloca.h"
 
 #define __malloc_heap_psram(size) \
-    m_malloc(size)
+    m_tracked_calloc(1, size)
     //my_malloc(size)
     //heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 #define __calloc_heap_psram(ch, size) \
-    memset(m_malloc(size * ch), 0, size * ch)
+    m_tracked_calloc(ch, size)
+    //memset(m_malloc(size * ch), 0, size * ch)
     //my_calloc(ch, size)
     //heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 
 #define free(obj) \
-    m_free(obj)
+    m_tracked_free(obj)
+    //m_free(obj)
     //my_free(obj)
 
 void my_free(void* p)
@@ -89,14 +91,14 @@ uint8_t   s_vorbisChannels = 0;
 uint32_t  s_vorbisSamplerate = 0;
 uint16_t  s_lastSegmentTableLen = 0;
 
-#define s_lastSegmentTable mpVorbis->s_lastSegmentTable
-//uint8_t  *s_lastSegmentTable = NULL;
+//#define s_lastSegmentTable mpVorbis->s_lastSegmentTable
+uint8_t  *s_lastSegmentTable = NULL;
 
 uint32_t  s_vorbisBitRate = 0;
 uint32_t  s_vorbisSegmentLength = 0;
 
-#define s_vorbisChbuf mpVorbis->s_vorbisChbuf
-//char     *s_vorbisChbuf = NULL;
+//#define s_vorbisChbuf mpVorbis->s_vorbisChbuf
+char     *s_vorbisChbuf = NULL;
 
 int32_t   s_vorbisValidSamples = 0;
 uint8_t   s_vorbisOldMode = 0;
@@ -108,9 +110,7 @@ uint8_t   s_nrOfResidues = 0;
 uint8_t   s_nrOfMaps = 0;
 uint8_t   s_nrOfModes = 0;
 
-#define s_vorbisSegmentTable mpVorbis->s_vorbisSegmentTable
-//uint16_t *s_vorbisSegmentTable = NULL;
-
+uint16_t *s_vorbisSegmentTable = NULL;
 uint16_t  s_oggPage3Len = 0; // length of the current audio segment
 uint8_t   s_vorbisSegmentTableSize = 0;
 int16_t   s_vorbisSegmentTableRdPtr = -1;
@@ -118,27 +118,13 @@ int8_t    s_vorbisError = 0;
 float     s_vorbisCompressionRatio = 0;
 
 bitReader_t            s_bitReader;
-
-#define s_codebooks mpVorbis->s_codebooks
-//codebook_t            *s_codebooks = NULL;
-
-#define s_floor_param mpVorbis->s_floor_param
-//vorbis_info_floor_t  **s_floor_param = NULL;
-
-#define s_floor_type mpVorbis->s_floor_type
-//int8_t                *s_floor_type = NULL;
-
-#define s_residue_param mpVorbis->s_residue_param
-//vorbis_info_residue_t *s_residue_param = NULL;
-
-#define s_map_param mpVorbis->s_map_param
-//vorbis_info_mapping_t *s_map_param = NULL;
-
-#define s_mode_param mpVorbis->s_mode_param
-//vorbis_info_mode_t    *s_mode_param = NULL;
-
-#define s_dsp_state mpVorbis->s_dsp_state
-//vorbis_dsp_state_t    *s_dsp_state = NULL;
+codebook_t            *s_codebooks = NULL;
+vorbis_info_floor_t  **s_floor_param = NULL;
+int8_t                *s_floor_type = NULL;
+vorbis_info_residue_t *s_residue_param = NULL;
+vorbis_info_mapping_t *s_map_param = NULL;
+vorbis_info_mode_t    *s_mode_param = NULL;
+vorbis_dsp_state_t    *s_dsp_state = NULL;
 
 bool VORBISDecoder_AllocateBuffers(){
     s_vorbisSegmentTable = (uint16_t*)__calloc_heap_psram(256, sizeof(uint16_t));
