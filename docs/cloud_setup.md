@@ -44,7 +44,7 @@ Test the local version, if you want to make sure it does what it is supposed to:
 Go back to the cloud_server folder and deploy from there.
 Then deploy (this takes forever, but it works)
 
-`: ~/projects/deadstream/cloud_server ; gcloud app deploy --verbosity=info `
+`: ~/projects/deadstream/cloud_server ; gcloud app deploy [--version=<name> --verbosity=info] `
 
 ### NOTE it seems like I need to authenticate and keep the browser open to run this?
 
@@ -293,6 +293,55 @@ def list_blobs(bucket_name):
 
 # [END storage_list_files]
 ```
+### List all files in a bucket using a prefix filter
+See https://cloud.google.com/storage/docs/samples/storage-list-files-with-prefix
+```
+def list_blobs_with_prefix(bucket_name, prefix, delimiter=None):
+    """Lists all the blobs in the bucket that begin with the prefix.
+
+    This can be used to list all blobs in a "folder", e.g. "public/".
+
+    The delimiter argument can be used to restrict the results to only the
+    "files" in the given "folder". Without the delimiter, the entire tree under
+    the prefix is returned. For example, given these blobs:
+
+        a/1.txt
+        a/b/2.txt
+
+    If you specify prefix ='a/', without a delimiter, you'll get back:
+
+        a/1.txt
+        a/b/2.txt
+
+    However, if you specify prefix='a/' and delimiter='/', you'll get back
+    only the file directly under 'a/':
+
+        a/1.txt
+
+    As part of the response, you'll also get back a blobs.prefixes entity
+    that lists the "subfolders" under `a/`:
+
+        a/b/
+    """
+
+    storage_client = storage.Client()
+
+    # Note: Client.list_blobs requires at least package version 1.17.0.
+    blobs = storage_client.list_blobs(bucket_name, prefix=prefix, delimiter=delimiter)
+
+    # Note: The call returns a response only when the iterator is consumed.
+    print("Blobs:")
+    for blob in blobs:
+        print(blob.name)
+
+    if delimiter:
+        print("Prefixes:")
+        for prefix in blobs.prefixes:
+            print(prefix)
+    
+```
+
+#
 ### Delete a bucket (entire "filesystem")
 ```
 # [START storage_delete_bucket]
@@ -351,3 +400,53 @@ This put the wheel in the dist folder.
 : /home/steve/env ~/python-quickstart ; cp ~/projects/deadstream/dist/* dist/.
 : /home/steve/env ~/python-quickstart ; python3 -m twine upload --repository-url https://us-central1-python.pkg.dev/able-folio-397115/quickstart-python-repo/ dist/*
 ```
+
+# USING CLOUD RUN
+
+I _think_ that I just got it working by going to cloud run (https://console.cloud.google.com/run?hl=en&project=able-folio-397115)
+and clicking "Create Service"
+Then, "Deploy one revision from an existing container image", Select:
+Choose one of the _old-style services_ and it (might) work.
+
+https://cloud.google.com/storage/docs/samples/storage-list-files-with-prefix
+
+Note: When specifying the capacity of the machine, take a look at the app.yaml file  in my cloud_server folder:
+```
+runtime: python
+env: flex
+entrypoint: gunicorn -b :$PORT app:app
+
+runtime_config:
+  operating_system: ubuntu22
+  runtime_version: "3.10"
+
+
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 1
+  memory_gb: .5
+  disk_size_gb: 10
+```
+
+This is **working**!!!
+Go to the run console. The service using the cloud deployment docker does the trick.
+https://console.cloud.google.com/run?hl=en&project=able-folio-397115
+
+Make sure and **turn off** the appengine app https://console.cloud.google.com/appengine/versions?serviceId=default&hl=en&project=able-folio-397115
+because it costs $1.50/day to run.
+
+# Linking the service to a custom domain
+Following instructions on this page, https://cloud.google.com/run/docs/integrate/custom-domain-load-balancer ,I pointed the service (running at https://deadstream-api-3pqgajc26a-uc.a.run.app) to the domain http://gratefuldeadtimemachine.com that I own. 
+
+I was not sure if pointing it to spertilo.net (which I would prefer) would interfere with the site.
+
+See https://domains.google.com/registrar/gratefuldeadtimemachine.com
+Where I had to add a custom record on (https://domains.google.com/registrar/gratefuldeadtimemachine.com/dns)
+Type: A
+TTL: 1 hour
+Data: 34.36.180.121 
+
+Now I can put into the livemusic program API = https://gratefuldeadtimemachine.com
+
+I don't know if this is going to end up costing a lot of money, though.
