@@ -36,7 +36,7 @@ import network
 import board as tm
 import utils
 
-API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
+API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 
 
 def factory_reset():

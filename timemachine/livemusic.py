@@ -43,7 +43,8 @@ else:
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-API = "https://able-folio-397115.ue.r.appspot.com"  # google cloud version
+# API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
+API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
@@ -568,7 +569,7 @@ def add_vcs(coll):
     return vcs
 
 
-def load_vcs(coll, max_cache_days=10):
+def load_vcs(coll, max_cache_days=10000):
     global TIME_VCS_LOADED
     try:
         with open(COLL_DICT_PATH, "r") as f:
