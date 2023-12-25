@@ -37,6 +37,7 @@ import board as tm
 import utils
 
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
+CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 
 
 def factory_reset():
@@ -109,9 +110,20 @@ def _collection_names():
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
-    print(f"API request is {api_request}")
-    resp = requests.get(api_request).json()
-    all_collection_names_dict = resp["collection_names"]
+    cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
+    all_collection_names_dict = {"Phishin Archive": ["Phish"]}
+    resp = requests.get(cloud_url)
+    if resp.status_code == 200:
+        print(f"Downloaded collections names from {cloud_url}")
+        cloud_file_contents = resp.json()["items"]
+        colls = [x["identifier"] for x in cloud_file_contents]
+        all_collection_names_dict["Internet Archive"] = colls
+        resp.close()
+    else:
+        print(f"API request is {api_request}")
+        resp = requests.get(api_request).json()
+        all_collection_names_dict = resp["collection_names"]
+
     return all_collection_names_dict
 
 
@@ -173,6 +185,7 @@ def add_collection(all_collections):
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
+    choice = "_CANCEL"
     if n_matching > 0:
         choice = utils.select_option("Choose coll to add", matching + ["_CANCEL"])
 
