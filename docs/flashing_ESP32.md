@@ -123,6 +123,7 @@ This procedure gets the filesystem into the file `fsbackup.bin`. See <https://gi
 ## Flashing Filesystem
 
 Now, to flash a device with the firmware _and_ software:
+See instructions on how to [Download the firmware](#download-the-firmware) above
 
 ```{}
 : ~ ; source $HOME/esp/esp-idf/export.sh 
