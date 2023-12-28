@@ -48,9 +48,6 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
-COLL_DICT_PATH = "/coll_dict.json"
-TIME_VCS_LOADED = time.localtime()
-# RESET_WHILE_SLEEPING = False
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -269,15 +266,6 @@ def main_loop(player, coll_dict, state):
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
             tm.power(0)
-            # if (
-            #     player.PLAY_STATE == player.STOPPED
-            #     and RESET_WHILE_SLEEPING
-            #     and (DATE_SET_TIME < tm.screen_on_time)  # This machine has been played since bootup.
-            #     and time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (4 * 3600_000)
-            # ):
-            #     print("Rebooting Machine proactively, since it hasn't played in 4 hours")
-            #    import machine
-            #    machine.reset()
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
@@ -569,35 +557,9 @@ def add_vcs(coll):
     return vcs
 
 
-def load_vcs(coll, max_cache_days=10000):
-    global TIME_VCS_LOADED
-    try:
-        with open(COLL_DICT_PATH, "r") as f:
-            coll_dict_loaded = json.load(f)
-        TIME_VCS_LOADED = coll_dict_loaded["time_saved"]
-        if (time.time() - time.mktime(TIME_VCS_LOADED)) < 3600 * 24 * max_cache_days:
-            data = coll_dict_loaded[coll]
-            print(f"loaded vcs data for {coll} from {COLL_DICT_PATH}")
-            return data
-        else:
-            raise Exception(f"VCS File Out of Date")
-    except Exception as e:
-        print(f"Exception in load_vcs({coll}): {e}")
-        data = add_vcs(coll)
-        TIME_VCS_LOADED = time.localtime()
+def load_vcs(coll):
+    data = add_vcs(coll)
     return data
-
-
-def save_coll_dict(coll_dict):
-    coll_dict["time_saved"] = TIME_VCS_LOADED
-    try:
-        with open(COLL_DICT_PATH, "w") as f:
-            json.dump(coll_dict, f)
-            print(f"coll_dict saved to {COLL_DICT_PATH}")
-        del coll_dict["time_saved"]
-    except Exception as e:
-        print(e)
-        utils.remove_file(COLL_DICT_PATH)
 
 
 def lookup_date(d, col_d):
@@ -643,7 +605,6 @@ def get_coll_dict(collection_list):
         max_year = max(int(max(coll_dates)[:4]), max_year)
         tm.y._min_val = min_year
         tm.y._max_val = max_year
-    save_coll_dict(coll_dict)
     return coll_dict
 
 

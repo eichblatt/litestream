@@ -110,3 +110,17 @@ e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_O
 ## Flashing Filesystem
 
 <https://github.com/orgs/micropython/discussions/12223>
+
+```{}
+: ~ ; source $HOME/esp/esp-idf/export.sh 
+: ~ ; cd $HOME/projects/litestream
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  read_flash 0x4f0000 0xb10000 fsbackup.bin
+```
+
+Now, to flash a device with the firmware _and_ software:
+
+```{}
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin 0x4f0000 fsbackup.bin
+```
