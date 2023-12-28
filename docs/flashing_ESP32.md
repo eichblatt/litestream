@@ -7,6 +7,7 @@
   - [Installing the Software](#installing-the-software)
     - [Notes](#notes)
   - [OTA Updates](#ota-updates)
+  - [Getting the Filesystem into File](#getting-the-filesystem-into-file)
   - [Flashing Filesystem](#flashing-filesystem)
 
 ## Install ESP-IDF
@@ -107,9 +108,9 @@ e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_O
     sha256sum micropython.bin > micropython.sha
 4. Commit and push this folder contents sha to github.
 
-## Flashing Filesystem
+## Getting the Filesystem into File
 
-<https://github.com/orgs/micropython/discussions/12223>
+This procedure gets the filesystem into the file `fsbackup.bin`. See <https://github.com/orgs/micropython/discussions/12223>
 
 ```{}
 : ~ ; source $HOME/esp/esp-idf/export.sh 
@@ -119,8 +120,14 @@ e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_O
 : /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  read_flash 0x4f0000 0xb10000 fsbackup.bin
 ```
 
+## Flashing Filesystem
+
 Now, to flash a device with the firmware _and_ software:
 
 ```{}
+: ~ ; source $HOME/esp/esp-idf/export.sh 
+: ~ ; cd $HOME/projects/litestream
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
 : /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin 0x4f0000 fsbackup.bin
 ```
