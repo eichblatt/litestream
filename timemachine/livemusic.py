@@ -613,7 +613,7 @@ def show_collections(collection_list):
     message = f"Loading {ncoll} Collections"
     print(message)
     tm.clear_screen()
-    tm.tft.write(pfont_med, message, 0, 0, st7789.RED)
+    tm.tft.write(pfont_med, message, 0, 0, yellow_color)
     for i, coll in enumerate(collection_list[:5]):
         tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
     if ncoll > 5:
