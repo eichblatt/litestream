@@ -262,7 +262,6 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                     s_setupHeaderLength = len;
 
                     bitReader_setData(inbuf, len);
-
                     if(len == 4080){
                         // that is 16*255 bytes and thus the maximum segment size
                         // it is possible that there is another block starting with 'OggS' in which there is information
@@ -276,11 +275,11 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                         log_w("s_oggPage3Len %i", s_oggPage3Len);
                         s_pageNr++;
                     }
-
                     ret = parseVorbisCodebook();
                 }
                 else{
                     log_e("no \"vorbis\" something went wrong %i", len);
+                    return ERR_VORBIS_NOT_AUDIO;
                 }
                 s_pageNr = 4;
                 s_dsp_state = vorbis_dsp_create();
