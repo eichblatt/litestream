@@ -24,6 +24,7 @@ import fonts.NotoSans_24 as pfont_med
 
 
 KNOB_SENSE_PATH = "/.knob_sense"
+SCREEN_STATE = 1
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -177,12 +178,25 @@ def clear_area(x, y, width, height):
     tft.fill_rect(x, y, width, height, st7789.BLACK)
 
 
+def screen_state(state=None):
+    global SCREEN_STATE
+    if state is None:
+        pass
+    elif state == 0:
+        tft.off()
+        SCREEN_STATE = 0
+    elif state > 0:
+        tft.on()
+        SCREEN_STATE = 1
+    return SCREEN_STATE
+
+
 def screen_off():
-    tft.off()
+    return screen_state(0)
 
 
 def screen_on():
-    tft.off()
+    return screen_state(1)
 
 
 # Configure display driver
@@ -204,7 +218,11 @@ def conf_screen(rotation=0, buffer_size=0, options=0):
 
 
 tft = conf_screen(1, buffer_size=64 * 64 * 2)
+psychedelic_screen = False
 tft.init()
+if psychedelic_screen:
+    tft.offset(1, 2)
+
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
 screen_on_time = time.ticks_ms()
@@ -228,10 +246,12 @@ def power(state=None):
         pLED.value(state)
         board_on = state
         if state:
-            tft.on()
+            # tft.on()
+            screen_on()
             screen_on_time = time.ticks_ms()
         else:
-            tft.off()
+            # tft.off()
+            screen_off()
     else:
         raise ValueError(f"invalid power state {state}")
     return state
@@ -292,8 +312,6 @@ def poll_for_button(button, timeout=None):
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
     if clear:
         clear_screen()
-    else:
-        init_screen()
     text = msg.split("\n")
     for i, line in enumerate(text):
         tft.write(font, line, x, y + (i * text_height), color)

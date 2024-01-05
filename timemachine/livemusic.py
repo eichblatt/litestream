@@ -289,7 +289,7 @@ def main_loop(player, coll_dict, state):
             else:
                 if tm.power():
                     player.stop()
-                    tm.tft.on()
+                    tm.screen_on()
                     tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
                 print("Stop UP")
 
@@ -310,8 +310,11 @@ def main_loop(player, coll_dict, state):
                 if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 if tm.power():
-                    player.rewind()
-                    tm.tft.on()
+                    if tm.screen_state():
+                        player.rewind()
+                    else:
+                        player.set_volume(max(player.get_volume() - 1, 5))
+                        print(f"volume set to {player.get_volume()}")
 
         if pFFwd_old != tm.pFFwd.value():
             pFFwd_old = tm.pFFwd.value()
@@ -322,8 +325,14 @@ def main_loop(player, coll_dict, state):
                 if player.is_playing() or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 if tm.power():
-                    player.ffwd()
-                    tm.tft.on()
+                    if tm.screen_state():
+                        player.ffwd()
+                    else:
+                        try:
+                            player.set_volume(player.get_volume() + 1)
+                        except AssertionError:
+                            pass
+                        print(f"volume set to {player.get_volume()}")
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
         if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
@@ -398,7 +407,7 @@ def main_loop(player, coll_dict, state):
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.clear_screen()
-                tm.tft.off()
+                tm.screen_off()
                 # time.sleep(2)
                 return
 
@@ -424,7 +433,7 @@ def main_loop(player, coll_dict, state):
             if pMSw_old:
                 print("Month DOWN")
             else:
-                tm.tft.off()  # screen off while playing
+                tm.screen_off()  # screen off while playing
                 print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
