@@ -8,7 +8,10 @@
     - [Notes](#notes)
   - [OTA Updates](#ota-updates)
   - [Getting the Filesystem into File](#getting-the-filesystem-into-file)
+    - [Preparing the Filesystem](#preparing-the-filesystem)
+    - [Uploading the Filesystem](#uploading-the-filesystem)
   - [Flashing Filesystem](#flashing-filesystem)
+    - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
 
 ## Install ESP-IDF
 
@@ -112,6 +115,12 @@ e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_O
 
 This procedure gets the filesystem into the file `fsbackup.bin`. See <https://github.com/orgs/micropython/discussions/12223>
 
+### Preparing the Filesystem
+
+The filesystem that we want to flash should not contain files `.knob_sense`, `.screen_type`, `latest_state.json`, and the `wifi_cred.json` should contain the wifi credentials at Joel's home, which are FUCKBITCHE$ and L8erHoes
+
+### Uploading the Filesystem
+
 ```{}
 : ~ ; source $HOME/esp/esp-idf/export.sh 
 : ~ ; cd $HOME/projects/litestream
@@ -120,10 +129,22 @@ This procedure gets the filesystem into the file `fsbackup.bin`. See <https://gi
 : /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  read_flash 0x4f0000 0xb10000 fsbackup.bin
 ```
 
+Note, this takes a few minutes.
+Then, push this file `fsbackup.bin` to github, and merge into the main branch.
+
 ## Flashing Filesystem
 
 Now, to flash a device with the firmware _and_ software:
-See instructions on how to [Download the firmware](#download-the-firmware) above
+
+### Get the Latest Version of the Firmware and Software
+
+If you have already downloaded the firmware before, then simply get the latest version:
+
+```{}
+
+```
+
+If this is the first time, then follow instructions on how to [Download the firmware](#download-the-firmware) above.
 
 ```{}
 : ~ ; source $HOME/esp/esp-idf/export.sh 
