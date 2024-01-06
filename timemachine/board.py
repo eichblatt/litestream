@@ -302,6 +302,10 @@ def calibrate_screen(force=False):
     print("Running screen calibration")
     screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=1)
     if (screen_type is not None) and not force:
+        if screen_type == 0:
+            tft.offset(0, 0)
+        elif screen_type == 1:
+            tft.offset(1, 2)
         return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
