@@ -50,15 +50,17 @@ day_pins = (7, 8)
 
 def get_int_from_file(path, default_val, max_val):
     val = default_val
+    fh = None
     try:
         fh = open(path, "r")
         val = int(fh.readline().strip())
         if val > max_val:
             raise ValueError(f"value {val} read from path is out of bounds (0,{max_val})")
     except Exception:
-        val = 0
-        fh = open(path, "w")
-        fh.write(f"{val}")
+        val = default_val
+        if val is not None:
+            fh = open(path, "w")
+            fh.write(f"{val}")
     finally:
         if fh is not None:
             fh.close()
@@ -288,9 +290,11 @@ def calibrate_knobs():
     return knob_sense
 
 
-def calibrate_screen():
+def calibrate_screen(force=False):
     print("Running screen calibration")
-    screen_type = get_int_from_file(SCREEN_TYPE_PATH, 0, 1)
+    screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=1)
+    if (screen_type is not None) and not force:
+        return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
     clear_screen()
