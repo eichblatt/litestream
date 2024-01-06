@@ -1,8 +1,8 @@
 The Vorbis and MP3 decoders come from https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/vorbis_decoder and https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/mp3_decoder respectively
 
-To use them in MicroPython, they have to be compiled as a "user module" which can be written in C or C++
+To use them in MicroPython, they have to be compiled as a "user module" which can be written in C or C++. See https://micropython-usermod.readthedocs.io/
 
-There is a core class (Decoder.c) which implements a C wrapper for the two decoders
+There is a core class (Decoder.c) which implements a C wrapper for the two decoders.
 
 We need to modify the decoders a little bit to get them to compile in the MicroPython environment, and implement to correct memory management.
 
