@@ -1,0 +1,177 @@
+The Vorbis and MP3 decoders come from https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/vorbis_decoder and https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/mp3_decoder respectively
+
+To use them in MicroPython, they have to be compiled as a "user module" which can be written in C or C++. See https://micropython-usermod.readthedocs.io/
+
+There is a core class (Decoder.c) which implements a C wrapper for the two decoders.
+
+We need to modify the decoders a little bit to get them to compile in the MicroPython environment, and to implement correct memory management.
+
+
+==================================
+= Changes for the Vorbis Decoder =
+==================================
+
+1) Include Decoder.h
+We need to #include "Decoder.h" in vorbis_decoder.h
+
+
+2) Add extern "C"
+In order to allow the C++ functions to be called by C, we have to bracket the entire vorbis_decoder.h file with:
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+and
+
+#ifdef __cplusplus
+}
+#endif
+
+
+3) Memory allocations
+The original uses:
+#define __malloc_heap_psram(size) heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+and
+#define __calloc_heap_psram(ch, size) heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+
+We change them to use m_tracked_calloc & m_tracked_free with the following code in vorbis_decoder.cpp:
+#define __malloc_heap_psram(size) m_tracked_calloc(1, size)
+#define __calloc_heap_psram(ch, size) m_tracked_calloc(ch, size)
+#define free(obj) m_tracked_free(obj)
+
+
+4) Allow higher sample rates to be decoded
+The original only allows files up to a sample rate of 64,000 to be decode. This means that a uint16_t is sufficient to store the sample rate.
+However, we found a file (1993-05-14) which had a sample rate of 96,000
+The decoder was actually able to decode it, but was being prevented by "if(sampleRate < 4096 || sampleRate > 64000)"
+The fix is to change s_VorbisSamplerate to unit32_t and change the if statement to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate);"
+
+
+5) Stop Ogg/Theora files from crashing the decoder
+Unfortunately the .ogg file extension is not a guarantee that we have Vorbis data. We have seen at least one file (1988-03-28) which contains Ogg/Theora (video) data. This crashes the decoder.
+The fix is to return ERR_VORBIS_NOT_AUDIO in three places in Vorbis_Decode() if it doesn't find the expected "vorbis" capture pattern, and handle it in the Python player.
+
+
+6) Don't use strndup
+The original decoder uses strndup in parseVorbisComment(). strndup does a malloc under the covers and is not compatible with our MicroPython memory allocations
+
+So we change:
+if(idx == 0){ artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7); }
+and
+if(idx == 0){ title = strndup((const char*)(s_vorbisChbuf + 6), commentLength - 6);
+
+to:
+
+if(idx == 0){
+    artist = (char*)__malloc_heap_psram(commentLength - 7);
+    artist = strncpy(artist, (const char*)(s_vorbisChbuf + 7), commentLength - 7);
+}
+
+and
+
+if(idx == 0){
+    title = (char*)__malloc_heap_psram(commentLength - 6);
+    title = strncpy(title, (const char*)(s_vorbisChbuf + 6), commentLength - 6);
+}
+
+
+7) Don't use default parameters
+Even though vorbis_decoder.cpp is written in C++, and C++ allows the use of default parameters in a function definition, because we are including vorbis_decoder.h from Decoder.h (which is a header for a .C file) we can't use default parameters.
+Luckily nowhere in the code does it call VORBIS_specialIndexOf() with exact=true, so we can just hard code exact=false.
+
+We need to change the function signature of VORBIS_specialIndexOf() in vorbis_decoder.h from:
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen, bool exact = false);
+to:
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen);
+
+We also need to change the implementation of VORBIS_specialIndexOf() in vorbis_decoder.c from:
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen, bool exact) {
+to:
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen) {
+    bool exact = false;
+
+
+8) Don't use type on enums
+C++ allows a type to be specified for an enum. Because we are including vorbis_decoder.h from Decoder.h (which is a header for a .C file) we can't use typed enums.
+We need to change the enum of the return codes in vorbis_decoder.h from:
+enum : int8_t  {VORBIS_CONTINUE = 110,
+to:
+enum {VORBIS_CONTINUE = 110,
+
+
+
+
+===============================
+= Changes for the MP3 Decoder =
+===============================
+
+1) Include "Decoder.h"
+We need to #include "Decoder.h" in vorbis_decoder.h
+
+
+2) Add extern "C"
+In order to allow the C++ functions to be called by C, we have to bracket the entire MP3_decoder.h file with:
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+and
+
+#ifdef __cplusplus
+}
+#endif
+
+
+3) Don't use static const
+C doesn't support static const.
+
+The original uses:
+static const uint8_t  m_HUFF_PAIRTABS          =32;
+static const uint8_t  m_BLOCK_SIZE             =18;
+static const uint8_t  m_NBANDS                 =32;
+static const uint8_t  m_MAX_REORDER_SAMPS      =(192-126)*3;      // largest critical band for short blocks (see sfBandTable)
+static const uint16_t m_VBUF_LENGTH            =17*2* m_NBANDS;    // for double-sized vbuf FIFO
+static const uint8_t  m_MAX_SCFBD              =4;     // max scalefactor bands per channel
+static const uint16_t m_MAINBUF_SIZE           =1940;
+static const uint8_t  m_MAX_NGRAN              =2;     // max granules
+static const uint8_t  m_MAX_NCHAN              =2;     // max channels
+static const uint16_t m_MAX_NSAMP              =576;   // max samples per channel, per granule
+
+We change it in MP3_decoder.h to use #defines:
+#define m_HUFF_PAIRTABS          32
+#define m_BLOCK_SIZE             18
+#define m_NBANDS                 32
+#define m_MAX_REORDER_SAMPS      (192-126)*3      // largest critical band for short blocks (see sfBandTable)
+#define m_VBUF_LENGTH            17*2* m_NBANDS    // for double-sized vbuf FIFO
+#define m_MAX_SCFBD              4     // max scalefactor bands per channel
+#define m_MAINBUF_SIZE           1940
+#define m_MAX_NGRAN              2     // max granules
+#define m_MAX_NCHAN              2     // max channels
+#define m_MAX_NSAMP              576   // max samples per channel, per granule
+
+
+4) Memory allocations
+The original uses:
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+    // ESP32-S3: If there is PSRAM, prefer it
+    #define __malloc_heap_psram(size) \
+        heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
+#else
+    // ESP32, PSRAM is too slow, prefer SRAM
+    #define __malloc_heap_psram(size) \
+        heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
+#endif
+
+We change them to use m_tracked_calloc with the following code:
+//#ifdef CONFIG_IDF_TARGET_ESP32S3
+    // ESP32-S3: If there is PSRAM, prefer it
+    #define __malloc_heap_psram(size) \
+        m_tracked_calloc(1, size)
+    //    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
+//#else
+    // ESP32, PSRAM is too slow, prefer SRAM
+  //  #define __malloc_heap_psram(size) 
+  //      heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
+//#endif
+#define free(obj) \
+    m_tracked_free(obj)

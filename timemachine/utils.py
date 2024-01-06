@@ -320,7 +320,7 @@ def set_datetime():
         return None
 
 
-def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
+def connect_wifi(retry_time=100, timeout=10000, itry=0):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -331,7 +331,10 @@ def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
         with open(WIFI_CRED_PATH, "r") as f:
             wifi_cred = json.load(f)
     else:
-        if calibrate:
+        # We want to re-calibrate whenever the wifi changes, so that users will
+        # calibrate the machine when they receive it.
+        # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
+        if itry <= 1:
             tm.self_test()
             tm.calibrate_knobs()
 
@@ -372,7 +375,7 @@ def connect_wifi(calibrate=True, retry_time=100, timeout=10000):
         tm.write("failed.", y=80, color=st7789.RED, clear=False)
         os.remove(WIFI_CRED_PATH)
         time.sleep(2)
-        connect_wifi(calibrate=False)
+        connect_wifi(itry=itry + 1)
 
 
 def get_current_partition_name():
