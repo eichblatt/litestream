@@ -67,7 +67,7 @@ if(idx == 0){
     artist = strncpy(artist, (const char*)(s_vorbisChbuf + 7), commentLength - 7);
 }
 
-abd
+and
 
 if(idx == 0){
     title = (char*)__malloc_heap_psram(commentLength - 6);
