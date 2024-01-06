@@ -248,6 +248,7 @@ def reconfigure():
             "Wifi",
             "Test Buttons",
             "Calibrate Knobs",
+            "Calibrate Screen",
             "FactoryReset",
             "Exit",
         ],
@@ -268,6 +269,8 @@ def reconfigure():
         factory_reset()
     elif choice == "Reboot":
         machine.reset()
+    elif choice == "Calibrate Screen":
+        tm.calibrate_screen()
     return choice
 
 
@@ -276,6 +279,14 @@ def basic_main():
     This script will update livemusic.py if rewind button pressed within 2 seconds.
     """
     print("in basic_main")
+
+    start_time = time.ticks_ms()
+    pSelect_old = True
+    pStop_old = True
+    configure = False
+    if not utils.path_exists("/.knob_sense"):
+        tm.self_test()
+        tm.calibrate_knobs()
     tm.tft.on()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
@@ -287,11 +298,6 @@ def basic_main():
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
-
-    start_time = time.ticks_ms()
-    pSelect_old = True
-    pStop_old = True
-    configure = False
 
     wifi = utils.connect_wifi()
     if configure:

@@ -21,9 +21,11 @@ import time
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import fonts.NotoSans_24 as pfont_med
+import fonts.NotoSans_18 as pfont_small
 
 
 KNOB_SENSE_PATH = "/.knob_sense"
+SCREEN_TYPE_PATH = "/.screen_type"
 SCREEN_STATE = 1
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -46,22 +48,25 @@ month_pins = (39, 18)
 day_pins = (7, 8)
 
 
-def get_knob_sense():
-    knob_sense = 0
-    kf = None
+def get_int_from_file(path, default_val, max_val):
+    val = default_val
     try:
-        kf = open(KNOB_SENSE_PATH, "r")
-        knob_sense = int(kf.readline().strip())
-        if knob_sense != (knob_sense & 0x7):
-            raise ValueError(f"knob_sense {knob_sense} read from /knob_sense out of bounds")
+        fh = open(path, "r")
+        val = int(fh.readline().strip())
+        if val > max_val:
+            raise ValueError(f"value {val} read from path is out of bounds (0,{max_val})")
     except Exception:
-        knob_sense = 0
-        kf = open(KNOB_SENSE_PATH, "w")
-        kf.write(f"{knob_sense}")
+        val = 0
+        fh = open(path, "w")
+        fh.write(f"{val}")
     finally:
-        if kf is not None:
-            kf.close()
-    return knob_sense
+        if fh is not None:
+            fh.close()
+    return val
+
+
+def get_knob_sense():
+    return get_int_from_file(KNOB_SENSE_PATH, 0, 7)
 
 
 knob_sense = get_knob_sense()
@@ -220,8 +225,6 @@ def conf_screen(rotation=0, buffer_size=0, options=0):
 tft = conf_screen(1, buffer_size=64 * 64 * 2)
 psychedelic_screen = False
 tft.init()
-if psychedelic_screen:
-    tft.offset(1, 2)
 
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
@@ -285,6 +288,39 @@ def calibrate_knobs():
     return knob_sense
 
 
+def calibrate_screen():
+    print("Running screen calibration")
+    screen_type = get_int_from_file(SCREEN_TYPE_PATH, 0, 1)
+    print(f"screen_type before is {screen_type}")
+    # Draw a rectangle on screen.
+    clear_screen()
+    tft.offset(0, 0)
+    tft.rect(0, 0, 160, 128, st7789.WHITE)
+    # Can you see all 4 sides?
+    write("Press SELECT if", 1, 5, font=pfont_small, clear=False)
+    write("all 4 sides visible", 1, 25, font=pfont_small, clear=False)
+    write("else press STOP", 1, 60, font=pfont_small, clear=False)
+
+    button = poll_for_which_button({"select": pSelect, "stop": pStop}, timeout=45, default="select")
+    if button == "stop":
+        screen_type = 1
+        tft.offset(1, 2)
+    else:
+        screen_type = 0
+        tft.offset(0, 0)
+
+    try:
+        fh = open(SCREEN_TYPE_PATH, "w")
+        fh.write(f"{screen_type}")
+    except Exception:
+        print(f"Exception writing {SCREEN_TYPE_PATH}")
+        screen_type = 0
+    finally:
+        fh.close()
+        clear_screen()
+    return screen_type
+
+
 def self_test():
     print("Running self_test")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
@@ -301,12 +337,22 @@ def self_test():
 
 def poll_for_button(button, timeout=None):
     start_time = time.ticks_ms()
-    pSelect_old = True
-    while pSelect_old == button.value():
+    pButton_old = True
+    while pButton_old == button.value():
         if (timeout is not None) and (time.ticks_diff(time.ticks_ms(), start_time) > (timeout * 1000)):
             break
-        time.sleep(0.05)
     return
+
+
+def poll_for_which_button(button_dict, timeout=None, default=None):
+    start_time = time.ticks_ms()
+
+    pButton_old_dict = {x: False for x in button_dict.keys()}
+    while (timeout is None) or (time.ticks_diff(time.ticks_ms(), start_time) < (timeout * 1000)):
+        for button_name, button in button_dict.items():
+            if pButton_old_dict[button_name] == button.value():
+                return button_name
+    return default
 
 
 def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
