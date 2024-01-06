@@ -143,3 +143,4 @@ timemachine/*.bak
 MicropythonFirmware/latest_broken/*
 timemachine/audioPlayer_oneBuffer.py
 MicropythonFirmware/latest/fsbackup.bin.orig
+docs/beta_testers.md
