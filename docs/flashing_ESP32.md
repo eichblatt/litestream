@@ -12,6 +12,7 @@
     - [Uploading the Filesystem](#uploading-the-filesystem)
   - [Flashing Filesystem](#flashing-filesystem)
     - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
+    - [Flash Everything](#flash-everything)
 
 ## Install ESP-IDF
 
@@ -141,10 +142,14 @@ Now, to flash a device with the firmware _and_ software:
 If you have already downloaded the firmware before, then simply get the latest version:
 
 ```{}
-
+:  ~ ; cd $HOME/projects/litestream/MicropythonFirmware
+:  ~/projects/litestream/MicropythonFirmware ; cd latest
+:  ~/projects/litestream/MicropythonFirmware/latest ; git pull
 ```
 
 If this is the first time, then follow instructions on how to [Download the firmware](#download-the-firmware) above.
+
+### Flash Everything
 
 ```{}
 : ~ ; source $HOME/esp/esp-idf/export.sh 
