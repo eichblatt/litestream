@@ -1,19 +1,22 @@
 # Decoder Chip VS1053
 
 ## Intro
-While Mike is in Europe, I would like to test the viability of using the VS1053 decoder chip, which claims that it can decode ogg, flac, and mp3 files. 
 
-The VS1053 can output the digital WAV signal, as well as the analog sound. 
+While Mike is in Europe, I would like to test the viability of using the VS1053 decoder chip, which claims that it can decode ogg, flac, and mp3 files.
+
+The VS1053 can output the digital WAV signal, as well as the analog sound.
 
 The advantages of using the chip would be:
- - More responsive to the knobs and buttons while playing.
- - Reduced memory usage in the ESP32.
+
+- More responsive to the knobs and buttons while playing.
+- Reduced memory usage in the ESP32.
 
 The disadvantages to using a decoder chip are:
- - May not have gapless playback capability
- - If it cannot decode a track, we have no recourse.
- - Work required to decode other than mp3 format.
- - Slightly more expensive
+
+- May not have gapless playback capability
+- If it cannot decode a track, we have no recourse.
+- Work required to decode other than mp3 format.
+- Slightly more expensive
 
 ## Notes from Mike
 
@@ -25,15 +28,19 @@ The disadvantages to using a decoder chip are:
 - I hope that gapless works as we have no opportunity to buffer the output
 
 ## Internet Radio Projects
-Although most, if not all, internet radio projects here use Arduino, they may be useful. 
+
+Although most, if not all, internet radio projects here use Arduino, they may be useful.
 See these links:
- - https://github.com/baldram/ESP_VS1053_Library
+
+- <https://github.com/baldram/ESP_VS1053_Library>
 
 ## Pins
+
 ### DAC Pins
+
 The python code to set up and send data to the DAC via I2S is from audioPlayer.py
 
-```
+```{}
 from machine import Pin, I2S
 
 sck_pin = Pin(13)  # Serial clock output
@@ -56,17 +63,17 @@ sd_pin = Pin(17)  # Serial data output
 
 So it appears that the Dac is using pins
 
-| Pin | label | 
+| Pin | label |
 | --  | ---- |
 | 13 | sck |
-| 14 | ws | 
-| 17 | sd | 
-
+| 14 | ws |
+| 17 | sd |
 
 ### Screen Pins
+
 The code to set up the screen is in board.py
 
-```
+```{}
 from machine import SPI,Pin
 
 # Set up pins
@@ -87,12 +94,13 @@ def conf_screen(rotation=0, buffer_size=0, options=0):
         buffer_size=buffer_size,
     )
 ```
+
 So it looks like the screen is using pins:
 
 | Pin  | label |
-| -----| ------| 
-| 4 | reset | 
-| 5 | light | 
+| -----| ------|
+| 4 | reset |
+| 5 | light |
 | 6 | dc |
 | 10 | cs |
 | 11  | mosi |
@@ -103,8 +111,8 @@ So it looks like the screen is using pins:
 On the decoder chip, the pins are labelled:
 
 | label | correpsondence |
-| -- | - | 
-| MISO | ? | 
+| -- | - |
+| MISO | ? |
 | MOSI | screen: mosi |
 | SCK | DAC: sck |
 | DREQ | ? |
@@ -114,10 +122,13 @@ On the decoder chip, the pins are labelled:
 
 ### Examples
 
-#### Arduino 
+#### Arduino
+
 ##### Baldram
-In the project https://github.com/baldram/ESP_VS1053_Library/tree/master he has defined the pins to be 
-```
+
+In the project <https://github.com/baldram/ESP_VS1053_Library/tree/master> he has defined the pins to be
+
+```{}
 #ifdef ARDUINO_ARCH_ESP32
 #define VS1053_CS     5
 #define VS1053_DCS    16
@@ -125,11 +136,13 @@ In the project https://github.com/baldram/ESP_VS1053_Library/tree/master he has 
 
 VS1053 player(VS1053_CS, VS1053_DCS, VS1053_DREQ);
 ```
-##### mengguang
-This repo appears to work with the 1003, rather than the 1053.
-https://github.com/mengguang/ESPVS1003
 
-This picture of his setup https://user-images.githubusercontent.com/16861531/27875071-3ead1674-61b2-11e7-9a69-02edafa7b286.jpg uses the ESP8266, But this table shows the mapping to the ESP32
+##### mengguang
+
+This repo appears to work with the 1003, rather than the 1053.
+<https://github.com/mengguang/ESPVS1003>
+
+This picture of his setup <https://user-images.githubusercontent.com/16861531/27875071-3ead1674-61b2-11e7-9a69-02edafa7b286.jpg> uses the ESP8266, But this table shows the mapping to the ESP32
 
   The circuit (example wiring for ESP8266 based board like eg. LoLin NodeMCU V3):
   | VS1053  | ESP8266 |  ESP32   |
@@ -145,35 +158,36 @@ This picture of his setup https://user-images.githubusercontent.com/16861531/278
   |   GND   |   GND   |   GND    |
 
 #### Micropython
+
 This project looks interesting, and it's in Micropython
-https://github.com/peterhinch/micropython-vs1053/tree/master
+<https://github.com/peterhinch/micropython-vs1053/tree/master>
 or
-https://github.com/peterhinch/micropython-vs1053/blob/master/synchronous/esp32audio.py
+<https://github.com/peterhinch/micropython-vs1053/blob/master/synchronous/esp32audio.py>
 
 I have cloned this repo into my ~/projects/micropython-vs1053 folder
 
 Note: This was apparently based on the VS1053, and I have a VS1003B/VS1053 (The chip is actually marked as VS1003B, but the board says VS1003/VS1053 -- I suspect it is *not* going to work as a vs1053).
-For a breakout board of a VS1053, see https://www.adafruit.com/product/1381
-
+For a breakout board of a VS1053, see <https://www.adafruit.com/product/1381>
 
 ##### Asyncronous
+
 There is an asyncronous version which apparently doesn't work on the ESP32:
-See https://github.com/peterhinch/micropython-vs1053/blob/master/ASYNC.md
+See <https://github.com/peterhinch/micropython-vs1053/blob/master/ASYNC.md>
 
 From section 6.1, `Test Results`, we see:
 
 The ESP32, even at 240MHz, failed properly to decode any file. I suspect this is a consequence of the underlying OS stealing processor timeslices.
 
-
 ##### Syncronous
 
-https://github.com/peterhinch/micropython-vs1053/blob/master/SYNCHRONOUS.md
+<https://github.com/peterhinch/micropython-vs1053/blob/master/SYNCHRONOUS.md>
 
-Section 7, `Plugins` describes how to install the plugin for flac, and probably ogg. 
-Based on what I read http://www.vlsi.fi/en/support/software/vs10xxpatches.html, the VS1053 should already decode ogg.
+Section 7, `Plugins` describes how to install the plugin for flac, and probably ogg.
+Based on what I read <http://www.vlsi.fi/en/support/software/vs10xxpatches.html>, the VS1053 should already decode ogg.
 
 Key passages from the syncronous version:
-```
+
+```{}
 from machine import SPI, Pin, freq
 
 
@@ -185,8 +199,10 @@ xdcs = Pin(26, Pin.OUT, value=1)  # Data chip select xdcs in datasheet
 dreq = Pin(27, Pin.IN)  # Active high data request
 player = VS1053(spi, reset, dreq, xdcs, xcs, sdcs, '/fc')
 ```
+
 Where the player is in the `vs1053_syn.py` file
-```
+
+```{}
 class VS1053:
 
 
@@ -317,16 +333,18 @@ class VS1053:
 
 ```
 
-This source https://github.com/adafruit/Adafruit_CircuitPython_VS1053 despairs that the micropython can't keep up. I don't think this is true for us, though, because we are currently doing even more than this.
+This source <https://github.com/adafruit/Adafruit_CircuitPython_VS1053> despairs that the micropython can't keep up. I don't think this is true for us, though, because we are currently doing even more than this.
 
 #### CircuitPython
-A similar variant of python, this project looks simple enough https://github.com/urish/vs1053-circuitpython
 
+A similar variant of python, this project looks simple enough <https://github.com/urish/vs1053-circuitpython>
 
-# 2023-09-12 
-## Installed Micropython on the device.
+## 2023-09-12
 
-# 2023-09-19
+## Installed Micropython on the device
+
+## 2023-09-19
+
 I got it working!! I had to solder together pins 33 and 34 on the VS1053 chip to get it out of MIDI mode. Argh!!
 
 It plays ogg, but it only played track 1 (not track 2) from 8/13/75. That could mean that this was a waste of time, but I want to spend a little time to see if I can get that working.
