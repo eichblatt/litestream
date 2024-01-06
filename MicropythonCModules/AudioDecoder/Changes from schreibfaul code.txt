@@ -7,11 +7,13 @@ There is a core class (Decoder.c) which implements a C wrapper for the two decod
 We need to modify the decoders a little bit to get them to compile in the MicroPython environment, and implement to correct memory management.
 
 
-Changes for the Vorbis Decoder
-==============================
+==================================
+= Changes for the Vorbis Decoder =
+==================================
 
 1) Include Decoder.h
 We need to #include "Decoder.h" in vorbis_decoder.h
+
 
 2) Add extern "C"
 In order to allow the C++ functions to be called by C, we have to bracket the entire vorbis_decoder.h file with:
@@ -32,30 +34,32 @@ The original uses:
 and
 #define __calloc_heap_psram(ch, size) heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 
-We change them to use m_tracked_calloc with the following code:
+We change them to use m_tracked_calloc & m_tracked_free with the following code in vorbis_decoder.cpp:
 #define __malloc_heap_psram(size) m_tracked_calloc(1, size)
-#define __malloc_heap_psram(ch, size) m_tracked_calloc(ch, size)
+#define __calloc_heap_psram(ch, size) m_tracked_calloc(ch, size)
+#define free(obj) m_tracked_free(obj)
 
 
 4) Allow higher sample rates to be decoded
-The original only allows files up to a sample rate of 64,000 to be decode. This means that a uint16_t is sufficient to store the sample rate
+The original only allows files up to a sample rate of 64,000 to be decode. This means that a uint16_t is sufficient to store the sample rate.
 However, we found a file (1993-05-14) which had a sample rate of 96,000
 The decoder was actually able to decode it, but was being prevented by "if(sampleRate < 4096 || sampleRate > 64000)"
-The fix is to change s_VorbisSamplerate to unit32_t and change the if statement to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: to "log_e("sampleRate is not valid sr=%u", sampleRate);"
+The fix is to change s_VorbisSamplerate to unit32_t and change the if statement to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate);"
 
 
 5) Stop Ogg/Theora files from crashing the decoder
 Unfortunately the .ogg file extension is not a guarantee that we have Vorbis data. We have seen at least one file (1988-03-28) which contains Ogg/Theora (video) data. This crashes the decoder.
-The fix is to return ERR_VORBIS_NOT_AUDIO in three places in Vorbis_Decode() if it doesn't find the expected "vorbis" capture pattern and handle it in the Python player.
+The fix is to return ERR_VORBIS_NOT_AUDIO in three places in Vorbis_Decode() if it doesn't find the expected "vorbis" capture pattern, and handle it in the Python player.
 
 
 6) Don't use strndup
 The original decoder uses strndup in parseVorbisComment(). strndup does a malloc under the covers and is not compatible with our MicroPython memory allocations
 So we change:
-artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7);
+if(idx == 0){
+            artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7);
+}
 to:
-if(idx == 0)
-{
+if(idx == 0){
             title = (char*)__malloc_heap_psram(commentLength - 6);
             title = strncpy(title, (const char*)(s_vorbisChbuf + 6), commentLength - 6);
 }
@@ -63,7 +67,7 @@ if(idx == 0)
 
 7) Don't use default parameters
 Even though vorbis_decoder.cpp is written in C++, and C++ allows the use of default parameters in a function definition, because we are including vorbis_decoder.h from Decoder.h (which is a header for a .C file) we can't use default parameters.
-Luckily nowhere in the code does it call VORBIS_specialIndexOf() with exact = true, so we can just hard code exact = false.
+Luckily nowhere in the code does it call VORBIS_specialIndexOf() with exact=true, so we can just hard code exact=false.
 
 We need to change the function signature of VORBIS_specialIndexOf() in vorbis_decoder.h from:
 int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen, bool exact = false);
@@ -73,8 +77,7 @@ int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen);
 We also need to change the implementation of VORBIS_specialIndexOf() in vorbis_decoder.c from:
 int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen, bool exact) {
 to:
-int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen)
-{
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen) {
     bool exact = false;
 
 
@@ -87,8 +90,11 @@ enum {VORBIS_CONTINUE = 110,
 
 
 
-Changes for the MP3 Decoder
-===========================
+
+===============================
+= Changes for the MP3 Decoder =
+===============================
+
 1) Include "Decoder.h"
 We need to #include "Decoder.h" in vorbis_decoder.h
 
