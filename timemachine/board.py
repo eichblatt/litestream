@@ -42,7 +42,7 @@ pLED = Pin(48, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
 
-
+m = d = y = None  # knobs
 year_pins = (40, 42)
 month_pins = (39, 18)
 day_pins = (7, 8)
@@ -71,40 +71,47 @@ def get_knob_sense():
     return get_int_from_file(KNOB_SENSE_PATH, 0, 7)
 
 
+def setup_knobs(knob_sense):
+    global m
+    global d
+    global y
+    # Month
+    m = RotaryIRQ(
+        month_pins[knob_sense & 0x1],
+        month_pins[~knob_sense & 0x1],
+        min_val=1,
+        max_val=12,
+        reverse=False,
+        range_mode=RotaryIRQ.RANGE_BOUNDED,
+        pull_up=True,
+        half_step=False,
+    )
+    # Day
+    d = RotaryIRQ(
+        day_pins[(knob_sense >> 1) & 0x1],
+        day_pins[~(knob_sense >> 1) & 0x1],
+        min_val=1,
+        max_val=31,
+        reverse=False,
+        range_mode=RotaryIRQ.RANGE_BOUNDED,
+        pull_up=True,
+        half_step=False,
+    )
+    # Year
+    y = RotaryIRQ(
+        year_pins[(knob_sense >> 2) & 0x1],
+        year_pins[~(knob_sense >> 2) & 0x1],
+        min_val=1966,
+        max_val=1995,
+        reverse=False,
+        range_mode=RotaryIRQ.RANGE_BOUNDED,
+        pull_up=True,
+        half_step=False,
+    )
+
+
 knob_sense = get_knob_sense()
-# Month
-m = RotaryIRQ(
-    month_pins[knob_sense & 0x1],
-    month_pins[~knob_sense & 0x1],
-    min_val=1,
-    max_val=12,
-    reverse=False,
-    range_mode=RotaryIRQ.RANGE_BOUNDED,
-    pull_up=True,
-    half_step=False,
-)
-# Day
-d = RotaryIRQ(
-    day_pins[(knob_sense >> 1) & 0x1],
-    day_pins[~(knob_sense >> 1) & 0x1],
-    min_val=1,
-    max_val=31,
-    reverse=False,
-    range_mode=RotaryIRQ.RANGE_BOUNDED,
-    pull_up=True,
-    half_step=False,
-)
-# Year
-y = RotaryIRQ(
-    year_pins[(knob_sense >> 2) & 0x1],
-    year_pins[~(knob_sense >> 2) & 0x1],
-    min_val=1966,
-    max_val=1995,
-    reverse=False,
-    range_mode=RotaryIRQ.RANGE_BOUNDED,
-    pull_up=True,
-    half_step=False,
-)
+setup_knobs(knob_sense)
 
 PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
 PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]
@@ -278,6 +285,7 @@ def calibrate_knobs():
         change = (change | int(knob.value() < prev_value) << bit) & 0x7
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
+    setup_knobs(knob_sense)
     write("Knobs\nCalibrated")
     try:
         kf = open(KNOB_SENSE_PATH, "w")
