@@ -776,12 +776,12 @@ class AudioPlayer:
 
             # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
             elif Result == -7:
-                self.DEBUG and print("Not an audio track")
+                print("Not an audio track")
                 self.ffwd()
                 self.play()
                 pass
             else:
-                self.DEBUG and print("Decode Packet failed. Error:", Result)
+                print("Decode Packet failed. Error:", Result)
                 raise RuntimeError("Decode Packet failed")
 
             # Check if we have decoded to the end of the current track
