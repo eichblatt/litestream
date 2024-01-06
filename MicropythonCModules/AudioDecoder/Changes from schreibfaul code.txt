@@ -4,7 +4,7 @@ To use them in MicroPython, they have to be compiled as a "user module" which ca
 
 There is a core class (Decoder.c) which implements a C wrapper for the two decoders.
 
-We need to modify the decoders a little bit to get them to compile in the MicroPython environment, and implement to correct memory management.
+We need to modify the decoders a little bit to get them to compile in the MicroPython environment, and to implement correct memory management.
 
 
 ==================================
