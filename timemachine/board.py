@@ -297,6 +297,7 @@ def calibrate_screen(force=False):
         return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
+    tft.on()
     clear_screen()
     tft.offset(0, 0)
     tft.rect(0, 0, 160, 128, st7789.WHITE)
@@ -321,6 +322,7 @@ def calibrate_screen(force=False):
         screen_type = 0
     finally:
         fh.close()
+        tft.on()
         clear_screen()
     return screen_type
 

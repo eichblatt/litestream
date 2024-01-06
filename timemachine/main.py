@@ -270,7 +270,7 @@ def reconfigure():
     elif choice == "Reboot":
         machine.reset()
     elif choice == "Calibrate Screen":
-        tm.calibrate_screen()
+        tm.calibrate_screen(force=True)
     return choice
 
 
@@ -287,7 +287,7 @@ def basic_main():
     if not utils.path_exists("/.knob_sense"):
         tm.self_test()
         tm.calibrate_knobs()
-    tm.tft.on()
+    tm.calibrate_screen()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
     red_color = st7789.color565(255, 0, 0)
