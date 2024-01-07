@@ -149,7 +149,9 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
         for d in valid_dates:
             if d[5:] == tih_pattern:
                 valid_tihs.append(d)
-    if date == valid_tihs[-1]:
+    if len(valid_tihs) == 0: # There are no today in history shows.
+        return date
+    if date >= valid_tihs[-1]:
         return valid_tihs[0]
     for d in valid_tihs:
         if d > date:
