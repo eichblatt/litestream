@@ -285,6 +285,7 @@ def basic_main():
     pStop_old = True
     configure = False
     if not utils.path_exists("/.knob_sense"):
+        print("knob sense not present")
         tm.self_test()
         tm.calibrate_knobs()
     tm.calibrate_screen()
