@@ -56,11 +56,12 @@ def get_int_from_file(path, default_val, max_val):
         val = int(fh.readline().strip())
         if val > max_val:
             raise ValueError(f"value {val} read from path is out of bounds (0,{max_val})")
-    except Exception:
+    except Exception as e:
+        print(f"Exception in get_int_from_file {e}. path {path}")
         val = default_val
-        if val is not None:
-            fh = open(path, "w")
-            fh.write(f"{val}")
+        # if val is not None:
+        # fh = open(path, "w")
+        # fh.write(f"{val}")
     finally:
         if fh is not None:
             fh.close()
