@@ -52,7 +52,7 @@ Unfortunately the .ogg file extension is not a guarantee that we have Vorbis dat
 The fix is to change VORBISDecode() to return ERR_VORBIS_NOT_AUDIO if it doesn't find the expected "vorbis" capture pattern, and handle it in the Python player.
 
 Make the following change in VORBISDecode() in vorbis_decoder.cpp:
-```
+
 if(s_pageNr == 1){ // identificaton header
     clearGlobalConfigurations(); // if a new codebook is required, delete the old one
     int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
@@ -64,7 +64,6 @@ if(s_pageNr == 1){ // identificaton header
     }
     else
         ret = ERR_VORBIS_NOT_AUDIO;
-```
 
 
 6) Don't use strndup
