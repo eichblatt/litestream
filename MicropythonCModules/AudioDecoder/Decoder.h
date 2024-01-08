@@ -8,7 +8,7 @@
 //#include "esp_timer.h"
 
 const int MajorVersion = 1;
-const int MinorVersion = 1;
+const int MinorVersion = 2;
 
 typedef struct _Vorbis_Decoder_obj_t {
     mp_obj_base_t base;
