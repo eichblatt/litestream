@@ -15,7 +15,7 @@
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 13.12.2023
+ *  Updated on: 09.01.2023
  */
 //----------------------------------------------------------------------------------------------------------------------
 //                                     O G G    I M P L.
@@ -24,54 +24,14 @@
 #include "lookup.h"
 #include "alloca.h"
 
-#define __malloc_heap_psram(size) \
-    m_tracked_calloc(1, size)
-    //my_malloc(size)
-    //heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
-#define __calloc_heap_psram(ch, size) \
-    m_tracked_calloc(ch, size)
-    //memset(m_malloc(size * ch), 0, size * ch)
-    //my_calloc(ch, size)
-    //heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+//#define __malloc_heap_psram(size) 
+//    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
+//#define __calloc_heap_psram(ch, size) 
+//    heap_caps_calloc_prefer(ch, size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL)
 
-#define free(obj) \
-    m_tracked_free(obj)
-    //m_free(obj)
-    //my_free(obj)
-
-void my_free(void* p)
-{
-    printf("Freeing %p\n", p);
-    m_free(p);
-    printf("Freed\n");
-}
-
-void* my_malloc(size_t nbytes)
-{
-    //void* p = heap_caps_malloc_prefer(nbytes, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
-    void* p = m_malloc(nbytes);
-    if (p != NULL)
-        printf("malloced %u at %p\n", nbytes, p);
-    else
-        printf("Failed to malloc %u\n", nbytes);
-    return p;
-}
-
-void* my_calloc(size_t n, size_t elem_size) {
-    //void* p = heap_caps_calloc_prefer(n, elem_size, 2, MALLOC_CAP_DEFAULT | MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT | MALLOC_CAP_INTERNAL);
-    const size_t nbytes = n * elem_size;
-    void* p = m_malloc(nbytes);
-    if (p != NULL) 
-    {
-        printf("calloced %u at %p\n", nbytes, p);
-        // Initialize memory to zero using memset
-        memset(p, 0, nbytes);
-    }
-    else
-        printf("Failed to calloc %u\n", nbytes);
-    return p;
-}
-
+#define __malloc_heap_psram(size) m_tracked_calloc(1, size)
+#define __calloc_heap_psram(ch, size) m_tracked_calloc(ch, size)
+#define free(obj) m_tracked_free(obj)
 
 // global vars
 bool      s_f_vorbisParseOgg = false;
@@ -90,19 +50,16 @@ uint16_t  s_oggHeaderSize = 0;
 uint8_t   s_vorbisChannels = 0;
 uint32_t  s_vorbisSamplerate = 0;
 uint16_t  s_lastSegmentTableLen = 0;
-
-//#define s_lastSegmentTable mpVorbis->s_lastSegmentTable
 uint8_t  *s_lastSegmentTable = NULL;
-
 uint32_t  s_vorbisBitRate = 0;
 uint32_t  s_vorbisSegmentLength = 0;
-
-//#define s_vorbisChbuf mpVorbis->s_vorbisChbuf
 char     *s_vorbisChbuf = NULL;
-
 int32_t   s_vorbisValidSamples = 0;
 uint8_t   s_vorbisOldMode = 0;
 uint32_t  s_blocksizes[2];
+uint32_t  s_blockPicPos = 0;
+uint32_t  s_blockPicLen = 0;
+uint32_t  s_commentLength = 0;
 
 uint8_t   s_nrOfCodebooks = 0;
 uint8_t   s_nrOfFloors = 0;
@@ -118,6 +75,7 @@ int8_t    s_vorbisError = 0;
 float     s_vorbisCompressionRatio = 0;
 
 bitReader_t            s_bitReader;
+
 codebook_t            *s_codebooks = NULL;
 vorbis_info_floor_t  **s_floor_param = NULL;
 int8_t                *s_floor_type = NULL;
@@ -138,42 +96,7 @@ void VORBISDecoder_FreeBuffers(){
     if(s_vorbisChbuf){free(s_vorbisChbuf); s_vorbisChbuf = NULL;}
     if(s_lastSegmentTable){free(s_lastSegmentTable); s_lastSegmentTable = NULL;}
 
-    if(s_nrOfMaps) {
-        for(int i = 0; i < s_nrOfMaps; i++) /* unpack does the range checking */
-            mapping_clear_info(s_map_param + i);
-        s_nrOfMaps = 0;
-    }
-
-    if(s_nrOfFloors) {
-        for(int i = 0; i < s_nrOfFloors; i++) /* unpack does the range checking */
-            floor_free_info(s_floor_param[i]);
-        free(s_floor_param);
-        s_nrOfFloors = 0;
-    }
-
-    if(s_nrOfResidues) {
-        for(int i = 0; i < s_nrOfResidues; i++) /* unpack does the range checking */
-            res_clear_info(s_residue_param + i);
-        s_nrOfResidues = 0;
-    }
-
-    if(s_nrOfCodebooks) {
-        for(int i = 0; i < s_nrOfCodebooks; i++)
-            vorbis_book_clear(s_codebooks + i);
-        s_nrOfCodebooks = 0;
-    }
-
-    if(s_codebooks) {free(s_codebooks); s_codebooks = NULL;}
-
-    if(s_floor_type){free(s_floor_type); s_floor_type = NULL;}
-
-    if(s_residue_param){free(s_residue_param); s_residue_param = NULL;}
-
-    if(s_map_param){free(s_map_param); s_map_param = NULL;}
-
-    if(s_mode_param) {free(s_mode_param); s_mode_param = NULL;}
-    
-    if(s_dsp_state){vorbis_dsp_destroy(s_dsp_state); s_dsp_state = NULL;}
+    clearGlobalConfigurations();
 }
 void VORBISDecoder_ClearBuffers(){
     if(s_vorbisChbuf) memset(s_vorbisChbuf, 0, 256);
@@ -200,13 +123,60 @@ void VORBISsetDefaults(){
     s_vorbisSegmentTableRdPtr = -1;
     s_vorbisError = 0;
     s_lastSegmentTableLen = 0;
+    s_blockPicPos = 0;
+    s_blockPicLen = 0;
 
     VORBISDecoder_ClearBuffers();
+}
+
+void clearGlobalConfigurations() { // mode, mapping, floor etc
+    if(s_nrOfCodebooks) {  // if we have a stream with changing codebooks, delete the old one
+        for(int i = 0; i < s_nrOfCodebooks; i++) { vorbis_book_clear(s_codebooks + i); }
+        s_nrOfCodebooks = 0;
+    }
+    if(s_codebooks) {
+        free(s_codebooks);
+        s_codebooks = NULL;
+    }
+    if(s_dsp_state) {
+        vorbis_dsp_destroy(s_dsp_state);
+        s_dsp_state = NULL;
+    }
+    if(s_nrOfFloors) {
+        for(int i = 0; i < s_nrOfFloors; i++) floor_free_info(s_floor_param[i]);
+        free(s_floor_param);
+        s_nrOfFloors = 0;
+    }
+    if(s_nrOfResidues) {
+        for(int i = 0; i < s_nrOfResidues; i++) res_clear_info(s_residue_param + i);
+        s_nrOfResidues = 0;
+    }
+    if(s_nrOfMaps) {
+        for(int i = 0; i < s_nrOfMaps; i++) { mapping_clear_info(s_map_param + i); }
+        s_nrOfMaps = 0;
+    }
+    if(s_floor_type) {
+        free(s_floor_type);
+        s_floor_type = NULL;
+    }
+    if(s_residue_param) {
+        free(s_residue_param);
+        s_residue_param = NULL;
+    }
+    if(s_map_param) {
+        free(s_map_param);
+        s_map_param = NULL;
+    }
+    if(s_mode_param) {
+        free(s_mode_param);
+        s_mode_param = NULL;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
+
     int ret = 0;
 
     if(s_f_vorbisParseOgg){
@@ -232,22 +202,30 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
             }
 
             if(s_pageNr == 1){ // identificaton header
-              int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
+                clearGlobalConfigurations(); // if a new codebook is required, delete the old one
+                int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
                 if(idx == 1){
                     // log_i("first packet (identification len) %i", len);
                     s_identificatonHeaderLength = len;
                     ret = parseVorbisFirstPacket(inbuf, len);
+                    s_blockPicPos += 28;
                 }
+                else
+                    ret = ERR_VORBIS_NOT_AUDIO;
             }
             else if(s_pageNr == 2){ // comment header
                 int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
+                s_blockPicPos += 6;
                 if(idx == 1){
                     // log_i("second packet (comment len) %i", len);
                     s_commentHeaderLength = len;
                     ret = parseVorbisComment(inbuf, len);
                 }
                 else{
-                    log_e("no \"vorbis\" something went wrong %i", len);
+                    uint16_t blockLen = len;
+                    // log_i("blockPicLen %i blockLen %i", s_blockPicLen, blockLen);
+                    s_blockPicLen -= blockLen;
+                    ; // commentlength is greater than (one or more) OggS frame(s)
                 }
                 // log_w("s_vorbisSegmentTableSize %d", s_vorbisSegmentTableSize);
                 // Normally the segment table has two entries, the first for comments and the second for the codebooks
@@ -262,6 +240,7 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                     s_setupHeaderLength = len;
 
                     bitReader_setData(inbuf, len);
+
                     if(len == 4080){
                         // that is 16*255 bytes and thus the maximum segment size
                         // it is possible that there is another block starting with 'OggS' in which there is information
@@ -275,6 +254,7 @@ int VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf){
                         log_w("s_oggPage3Len %i", s_oggPage3Len);
                         s_pageNr++;
                     }
+
                     ret = parseVorbisCodebook();
                 }
                 else{
@@ -437,7 +417,7 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
     }
     s_vorbisChannels = channels;
 
-    if(sampleRate < 4096 || sampleRate > 96000){ //M.A.
+    if(sampleRate < 4096 || sampleRate > 96000){
         log_e("sampleRate is not valid sr=%u", sampleRate);
         return -1;
     }
@@ -450,21 +430,23 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
 }
 //----------------------------------------------------------------------------------------------------------------------
 int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https://xiph.org/vorbis/doc/v-comment.html
+
     // first bytes are: '.vorbis'
-    uint16_t pos = 7;
+    uint32_t pos = 7;
     uint32_t vendorLength       = *(inbuf + pos + 3) << 24; // lengt of vendor string, e.g. Xiph.Org libVorbis I 20070622
              vendorLength      += *(inbuf + pos + 2) << 16;
              vendorLength      += *(inbuf + pos + 1) << 8;
              vendorLength      += *(inbuf + pos);
 
     if(vendorLength > 254){  // guard
-       log_e("vorbis comment too long");
+       log_e("vorbis comment too long, vendorLength %i", vendorLength);
        return 0;
     }
 
     memcpy(s_vorbisChbuf, inbuf + 11, vendorLength);
     s_vorbisChbuf[vendorLength] = '\0';
     pos += 4 + vendorLength;
+    s_commentHeaderLength -= (7 + 4 + vendorLength);
 
     // log_i("vendorLength %x", vendorLength);
     // log_i("vendorString %s", s_vorbisChbuf);
@@ -472,6 +454,7 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
     uint8_t nrOfComments = *(inbuf + pos);
     // log_i("nrOfComments %i", nrOfComments);
     pos += 4;
+    s_commentHeaderLength -= 4;
 
     int idx = 0;
     char* artist = NULL;
@@ -483,28 +466,39 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
         commentLength += *(inbuf + pos + 2) << 16;
         commentLength += *(inbuf + pos + 1) << 8;
         commentLength += *(inbuf + pos);
+        s_commentLength = commentLength;
 
-        if(commentLength > 254) {log_i("vorbis comment too long"); return 0;}
-        memcpy(s_vorbisChbuf, inbuf + pos +  4, commentLength);
-        s_vorbisChbuf[commentLength] = '\0';
+        //uint8_t cl = min((uint32_t)254, commentLength);
+        uint8_t cl = commentLength < (uint32_t)254 ? commentLength : (uint32_t)254;
+        memcpy(s_vorbisChbuf, inbuf + pos +  4, cl);
+        s_vorbisChbuf[cl] = '\0';
 
         // log_i("commentLength %i comment %s", commentLength, s_vorbisChbuf);
-        pos += commentLength + 4;
 
         idx =        VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "artist=", 10);
         if(idx != 0) VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "ARTIST=", 10);
         if(idx == 0){
-            artist = (char*)__malloc_heap_psram(commentLength - 7); //M.A.
+            artist = (char*)__malloc_heap_psram(commentLength - 7);
             artist = strncpy(artist, (const char*)(s_vorbisChbuf + 7), commentLength - 7);
-            //artist = strndup((const char*)(s_vorbisChbuf + 7), commentLength - 7);
         }
+
         idx =        VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "title=", 10);
         if(idx != 0) VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "TITLE=", 10);
         if(idx == 0){
-            title = (char*)__malloc_heap_psram(commentLength - 6); //M.A.
+            title = (char*)__malloc_heap_psram(commentLength - 6);
             title = strncpy(title, (const char*)(s_vorbisChbuf + 6), commentLength - 6);
-            //title = strndup((const char*)(s_vorbisChbuf + 6), commentLength - 6);
         }
+
+        idx =        VORBIS_specialIndexOf((uint8_t*)s_vorbisChbuf, "metadata_block_picture=", 25);
+        if(idx == 0){
+                    s_blockPicLen = commentLength - 23;
+                    s_blockPicPos += pos + 23;
+                    uint16_t blockPicLenUntilFrameEnd = s_commentHeaderLength - 4 - 23;
+                    log_i("metadata block picture found at pos %i, length %i, first blockLength %i", s_blockPicPos, s_blockPicLen, blockPicLenUntilFrameEnd);
+                    s_blockPicLen -= blockPicLenUntilFrameEnd;
+                    }
+        pos += commentLength + 4;
+        s_commentHeaderLength -= (4 + commentLength);
     }
     if(artist && title){
         strcpy(s_vorbisChbuf, artist);
@@ -527,6 +521,7 @@ int parseVorbisComment(uint8_t *inbuf, int16_t nBytes){      // reference https:
 }
 //----------------------------------------------------------------------------------------------------------------------
 int parseVorbisCodebook(){
+
     s_bitReader.headptr += 7;
     s_bitReader.length = s_oggPage3Len;
 
@@ -632,11 +627,12 @@ int VORBISparseOGG(uint8_t *inbuf, int *bytesLeft){
     s_f_vorbisParseOgg = false;
     int ret = 0; (void)ret;
 
-    int idx = VORBIS_specialIndexOf(inbuf, "OggS", 1024);
+    int idx = VORBIS_specialIndexOf(inbuf, "OggS", 8192);
     if(idx != 0){
         if(s_f_oggContinuedPage) return ERR_VORBIS_DECODER_ASYNC;
         inbuf += idx;
         *bytesLeft -= idx;
+        s_blockPicPos += idx;
     }
 
     int16_t segmentTableWrPtr = -1;
@@ -696,6 +692,7 @@ int VORBISparseOGG(uint8_t *inbuf, int *bytesLeft){
     }
 
     *bytesLeft -= headerSize;
+    s_blockPicPos += headerSize;
     if(s_pageNr < 4 && !continuedPage) s_pageNr++;
 
     s_f_oggFirstPage = firstPage;
@@ -893,6 +890,7 @@ int vorbis_book_unpack(codebook_t *s) {
                         if(s->q_val) {free(s->q_val), s->q_val = NULL;}
                         goto _errout;
                     }
+
                     if(s->q_val) {free(s->q_val), s->q_val = NULL;} /* about to go out of scope; _make_decode_table was using it */
                 }
                 else {
@@ -913,6 +911,7 @@ int vorbis_book_unpack(codebook_t *s) {
                     s->dec_type = 2;
                     s->dec_nodeb = _determine_node_bytes(s->used_entries, (_ilog(quantvals - 1) * s->dim + 8) / 8);
                     s->dec_leafw = _determine_leaf_words(s->dec_nodeb, (_ilog(quantvals - 1) * s->dim + 8) / 8);
+
                     ret = _make_decode_table(s, lengthlist, quantvals, maptype);
                     if(ret){
                         goto _errout;
@@ -935,6 +934,7 @@ int vorbis_book_unpack(codebook_t *s) {
             }
             else {
                 /* use dec_type 3: scalar offset into packed value array */
+
                 s->dec_type = 3;
                 s->dec_nodeb = _determine_node_bytes(s->used_entries, _ilog(s->used_entries - 1) / 8 + 1);
                 s->dec_leafw = _determine_leaf_words(s->dec_nodeb, _ilog(s->used_entries - 1) / 8 + 1);
@@ -959,19 +959,21 @@ int vorbis_book_unpack(codebook_t *s) {
             goto _errout;
     }
     if(oggpack_eop()) goto _eofout;
-    if(lengthlist) free(lengthlist);
+    if(lengthlist) {free(lengthlist); lengthlist = NULL;}
+    if(s->q_val)   {free(s->q_val), s->q_val = NULL;}
     return 0; // ok
 _errout:
 _eofout:
     vorbis_book_clear(s);
-    if(lengthlist) free(lengthlist);
+    if(lengthlist) {free(lengthlist); lengthlist = NULL;}
+    if(s->q_val)   {free(s->q_val), s->q_val = NULL;}
     return -1; // error
 }
 //---------------------------------------------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------------------------------------------------
-int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen){ //, bool exact){ M.A.
-    bool exact = false; //M.A.
+int VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen) {
+    bool exact = false;
     int result = 0;  // seek for str in buffer or in header up to baselen, not nullterninated
     if (strlen(str) > baselen) return -1; // if exact == true seekstr in buffer must have "\0" at the end
     for (int i = 0; i < baselen - strlen(str); i++){
@@ -1141,6 +1143,7 @@ int _make_decode_table(codebook_t *s, char *lengthlist, uint8_t quantvals, int m
 
         return 0;
     }
+
     work = (uint32_t *)__calloc_heap_psram((uint32_t)(s->used_entries * 2 - 2) , sizeof(*work));
     if(!work) log_e("oom");
 
@@ -1397,6 +1400,7 @@ void vorbis_book_clear(codebook_t *b) {
 }
 //---------------------------------------------------------------------------------------------------------------------
  vorbis_info_floor_t* floor0_info_unpack() {
+
     int               j;
 
     vorbis_info_floor_t *info = (vorbis_info_floor_t *)__malloc_heap_psram(sizeof(*info));
@@ -1425,6 +1429,7 @@ err_out:
 }
 //---------------------------------------------------------------------------------------------------------------------
 vorbis_info_floor_t* floor1_info_unpack() {
+
     int j, k, count = 0, maxclass = -1, rangebits;
 
     vorbis_info_floor_t *info = (vorbis_info_floor_t *)__calloc_heap_psram(1, sizeof(vorbis_info_floor_t));
@@ -1711,6 +1716,7 @@ void vorbis_dsp_destroy(vorbis_dsp_state_t *v) {
             if(v->mdctright){free(v->mdctright); v->mdctright = NULL;}
         }
         free(v);
+        v = NULL;
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
