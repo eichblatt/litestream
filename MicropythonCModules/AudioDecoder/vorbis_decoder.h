@@ -3,7 +3,7 @@ extern "C" {
 #endif
 
 #pragma once
-#pragma GCC optimize "Os"
+//#pragma GCC optimize "O3"
 //#pragma pack(1)
 //#pragma GCC optimize "std=gnu++11"
 //#pragma GCC target "longcalls"
@@ -32,7 +32,7 @@ extern "C" {
  * adapted for the ESP32 by schreibfaul1
  *
  *  Created on: 13.02.2023
- *  Updated on: 09.10.2023
+ *  Updated on: 06.01.2023
  */
 
 
@@ -108,7 +108,7 @@ typedef struct{
     uint8_t        class_subbook[8]; /* [VIF_CLASS][subs] */
 } floor1class_t;
 
-typedef struct _vorbis_info_floor{
+typedef struct{
     int            order;
     int32_t        rate;
     int32_t        barkmap;
@@ -159,7 +159,7 @@ typedef struct _vorbis_info_mapping{
     coupling_step_t *coupling;
 } vorbis_info_mapping_t;
 
-typedef struct _vorbis_info_mode{  // mode
+typedef struct {  // mode
     uint8_t blockflag;
     uint8_t mapping;
 } vorbis_info_mode_t;
@@ -231,6 +231,7 @@ bool     VORBISDecoder_AllocateBuffers();
 void     VORBISDecoder_FreeBuffers();
 void     VORBISDecoder_ClearBuffers();
 void     VORBISsetDefaults();
+void     clearGlobalConfigurations();
 int      VORBISDecode(uint8_t *inbuf, int *bytesLeft, short *outbuf);
 uint8_t  VORBISGetChannels();
 uint32_t VORBISGetSampRate();

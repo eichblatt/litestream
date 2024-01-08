@@ -44,12 +44,26 @@ We change them to use m_tracked_calloc & m_tracked_free with the following code 
 The original only allows files up to a sample rate of 64,000 to be decode. This means that a uint16_t is sufficient to store the sample rate.
 However, we found a file (1993-05-14) which had a sample rate of 96,000
 The decoder was actually able to decode it, but was being prevented by "if(sampleRate < 4096 || sampleRate > 64000)"
-The fix is to change s_VorbisSamplerate to unit32_t and change the if statement to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate);"
+The fix is to change s_VorbisSamplerate to unit32_t and change the if statement in parseVorbisFirstPacket() to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate);"
 
 
 5) Stop Ogg/Theora files from crashing the decoder
 Unfortunately the .ogg file extension is not a guarantee that we have Vorbis data. We have seen at least one file (1988-03-28) which contains Ogg/Theora (video) data. This crashes the decoder.
-The fix is to return ERR_VORBIS_NOT_AUDIO in three places in Vorbis_Decode() if it doesn't find the expected "vorbis" capture pattern, and handle it in the Python player.
+The fix is to change VORBISDecode() to return ERR_VORBIS_NOT_AUDIO if it doesn't find the expected "vorbis" capture pattern, and handle it in the Python player.
+
+Make the following change in VORBISDecode() in vorbis_decoder.cpp:
+
+if(s_pageNr == 1){ // identificaton header
+    clearGlobalConfigurations(); // if a new codebook is required, delete the old one
+    int idx = VORBIS_specialIndexOf(inbuf, "vorbis", 10);
+    if(idx == 1){
+        // log_i("first packet (identification len) %i", len);
+        s_identificatonHeaderLength = len;
+        ret = parseVorbisFirstPacket(inbuf, len);
+        s_blockPicPos += 28;
+    }
+    else
+        ret = ERR_VORBIS_NOT_AUDIO;
 
 
 6) Don't use strndup
@@ -98,6 +112,12 @@ enum : int8_t  {VORBIS_CONTINUE = 110,
 to:
 enum {VORBIS_CONTINUE = 110,
 
+
+9) Don't use min()
+C doesn't support min() so change parseVorbisComment() from:
+uint8_t cl = min((uint32_t)254, commentLength);
+to:
+uint8_t cl = commentLength < (uint32_t)254 ? commentLength : (uint32_t)254;
 
 
 
