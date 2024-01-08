@@ -284,10 +284,6 @@ def basic_main():
     pSelect_old = True
     pStop_old = True
     configure = False
-    if not utils.path_exists("/.knob_sense"):
-        print("knob sense not present")
-        tm.self_test()
-        tm.calibrate_knobs()
     tm.calibrate_screen()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
@@ -301,6 +297,10 @@ def basic_main():
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
 
     wifi = utils.connect_wifi()
+    if not utils.path_exists("/.knob_sense"):
+        print("knob sense not present")
+        tm.self_test()
+        tm.calibrate_knobs()
     if configure:
         reconfigure()
     dt = utils.set_datetime()
