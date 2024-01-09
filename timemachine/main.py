@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import gc
 import json
 import sys
 import os
@@ -112,18 +113,23 @@ def _collection_names():
     api_request = f"{API}/all_collection_names/"
     cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
     all_collection_names_dict = {"Phishin Archive": ["Phish"]}
-    resp = requests.get(cloud_url)
-    if resp.status_code == 200:
-        print(f"Downloaded collections names from {cloud_url}")
-        cloud_file_contents = resp.json()["items"]
-        colls = [x["identifier"] for x in cloud_file_contents]
-        all_collection_names_dict["Internet Archive"] = colls
-        resp.close()
-    else:
-        print(f"API request is {api_request}")
-        resp = requests.get(api_request).json()
-        all_collection_names_dict = resp["collection_names"]
-
+    resp = None
+    try:
+        gc.collect()
+        resp = requests.get(cloud_url)
+        if resp.status_code == 200:
+            print(f"Downloaded collections names from {cloud_url}")
+            colls = resp.json()["items"]
+            all_collection_names_dict["Internet Archive"] = colls
+        else:
+            print(f"API request is {api_request}")
+            resp = requests.get(api_request).json()
+            all_collection_names_dict = resp["collection_names"]
+    except Exception as e:
+        print("Exception when loading collnames {e}")
+    finally:
+        if resp is not None:
+            resp.close()
     return all_collection_names_dict
 
 
