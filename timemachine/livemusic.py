@@ -149,7 +149,7 @@ def get_next_tih(date, valid_dates, valid_tihs=[]):
         for d in valid_dates:
             if d[5:] == tih_pattern:
                 valid_tihs.append(d)
-    if len(valid_tihs) == 0: # There are no today in history shows.
+    if len(valid_tihs) == 0:  # There are no today in history shows.
         return date
     if date >= valid_tihs[-1]:
         return valid_tihs[0]
@@ -274,13 +274,14 @@ def main_loop(player, coll_dict, state):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
-                if (player.PLAY_STATE == player.STOPPED) and (player.current_track == 0):
+                if (player.PLAY_STATE == player.STOPPED) and (player.current_track is None):
                     if (key_date in valid_dates) and tm.power():
                         selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape)
                         selected_date = state["selected_date"]
                         collection = state["selected_collection"]
                         selected_tape_id = state["selected_tape_id"]
                         vcs = selected_vcs
+                        gc.collect()
                 play_pause(player)
                 print("PlayPause UP")
 
