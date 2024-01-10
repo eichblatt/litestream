@@ -139,7 +139,7 @@ and
 
 
 3) Don't use static const
-C doesn't support static const.
+It won't compile correctly if we use static const. Change to use #define instead.
 
 The original uses:
 static const uint8_t  m_HUFF_PAIRTABS          =32;
@@ -153,7 +153,7 @@ static const uint8_t  m_MAX_NGRAN              =2;     // max granules
 static const uint8_t  m_MAX_NCHAN              =2;     // max channels
 static const uint16_t m_MAX_NSAMP              =576;   // max samples per channel, per granule
 
-We change it in MP3_decoder.h to use #defines:
+We change it in MP3_decoder.h to use #define instead:
 #define m_HUFF_PAIRTABS          32
 #define m_BLOCK_SIZE             18
 #define m_NBANDS                 32
@@ -179,15 +179,5 @@ The original uses:
 #endif
 
 We change them to use m_tracked_calloc with the following code:
-//#ifdef CONFIG_IDF_TARGET_ESP32S3
-    // ESP32-S3: If there is PSRAM, prefer it
-    #define __malloc_heap_psram(size) \
-        m_tracked_calloc(1, size)
-    //    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
-//#else
-    // ESP32, PSRAM is too slow, prefer SRAM
-  //  #define __malloc_heap_psram(size) 
-  //      heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
-//#endif
-#define free(obj) \
-    m_tracked_free(obj)
+#define __malloc_heap_psram(size) m_tracked_calloc(1, size)
+#define free(obj) m_tracked_free(obj)
