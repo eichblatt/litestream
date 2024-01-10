@@ -112,7 +112,7 @@ Both seem to have the same problem in that there is excessive padding before the
 The third marker is at 0x1800, so the code in VORBISparseOGG(uint8_t *inbuf, int *bytesLeft) that calls VORBIS_specialIndexOf() doesn't find it.
 
 Changing the line to:
-int idx = VORBIS_specialIndexOf(inbuf, "OggS", **8192**);
+int idx = VORBIS_specialIndexOf(inbuf, "OggS", 8192);
 allows them to be played.
 
 
