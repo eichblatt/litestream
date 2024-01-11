@@ -1529,18 +1529,8 @@ void MP3Decoder_ClearBuffer(void) {
  *
  **********************************************************************************************************************/
 
-//#ifdef CONFIG_IDF_TARGET_ESP32S3
-    // ESP32-S3: If there is PSRAM, prefer it
-    #define __malloc_heap_psram(size) \
-        m_tracked_calloc(1, size)
-    //    heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
-//#else
-    // ESP32, PSRAM is too slow, prefer SRAM
-  //  #define __malloc_heap_psram(size) 
-  //      heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM)
-//#endif
-#define free(obj) \
-    m_tracked_free(obj)
+#define __malloc_heap_psram(size) m_tracked_calloc(1, size)
+#define free(obj) m_tracked_free(obj)
 
 bool MP3Decoder_AllocateBuffers(void) {
     if(!m_MP3DecInfo)       {m_MP3DecInfo    = (MP3DecInfo_t*)    __malloc_heap_psram(sizeof(MP3DecInfo_t)   );}
