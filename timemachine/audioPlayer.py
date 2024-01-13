@@ -92,7 +92,6 @@ class InRingBuffer:
         return self.BytesInBuffer
 
     # How many bytes can we add to the buffer before filling it
-    @micropython.native
     def get_write_available(self):
         if self._writePos > self._readPos:
             # If the read_pos is within the overflow area return the num bytes in there, else zero
@@ -119,7 +118,6 @@ class InRingBuffer:
     # How many bytes can we read from the buffer before it is empty. If there are less than "OverflowSize" bytes
     # available at the end of the buffer, move the bytes at the end of the buffer into the overflow area.
     # Note this function can change the readPos
-    @micropython.native
     def get_read_available(self):
         if self._writePos > self._readPos:
             return self._writePos - self._readPos
@@ -139,13 +137,11 @@ class InRingBuffer:
                     return bytesToMove + self._writePos - self.OverflowSize
 
     # Tell the buffer how many bytes we just read.  Must call this after every read from the buffer
-    @micropython.native
     def bytes_wasRead(self, count):
         self.BytesInBuffer -= count
         assert self.BytesInBuffer >= 0, "InBuffer Underflow"
         self._readPos = self._readPos + count
 
-    @micropython.native
     def buffer_level(self):
         return self.BytesInBuffer / self.BufferSize
 
@@ -238,7 +234,6 @@ class OutRingBuffer:
         return self.BytesInBuffer
 
     # How many bytes can we read from the buffer before it is empty
-    @micropython.native
     def get_read_available(self):
         if self._readPos > self._writePos:  # We are reading ahead of the write pointer
             return self._endPos - self._readPos  # We can read all the way to the high water mark
@@ -251,7 +246,6 @@ class OutRingBuffer:
                 return 0  # No bytes available to read
 
     # Tell the buffer how many bytes we just read. Must call this after every read from the buffer
-    @micropython.native
     def bytes_wasRead(self, count):
         if self._readPos < self._writePos:
             assert self._readPos + count <= self._writePos, "OutBuffer Overread"
@@ -266,7 +260,6 @@ class OutRingBuffer:
                 self._readPos = 0  # Otherwise wrap
                 self._endPos = self._writePos  # The new high water mark is where the current writepos is
 
-    @micropython.native
     def buffer_level(self):
         return self.BytesInBuffer / self.BufferSize
 
@@ -611,7 +604,6 @@ class AudioPlayer:
         return self.PLAY_STATE == self.PLAYING
 
 
-    @micropython.native
     def read_header(self, trackno, offset=0, port=80):
         if trackno is None:
             return
@@ -654,6 +646,8 @@ class AudioPlayer:
 
             if header is not None:
                 response_headers += header.decode("utf-8")
+                # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
+                # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.startswith(b"Content-Range:"):
                     track_length = int(header.split(b"/", 1)[1])
             if header == b"\r\n":
@@ -687,13 +681,15 @@ class AudioPlayer:
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
 
-                # Skip the response headers
+                # Read the response headers
+                response_headers = b""
                 while True:
                     header = self.sock.readline()
                     self.decode_chunk()
                     self.play_chunk()
 
                     if header is not None:
+                        response_headers += header.decode("utf-8")
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                         # EOF is indistinguishable from the host closing a socket when we pause too long
                         if header.startswith(b"Content-Range:"):
@@ -702,20 +698,25 @@ class AudioPlayer:
                     if header == b"\r\n":
                         break
 
-        # Store the end-of-track and format marker for this track (except if we are restarting a track)
-        if path.lower().endswith(".mp3"):
-            if offset == 0:
-                self.TrackInfo.append((track_length, self.MP3))
-        elif path.lower().endswith(".ogg"):
-            if offset == 0:
-                self.TrackInfo.append((track_length, self.OGGVORBIS))
+        # Check that we actually got a valid response
+        if b"HTTP/1.1 200" in response_headers or b"HTTP/1.1 206" in response_headers:
+            # Store the end-of-track and format marker for this track (except if we are restarting a track)
+            print("TL:", track_length)
+            if path.lower().endswith(".mp3"):
+                if offset == 0:
+                    self.TrackInfo.append((track_length, self.MP3))
+            elif path.lower().endswith(".ogg"):
+                if offset == 0:
+                    self.TrackInfo.append((track_length, self.OGGVORBIS))
+            else:
+                raise RuntimeError("Unsupported audio type")
+
+            self.current_track_bytes_read = offset
         else:
-            raise RuntimeError("Unsupported audio type")
+            print("Bad URL:", url)
+            self.handle_end_of_track_read()    
 
-        self.current_track_bytes_read = offset
 
-
-    @micropython.native
     def handle_end_of_track_read(self):
         gc.collect()
         self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
