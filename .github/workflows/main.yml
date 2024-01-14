@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Write Version to File
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@master
     - name: Update version
       uses: brettdorrans/write-version-to-file@master
       with:
