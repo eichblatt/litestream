@@ -353,7 +353,9 @@ def main_loop(player, coll_dict, state):
                         print(f"tape_id is {utils.get_tape_id()}, or {tape_id}")
                         tm.clear_bbox(tm.venue_bbox)
                         tm.tft.write(pfont_small, f"{tape_id}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
-                        pass
+                        software_version = utils.get_software_version()
+                        tm.clear_bbox(tm.artist_bbox)
+                        tm.tft.write(pfont_small, f"{software_version}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                 elif (key_date in valid_dates) and tm.power():
                     player.stop()
                     selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection)
@@ -420,6 +422,8 @@ def main_loop(player, coll_dict, state):
             tm.clear_bbox(tm.venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
+            tm.clear_bbox(tm.artist_bbox)
+            tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
             print(player)
             update_display(player)
 
