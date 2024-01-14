@@ -103,12 +103,11 @@
         [
             "vs1053/vs1053.py",
             "github:eichblatt/litestream/timemachine/vs1053/vs1053.py"
-        ]
+        ],
         [
             ".VERSION",
             "github:eichblatt/litestream/.VERSION"
         ]
 
-    ],
-    "version": "1.0.0"
+    ]
 }
