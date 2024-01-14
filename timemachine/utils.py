@@ -45,6 +45,20 @@ def reload(mod):
     return __import__(mod)
 
 
+def read_file(path):
+    fh = None
+    contents = [""]
+    try:
+        fh = open(path, "r")
+        contents = fh.readlines()
+    except Exception as e:
+        print(f"Exception in read_file {e}")
+    finally:
+        if fh is not None:
+            fh.close()
+    return contents
+
+
 def select_option(message, choices):
     if len(choices) == 0:
         return ""
@@ -404,6 +418,13 @@ def mark_partition():
 
     current_partition = Partition(Partition.RUNNING)
     current_partition.mark_app_valid_cancel_rollback()
+
+
+def get_software_version():
+    code_version = read_file("/lib/.VERSION")[0]
+    if len(code_version) == 0:
+        code_version = "unknown"
+    return code_version
 
 
 def update_firmware():
