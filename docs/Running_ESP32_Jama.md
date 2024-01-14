@@ -56,7 +56,7 @@ Then, you **need to reboot** for this to take effect.
 ```{}
 : ~ ; cd ~/projects/ESP32-MPY-Jama/
 : ~/projects/ESP32-MPY-Jama ; . venv/bin/activate
-: (jama_env) ~/ESP32-MPY-Jama ; python3 src/app.py 
+: jama_env ~/ESP32-MPY-Jama ; python3 src/app.py 
 ```
 
 Starts ESP32 MPY-Jama v1.2.0 on Linux
