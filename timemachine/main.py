@@ -215,7 +215,7 @@ def update_code():
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
-        version = "releases"
+        version = "releases" if not utils.path_exists("is_dev_box") else "dev"
         target = "test_download"
         print(f"Installing from {base_url}, version {version}, target {target}")
         mip.install(base_url, version=version, target=target)

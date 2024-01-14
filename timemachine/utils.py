@@ -301,6 +301,7 @@ def create_factory_image():
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
     remove_file(STATE_PATH)
+    copy_file("/is_dev_box", "/not_dev_box")
 
 
 def remove_wifi_cred():
