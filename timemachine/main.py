@@ -303,10 +303,12 @@ def basic_main():
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
-    tm.tft.write(pfont_med, "Loading", 0, 80, yellow_color)
+    software_version = utils.get_software_version()
+    tm.tft.write(pfont_med, f"{software_version}", 0, 80, yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
+    print(f"firmware version: {uversion}. Software version {software_version}")
 
     wifi = utils.connect_wifi()
     if not utils.path_exists("/.knob_sense"):
