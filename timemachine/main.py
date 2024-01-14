@@ -249,15 +249,16 @@ def reconfigure():
     choice = utils.select_option(
         "Reconfigure",
         [
-            "Reboot",
             "Collections",
             "Update Code",
             "Update Firmware",
             "Wifi",
+            "Reboot",
             "Test Buttons",
             "Calibrate Knobs",
             "Calibrate Screen",
             "Exit",
+            "FactoryReset",
         ],
     )
     if choice == "Collections":

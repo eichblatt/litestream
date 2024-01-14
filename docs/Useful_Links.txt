@@ -90,3 +90,6 @@ https://github.com/Noltari/pico-uart-bridge
 16) To debug Guru Meditation Errors
 C:\Users\mike\OneDrive\Documents\ArduinoData\packages\esp32\tools\xtensa-esp32s3-elf-gcc\esp-2021r2-patch5-8.4.0\bin\xtensa-esp32s3-elf-addr2line.exe -pfiaC -e \\wsl.localhost\Ubuntu-20.04\home\mikealex\micropython\ports\esp32\build-ESP32_GENERIC_S3-SPIRAM_OCT\micropython.elf <address>
 Where <address> is the value of the PC shown in the stack dump
+
+17) USB Audio 
+https://www.edn.com/fundamentals-of-usb-audio/
