@@ -622,13 +622,14 @@ def get_coll_dict(collection_list):
 
 def run():
     """run the livemusic controls"""
-    state = utils.load_state()
-    show_collections(state["collection_list"])
-
-    coll_dict = get_coll_dict(state["collection_list"])
-    print(f"Loaded collections {coll_dict.keys()}")
-    player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
     try:
+        state = utils.load_state()
+        show_collections(state["collection_list"])
+
+        coll_dict = get_coll_dict(state["collection_list"])
+        print(f"Loaded collections {coll_dict.keys()}")
+
+        player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, coll_dict, state)
     except Exception as e:
         msg = f"Error in playback loop {e}"
