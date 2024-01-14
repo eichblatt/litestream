@@ -214,8 +214,7 @@ def update_code():
     tm.tft.write(pfont_med, " code", 0, 70, red_color)
 
     try:
-        # mip.install("github:eichblatt/litestream/timemachine/package.json", version="dev", target="test_download")
-        mip.install("github:eichblatt/litestream/timemachine/package.json", target="test_download")
+        mip.install("github:eichblatt/litestream/timemachine/package.json", version="releases", target="test_download")
         print("rebooting")
         machine.reset()
     except Exception as e:
@@ -250,15 +249,16 @@ def reconfigure():
     choice = utils.select_option(
         "Reconfigure",
         [
-            "Reboot",
             "Collections",
             "Update Code",
             "Update Firmware",
             "Wifi",
+            "Reboot",
             "Test Buttons",
             "Calibrate Knobs",
             "Calibrate Screen",
             "Exit",
+            "FactoryReset",
         ],
     )
     if choice == "Collections":

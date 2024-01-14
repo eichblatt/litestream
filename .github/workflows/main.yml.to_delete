@@ -3,15 +3,16 @@ on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
   write-version:
     runs-on: ubuntu-latest
     name: Write Version to File
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@master
     - name: Update version
       uses: brettdorrans/write-version-to-file@master
       with:
-        filename: '/.VERSION'
+        filename: '.VERSION'
         placeholder: '${VERSION}'
