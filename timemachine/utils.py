@@ -301,6 +301,7 @@ def create_factory_image():
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
     remove_file(STATE_PATH)
+    copy_file("/is_dev_box", "/not_dev_box")
 
 
 def remove_wifi_cred():
@@ -378,6 +379,9 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
+    software_version = get_software_version()
+    print(f"Software_version {software_version}")
+    tm.tft.write(pfont_small, f"{software_version}", 0, 65, st7789.WHITE)
 
     wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     s = wifi.status()
