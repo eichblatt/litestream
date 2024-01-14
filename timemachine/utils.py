@@ -275,6 +275,20 @@ def copy_dir(src_d, dest_d):
     remove_dir(f"{dest_d}_tmp")
 
 
+def create_factory_image():
+    # Use this function when you have the filesystem as desired for factory settings.
+    # Copy the code into a "/factory_lib" folder
+    remove_dir("/factory_lib")
+    copy_dir("/lib", "/factory_lib")
+    # put the wifi_cred of the factory in place
+    remove_file(WIFI_CRED_PATH)
+    copy_file("/wifi_cred.json.factory.py", WIFI_CRED_PATH)
+    # remove files that are peculiar to this instance
+    remove_file(tm.KNOB_SENSE_PATH)
+    remove_file(tm.SCREEN_TYPE_PATH)
+    remove_file(STATE_PATH)
+
+
 def remove_wifi_cred():
     os.remove(WIFI_CRED_PATH)
 
