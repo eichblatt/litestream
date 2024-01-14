@@ -378,10 +378,10 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
     tm.write("Connecting\nWiFi....", color=yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
+    tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
     software_version = get_software_version()
     print(f"Software_version {software_version}")
-    tm.tft.write(pfont_small, f"{software_version}", 0, 65, st7789.WHITE)
+    tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
     wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     s = wifi.status()
