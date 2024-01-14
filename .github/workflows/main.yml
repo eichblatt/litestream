@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Write Version to File
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@main
     - name: Update version
       uses: brettdorrans/write-version-to-file@master
       with:
-        filename: '.VERSION'
+        filename: '/.VERSION'
         placeholder: '${VERSION}'
