@@ -52,7 +52,7 @@ def read_file(path):
         fh = open(path, "r")
         contents = fh.readlines()
     except Exception as e:
-        print(f"Exception in read_file {e}")
+        print(f"Exception suppressed in read_file {e}. Path {path}")
     finally:
         if fh is not None:
             fh.close()
