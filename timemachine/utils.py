@@ -292,16 +292,18 @@ def copy_dir(src_d, dest_d):
 def create_factory_image():
     # Use this function when you have the filesystem as desired for factory settings.
     # Copy the code into a "/factory_lib" folder
+    remove_dir("/previous_lib")
     remove_dir("/factory_lib")
     copy_dir("/lib", "/factory_lib")
     # put the wifi_cred of the factory in place
-    remove_file(WIFI_CRED_PATH)
+    remove_wifi_cred()
     copy_file("/wifi_cred.json.factory.py", WIFI_CRED_PATH)
     # remove files that are peculiar to this instance
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
     remove_file(STATE_PATH)
-    copy_file("/.is_dev_box", "/.not_dev_box")
+    if path_exists("/.is_dev_box"):
+        os.rename("/.is_dev_box", "/.not_dev_box")
 
 
 def remove_wifi_cred():
@@ -404,8 +406,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
         return wifi
     else:
-        tm.write("failed.", y=80, color=st7789.RED, clear=False)
-        os.remove(WIFI_CRED_PATH)
+        tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
+        remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
 

@@ -122,6 +122,8 @@ The filesystem that we want to flash should not contain files `.knob_sense`, `.s
 
 ### Uploading the Filesystem
 
+Disconnect the device from Jama, which will interfere with this process.
+
 ```{}
 : ~ ; export DEVICE=/dev/ttyACM0 # Note: Old board was /dev/ttyUSB0
 : ~ ; source $HOME/esp/esp-idf/export.sh 
