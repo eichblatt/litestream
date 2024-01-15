@@ -320,7 +320,7 @@ def basic_main():
     dt = utils.set_datetime()
     if dt is not None:
         print(f"Date set to {dt}")
-        tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
+        # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     tm.clear_screen()
     return wifi
 

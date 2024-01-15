@@ -186,7 +186,7 @@ def play_pause(player):
     if player.is_playing():
         player.pause()
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
-    else:  # initial state or stopped
+    elif len(player.playlist) > 0:
         player.play()
         tm.power(1)
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
@@ -291,9 +291,9 @@ def main_loop(player, coll_dict, state):
                 print("Stop DOWN")
             else:
                 if tm.power():
-                    player.stop()
                     tm.screen_on()
-                    tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+                    if player.stop():
+                        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
                 print("Stop UP")
 
         buffer_fill = audio_pump(player, fill_level=0.3)
@@ -377,6 +377,8 @@ def main_loop(player, coll_dict, state):
                 select_press_time = time.ticks_ms() + 1_000
                 if ntape == 0:
                     tape_ids = get_tape_ids(coll_dict, key_date)
+                if len(tape_ids) == 0:
+                    continue
                 print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
                 ntape = (ntape + 1) % len(tape_ids)
                 tm.clear_bbox(tm.artist_bbox)
