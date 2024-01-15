@@ -1,0 +1,19 @@
+on:
+  pull_request:
+    branches: [ releases ]
+
+
+jobs:
+  get_files:
+    name: run_on_pr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 2
+
+      - name: Modified files
+        run: |
+          git fetch origin releases:releases
+          git diff --name-only -r HEAD^1 HEAD | grep .VERSION
