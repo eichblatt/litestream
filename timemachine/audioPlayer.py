@@ -30,6 +30,19 @@ except ImportError:
     # import VorbisPlayer as VorbisDecoder
     # import MP3Player as MP3Decoder
 
+# Use const() so that micropython inlines these and saves a lookup
+play_state_Stopped = const(0)
+play_state_Playing = const(1)
+play_state_Paused = const(2)
+
+format_MP3 = const(0)
+format_Vorbis = const(1)
+
+decode_phase_trackstart = const(0)
+decode_phase_inheader = const(1)
+decode_phase_readinfo = const(2)
+decode_phase_decoding = const(3)
+
 sck_pin = Pin(13)  # Serial clock output
 ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
@@ -85,7 +98,7 @@ class InRingBuffer:
         retstr += f" Bytes in buffer: {self.get_bytes_in_buffer()}. Write available:{self.get_write_available()}"
         return retstr
 
-    # Returns the pointer to where we can read from
+    # Returns the pointer to where we can write to
     def get_writePos(self):
         return self._writePos
 
@@ -147,6 +160,8 @@ class InRingBuffer:
     def buffer_level(self):
         return self.BytesInBuffer / self.BufferSize
 
+    ####################### End of InRingBuffer #######################
+
 
 # ---------------------------------------------     OutRingBuffer     ------------------------------------------ #
 #
@@ -196,7 +211,7 @@ class OutRingBuffer:
         retstr += f" Bytes in buffer: {self.get_bytes_in_buffer()}. Write available:{self.get_write_available()}"
         return retstr
 
-    def get_writePos(self):  # Returns the pointer to where we can read from
+    def get_writePos(self):  # Returns the pointer to where we can write to
         return self._writePos
 
     # How many bytes can we add to the buffer before filling it. Note this function can change the writePos
@@ -271,16 +286,15 @@ class OutRingBuffer:
 
 class AudioPlayer:
     def __init__(self, callbacks={}, debug=False):
-        self.STOPPED, self.PLAYING, self.PAUSED = 0, 1, 2
-        self.MP3, self.OGGVORBIS = 0, 1
         self.callbacks = callbacks
         if not "display" in self.callbacks.keys():
             self.callbacks["display"] = lambda x, y: None
         self.DEBUG = debug
-        self.PLAY_STATE = self.STOPPED
+        self.PLAY_STATE = play_state_Stopped
         self.sock = None
         self.volume = 0
         self.playlist_started = False
+        self.song_transition = None
 
         self.VorbisDecoder = AudioDecoder.VorbisDecoder()
         self.MP3Decoder = AudioDecoder.MP3Decoder()
@@ -295,9 +309,9 @@ class AudioPlayer:
         # Size of the chunks of decoded audio that we will send to I2S
         self.ChunkSize = 70 * 1024
 
-        # Create the IS2 output device
+        # Create the IS2 output device. Make the rate a silly value so that it won't match when we check in play_chunk
         self.audio_out = I2S(
-            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=self.ChunkSize
+            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=1, ibuf=self.ChunkSize
         )
 
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
@@ -314,20 +328,12 @@ class AudioPlayer:
         self.reset_player()
 
     def reset_player(self, reset_head=True):
-        self.mute_audio()
         self.PlayLoopRunning = False
-        self.FinishedPlaylist = False
-        self.FinishedDecoding = False
-        self.InHeader = False
-        self.AtTrackStart = True
+        self.FinishedReadingPlaylist = False
+        self.FinishedDecodingPlaylist = False
+        self.decode_phase = decode_phase_trackstart
         self.I2SAvailable = True
         self.ID3Tag_size = 0
-        self.audio_out.init(
-            sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=self.ChunkSize
-        )
-
-        # Make the I2S device asyncronous by defining a callback
-        self.audio_out.irq(self.i2s_callback)
 
         if reset_head:
             if self.ntracks > 0:
@@ -335,20 +341,32 @@ class AudioPlayer:
                 self.next_track = 1 if self.ntracks > 1 else None
                 self.callbacks["display"](*self.track_names())
 
-        # A list of track lengths and their corresponding audio type (vorbis or MP3). This tells the decoder when to move onto the next track by decoding the next header, and also which decoder to use.
+        # A list of track lengths and their corresponding audio type (vorbis or MP3). This tells the decoder when to move onto the next track, and also which decoder to use.
         self.TrackInfo = []
 
-        # Keep track of how many bytes of the current track that we are streaming from the network
-        # (this is potentially different to which track we are currently playing. We could be reading ahead of playing by one or more tracks)
+        # PlayInfo is filled out when the decoder starts a new track, and tells the play loop the format of the track (rate, bits, channels)
+        # PlayLength is filled out when we finish decoding a track, and tells the play loop how many decoded bytes are in the track
+        self.PlayInfo = []
+        self.PlayLength = []
+
+        # The number of bytes of the current track that we have read from the network
+        # This is compared against the length of the track returned from the server in the Content-Range header to determine end-of-track read
+        # (this is potentially different to which track we are currently playing. We could be reading ahead of decoding and playing by one or more tracks)
         self.current_track_bytes_read = 0
 
-        # Keep track of the current number of bytes decoded. Usd to detect the end of track by the decoder
-        self.current_track_bytes_decoded = 0
+        # The number of bytes the decoder has read from the input buffer. Used to detect the end of track by the decoder
+        self.current_track_bytes_decoded_in = 0
+
+        # The number many bytes of decoded audio data we have written to the OutBuffer for this track
+        self.current_track_bytes_decoded_out = 0
+
+        # The number of bytes played for the current track. Used to detect the end of track by the play loop by comparing against current_track_bytes_decoded_out
+        self.current_track_bytes_played = 0
 
         self.InBuffer.InitBuffer()
         self.OutBuffer.InitBuffer()
 
-        # This frees up all the buffers that the decoder allocated, and resets its state
+        # This frees up all the buffers that the decoders allocated, and resets their state
         self.MP3Decoder.MP3_Close()
         self.VorbisDecoder.Vorbis_Close()
 
@@ -366,72 +384,20 @@ class AudioPlayer:
         bytes = tstat["bytes_read"]
         length = tstat["length"]
         ratio = bytes / max(length, 1)
-        if self.PLAY_STATE == self.PLAYING:
+        if self.PLAY_STATE == play_state_Playing:
             status = "Playing"
-        elif self.PLAY_STATE == self.PAUSED:
+        elif self.PLAY_STATE == play_state_Paused:
             status = "Paused"
-        elif self.PLAY_STATE == self.STOPPED:
+        elif self.PLAY_STATE == play_state_Stopped:
             status = "Stopped"
         else:
             status = " !?! "
         retstring = f"{status} --"
-        if self.PLAY_STATE != self.STOPPED:
+        if self.PLAY_STATE != play_state_Stopped:
             retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]-1}'
             retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
             retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
         return retstring
-
-    @micropython.native
-    def play_chunk(self):
-        if (self.PLAY_STATE != self.PLAYING) or (not self.I2SAvailable) or (not self.PlayLoopRunning):
-            return
-
-        self.I2SAvailable = False
-
-        # Play what we have, up to the chunk size
-        BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)
-
-        # We can get zero bytes to play if the buffer is starved, or when we reach the end of the playlist
-        if BytesToPlay == 0:
-            if self.FinishedDecoding:  # End of playlist
-                print("Finished playing playlist")
-                self.stop()
-                return
-            else:  # Buffer starved
-                # The output buffer can get starved if the network is slow,
-                # or if we slow the decoding loop too much (e.g. by writing too much debug output)
-                self.DEBUG and print("Play buffer starved")
-                # Clear this flag to let the decoder re-start the playback loop when the decoder has generated enough data
-                self.PlayLoopRunning = False
-                return
-
-        Offset = self.OutBuffer.get_readPos()
-
-        # Make a memoryview of the output buffer slice.
-        # Not sure why we have to do this instead of slicing the OutBuffer.Buffer memoryview.
-        # Slicing a memoryview creates a new memoryview (which allocates a small amount of memory),
-        # but we are not in an ISR here so it shouldn't matter.
-        # However, we get corrupted audio if we slice the memoryview directly
-        outbytes = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
-        # outbytes = self.OutBuffer.Buffer[Offset : Offset + BytesToPlay]
-
-        try:
-            self.OutBuffer.bytes_wasRead(BytesToPlay)
-        except Exception as e:
-            print("Buffer error. Stopping playback loop", e)
-            self.stop()
-            return
-
-        # Set the volume
-        self.audio_out.shift(buf=outbytes, bits=16, shift=self.volume)
-
-        # Write the PCM data to the I2S device. Returns straight away
-        numout = self.audio_out.write(outbytes)
-        assert numout == BytesToPlay, "I2S write error"
-
-    @micropython.native
-    def i2s_callback(self, t):
-        self.I2SAvailable = True
 
     def set_playlist(self, tracklist, urllist):
         assert len(tracklist) == len(urllist)
@@ -500,24 +466,36 @@ class AudioPlayer:
 
     def play(self):
         self.unmute_audio()
-        if self.PLAY_STATE == self.STOPPED:
+        if self.PLAY_STATE == play_state_Stopped:
             self.InBuffer.InitBuffer()
-            self.read_header(self.current_track)
-            self.PLAY_STATE = self.PLAYING
-        elif self.PLAY_STATE == self.PLAYING:
+            self.OutBuffer.InitBuffer()
+            if self.MP3Decoder.MP3_Init():
+                self.DEBUG and print("MP3 decoder Init success")
+            else:
+                raise RuntimeError("MP3 decoder Init failed")
+
+            if self.VorbisDecoder.Vorbis_Init():
+                self.DEBUG and print("Vorbis decoder Init success")
+            else:
+                raise RuntimeError("Vorbis decoder Init failed")
+
+            print("Track read start")
+            self.read_http_header(self.current_track)
+            self.PLAY_STATE = play_state_Playing
+        elif self.PLAY_STATE == play_state_Playing:
             print(f"Playing URL {self.playlist[self.current_track]}")
-        elif self.PLAY_STATE == self.PAUSED:
+        elif self.PLAY_STATE == play_state_Paused:
             print(f"Un-pausing URL {self.playlist[self.current_track]}")
-            self.PLAY_STATE = self.PLAYING
+            self.PLAY_STATE = play_state_Playing
 
             # Kick off the playback loop
             self.play_chunk()
 
     def pause(self):
-        if self.PLAY_STATE == self.PLAYING:
+        if self.PLAY_STATE == play_state_Playing:
             self.mute_audio()
             print(f"Pausing URL {self.playlist[self.current_track]}")
-            self.PLAY_STATE = self.PAUSED
+            self.PLAY_STATE = play_state_Paused
 
     def rewind(self):
         self.DEBUG and print("in rewind")
@@ -528,9 +506,9 @@ class AudioPlayer:
         self.advance_track()
 
     def stop(self, reset_head=True):
-        if self.PLAY_STATE == self.STOPPED:
+        if self.PLAY_STATE == play_state_Stopped:
             return False
-        self.PLAY_STATE = self.STOPPED
+        self.PLAY_STATE = play_state_Stopped
         self.reset_player(reset_head)
         return True
 
@@ -547,7 +525,7 @@ class AudioPlayer:
             return
 
         if not 0 <= (self.current_track + increment) < self.ntracks:
-            if self.PLAY_STATE == self.PLAYING:
+            if self.PLAY_STATE == play_state_Playing:
                 self.stop()
             return
 
@@ -558,19 +536,22 @@ class AudioPlayer:
         print(self)
 
     def is_paused(self):
-        return self.PLAY_STATE == self.PAUSED
+        return self.PLAY_STATE == play_state_Paused
 
     def is_stopped(self):
-        return self.PLAY_STATE == self.STOPPED
+        return self.PLAY_STATE == play_state_Stopped
 
     def is_playing(self):
-        return self.PLAY_STATE == self.PLAYING
+        return self.PLAY_STATE == play_state_Playing
 
-    def read_header(self, trackno, offset=0, port=80):
+    def is_started(self):
+        return self.playlist_started
+
+    def read_http_header(self, trackno, offset=0, port=80):
         if trackno is None:
             return
 
-        # TimeStart = time.ticks_ms()
+        track_length = 0
         self.playlist_started = True
         self.track_being_read = trackno
         url = self.playlist[trackno]
@@ -581,13 +562,13 @@ class AudioPlayer:
             self.sock.close()
             del self.sock
 
-        # Load up the outbuffer before we fetch the new file
+        # Load up the outbuffer before we fetch a new file
         self.decode_chunk(timeout=50)
         self.play_chunk()
 
         # Establish a socket connection to the server
         self.sock = socket.socket()
-        self.DEBUG and print("Getting", path, "from", host, "Port:", port)
+        self.DEBUG and print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
         addr = socket.getaddrinfo(host, port)[0][-1]
         self.sock.connect(addr)
 
@@ -631,7 +612,7 @@ class AudioPlayer:
 
                 # Establish a new socket connection to the server
                 self.sock = socket.socket()
-                self.DEBUG and print("Redirecting to", host, port, path, "Offset", offset)
+                self.DEBUG and print(f"Redirecting to {path} from {host}, Port:{port}, Offset {offset}")
                 addr = socket.getaddrinfo(host, port)[0][-1]
                 self.sock.connect(addr)
 
@@ -660,232 +641,48 @@ class AudioPlayer:
                     if header == b"\r\n":
                         break
 
-        # Check that we actually got a valid response
-        if b"HTTP/1.1 200" in response_headers or b"HTTP/1.1 206" in response_headers:
-            # Store the end-of-track and format marker for this track (except if we are restarting a track)
-            print("TL:", track_length)
-            if path.lower().endswith(".mp3"):
-                if offset == 0:
-                    self.TrackInfo.append((track_length, self.MP3))
-            elif path.lower().endswith(".ogg"):
-                if offset == 0:
-                    self.TrackInfo.append((track_length, self.OGGVORBIS))
-            else:
-                raise RuntimeError("Unsupported audio type")
-
-            self.current_track_bytes_read = offset
-        else:
+        # Make sure we know the length of the track and got a valid response from the server. If not, skip this track.
+        if track_length == 0 or (b"HTTP/1.1 200" not in response_headers and b"HTTP/1.1 206" not in response_headers):
             print("Bad URL:", url)
+            print("Headers:", response_headers)
+            print("TrackLength:", track_length)
+            self.current_track_bytes_read = 0
+            self.current_track += 1
+            self.next_track = self.set_next_track()
             self.handle_end_of_track_read()
+            return
+
+        # Store the end-of-track and format marker for this track (except if we are restarting a track)
+        if path.lower().endswith(".mp3"):
+            if offset == 0:
+                self.TrackInfo.append((track_length, format_MP3))
+        elif path.lower().endswith(".ogg"):
+            if offset == 0:
+                self.TrackInfo.append((track_length, format_Vorbis))
+        else:
+            raise RuntimeError("Unsupported audio type")
+
+        self.current_track_bytes_read = offset
 
     def handle_end_of_track_read(self):
         gc.collect()
-        self.DEBUG and print(f"EOF. Track end at {self.InBuffer.get_writePos()}. ", end="")
-        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read} - ", end="")
+        print("Track read end")
+        self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read}")
 
         if self.track_being_read + 1 < self.ntracks:
             # We can read the header of the next track now
-            print("Reading next track")
-            self.read_header(self.track_being_read + 1)
-            self.current_track_bytes_read = 0
+            print("Track read start")
+            self.read_http_header(self.track_being_read + 1)
         else:
             # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
             print("Finished reading playlist")
-            self.FinishedPlaylist = True
+            self.FinishedReadingPlaylist = True
             self.sock.close()
             del self.sock
             self.sock = None
             self.playlist_started = False
 
-    @micropython.native
-    def decode_chunk(self, timeout=10):
-        TimeStart = time.ticks_ms()
-        break_reason = 0
-        break_reasons = {
-            0: "Unknown",
-            1: "Out Buffer Full",
-            2: "Timeout",
-            3: "InBuffer Dry",
-            4: "Finished Decoding",
-            5: "No Track Info",
-        }
-
-        # Just for debugging. See how many times we run the loop before timeout
-        counter = 0
-
-        while True:
-            # As we call this from read_header() we can get here before the TrackInfo is populated, so just exit in that case
-            # We should see this at the beginning of the first track, but not between tracks
-            if len(self.TrackInfo) == 0:
-                break_reason = 5
-                break
-
-            # Do we have at least 5000 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
-            if self.OutBuffer.get_write_available() < 5000:  # Note: this can change write_pos
-                break_reason = 1
-                break
-
-            # Don't stay in the loop too long or we affect the responsiveness of the main app
-            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
-                break_reason = 2
-                break
-
-            # Note that this can move the read pointer
-            InBytesAvailable = self.InBuffer.get_read_available()
-
-            # Normally, the decoder needs around 4096 bytes to decode the next packet.
-            # However at the end of the playlist we have to let smaller packets through or the end of the last song will be cut off
-            if not self.FinishedPlaylist and self.InBuffer.get_bytes_in_buffer() < 4096:
-                break_reason = 3
-                break
-
-            # We have finished reading playlist data and decoding, but the play loop hasn't finished yet
-            if InBytesAvailable == 0:
-                break_reason = 4
-                break
-
-            counter += 1
-
-            pos = self.InBuffer.get_readPos()
-
-            # print(f"Decoding: {pos}, {InBytesAvailable}: ", end=' ')
-
-            ts = time.ticks_ms()
-            if self.TrackInfo[0][1] == self.MP3:
-                Result, BytesLeft, AudioSamples = self.MP3Decoder.MP3_Decode(
-                    self.InBuffer.Buffer[pos:],
-                    InBytesAvailable,
-                    self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
-                )
-            elif self.TrackInfo[0][1] == self.OGGVORBIS:
-                Result, BytesLeft, AudioSamples = self.VorbisDecoder.Vorbis_Decode(
-                    self.InBuffer.Buffer[pos:],
-                    InBytesAvailable,
-                    self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
-                )
-
-            # print(f"Decoded: {InBytesAvailable - BytesLeft}. Ret:{Result}. Samples:{AudioSamples}. Total:{self.current_track_bytes_decoded}. Time:{time.ticks_diff(time.ticks_ms(), ts)}")
-
-            if Result == 0 or Result == 100 or Result == 110:
-                self.current_track_bytes_decoded = self.current_track_bytes_decoded + InBytesAvailable - BytesLeft
-                self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
-
-                if self.TrackInfo[0][1] == self.MP3 and Result == 0:
-                    self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
-                elif self.TrackInfo[0][1] == self.OGGVORBIS and Result == 0:
-                    self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
-                pass
-
-            # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
-            elif Result == -6:
-                if (
-                    self.InBuffer.Bytes[pos] == ord(b"T")
-                    and self.InBuffer.Bytes[pos + 1] == ord(b"A")
-                    and self.InBuffer.Bytes[pos + 2] == ord(b"G")
-                ):
-                    # V1.x ID3 tag at the end. Fixed size of 128 bytes. Skip it.
-                    print("Skipping TAG")
-                    self.InBuffer.get_read_available()
-                    self.InBuffer.bytes_wasRead(128)
-                    self.current_track_bytes_decoded = self.current_track_bytes_decoded + 128
-                else:
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-                    # Not sure what we should do here. Maybe we could handle it?
-                    raise RuntimeError("Corrupted packet")
-                pass
-
-            # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
-            elif Result == -7:
-                print("Not an audio track")
-                self.ffwd()
-                self.play()
-                pass
-            else:
-                print("Decode Packet failed. Error:", Result)
-                print(pos, end=":")
-                print(self.InBuffer.Buffer[pos:].hex())
-                raise RuntimeError("Decode Packet failed")
-
-            # Check if we have decoded to the end of the current track
-            if self.current_track_bytes_decoded == self.TrackInfo[0][0]:  # We have finished decoding the current track
-                print("Finished decoding track", self.current_track)
-                self.TrackInfo.pop(0)  # Remove the current info marker from the list
-                self.MP3Decoder.MP3_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
-                self.VorbisDecoder.Vorbis_Close()  # This frees up all the buffers that the decoder allocated, and resets its state
-                # self.audio_out.deinit() # Don't close I2S here, as it still has to play the last part of the track
-
-                if self.current_track + 1 < self.ntracks:  # Start decode of next track
-                    self.DEBUG and print("Starting decode of track", self.current_track + 1)
-                    self.current_track += 1
-                    self.next_track = self.set_next_track()
-                    self.callbacks["display"](*self.track_names())
-                    self.AtTrackStart = True
-                else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
-                    print("Finished decoding playlist")
-                    self.FinishedDecoding = True
-                    self.playlist_started = False
-                break
-
-            # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), set up the I2S device and start playing them.
-            # Don't check self.OutBuffer.get_read_available here
-            if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
-                self.DEBUG and print("************ Initiate Play Loop ************")
-
-                # Get info about this stream
-                if self.TrackInfo[0][1] == self.MP3:
-                    channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
-                elif self.TrackInfo[0][1] == self.OGGVORBIS:
-                    channels, sample_rate, bits_per_sample, bit_rate = self.VorbisDecoder.Vorbis_GetInfo()
-
-                self.DEBUG and print("Channels:", channels)
-                self.DEBUG and print("Sample Rate:", sample_rate)
-                self.DEBUG and print("Bits per Sample:", bits_per_sample)
-                self.DEBUG and print("Bitrate:", bit_rate)
-
-                # Set up the first I2S peripheral (0), and make it async with a callback
-                self.audio_out.init(
-                    sck=sck_pin,
-                    ws=ws_pin,
-                    sd=sd_pin,
-                    mode=I2S.TX,
-                    bits=bits_per_sample,
-                    format=I2S.STEREO if channels == 2 else I2S.MONO,
-                    rate=sample_rate,
-                    ibuf=self.ChunkSize,
-                )
-
-                # Make the I2S device asyncronous by defining a callback
-                self.audio_out.irq(self.i2s_callback)
-
-                # Start the playback loop by playing the first chunk
-                self.I2SAvailable = True
-                self.PlayLoopRunning = True  # So that we don't call this again
-                self.play_chunk()
-
-        if self.DEBUG and ((counter > 0) or (break_reason != 1)):
-            print(f"Time {time.ticks_ms()}. Decoded {counter} chunks in ", end="")
-            print(f"{time.ticks_diff(time.ticks_ms(), TimeStart)} ms. {break_reasons[break_reason]}", end="")
-            if self.consecutive_zeros > 0:
-                print(f" after {self.consecutive_zeros} Buffer Fulls")
-                self.consecutive_zeros = 0
-            else:
-                print("")
-        else:
-            self.consecutive_zeros += 1
-        return self.OutBuffer.buffer_level()
-
-    ###############################################################################################################################################
-
-    @micropython.native
-    def audio_pump(self):
-        if self.is_stopped():
-            buffer_level_in = self.InBuffer.buffer_level()
-            buffer_level_out = self.OutBuffer.buffer_level()
-            return min(buffer_level_in, buffer_level_out)
-
-        TimeStart = time.ticks_ms()
-
+    def read_chunk(self):
         # If there is any free space in the input buffer then add any data available from the network
         # If there is no socket then we have already read to the end of the playlist
         if self.sock is not None:
@@ -917,18 +714,30 @@ class AudioPlayer:
                     print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
 
                     # Start reading the current track again, but at the offset where we were up to
-                    self.read_header(self.track_being_read, self.current_track_bytes_read)
+                    self.read_http_header(self.track_being_read, self.current_track_bytes_read)
 
-        # Play the next chunk of audio data
-        self.play_chunk()
+    @micropython.native
+    def decode_chunk(self, timeout=10):
+        TimeStart = time.ticks_ms()
+        break_reason = 0
+        break_reasons = {
+            0: "Unknown",
+            1: "Out Buffer Full",
+            2: "Timeout",
+            3: "InBuffer Dry",
+            4: "Finished Decoding",
+            5: "No Track Info",
+        }
 
-        if self.AtTrackStart:
+        if self.decode_phase == decode_phase_trackstart:
             if self.InBuffer.BytesInBuffer == 0:
                 return
 
             # We're at the start of a new track. Work out the size of the ID3 tag (if any) at the beginning
             if self.ID3Tag_size == 0:
-                self.current_track_bytes_decoded = 0
+                print(f"Track {self.current_track} decode start")
+                self.current_track_bytes_decoded_in = 0
+                self.current_track_bytes_decoded_out = 0
                 readpos = self.InBuffer.get_readPos()
                 # If there is an ID3 tag at the beginning then work out the size
                 if (
@@ -942,38 +751,27 @@ class AudioPlayer:
                         self.ID3Tag_size += self.InBuffer.Bytes[readpos + i + 6] << (3 - i) * 7
 
                     self.ID3Tag_size = self.ID3Tag_size + 10
-                    print(f"ID3 tag size:{self.ID3Tag_size}")
+                    print(f"ID3 tag size: {self.ID3Tag_size}")
 
             # Skip past the tag. There may not be enough bytes in the InBuffer to skip all of the tag
             bytesToSkip = min(self.ID3Tag_size, self.InBuffer.get_read_available())
             print(f"Skipping {bytesToSkip} bytes")
             self.InBuffer.bytes_wasRead(bytesToSkip)
-            self.current_track_bytes_decoded = self.current_track_bytes_decoded + bytesToSkip
+            self.current_track_bytes_decoded_in += bytesToSkip
             self.ID3Tag_size = self.ID3Tag_size - bytesToSkip
 
             # There are not enough bytes in the buffer to skip all of them. Catch them next time we enter audio_pump
             if self.ID3Tag_size > 0:
                 return
             else:
-                self.AtTrackStart = False
-                self.InHeader = True
+                self.decode_phase = decode_phase_inheader
 
-        if self.InHeader:
-            if self.TrackInfo[0][1] == self.MP3:
-                ret = self.MP3Decoder.MP3_Init()
-            elif self.TrackInfo[0][1] == self.OGGVORBIS:
-                ret = self.VorbisDecoder.Vorbis_Init()
-
-            if ret:
-                self.DEBUG and print("Decoder Init success")
-            else:
-                raise RuntimeError("Decoder Init failed")
-
-            if self.TrackInfo[0][1] == self.MP3:
+        if self.decode_phase == decode_phase_inheader:
+            if self.TrackInfo[0][1] == format_MP3:
                 FoundSyncWordAt = self.MP3Decoder.MP3_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
-            elif self.TrackInfo[0][1] == self.OGGVORBIS:
+            elif self.TrackInfo[0][1] == format_Vorbis:
                 FoundSyncWordAt = self.VorbisDecoder.Vorbis_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
@@ -981,13 +779,297 @@ class AudioPlayer:
             if FoundSyncWordAt >= 0:
                 self.DEBUG and print("Decoder Start success. Sync word at", FoundSyncWordAt)
                 self.InBuffer.bytes_wasRead(FoundSyncWordAt)
-                self.current_track_bytes_decoded = self.current_track_bytes_decoded + FoundSyncWordAt
-                self.InHeader = False
+                self.current_track_bytes_decoded_in += FoundSyncWordAt
+                self.decode_phase = decode_phase_readinfo
             else:
                 raise RuntimeError("Decoder Start failed")
 
+        # Just for debugging. See how many times we run the loop before timeout
+        counter = 0
+
+        while True:
+            # As we call this from read_http_header() we can get here before the TrackInfo is populated, so just exit in that case
+            # We should see this at the beginning of the first track, but not between tracks
+            if len(self.TrackInfo) == 0:
+                break_reason = 5
+                break
+
+            # Do we have at least 5000 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
+            if self.OutBuffer.get_write_available() < 5000:  # Note: this can change write_pos
+                break_reason = 1
+                break
+
+            # Don't stay in the loop too long or we affect the responsiveness of the main app
+            if time.ticks_diff(time.ticks_ms(), TimeStart) > timeout:
+                break_reason = 2
+                break
+
+            # Note that this can move the read pointer
+            InBytesAvailable = self.InBuffer.get_read_available()
+
+            # We have finished reading playlist data and decoding, but the play loop hasn't finished yet
+            if InBytesAvailable == 0:
+                break_reason = 4
+                break
+
+            counter += 1
+
+            pos = self.InBuffer.get_readPos()
+
+            # print(f"Decoding: {pos}, {InBytesAvailable}: ", end=' ')
+            # ts = time.ticks_ms()
+
+            if self.TrackInfo[0][1] == format_MP3:
+                Result, BytesLeft, AudioSamples = self.MP3Decoder.MP3_Decode(
+                    self.InBuffer.Buffer[pos:],
+                    InBytesAvailable,
+                    self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
+                )
+            elif self.TrackInfo[0][1] == format_Vorbis:
+                Result, BytesLeft, AudioSamples = self.VorbisDecoder.Vorbis_Decode(
+                    self.InBuffer.Buffer[pos:],
+                    InBytesAvailable,
+                    self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
+                )
+
+            # print(f"Decoded: {InBytesAvailable - BytesLeft}. Ret:{Result}. Samples:{AudioSamples}. Total:{self.current_track_bytes_decoded_in}. Time:{time.ticks_diff(time.ticks_ms(), ts)}")
+
+            if Result == 0 or Result == 100 or Result == 110:
+                self.current_track_bytes_decoded_in += InBytesAvailable - BytesLeft
+                self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
+
+                if self.TrackInfo[0][1] == format_MP3 and Result == 0:
+                    self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
+                    self.current_track_bytes_decoded_out += AudioSamples * 2
+                elif self.TrackInfo[0][1] == format_Vorbis and Result == 0:
+                    self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
+                    self.current_track_bytes_decoded_out += (AudioSamples) * 4
+                pass
+
+            # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
+            elif Result == -6:
+                if (
+                    self.InBuffer.Bytes[pos] == ord(b"T")
+                    and self.InBuffer.Bytes[pos + 1] == ord(b"A")
+                    and self.InBuffer.Bytes[pos + 2] == ord(b"G")
+                ):
+                    # V1.x ID3 tag at the end. Fixed size of 128 bytes. Skip it.
+                    print("Skipping TAG")
+                    self.InBuffer.get_read_available()
+                    self.InBuffer.bytes_wasRead(128)
+                    self.current_track_bytes_decoded_in += 128
+                else:
+                    print(pos, end=":")
+                    print(self.InBuffer.Buffer[pos:].hex())
+                    # Not sure what we should do here. Maybe we could handle it?
+                    raise RuntimeError("Corrupted packet")
+                pass
+
+            # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
+            elif Result == -7:
+                print("Not an audio track")
+                self.ffwd()
+                self.play()
+                pass
+            else:
+                print("Decode Packet failed. Error:", Result)
+                print(pos, end=":")
+                print(self.InBuffer.Buffer[pos:].hex())
+                raise RuntimeError("Decode Packet failed")
+
+            # If we're at the beginning of the track, get info about this stream
+            if self.decode_phase == decode_phase_readinfo:
+                if self.TrackInfo[0][1] == format_MP3:
+                    channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
+                elif self.TrackInfo[0][1] == format_Vorbis:
+                    channels, sample_rate, bits_per_sample, bit_rate = self.VorbisDecoder.Vorbis_GetInfo()
+
+                # Make sure we got valid data back
+                if channels != 0:
+                    self.DEBUG and print("Channels:", channels)
+                    self.DEBUG and print("Sample Rate:", sample_rate)
+                    self.DEBUG and print("Bits per Sample:", bits_per_sample)
+                    self.DEBUG and print("Bitrate:", bit_rate)
+
+                    # Store the track info so that the play loop can init the I2S device at the beginning of the track
+                    self.PlayInfo.append((channels, sample_rate, bits_per_sample))
+                    self.decode_phase = decode_phase_decoding
+
+            # Check if we have decoded to the end of the current track
+            if self.current_track_bytes_decoded_in == self.TrackInfo[0][0]:  # We have finished decoding the current track
+                print(f"Track {self.current_track} decode end")
+
+                # Save the length of decoded audio for this track. Play_chunk() will check this to re-init the I2S device at the right spot (required in case the bitrate changes between songs)
+                self.PlayLength.append(self.current_track_bytes_decoded_out)
+
+                self.TrackInfo.pop(0)  # Remove the current track info from the list
+
+                if self.current_track + 1 < self.ntracks:  # Start decode of next track
+                    self.current_track += 1
+                    self.next_track = self.set_next_track()
+                    self.callbacks["display"](*self.track_names())
+                    self.decode_phase = decode_phase_trackstart
+                else:  # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
+                    print("Finished decoding playlist")
+                    self.FinishedDecodingPlaylist = True
+                    self.playlist_started = False
+                break
+
+            # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), start playing them.
+            # Don't check self.OutBuffer.get_read_available here
+            if self.PlayLoopRunning == False and self.OutBuffer.get_bytes_in_buffer() / 44100 / 2 / 2 > 1:
+                self.DEBUG and print("************ Initiate Play Loop ************")
+
+                # Start the playback loop by playing the first chunk
+                self.I2SAvailable = True
+                self.PlayLoopRunning = True  # So that we don't call this again
+                self.play_chunk()
+
+        if self.DEBUG and ((counter > 0) or (break_reason != 1)):
+            print(f"Time {time.ticks_ms()}. Decoded {counter} chunks in ", end="")
+            print(f"{time.ticks_diff(time.ticks_ms(), TimeStart)} ms. {break_reasons[break_reason]}", end="")
+            if self.consecutive_zeros > 0:
+                print(f" after {self.consecutive_zeros} Buffer Fulls")
+                self.consecutive_zeros = 0
+            else:
+                print("")
+        else:
+            self.consecutive_zeros += 1
+        return self.OutBuffer.buffer_level()
+
+    @micropython.native
+    def play_chunk(self):
+        if (self.PLAY_STATE != play_state_Playing) or (not self.I2SAvailable):
+            return
+
+        if not self.PlayLoopRunning:
+            if self.FinishedDecodingPlaylist:  # End of playlist
+                print("Finished playing playlist")
+                self.stop()
+            return
+
+        self.I2SAvailable = False
+
+        # Are we at the beginning of a track. If so, init the I2S device (Note that the sample_rate may vary between tracks)
+        if self.current_track_bytes_played == 0:
+            print("Track play start")
+
+            # The I2S object returns the following: I2S(id=0, sck=13, ws=14, sd=17, mode=5, bits=16, format=1, rate=44100, ibuf=71680)
+            # Check if it is the same as the already initialised device. If so, do nothing. If not, init it to the new values
+
+            current_bits = int(str(self.audio_out).split(",")[5].split("=")[1])
+            current_channels = 2 if int(str(self.audio_out).split(",")[6].split("=")[1]) == I2S.STEREO else 1
+            current_rate = int(str(self.audio_out).split(",")[7].split("=")[1])
+
+            # PlayInfo[] has channels, sample_rate, bits_per_sample
+            if (
+                current_bits != self.PlayInfo[0][2]
+                or current_channels != self.PlayInfo[0][0]
+                or current_rate != self.PlayInfo[0][1]
+            ):
+                print(
+                    f"Init I2S device. Bits:{self.PlayInfo[0][2]}, Channels:{self.PlayInfo[0][0]}, Rate:{self.PlayInfo[0][1]}"
+                )
+                self.audio_out.init(
+                    sck=sck_pin,
+                    ws=ws_pin,
+                    sd=sd_pin,
+                    mode=I2S.TX,
+                    bits=self.PlayInfo[0][2],
+                    format=I2S.STEREO if self.PlayInfo[0][0] == 2 else I2S.MONO,
+                    rate=self.PlayInfo[0][1],
+                    ibuf=self.ChunkSize,
+                )
+
+                # Make the I2S device asyncronous by defining a callback
+                self.audio_out.irq(self.i2s_callback)
+
+            # Remove the info for this track
+            self.PlayInfo.pop(0)
+
+        # Play what we have, up to the chunk size
+        BytesToPlay = min(self.OutBuffer.get_read_available(), self.ChunkSize)
+
+        # Do we have a length for this track yet (We only get this after the decoder has finished decoding it)?
+        if len(self.PlayLength) > 0:
+            # If so, have we played all of the decoded bytes for this track?
+            if self.current_track_bytes_played + BytesToPlay >= self.PlayLength[0]:
+                print("Track play end")
+
+                # Play the remaining bytes for this track, and remove the info for this track
+                BytesToPlay = self.PlayLength[0] - self.current_track_bytes_played
+                self.PlayLength.pop(0)
+
+                if self.FinishedDecodingPlaylist:
+                    self.PlayLoopRunning = False
+
+                # Do this so that when the BytesToPlay gets added at the end of this function that current_track_bytes_played will then be zero
+                self.current_track_bytes_played = -BytesToPlay
+
+                # We have a zero length track, so we don't need to play anything
+                if BytesToPlay == 0:
+                    self.I2SAvailable = True
+                    return
+
+        # We can get zero bytes to play if the buffer is starved, or when we reach the end of the playlist
+        if BytesToPlay == 0:
+            # The output buffer can get starved if the network is slow,
+            # or if we slow the decoding loop too much (e.g. by writing too much debug output)
+            self.DEBUG and print("Play buffer starved")
+
+            # Clear this flag to let the decoder re-start the playback loop when the decoder has generated enough data
+            self.PlayLoopRunning = False
+
+            self.I2SAvailable = True
+            return
+
+        Offset = self.OutBuffer.get_readPos()
+
+        # Make a memoryview of the output buffer slice.
+        # Not sure why we have to do this instead of slicing the OutBuffer.Buffer memoryview.
+        # Slicing a memoryview creates a new memoryview (which allocates a small amount of memory),
+        # but we are not in an ISR here so it shouldn't matter.
+        # However, we get corrupted audio if we slice the memoryview directly
+        outbytes = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
+        # outbytes = self.OutBuffer.Buffer[Offset : Offset + BytesToPlay]
+
+        try:
+            self.OutBuffer.bytes_wasRead(BytesToPlay)
+        except Exception as e:
+            print("Buffer error. Stopping playback loop", e)
+            self.stop()
+            return
+
+        # Set the volume
+        self.audio_out.shift(buf=outbytes, bits=16, shift=self.volume)
+
+        # Write the PCM data to the I2S device. Returns straight away
+        numout = self.audio_out.write(outbytes)
+        assert numout == BytesToPlay, "I2S write error"
+
+        self.current_track_bytes_played += BytesToPlay
+
+    @micropython.native
+    def i2s_callback(self, t):
+        self.I2SAvailable = True
+
+    ###############################################################################################################################################
+
+    @micropython.native
+    def audio_pump(self):
+        if self.is_stopped():
+            buffer_level_in = self.InBuffer.buffer_level()
+            buffer_level_out = self.OutBuffer.buffer_level()
+            return min(buffer_level_in, buffer_level_out)
+
+        # Read the next chunk of audio data
+        self.read_chunk()
+
         # Decode the next chunk of audio data
         buffer_level_out = self.decode_chunk()
+
+        # Play the next chunk of audio data
+        self.play_chunk()
 
         buffer_level_in = self.InBuffer.buffer_level()
         return min(buffer_level_in, buffer_level_out)

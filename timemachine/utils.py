@@ -315,10 +315,11 @@ def get_wifi_cred(wifi):
     choices = [x[0].decode().replace('"', "") for x in choices]
     choices = [x for x in choices if x != ""]
     choices = sorted(set(choices), key=choices.index)
-    if len(choices) == 0:
-        raise Exception("No Wifi Choices")
+    choices = choices + ["Hidden WiFi"]
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
+    if choice == "Hidden WiFi":
+        choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
     passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 

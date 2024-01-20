@@ -107,6 +107,10 @@
         [
             ".VERSION",
             "github:eichblatt/litestream/.VERSION"
+        ],
+        [
+            "LICENSE",
+            "github:eichblatt/litestream/LICENSE"
         ]
 
     ]

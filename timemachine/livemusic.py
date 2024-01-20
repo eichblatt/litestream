@@ -190,7 +190,7 @@ def play_pause(player):
         player.play()
         tm.power(1)
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    return player.PLAY_STATE
+    return
 
 
 @micropython.native
@@ -274,7 +274,7 @@ def main_loop(player, coll_dict, state):
             if pPlayPause_old:
                 print("PlayPause DOWN")
             else:
-                if (player.PLAY_STATE == player.STOPPED) and (player.current_track is None):
+                if (player.is_stopped()) and (player.current_track is None):
                     if (key_date in valid_dates) and tm.power():
                         selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape)
                         selected_date = state["selected_date"]
@@ -346,7 +346,7 @@ def main_loop(player, coll_dict, state):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                if (key_date == selected_date) and (player.PLAY_STATE != player.STOPPED):  # We're already on this date
+                if (key_date == selected_date) and (not player.is_stopped()):  # We're already on this date
                     if state.get("selected_collection", collection) == collection:
                         # Display the tape_id in the vcs bbox.
                         tape_id = short_tape_id(utils.get_tape_id())
@@ -536,13 +536,13 @@ def update_venue(vcs, nshows=1, collection=None):
 def update_display(player):
     # display_tracks(*player.track_names())
     tm.clear_bbox(tm.playpause_bbox)
-    if not player.playlist_started:
+    if not player.is_started():
         pass
-    elif player.PLAY_STATE == player.STOPPED:
+    elif player.is_stopped():
         tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    elif player.PLAY_STATE == player.PLAYING:
+    elif player.is_playing():
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    elif player.PLAY_STATE == player.PAUSED:
+    elif player.is_paused():
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
