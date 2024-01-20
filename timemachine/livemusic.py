@@ -190,7 +190,7 @@ def play_pause(player):
         player.play()
         tm.power(1)
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
-    return player.PLAY_STATE # Do we need this?
+    return
 
 
 @micropython.native
