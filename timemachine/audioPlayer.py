@@ -731,7 +731,7 @@ class AudioPlayer:
 
         if self.decode_phase == decode_phase_trackstart:
             if self.InBuffer.BytesInBuffer == 0:
-                return
+                return self.OutBuffer.buffer_level()
 
             # We're at the start of a new track. Work out the size of the ID3 tag (if any) at the beginning
             if self.ID3Tag_size == 0:
@@ -762,7 +762,7 @@ class AudioPlayer:
 
             # There are not enough bytes in the buffer to skip all of them. Catch them next time we enter audio_pump
             if self.ID3Tag_size > 0:
-                return
+                return self.OutBuffer.buffer_level()
             else:
                 self.decode_phase = decode_phase_inheader
 

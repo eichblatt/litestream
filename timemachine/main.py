@@ -261,8 +261,8 @@ def reconfigure():
             "Test Buttons",
             "Calibrate Knobs",
             "Calibrate Screen",
-            "Exit",
             "FactoryReset",
+            "Debug",
         ],
     )
     if choice == "Collections":
@@ -332,7 +332,7 @@ def run_livemusic():
     while True:
         livemusic.run()
         choice = reconfigure()
-        if choice == "Exit":
+        if choice == "Debug":
             break
 
 
