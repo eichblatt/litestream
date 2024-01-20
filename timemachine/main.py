@@ -261,7 +261,7 @@ def reconfigure():
             "Test Buttons",
             "Calibrate Knobs",
             "Calibrate Screen",
-            "FactoryReset",
+            "Factory Reset",
             "Debug",
         ],
     )
@@ -277,7 +277,7 @@ def reconfigure():
         update_code()
     elif choice == "Update Firmware":
         update_firmware()
-    elif choice == "FactoryReset":
+    elif choice == "Factory Reset":
         factory_reset()
     elif choice == "Reboot":
         machine.reset()
