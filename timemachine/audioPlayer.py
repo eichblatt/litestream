@@ -739,6 +739,7 @@ class AudioPlayer:
                 self.current_track_bytes_decoded_in = 0
                 self.current_track_bytes_decoded_out = 0
                 readpos = self.InBuffer.get_readPos()
+                
                 # If there is an ID3 tag at the beginning then work out the size
                 if (
                     self.InBuffer.Bytes[readpos] == ord(b"I")
@@ -819,81 +820,107 @@ class AudioPlayer:
             # print(f"Decoding: {pos}, {InBytesAvailable}: ", end=' ')
             # ts = time.ticks_ms()
 
+            ### MP3 ###
             if self.TrackInfo[0][1] == format_MP3:
                 Result, BytesLeft, AudioSamples = self.MP3Decoder.MP3_Decode(
-                    self.InBuffer.Buffer[pos:],
+                    self.InBuffer.Buffer[pos :],
                     InBytesAvailable,
                     self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
                 )
+                
+                if Result == 0:
+                    self.current_track_bytes_decoded_in += (InBytesAvailable - BytesLeft)
+                    self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
+
+                    self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
+                    self.current_track_bytes_decoded_out += (AudioSamples) * 2
+                    pass
+
+                # We can get this if we try and decode a packet but the buffer doesn't have a full packet worth of data yet
+                elif Result == -1:
+                    pass
+                
+                # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
+                elif Result == -6:
+                    if (
+                        self.InBuffer.Bytes[pos] == ord(b"T")
+                        and self.InBuffer.Bytes[pos + 1] == ord(b"A")
+                        and self.InBuffer.Bytes[pos + 2] == ord(b"G")
+                    ):
+                        # V1.x ID3 tag at the end. Fixed size of 128 bytes. Skip it.
+                        print("Skipping TAG")
+                        self.InBuffer.get_read_available()
+                        self.InBuffer.bytes_wasRead(128)  
+                        self.current_track_bytes_decoded_in += 128
+                    else:
+                        print(pos, end=':')
+                        print(self.InBuffer.Buffer[pos :].hex())
+                        # Not sure what we should do here. Maybe we could handle it?
+                        raise RuntimeError("Corrupted packet")
+                    pass
+                else:
+                    print("Decode Packet failed. Error:", Result)
+                    print(pos, end=':')
+                    print(self.InBuffer.Buffer[pos :].hex())
+                    raise RuntimeError("Decode Packet failed")
+                    
+                if self.decode_phase == decode_phase_readinfo:
+                    channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
+            
+            ### Vorbis ###
             elif self.TrackInfo[0][1] == format_Vorbis:
                 Result, BytesLeft, AudioSamples = self.VorbisDecoder.Vorbis_Decode(
-                    self.InBuffer.Buffer[pos:],
+                    self.InBuffer.Buffer[pos :],
                     InBytesAvailable,
                     self.OutBuffer.Buffer[self.OutBuffer.get_writePos() :],
                 )
 
-            # print(f"Decoded: {InBytesAvailable - BytesLeft}. Ret:{Result}. Samples:{AudioSamples}. Total:{self.current_track_bytes_decoded_in}. Time:{time.ticks_diff(time.ticks_ms(), ts)}")
+                #print(f"Decoded: {InBytesAvailable - BytesLeft}. Ret:{Result}. Samples:{AudioSamples}. Total:{self.current_track_bytes_decoded_in}. Time:{time.ticks_diff(time.ticks_ms(), ts)}")
 
-            if Result == 0 or Result == 100 or Result == 110:
-                self.current_track_bytes_decoded_in += InBytesAvailable - BytesLeft
-                self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
+                if Result == 0 or Result == 100 or Result == 110:
+                    self.current_track_bytes_decoded_in += (InBytesAvailable - BytesLeft)
+                    self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
-                if self.TrackInfo[0][1] == format_MP3 and Result == 0:
-                    self.OutBuffer.bytes_wasWritten(AudioSamples * 2)
-                    self.current_track_bytes_decoded_out += AudioSamples * 2
-                elif self.TrackInfo[0][1] == format_Vorbis and Result == 0:
-                    self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
-                    self.current_track_bytes_decoded_out += (AudioSamples) * 4
-                pass
+                    if Result == 0:
+                        self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
+                        self.current_track_bytes_decoded_out += (AudioSamples) * 4
+                    pass
 
-            # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
-            elif Result == -6:
-                if (
-                    self.InBuffer.Bytes[pos] == ord(b"T")
-                    and self.InBuffer.Bytes[pos + 1] == ord(b"A")
-                    and self.InBuffer.Bytes[pos + 2] == ord(b"G")
-                ):
-                    # V1.x ID3 tag at the end. Fixed size of 128 bytes. Skip it.
-                    print("Skipping TAG")
-                    self.InBuffer.get_read_available()
-                    self.InBuffer.bytes_wasRead(128)
-                    self.current_track_bytes_decoded_in += 128
-                else:
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
+                # We have a corrupted packet
+                elif Result == -6:
+                    print(pos, end=':')
+                    print(self.InBuffer.Buffer[pos :].hex())
                     # Not sure what we should do here. Maybe we could handle it?
                     raise RuntimeError("Corrupted packet")
-                pass
+                    pass
 
-            # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
-            elif Result == -7:
-                print("Not an audio track")
-                self.ffwd()
-                self.play()
-                pass
-            else:
-                print("Decode Packet failed. Error:", Result)
-                print(pos, end=":")
-                print(self.InBuffer.Buffer[pos:].hex())
-                raise RuntimeError("Decode Packet failed")
-
-            # If we're at the beginning of the track, get info about this stream
-            if self.decode_phase == decode_phase_readinfo:
-                if self.TrackInfo[0][1] == format_MP3:
-                    channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
-                elif self.TrackInfo[0][1] == format_Vorbis:
+                # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
+                elif Result == -7:
+                    print("Not an audio track")
+                    self.ffwd()
+                    self.play()
+                    pass
+                
+                else:
+                    print("Decode Packet failed. Error:", Result)
+                    print(pos, end=':')
+                    print(self.InBuffer.Buffer[pos :].hex())
+                    raise RuntimeError("Decode Packet failed")
+           
+                # If we're at the beginning of the track, get info about this stream
+                if self.decode_phase == decode_phase_readinfo:
                     channels, sample_rate, bits_per_sample, bit_rate = self.VorbisDecoder.Vorbis_GetInfo()
 
-                # Make sure we got valid data back
-                if channels != 0:
-                    self.DEBUG and print("Channels:", channels)
-                    self.DEBUG and print("Sample Rate:", sample_rate)
-                    self.DEBUG and print("Bits per Sample:", bits_per_sample)
-                    self.DEBUG and print("Bitrate:", bit_rate)
-
-                    # Store the track info so that the play loop can init the I2S device at the beginning of the track
-                    self.PlayInfo.append((channels, sample_rate, bits_per_sample))
-                    self.decode_phase = decode_phase_decoding
+            # Make sure we got valid data back from GetInfo()
+            if self.decode_phase == decode_phase_readinfo and channels != 0:
+                self.DEBUG and print("Channels:", channels)
+                self.DEBUG and print("Sample Rate:", sample_rate)
+                self.DEBUG and print("Bits per Sample:", bits_per_sample)
+                self.DEBUG and print("Bitrate:", bit_rate)
+                
+                # Store the track info so that the play loop can init the I2S device at the beginning of the track
+                self.PlayInfo.append((channels, sample_rate, bits_per_sample))
+                self.decode_phase = decode_phase_decoding
 
             # Check if we have decoded to the end of the current track
             if self.current_track_bytes_decoded_in == self.TrackInfo[0][0]:  # We have finished decoding the current track
@@ -935,6 +962,7 @@ class AudioPlayer:
                 print("")
         else:
             self.consecutive_zeros += 1
+
         return self.OutBuffer.buffer_level()
 
     @micropython.native
