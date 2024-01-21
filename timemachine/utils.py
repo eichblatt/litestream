@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import json
+import machine
 import network
 import ntptime
 import os
@@ -38,7 +39,12 @@ play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
 
+def reset():
+    machine.reset()
+
+
 def reload(mod):
+    # This doesn't seem to work. I wish it did.
     z = __import__(mod)
     del z
     del sys.modules[mod]
@@ -256,6 +262,12 @@ def copy_file(src, dest):
     outfile.close()
 
 
+def touch(path):
+    if not path_exists(path):
+        with open(path, "w") as f:
+            f.write("0")
+
+
 def remove_file(path):
     if not path_exists(path):
         return
@@ -330,10 +342,15 @@ def disconnect_wifi():
     wifi.disconnect()
 
 
-def set_datetime():
-    time_set = False
+def set_datetime(hidden=False):
+    print("Setting datetime")
+    if not hidden:
+        tm.write("Setting Date", y=45, clear=False)
+    time_set = time.localtime()[0] >= 2024
     # for some reason, we have to try several times before it works.
     for i in range(10):
+        if time_set:
+            return time.localtime()
         try:
             ntptime.time()
             ntptime.settime()
@@ -346,13 +363,11 @@ def set_datetime():
             pass
         except Exception:
             pass
-    if time_set:
-        return time.localtime()
     else:
         return None
 
 
-def connect_wifi(retry_time=100, timeout=10000, itry=0):
+def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -366,6 +381,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
+        hidden = False
         if itry <= 1:
             tm.self_test()
             tm.calibrate_knobs()
@@ -377,14 +393,16 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
             json.dump(wifi_cred, f)
+        reset()
 
-    tm.write("Connecting\nWiFi....", color=yellow_color)
-    version_strings = sys.version.split(" ")
-    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
-    software_version = get_software_version()
-    print(f"Software_version {software_version}")
-    tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
+    if not hidden:
+        tm.write("Connecting\nWiFi....", color=yellow_color)
+        version_strings = sys.version.split(" ")
+        uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
+        tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
+        software_version = get_software_version()
+        print(f"Software_version {software_version}")
+        tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
     wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     s = wifi.status()
@@ -404,7 +422,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
 
     if wifi.isconnected():
         tm.clear_area(0, 50, 160, 30)
-        tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
+        if not hidden:
+            tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)

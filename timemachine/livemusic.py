@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
-import json
 import re
 import time
 from collections import OrderedDict
@@ -413,9 +412,12 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                tm.clear_screen()
-                tm.screen_off()
-                # time.sleep(2)
+                tm.screen_on()
+                tm.power(1)
+                tm.write("Configuring", color=nshows_color, clear=True)
+                tm.write("Time Machine", y=35, color=nshows_color, clear=False)
+                utils.touch("/.configure")
+                time.sleep(1)
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
@@ -618,6 +620,9 @@ def get_coll_dict(collection_list):
     max_year = tm.y._max_val
     for coll in collection_list:
         coll_dict[coll] = load_vcs(coll)
+        if len(coll_dict[coll]) == 0:
+            print(f"Collection {coll} is empty. No shows added")
+            continue
         coll_dates = coll_dict[coll].keys()
         min_year = min(int(min(coll_dates)[:4]), min_year)
         max_year = max(int(max(coll_dates)[:4]), max_year)
@@ -640,7 +645,12 @@ def run():
     except Exception as e:
         msg = f"Error in playback loop {e}"
         print(msg)
-        tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-        tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
-        tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
+        with open("/exception.log", "w") as f:
+            f.write(msg)
+        if utils.path_exists("/.is_dev_box"):
+            tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
+            tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
+            tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
+        else:
+            utils.reset()
     return -1
