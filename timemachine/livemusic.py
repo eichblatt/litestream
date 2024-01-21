@@ -415,7 +415,7 @@ def main_loop(player, coll_dict, state):
                 tm.screen_on()
                 tm.power(1)
                 tm.write("Configuring", color=nshows_color, clear=True)
-                tm.write("Time Machine", y=35, color=nshows_color, clear=False)
+                tm.write("Time Machine", y=30, color=nshows_color, clear=False)
                 utils.touch("/.configure")
                 time.sleep(1)
                 return
