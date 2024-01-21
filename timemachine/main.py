@@ -311,9 +311,9 @@ def basic_main():
     print("in basic_main")
 
     start_time = time.ticks_ms()
-    pSelect_old = True
-    pStop_old = True
+    hidden_setdate = False
     if utils.path_exists("/.configure"):
+        hidden_setdate = True
         wifi = utils.connect_wifi(hidden=True)
         choice = ""
         while choice != "Exit":
@@ -335,12 +335,11 @@ def basic_main():
 
     wifi = utils.connect_wifi()
     if not utils.path_exists("/.knob_sense"):
+        hidden_setdate = True
         print("knob sense not present")
         tm.self_test()
         tm.calibrate_knobs()
-        dt = utils.set_datetime(hidden=True)
-    else:
-        dt = utils.set_datetime()
+    dt = utils.set_datetime(hidden=hidden_setdate)
     if dt is not None:
         print(f"Date set to {dt}")
         # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
