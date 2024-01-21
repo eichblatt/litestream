@@ -413,7 +413,7 @@ def main_loop(player, coll_dict, state):
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.clear_screen()
-                tm.screen_off()
+                tm.screen_on()
                 tm.write("Configuring\nTime Machine", color=stage_date_color)
                 utils.touch("/.configure")
                 time.sleep(2)
