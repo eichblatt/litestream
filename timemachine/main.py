@@ -231,13 +231,10 @@ def update_code():
         target = "test_download"
         print(f"Installing from {base_url}, version {version}, target {target}")
         mip.install(base_url, version=version, target=target)
-        print("rebooting")
-        utils.reset()
+        return True
     except Exception as e:
         print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
-        return
-
-    print("We should update livemusic.py")
+        return False
 
 
 def update_firmware():
@@ -278,6 +275,10 @@ def reconfigure():
             "Debug",
         ],
     )
+    if choice in ["Update Code", "Update Firmware", "Factory Reset", "Reboot"]:
+        # These choices will lead to a reboot, and we don't want to come back here on reboot
+        utils.remove_file("/.configure")
+
     if choice == "Collections":
         configure_collections()
     elif choice == "Wifi":
@@ -287,7 +288,9 @@ def reconfigure():
     elif choice == "Test Buttons":
         tm.self_test()
     elif choice == "Update Code":
-        update_code()
+        if update_code():
+            print("rebooting")
+            utils.reset()
     elif choice == "Update Firmware":
         update_firmware()
     elif choice == "Factory Reset":
@@ -311,7 +314,7 @@ def basic_main():
     pSelect_old = True
     pStop_old = True
     if utils.path_exists("/.configure"):
-        wifi = utils.connect_wifi(show_progress=False)
+        wifi = utils.connect_wifi(hidden=True)
         choice = ""
         while choice != "Exit":
             choice = reconfigure()

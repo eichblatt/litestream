@@ -365,7 +365,7 @@ def set_datetime():
         return None
 
 
-def connect_wifi(retry_time=100, timeout=10000, itry=0, show_progress=True):
+def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -379,7 +379,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, show_progress=True):
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
-        show_progress = True
+        hidden = False
         if itry <= 1:
             tm.self_test()
             tm.calibrate_knobs()
@@ -393,7 +393,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, show_progress=True):
             json.dump(wifi_cred, f)
         reset()
 
-    if show_progress:
+    if not hidden:
         tm.write("Connecting\nWiFi....", color=yellow_color)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
@@ -420,7 +420,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, show_progress=True):
 
     if wifi.isconnected():
         tm.clear_area(0, 50, 160, 30)
-        if show_progress:
+        if not hidden:
             tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
         return wifi
     else:
