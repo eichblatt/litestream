@@ -342,8 +342,10 @@ def disconnect_wifi():
     wifi.disconnect()
 
 
-def set_datetime():
+def set_datetime(hidden=False):
     print("Setting datetime")
+    if not hidden:
+        tm.write("Setting Date", y=45, clear=False)
     time_set = False
     # for some reason, we have to try several times before it works.
     for i in range(10):

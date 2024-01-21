@@ -338,7 +338,9 @@ def basic_main():
         print("knob sense not present")
         tm.self_test()
         tm.calibrate_knobs()
-    dt = utils.set_datetime()
+        dt = utils.set_datetime(hidden=True)
+    else:
+        dt = utils.set_datetime()
     if dt is not None:
         print(f"Date set to {dt}")
         # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
