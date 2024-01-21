@@ -267,6 +267,7 @@ def reconfigure():
         [
             "Collections",
             "Update Code",
+            "Exit",
             "Update Firmware",
             "Wifi",
             "Reboot",
@@ -295,6 +296,8 @@ def reconfigure():
         utils.reset()
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
+    elif choice == "Exit":
+        return choice
     return choice
 
 
@@ -307,7 +310,12 @@ def basic_main():
     start_time = time.ticks_ms()
     pSelect_old = True
     pStop_old = True
-    configure = False
+    if utils.path_exists("/.configure"):
+        wifi = utils.connect_wifi(show_progress=False)
+        choice = ""
+        while choice != "Exit":
+            choice = reconfigure()
+        utils.remove_file("/.configure")
     tm.calibrate_screen()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
@@ -327,8 +335,6 @@ def basic_main():
         print("knob sense not present")
         tm.self_test()
         tm.calibrate_knobs()
-    if configure:
-        reconfigure()
     dt = utils.set_datetime()
     if dt is not None:
         print(f"Date set to {dt}")
@@ -341,11 +347,8 @@ def run_livemusic():
     import livemusic
 
     utils.mark_partition()  # If we make it this far, the firmware is good.
-    while True:
-        livemusic.run()
-        choice = reconfigure()
-        if choice == "Debug":
-            break
+    livemusic.run()
+    utils.reset()
 
 
 # basic_main()

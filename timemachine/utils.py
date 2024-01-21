@@ -262,6 +262,12 @@ def copy_file(src, dest):
     outfile.close()
 
 
+def touch(path):
+    if not path_exists(path):
+        with open(path, "w") as f:
+            f.write("0")
+
+
 def remove_file(path):
     if not path_exists(path):
         return
@@ -337,6 +343,7 @@ def disconnect_wifi():
 
 
 def set_datetime():
+    print("Setting datetime")
     time_set = False
     # for some reason, we have to try several times before it works.
     for i in range(10):
@@ -358,7 +365,7 @@ def set_datetime():
         return None
 
 
-def connect_wifi(retry_time=100, timeout=10000, itry=0):
+def connect_wifi(retry_time=100, timeout=10000, itry=0, show_progress=True):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -372,6 +379,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
+        show_progress = True
         if itry <= 1:
             tm.self_test()
             tm.calibrate_knobs()
@@ -385,13 +393,14 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
             json.dump(wifi_cred, f)
         reset()
 
-    tm.write("Connecting\nWiFi....", color=yellow_color)
-    version_strings = sys.version.split(" ")
-    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
-    software_version = get_software_version()
-    print(f"Software_version {software_version}")
-    tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
+    if show_progress:
+        tm.write("Connecting\nWiFi....", color=yellow_color)
+        version_strings = sys.version.split(" ")
+        uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
+        tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
+        software_version = get_software_version()
+        print(f"Software_version {software_version}")
+        tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
     wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     s = wifi.status()
@@ -411,7 +420,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
 
     if wifi.isconnected():
         tm.clear_area(0, 50, 160, 30)
-        tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
+        if show_progress:
+            tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)

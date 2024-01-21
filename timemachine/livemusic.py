@@ -414,7 +414,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- back to reconfigure")
                 tm.clear_screen()
                 tm.screen_off()
-                # time.sleep(2)
+                utils.touch("/.configure")
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
@@ -617,6 +617,9 @@ def get_coll_dict(collection_list):
     max_year = tm.y._max_val
     for coll in collection_list:
         coll_dict[coll] = load_vcs(coll)
+        if len(coll_dict[coll]) == 0:
+            print(f"Collection {coll} is empty. No shows added")
+            continue
         coll_dates = coll_dict[coll].keys()
         min_year = min(int(min(coll_dates)[:4]), min_year)
         max_year = max(int(max(coll_dates)[:4]), max_year)
