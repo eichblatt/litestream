@@ -306,6 +306,7 @@ def create_factory_image():
     # Copy the code into a "/factory_lib" folder
     remove_dir("/previous_lib")
     remove_dir("/factory_lib")
+    remove_dir("/test_download")
     copy_dir("/lib", "/factory_lib")
     # put the wifi_cred of the factory in place
     remove_wifi_cred()
@@ -313,6 +314,7 @@ def create_factory_image():
     # remove files that are peculiar to this instance
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
+    remove_file("/exception.log")
     remove_file(STATE_PATH)
     if path_exists("/.is_dev_box"):
         os.rename("/.is_dev_box", "/.not_dev_box")
