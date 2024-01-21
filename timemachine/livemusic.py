@@ -414,7 +414,8 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- back to reconfigure")
                 tm.screen_on()
                 tm.power(1)
-                tm.write("Configuring\nTime Machine", color=nshows_color, clear=True)
+                tm.write("Configuring", color=nshows_color, clear=True)
+                tm.write("Time Machine", y=40, color=nshows_color, clear=False)
                 utils.touch("/.configure")
                 time.sleep(1)
                 return
