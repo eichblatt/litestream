@@ -346,9 +346,11 @@ def set_datetime(hidden=False):
     print("Setting datetime")
     if not hidden:
         tm.write("Setting Date", y=45, clear=False)
-    time_set = False
+    time_set = time.localtime()[0] >= 2024
     # for some reason, we have to try several times before it works.
     for i in range(10):
+        if time_set:
+            return time.localtime()
         try:
             ntptime.time()
             ntptime.settime()
@@ -361,8 +363,6 @@ def set_datetime(hidden=False):
             pass
         except Exception:
             pass
-    if time_set:
-        return time.localtime()
     else:
         return None
 
