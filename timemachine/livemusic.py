@@ -414,9 +414,9 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- back to reconfigure")
                 tm.screen_on()
                 tm.power(1)
-                tm.write("Configuring\nTime Machine", color=stage_date_color, clear=True)
+                tm.write("Configuring\nTime Machine", color=nshows_color, clear=True)
                 utils.touch("/.configure")
-                time.sleep(2)
+                time.sleep(1)
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
