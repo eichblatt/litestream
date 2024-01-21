@@ -22,7 +22,6 @@ import sys
 import os
 import time
 
-import machine
 import st7789
 import fonts.date_font as date_font
 import fonts.NotoSans_18 as pfont_small
@@ -117,19 +116,27 @@ def _collection_names():
     cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
     all_collection_names_dict = {"Phishin Archive": ["Phish"]}
     resp = None
+    status = 0
+    itries = 0
     try:
-        gc.collect()
-        resp = requests.get(cloud_url)
-        if resp.status_code == 200:
-            print(f"Downloaded collections names from {cloud_url}")
-            colls = resp.json()["items"]
-            all_collection_names_dict["Internet Archive"] = colls
-        else:
-            print(f"API request is {api_request}")
-            resp = requests.get(api_request).json()
-            all_collection_names_dict = resp["collection_names"]
+        while (status != 200) and (itries < 3):
+            if itries > 0:
+                time.sleep(2)
+            itries = itries + 1
+            gc.collect()
+            resp = requests.get(cloud_url)
+            print(f"Trying to download collections names from {cloud_url}")
+            status = resp.status_code
+            if status == 200:
+                print("Collection Names successfully downloaded")
+                colls = resp.json()["items"]
+                all_collection_names_dict["Internet Archive"] = colls
+    #        else:
+    #            print(f"API request is {api_request}")
+    #            resp = requests.get(api_request).json()
+    #            all_collection_names_dict = resp["collection_names"]
     except Exception as e:
-        print("Exception when loading collnames {e}")
+        print(f"Exception when loading collnames {e}")
     finally:
         if resp is not None:
             resp.close()
@@ -149,6 +156,7 @@ def configure_collections():
     print(f"current collection_list is {collection_list}")
     if choice == "Add Collection":
         keepGoing = True
+        reset_required = False
         all_collections = []
         all_collections_dict = _collection_names()
         for archive in all_collections_dict.keys():
@@ -158,9 +166,12 @@ def configure_collections():
             coll_to_add = add_collection(all_collections)
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
+                reset_required = True
             choices = ["Add Another", "Finished"]
             choice2 = utils.select_option("Year/Select", choices)
             if choice2 == "Finished":
+                if reset_required:
+                    utils.reset()
                 keepGoing = False
 
             utils.set_collection_list(collection_list)
@@ -220,7 +231,7 @@ def update_code():
         print(f"Installing from {base_url}, version {version}, target {target}")
         mip.install(base_url, version=version, target=target)
         print("rebooting")
-        machine.reset()
+        utils.reset()
     except Exception as e:
         print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
         return
@@ -242,7 +253,7 @@ def update_firmware():
     status = utils.update_firmware()
 
     if status == 0:
-        machine.reset()
+        utils.reset()
 
 
 def reconfigure():
@@ -280,7 +291,7 @@ def reconfigure():
     elif choice == "Factory Reset":
         factory_reset()
     elif choice == "Reboot":
-        machine.reset()
+        utils.reset()
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
     return choice

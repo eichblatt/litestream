@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import json
+import machine
 import network
 import ntptime
 import os
@@ -38,7 +39,12 @@ play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 
 
+def reset():
+    machine.reset()
+
+
 def reload(mod):
+    # This doesn't seem to work. I wish it did.
     z = __import__(mod)
     del z
     del sys.modules[mod]
@@ -377,6 +383,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         wifi_cred = get_wifi_cred(wifi)
         with open(WIFI_CRED_PATH, "w") as f:
             json.dump(wifi_cred, f)
+        reset()
 
     tm.write("Connecting\nWiFi....", color=yellow_color)
     version_strings = sys.version.split(" ")

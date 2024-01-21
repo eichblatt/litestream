@@ -18,8 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
-import json
-import machine
 import re
 import time
 from collections import OrderedDict
@@ -648,5 +646,5 @@ def run():
             tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
-            machine.reset()
+            utils.reset()
     return -1
