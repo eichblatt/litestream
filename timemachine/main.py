@@ -170,11 +170,11 @@ def configure_collections():
             choices = ["Add Another", "Finished"]
             choice2 = utils.select_option("Year/Select", choices)
             if choice2 == "Finished":
-                if reset_required:
-                    utils.reset()
                 keepGoing = False
 
             utils.set_collection_list(collection_list)
+        if reset_required:
+            utils.reset()
 
     elif choice == "Remove Collection":
         keepGoing = True
