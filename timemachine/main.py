@@ -22,7 +22,6 @@ import sys
 import os
 import time
 
-import machine
 import st7789
 import fonts.date_font as date_font
 import fonts.NotoSans_18 as pfont_small
@@ -111,25 +110,34 @@ def test_update():
 
 
 def _collection_names():
+    # Note: This function appears to only work right after a reboot.
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
     all_collection_names_dict = {"Phishin Archive": ["Phish"]}
     resp = None
+    status = 0
+    itries = 0
     try:
-        gc.collect()
-        resp = requests.get(cloud_url)
-        if resp.status_code == 200:
-            print(f"Downloaded collections names from {cloud_url}")
-            colls = resp.json()["items"]
-            all_collection_names_dict["Internet Archive"] = colls
-        else:
-            print(f"API request is {api_request}")
-            resp = requests.get(api_request).json()
-            all_collection_names_dict = resp["collection_names"]
+        while (status != 200) and (itries < 3):
+            if itries > 0:
+                time.sleep(2)
+            itries = itries + 1
+            gc.collect()
+            resp = requests.get(cloud_url)
+            print(f"Trying to download collections names from {cloud_url}")
+            status = resp.status_code
+            if status == 200:
+                print("Collection Names successfully downloaded")
+                colls = resp.json()["items"]
+                all_collection_names_dict["Internet Archive"] = colls
+    #        else:
+    #            print(f"API request is {api_request}")
+    #            resp = requests.get(api_request).json()
+    #            all_collection_names_dict = resp["collection_names"]
     except Exception as e:
-        print("Exception when loading collnames {e}")
+        print(f"Exception when loading collnames {e}")
     finally:
         if resp is not None:
             resp.close()
@@ -149,6 +157,7 @@ def configure_collections():
     print(f"current collection_list is {collection_list}")
     if choice == "Add Collection":
         keepGoing = True
+        reset_required = False
         all_collections = []
         all_collections_dict = _collection_names()
         for archive in all_collections_dict.keys():
@@ -158,12 +167,15 @@ def configure_collections():
             coll_to_add = add_collection(all_collections)
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
+                reset_required = True
             choices = ["Add Another", "Finished"]
             choice2 = utils.select_option("Year/Select", choices)
             if choice2 == "Finished":
                 keepGoing = False
 
             utils.set_collection_list(collection_list)
+        if reset_required:
+            utils.reset()
 
     elif choice == "Remove Collection":
         keepGoing = True
@@ -219,13 +231,10 @@ def update_code():
         target = "test_download"
         print(f"Installing from {base_url}, version {version}, target {target}")
         mip.install(base_url, version=version, target=target)
-        print("rebooting")
-        machine.reset()
+        return True
     except Exception as e:
         print(f"{e}\nFailed to download or save livemusic.py Not updating!!")
-        return
-
-    print("We should update livemusic.py")
+        return False
 
 
 def update_firmware():
@@ -242,7 +251,7 @@ def update_firmware():
     status = utils.update_firmware()
 
     if status == 0:
-        machine.reset()
+        utils.reset()
 
 
 def reconfigure():
@@ -251,20 +260,25 @@ def reconfigure():
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
     time.sleep(1)
     choice = utils.select_option(
-        "Reconfigure",
+        "Config Menu",
         [
             "Collections",
             "Update Code",
+            "Exit",
             "Update Firmware",
             "Wifi",
             "Reboot",
             "Test Buttons",
             "Calibrate Knobs",
             "Calibrate Screen",
-            "Exit",
-            "FactoryReset",
+            "Factory Reset",
+            "Debug",
         ],
     )
+    if choice in ["Update Code", "Update Firmware", "Factory Reset", "Reboot"]:
+        # These choices will lead to a reboot, and we don't want to come back here on reboot
+        utils.remove_file("/.configure")
+
     if choice == "Collections":
         configure_collections()
     elif choice == "Wifi":
@@ -274,15 +288,19 @@ def reconfigure():
     elif choice == "Test Buttons":
         tm.self_test()
     elif choice == "Update Code":
-        update_code()
+        if update_code():
+            print("rebooting")
+            utils.reset()
     elif choice == "Update Firmware":
         update_firmware()
-    elif choice == "FactoryReset":
+    elif choice == "Factory Reset":
         factory_reset()
     elif choice == "Reboot":
-        machine.reset()
+        utils.reset()
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
+    elif choice == "Exit":
+        return choice
     return choice
 
 
@@ -293,9 +311,14 @@ def basic_main():
     print("in basic_main")
 
     start_time = time.ticks_ms()
-    pSelect_old = True
-    pStop_old = True
-    configure = False
+    hidden_setdate = False
+    if utils.path_exists("/.configure"):
+        hidden_setdate = True
+        wifi = utils.connect_wifi(hidden=True)
+        choice = ""
+        while choice != "Exit":
+            choice = reconfigure()
+        utils.remove_file("/.configure")
     tm.calibrate_screen()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
@@ -312,12 +335,11 @@ def basic_main():
 
     wifi = utils.connect_wifi()
     if not utils.path_exists("/.knob_sense"):
+        hidden_setdate = True
         print("knob sense not present")
         tm.self_test()
         tm.calibrate_knobs()
-    if configure:
-        reconfigure()
-    dt = utils.set_datetime()
+    dt = utils.set_datetime(hidden=hidden_setdate)
     if dt is not None:
         print(f"Date set to {dt}")
         # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
@@ -329,11 +351,8 @@ def run_livemusic():
     import livemusic
 
     utils.mark_partition()  # If we make it this far, the firmware is good.
-    while True:
-        livemusic.run()
-        choice = reconfigure()
-        if choice == "Exit":
-            break
+    livemusic.run()
+    utils.reset()
 
 
 # basic_main()
