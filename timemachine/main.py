@@ -110,6 +110,7 @@ def test_update():
 
 
 def _collection_names():
+    # Note: This function appears to only work right after a reboot.
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
