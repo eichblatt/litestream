@@ -42,11 +42,11 @@ CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 
 def factory_reset():
     print("Reseting to factory settings")
-    if not utils.path_exists("/.factory_lib"):
+    if not utils.path_exists("/factory_lib"):
         print("Unable to perform factory reset")
         return
-    utils.remove_dir("./lib")
-    utils.copy_dir("./factory_lib", "./lib")
+    utils.remove_dir("/lib")
+    utils.copy_dir("/factory_lib", "/lib")
     return
 
 
