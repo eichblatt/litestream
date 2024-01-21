@@ -412,9 +412,9 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                tm.clear_screen()
                 tm.screen_on()
-                tm.write("Configuring\nTime Machine", color=stage_date_color)
+                tm.power(1)
+                tm.write("Configuring\nTime Machine", color=stage_date_color, clear=True)
                 utils.touch("/.configure")
                 time.sleep(2)
                 return
