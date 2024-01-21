@@ -272,7 +272,6 @@ def reconfigure():
             "Calibrate Knobs",
             "Calibrate Screen",
             "Factory Reset",
-            "Debug",
         ],
     )
     if choice in ["Update Code", "Update Firmware", "Factory Reset", "Reboot"]:
