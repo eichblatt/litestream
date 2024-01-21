@@ -416,6 +416,7 @@ def main_loop(player, coll_dict, state):
                 tm.screen_off()
                 tm.write("Configuring\nTime Machine", color=stage_date_color)
                 utils.touch("/.configure")
+                time.sleep(2)
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
