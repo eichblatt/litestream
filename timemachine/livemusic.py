@@ -412,12 +412,10 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                tm.screen_on()
-                tm.power(1)
-                tm.write("Configuring", color=nshows_color, clear=True)
-                tm.write("Time Machine", y=30, color=nshows_color, clear=False)
-                utils.touch("/.configure")
-                time.sleep(1)
+                tm.clear_screen()
+                tm.screen_off()
+                # tm.power(1)
+                player.reset_player()
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
