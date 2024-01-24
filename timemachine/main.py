@@ -274,9 +274,6 @@ def reconfigure():
             "Factory Reset",
         ],
     )
-    if choice in ["Update Code", "Update Firmware", "Factory Reset", "Reboot"]:
-        # These choices will lead to a reboot, and we don't want to come back here on reboot
-        utils.remove_file("/.configure")
 
     if choice == "Collections":
         configure_collections()
@@ -311,13 +308,6 @@ def basic_main():
 
     start_time = time.ticks_ms()
     hidden_setdate = False
-    if utils.path_exists("/.configure"):
-        hidden_setdate = True
-        wifi = utils.connect_wifi(hidden=True)
-        choice = ""
-        while choice != "Exit":
-            choice = reconfigure()
-        utils.remove_file("/.configure")
     tm.calibrate_screen()
     tm.clear_screen()
     yellow_color = st7789.color565(255, 255, 0)
@@ -350,8 +340,10 @@ def run_livemusic():
     import livemusic
 
     utils.mark_partition()  # If we make it this far, the firmware is good.
-    livemusic.run()
-    utils.reset()
+    while True:
+        livemusic.run()
+        reconfigure()
+    # utils.reset()
 
 
 # basic_main()
