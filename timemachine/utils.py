@@ -461,9 +461,10 @@ def update_firmware():
     import gc
 
     latest_release = "latest"
+    branch = "releases"
     server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
-    sha_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.sha"
-    micropython_url = f"{server_path}/main/MicropythonFirmware/{latest_release}/micropython.bin"
+    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.sha"
+    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.bin"
 
     try:
         s = open_url(sha_url)
