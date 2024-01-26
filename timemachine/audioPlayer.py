@@ -509,6 +509,7 @@ class AudioPlayer:
         self.advance_track()
 
     def stop(self, reset_head=True):
+        self.mute_audio()
         self.reset_player(reset_head)
 
         if self.PLAY_STATE == play_state_Stopped:
