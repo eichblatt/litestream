@@ -37,6 +37,7 @@ yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
+choices_color = st7789.color565(128, 255, 128)
 
 
 def reset():
@@ -89,15 +90,13 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, tracklist_color)
+                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
 
             text = ">" + choices[step]
             tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), st7789.RED)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                tm.tft.write(
-                    pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), tracklist_color
-                )
+                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
