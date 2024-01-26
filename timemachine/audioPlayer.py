@@ -784,6 +784,7 @@ class AudioPlayer:
                 self.decode_phase = decode_phase_inheader
 
         if self.decode_phase == decode_phase_inheader:
+            
             if self.TrackInfo[0][1] == format_MP3:
                 FoundSyncWordAt = self.MP3Decoder.MP3_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
@@ -792,9 +793,9 @@ class AudioPlayer:
                 FoundSyncWordAt = self.VorbisDecoder.Vorbis_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
-
+            
             if FoundSyncWordAt >= 0:
-                self.DEBUG and print("Decoder Start success. Sync word at", FoundSyncWordAt)
+                print("Decoder Start success. Sync word at", FoundSyncWordAt)
                 self.InBuffer.bytes_wasRead(FoundSyncWordAt)
                 self.current_track_bytes_decoded_in += FoundSyncWordAt
                 self.decode_phase = decode_phase_readinfo
@@ -824,10 +825,12 @@ class AudioPlayer:
             # Note that this can move the read pointer
             InBytesAvailable = self.InBuffer.get_read_available()
 
-            # We have finished reading playlist data and decoding, but the play loop hasn't finished yet
-            if InBytesAvailable == 0:
-                break_reason = 4
-                break
+            # The decoders need at least 4096 bytes. At the end of a track we have to let less through though.
+            if InBytesAvailable < 4096:
+                # How many bytes left to decode in this track? If less than 4096, let it through
+                if (self.TrackInfo[0][0] - self.current_track_bytes_decoded_in) >= 4096:
+                    break_reason = 3
+                    break
 
             counter += 1
 
@@ -852,10 +855,6 @@ class AudioPlayer:
                     self.current_track_bytes_decoded_out += (AudioSamples) * 2
                     pass
 
-                # We can get this if we try and decode a packet but the buffer doesn't have a full packet worth of data yet
-                elif Result == -1:
-                    pass
-                
                 # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
                 elif Result == -6:
                     if (
@@ -874,6 +873,7 @@ class AudioPlayer:
                         # Not sure what we should do here. Maybe we could handle it?
                         raise RuntimeError("Corrupted packet")
                     pass
+                
                 else:
                     print("Decode Packet failed. Error:", Result)
                     print(pos, end=':')
