@@ -720,14 +720,10 @@ class AudioPlayer:
                         # -------------------------- BEGIN PHISH HACK
                         # This hack defers the end of track handling until 5 seconds before the set break ends, so that we
                         # can re-establish the socket that has closed during the set break.
-                        # print(f"Finished reading {self.tracklist[self.current_track]}, url {self.playlist[self.current_track]}")
                         if "silence600" in self.playlist[self.current_track]:
                             if finished_reading_silence_time is None:
                                 finished_reading_silence_time = time.ticks_ms()
                             silence_waiting_time = time.ticks_ms() - finished_reading_silence_time
-                            # if (silence_waiting_time % 12_000) < 2:
-                            #     print(f"Finished reading silence track. Waited {silence_waiting_time // 1000}/600 seconds")
-                            #     time.sleep_ms(100)
                             if silence_waiting_time > 594_000:
                                 self.handle_end_of_track_read()
                             else:
