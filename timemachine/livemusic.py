@@ -34,11 +34,7 @@ import fonts.NotoSans_32 as pfont_large
 import board as tm
 import utils
 
-ESP_DECODE = True
-if ESP_DECODE:
-    import audioPlayer
-else:
-    import audioPlayer_1053 as audioPlayer
+import audioPlayer
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
@@ -70,8 +66,7 @@ def best_tape(collection, key_date):
 
 
 def select_date(coll_dict, key_date, ntape=0, collection=None):
-    print(f"selecting show from {key_date}. Collections {coll_dict.keys()}")
-    # for collection, cdict in coll_dict.items():
+    print(f"selecting show from {key_date}. Collections {coll_dict.keys()}. Collection {collection}")
     if collection is None:
         valid_collections = []
         for coll in coll_dict.keys():
@@ -126,7 +121,10 @@ def get_tape_ids(coll_dict, key_date):
                     api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
                     print(f"api_request is {api_request}")
                     resp = requests.get(api_request)
-                    tape_ids = tape_ids + resp.json()
+                    these_tape_ids = resp.json()[collection]
+                    if not isinstance(these_tape_ids, (list, tuple)):
+                        these_tape_ids = list(these_tape_ids)
+                    tape_ids = tape_ids + these_tape_ids
                 else:
                     raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
             finally:
@@ -162,6 +160,7 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     tm.clear_bbox(tm.playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
     player.stop()
+    # player.reset_player()
     collection, tracklist, urls, selected_tape_id = select_date(coll_dict, key_date, ntape, key_collection)
     vcs = coll_dict[collection][key_date]
     player.set_playlist(tracklist, urls)
@@ -357,6 +356,7 @@ def main_loop(player, coll_dict, state):
                         tm.tft.write(pfont_small, f"{software_version}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
                 elif (key_date in valid_dates) and tm.power():
                     player.stop()
+                    # player.reset_player()
                     selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection)
                     selected_date = state["selected_date"]
                     collection = state["selected_collection"]
@@ -368,6 +368,7 @@ def main_loop(player, coll_dict, state):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
+                player.stop()
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
@@ -381,8 +382,9 @@ def main_loop(player, coll_dict, state):
                 print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
                 ntape = (ntape + 1) % len(tape_ids)
                 tm.clear_bbox(tm.artist_bbox)
-                tm.tft.write(pfont_small, f"{tape_ids[ntape][0]}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
-                # vcs = coll_dict[tape_ids[ntape][0]][key_date]
+                collection = tape_ids[ntape][0]
+                tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
+                # vcs = coll_dict[collection][key_date]
                 tm.clear_bbox(tm.venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
@@ -412,9 +414,9 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
+                tm.power(1)
                 tm.clear_screen()
                 tm.screen_off()
-                # tm.power(1)
                 player.reset_player()
                 return
 
