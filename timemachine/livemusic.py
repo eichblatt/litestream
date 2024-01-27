@@ -34,11 +34,7 @@ import fonts.NotoSans_32 as pfont_large
 import board as tm
 import utils
 
-ESP_DECODE = True
-if ESP_DECODE:
-    import audioPlayer
-else:
-    import audioPlayer_1053 as audioPlayer
+import audioPlayer
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
@@ -418,9 +414,9 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 2_500:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
+                tm.power(1)
                 tm.clear_screen()
                 tm.screen_off()
-                # tm.power(1)
                 player.reset_player()
                 return
 
