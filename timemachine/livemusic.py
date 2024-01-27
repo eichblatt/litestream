@@ -344,6 +344,7 @@ def main_loop(player, coll_dict, state):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
+                print(f"key {key_date}, selected {selected_date}, Collection {collection}. stopped {player.is_stopped()}")
                 if (key_date == selected_date) and (not player.is_stopped()):  # We're already on this date
                     if state.get("selected_collection", collection) == collection:
                         # Display the tape_id in the vcs bbox.
@@ -368,11 +369,11 @@ def main_loop(player, coll_dict, state):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
-                player.stop()
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
+                player.stop()
                 print("                 Longpress of select")
                 select_press_time = time.ticks_ms() + 1_000
                 if ntape == 0:
