@@ -30,7 +30,7 @@ import fonts.NotoSans_18 as pfont_small
 import board as tm
 
 WIFI_CRED_PATH = "/wifi_cred.json"
-STATE_PATH = "/latest_state.json"
+STATE_PATH = "/latest_state{app_string}.json"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -314,7 +314,8 @@ def create_factory_image():
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
     remove_file("/exception.log")
-    remove_file(STATE_PATH)
+    for app_string in ["", "_datpiff"]:
+        remove_file(STATE_PATH.format(app_string=app_string))
     if path_exists("/.is_dev_box"):
         os.rename("/.is_dev_box", "/.not_dev_box")
 
@@ -481,8 +482,8 @@ def update_firmware():
     return 0
 
 
-def get_tape_id():
-    return load_state()["selected_tape_id"]
+def get_tape_id(app="livemusic"):
+    return load_state(app)["selected_tape_id"]
 
 
 def get_collection_list():
@@ -495,16 +496,17 @@ def set_collection_list(collection_list):
     save_state(state)
 
 
-def save_state(state):
+def save_state(state, app="livemusic"):
     # print(f"writing {state} to {STATE_PATH}")
-    with open(STATE_PATH, "w") as f:
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    with open(state_path, "w") as f:
         json.dump(state, f)
     return
 
 
-def load_state():
-    if path_exists(STATE_PATH):
-        with open(STATE_PATH, "r") as f:
+def load_livemusic_state(state_path):
+    if path_exists(state_path):
+        with open(state_path, "r") as f:
             state = json.load(f)
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("selected_date", "1975-08-13")
@@ -531,6 +533,46 @@ def load_state():
             "selected_tape_id": selected_tape_id,
             "boot_mode": boot_mode,
         }
-    with open(STATE_PATH, "w") as f:
+    with open(state_path, "w") as f:
         json.dump(state, f)
     return state
+
+
+def load_datpiff_state(state_path):
+    if path_exists(state_path):
+        with open(state_path, "r") as f:
+            state = json.load(f)
+        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        selected_artist = state.get("selected_artist", artist_list[0])
+        selected_tape_id = state.get("selected_tape_id", "datpiff-mixtape-m014640a")
+        boot_mode = state.get("boot_mode", "normal")
+        state = {
+            "artist_list": artist_list,
+            "selected_artist": selected_artist,
+            "selected_tape_id": selected_tape_id,
+            "boot_mode": boot_mode,
+        }
+    else:
+        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        selected_artist = artist_list[0]
+        selected_tape_id = "datpiff-mixtape-m014640a"
+        boot_mode = "normal"
+        state = {
+            "artist_list": artist_list,
+            "selected_artist": selected_artist,
+            "selected_tape_id": selected_tape_id,
+            "boot_mode": boot_mode,
+        }
+    with open(state_path, "w") as f:
+        json.dump(state, f)
+    return state
+
+
+def load_state(app="livemusic"):
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    if app == "livemusic":
+        return load_livemusic_state(state_path)
+    elif app == "datpiff":
+        return load_datpiff_state(state_path)
+    else:
+        raise NotImplementedError("Unknown app {app}")
