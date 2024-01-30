@@ -55,8 +55,6 @@ new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
 
 
 def set_tapeid_name(id, artist_tapeids):
-    global TAPE_SET_TIME
-    TAPE_SET_TIME = time.ticks_ms()
     for i, tid in enumerate(artist_tapeids):
         if tid["identifier"] == id:
             set_tapeid_index(i)
@@ -99,14 +97,12 @@ def select_artist(artist_key_index):
 
 
 def set_artist(artist):
-    global ARTIST_SET_TIME
     print(f"setting artist to {artist}")
     state = utils.load_state("datpiff")
     for i, a in enumerate(state["artist_list"]):
         if a == artist:
             tm.m._value = i
     keyed_artist = artist
-    ARTIST_SET_TIME = time.ticks_ms()
     return keyed_artist
 
 
@@ -367,6 +363,8 @@ def main_loop(player, state, artist_tapeids):
         day_new = tm.d.value()
 
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+            TAPE_SET_TIME = time.ticks_ms()
+            ARTIST_SET_TIME = time.ticks_ms()
             tm.power(1)
         if month_old != month_new:
             print(f"Month knob turned .. value {month_new}")
@@ -415,12 +413,20 @@ def display_keyed_title(keyed_title):
 def display_keyed_artist(artist):
     print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
+    if len(artist) < 19:
+        artist = (9 - len(artist) // 2) * " " + artist
+    elif len(artist) > 20:
+        artist = artist[:16] + "~" + artist[-4:]
     tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
 
 
 def display_selected_artist(artist):
     print(f"in display_selected_artist {artist}")
     tm.clear_bbox(tm.selected_artist_bbox)
+    if len(artist) < 15:
+        artist = (7 - len(artist) // 2) * " " + artist
+    elif len(artist) > 16:
+        artist = artist[:12] + "~" + artist[-4:]
     tm.write(artist, tm.selected_artist_bbox.x0, tm.selected_artist_bbox.y0, font=pfont_small, clear=False)
 
 
