@@ -55,6 +55,8 @@ new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
 
 
 def set_tapeid_name(id, artist_tapeids):
+    global TAPE_SET_TIME
+    TAPE_SET_TIME = time.ticks_ms()
     for i, tid in enumerate(artist_tapeids):
         if tid["identifier"] == id:
             set_tapeid_index(i)
@@ -290,7 +292,7 @@ def main_loop(player, state, artist_tapeids):
         if selected_tape_id is not None:
             if (keyed_tapeid != selected_tape_id["identifier"]) and (time.ticks_diff(time.ticks_ms(), TAPE_SET_TIME) > 20_000):
                 print(f"setting keyed_tapeid to {selected_tape_id['identifier']}")
-                keyed_tapeid = set_tapeid_name(selected_tape_id["identifier"])
+                keyed_tapeid = set_tapeid_name(selected_tape_id["identifier"], artist_tapeids)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
