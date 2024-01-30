@@ -44,17 +44,31 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 ARTIST_SET_TIME = time.ticks_ms()
+TAPE_SET_TIME = time.ticks_ms()
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
+new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
+
+
+def set_tapeid_name(id, artist_tapeids):
+    for i, tid in enumerate(artist_tapeids):
+        if tid["identifier"] == id:
+            set_tapeid_index(i)
+            return
+
+
+def set_tapeid_index(index):
+    tm.d._value = index
+    return
 
 
 def set_tapeid_range(keyed_artist):
     # load data file for artist
-    artist_tapeids = json.load(open(f"/metadata/datpiff/{keyed_artist}.json"))
+    artist_tapeids = sorted(json.load(open(f"/metadata/datpiff/{keyed_artist}.json")), key=lambda x: x["title"])
     # set the range of the "day" knob to be this number.
     tm.d._max_val = len(artist_tapeids) - 1
     tm.d._value = 0
@@ -62,7 +76,13 @@ def set_tapeid_range(keyed_artist):
 
 
 def select_tapeid(tapeid):
+    global TAPE_SET_TIME
+    TAPE_SET_TIME = time.ticks_ms()
     print(f"Selecting tapeid {tapeid}")
+    state = utils.load_state("datpiff")
+    state["selected_tapeid"] = tapeid
+    utils.save_state("datpiff")
+    return tapeid
 
 
 def select_artist(artist_key_index):
@@ -71,14 +91,9 @@ def select_artist(artist_key_index):
     state = utils.load_state("datpiff")
     selected_artist = state["artist_list"][artist_key_index]
     utils.save_state("datpiff")
-    set_tapeid_index(0)
     artist_tapeids = set_tapeid_range(selected_artist)
+    set_tapeid_index(0)
     return selected_artist, artist_tapeids
-
-
-def set_tapeid_index(index):
-    tm.d._value = index
-    return
 
 
 def set_artist(artist):
@@ -158,7 +173,8 @@ def select_tape_by_id(identifier, player, state):
     state["selected_artist"] = artists[0]
     state["selected_tape_id"] = identifier
     utils.save_state(state)
-    tm.tft.write(pfont_small, artists[0][:13], tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
+    print(f"Displaying artist is {artists[0][:17]}")
+    display_selected_artist(artists[0][:17])
     return state
 
 
@@ -188,6 +204,7 @@ def main_loop(player, state, artist_tapeids):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
+    selected_tape_id = None
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -270,6 +287,11 @@ def main_loop(player, state, artist_tapeids):
             print(f"setting keyed_artist to {selected_artist}")
             keyed_artist = set_artist(selected_artist)
 
+        if selected_tape_id is not None:
+            if (keyed_tapeid != selected_tape_id["identifier"]) and (time.ticks_diff(time.ticks_ms(), TAPE_SET_TIME) > 20_000):
+                print(f"setting keyed_tapeid to {selected_tape_id['identifier']}")
+                keyed_tapeid = set_tapeid_name(selected_tape_id["identifier"])
+
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
@@ -324,7 +346,8 @@ def main_loop(player, state, artist_tapeids):
                 print("Month DOWN")
             else:
                 selected_artist, artist_tapeids = select_artist(tm.m.value())
-                player.stop()
+                keyed_title = artist_tapeids[tm.d.value()]["title"]
+                display_keyed_title(keyed_title)
                 print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
@@ -332,7 +355,9 @@ def main_loop(player, state, artist_tapeids):
             if pDSw_old:
                 print("Day UP")
             else:
+                player.stop()
                 selected_tape_id = select_tapeid(artist_tapeids[tm.d.value()])
+                state = select_tape_by_id(selected_tape_id["identifier"], player, state)
                 print("Day DOWN")
 
         year_new = tm.y.value()
@@ -352,7 +377,7 @@ def main_loop(player, state, artist_tapeids):
             tape_id_dict = artist_tapeids[day_new]
             keyed_tapeid = tape_id_dict["identifier"]
             keyed_title = tape_id_dict["title"]
-            display_keyed_tapeid(tape_id_dict)
+            display_keyed_title(keyed_title)
 
         player.audio_pump()
 
@@ -371,29 +396,30 @@ def update_display(player):
 
 
 def display_tracks(current_track_name, next_track_name):
-    tm.init_screen()  # Do we need this if not sharing SPI bus?
-    tm.clear_bbox(tm.tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.center()[1], tracklist_color)
+    tm.clear_bbox(new_tracklist_bbox)
+    tm.tft.write(pfont_small, f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, tracklist_color)
+    tm.tft.write(pfont_small, f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], tracklist_color)
     return
 
 
-def display_keyed_tapeid(tape_id_dict):
-    print(f"in display_keyed_tapeid {tape_id_dict}")
-    tm.clear_bbox(tm.venue_bbox)
-    tm.write(tape_id_dict["title"], tm.venue_bbox.x0, tm.venue_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
+def display_keyed_title(keyed_title):
+    print(f"in display_keyed_title {keyed_title}")
+    tm.clear_bbox(tm.title_bbox)
+    tm.write(keyed_title[:17], tm.title_bbox.x0, tm.title_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
+    if len(keyed_title) > 17:
+        tm.write(keyed_title[17:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=yellow_color, font=pfont_small, clear=False)
 
 
 def display_keyed_artist(artist):
     print(f"in display_keyed_artist {artist}")
-    tm.clear_bbox(tm.artist_bbox)
-    tm.write(artist, tm.artist_bbox.x0, tm.artist_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
+    tm.clear_bbox(tm.keyed_artist_bbox)
+    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
 
 
 def display_selected_artist(artist):
     print(f"in display_selected_artist {artist}")
-    tm.clear_bbox(tm.selected_date_bbox)
-    tm.write(artist, tm.seleted_date_bbox.x0, tm.selected_date_bbox.y0, font=pfont_small)
+    tm.clear_bbox(tm.selected_artist_bbox)
+    tm.write(artist, tm.selected_artist_bbox.x0, tm.selected_artist_bbox.y0, font=pfont_small, clear=False)
 
 
 def show_artists(artist_list):
@@ -412,6 +438,7 @@ def show_artists(artist_list):
 def run():
     """run the livemusic controls"""
     try:
+        wifi = utils.connect_wifi()
         state = utils.load_state(app="datpiff")
         show_artists(state["artist_list"])
 
