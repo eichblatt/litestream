@@ -350,7 +350,7 @@ def self_test():
         write("Button", 0, 50, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
-    time.sleep(2)
+    time.sleep(0.2)
     return
 
 
