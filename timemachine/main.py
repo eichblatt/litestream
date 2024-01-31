@@ -258,7 +258,7 @@ def reconfigure():
     tm.tft.on()
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-    time.sleep(1)
+    time.sleep(0.1)
     choice = utils.select_option(
         "Config Menu",
         [

@@ -159,6 +159,9 @@ artist_bbox = Bbox(0, 51, 160, 51 + 19)
 tracklist_bbox = Bbox(0, 70, 160, 112)
 selected_date_bbox = Bbox(15, 112, 145, 128)
 playpause_bbox = Bbox(145, 113, 160, 128)
+keyed_artist_bbox = Bbox(0, 0, 160, 22)
+title_bbox = Bbox(0, 23, 160, 60)
+selected_artist_bbox = Bbox(0, 110, 145, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -347,7 +350,7 @@ def self_test():
         write("Button", 0, 50, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
-    time.sleep(2)
+    time.sleep(0.2)
     return
 
 

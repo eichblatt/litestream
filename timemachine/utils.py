@@ -29,8 +29,9 @@ import fonts.NotoSans_18 as pfont_small
 
 import board as tm
 
+WIFI_CRED_HIST_PATH = "/wifi_cred_hist.json"
 WIFI_CRED_PATH = "/wifi_cred.json"
-STATE_PATH = "/latest_state.json"
+STATE_PATH = "/latest_state{app_string}.json"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -308,19 +309,22 @@ def create_factory_image():
     remove_dir("/test_download")
     copy_dir("/lib", "/factory_lib")
     # put the wifi_cred of the factory in place
-    remove_wifi_cred()
+    remove_wifi_cred(hist=True)
     copy_file("/wifi_cred.json.factory.py", WIFI_CRED_PATH)
     # remove files that are peculiar to this instance
     remove_file(tm.KNOB_SENSE_PATH)
     remove_file(tm.SCREEN_TYPE_PATH)
     remove_file("/exception.log")
-    remove_file(STATE_PATH)
+    for app_string in ["", "_datpiff"]:
+        remove_file(STATE_PATH.format(app_string=app_string))
     if path_exists("/.is_dev_box"):
         os.rename("/.is_dev_box", "/.not_dev_box")
 
 
-def remove_wifi_cred():
+def remove_wifi_cred(hist=False):
     os.remove(WIFI_CRED_PATH)
+    if hist:
+        os.remove(WIFI_CRED_HIST_PATH)
 
 
 def get_wifi_cred(wifi):
@@ -333,6 +337,17 @@ def get_wifi_cred(wifi):
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
         choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+    if path_exists(WIFI_CRED_HIST_PATH):
+        wch = read_json(WIFI_CRED_HIST_PATH)
+        if choice in wch.keys():
+            ask_passkey = wch[choice]
+            use_passkey = select_option(f"Use {ask_passkey} ?", ["Yes", "No"])
+            if use_passkey == "Yes":
+                return {"name": choice, "passkey": ask_passkey}
+            else:
+                del wch[choice]
+                write_json(wch, WIFI_CRED_HIST_PATH)
+
     passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
@@ -368,6 +383,19 @@ def set_datetime(hidden=False):
         return None
 
 
+def write_json(obj, path):
+    print(f"writing json to {path}")
+    with open(path, "w") as f:
+        json.dump(obj, f)
+
+
+def read_json(path):
+    print(f"reading json from {path}")
+    with open(path, "r") as f:
+        obj = json.load(f)
+    return obj
+
+
 def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
@@ -376,8 +404,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         return wifi
 
     if path_exists(WIFI_CRED_PATH):
-        with open(WIFI_CRED_PATH, "r") as f:
-            wifi_cred = json.load(f)
+        wifi_cred = read_json(WIFI_CRED_PATH)
     else:
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
@@ -392,8 +419,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         except Exception as e:
             print(e)
         wifi_cred = get_wifi_cred(wifi)
-        with open(WIFI_CRED_PATH, "w") as f:
-            json.dump(wifi_cred, f)
+        write_json(wifi_cred, WIFI_CRED_PATH)
         reset()
 
     if not hidden:
@@ -405,7 +431,10 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Software_version {software_version}")
         tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
-    wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+    try:
+        wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+    except Exception as e:
+        print("Exception connecting to wifi {e}")
     s = wifi.status()
     wait_time = 0
 
@@ -425,6 +454,11 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         tm.clear_area(0, 50, 160, 30)
         if not hidden:
             tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
+
+        wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
+        wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
+        write_json(wifi_cred_hist, WIFI_CRED_HIST_PATH)
+        print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
@@ -481,8 +515,8 @@ def update_firmware():
     return 0
 
 
-def get_tape_id():
-    return load_state()["selected_tape_id"]
+def get_tape_id(app="livemusic"):
+    return load_state(app)["selected_tape_id"]
 
 
 def get_collection_list():
@@ -495,17 +529,17 @@ def set_collection_list(collection_list):
     save_state(state)
 
 
-def save_state(state):
+def save_state(state, app="livemusic"):
     # print(f"writing {state} to {STATE_PATH}")
-    with open(STATE_PATH, "w") as f:
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    with open(state_path, "w") as f:
         json.dump(state, f)
     return
 
 
-def load_state():
-    if path_exists(STATE_PATH):
-        with open(STATE_PATH, "r") as f:
-            state = json.load(f)
+def load_livemusic_state(state_path):
+    if path_exists(state_path):
+        state = read_json(state_path)
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
@@ -531,6 +565,43 @@ def load_state():
             "selected_tape_id": selected_tape_id,
             "boot_mode": boot_mode,
         }
-    with open(STATE_PATH, "w") as f:
-        json.dump(state, f)
+    write_json(state, state_path)
     return state
+
+
+def load_datpiff_state(state_path):
+    if path_exists(state_path):
+        state = read_json(state_path)
+        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        selected_artist = state.get("selected_artist", artist_list[0])
+        selected_tape_id = state.get("selected_tape_id", "datpiff-mixtape-m014640a")
+        boot_mode = state.get("boot_mode", "normal")
+        state = {
+            "artist_list": artist_list,
+            "selected_artist": selected_artist,
+            "selected_tape_id": selected_tape_id,
+            "boot_mode": boot_mode,
+        }
+    else:
+        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        selected_artist = artist_list[0]
+        selected_tape_id = "datpiff-mixtape-m014640a"
+        boot_mode = "normal"
+        state = {
+            "artist_list": artist_list,
+            "selected_artist": selected_artist,
+            "selected_tape_id": selected_tape_id,
+            "boot_mode": boot_mode,
+        }
+    write_json(state, state_path)
+    return state
+
+
+def load_state(app="livemusic"):
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    if app == "livemusic":
+        return load_livemusic_state(state_path)
+    elif app == "datpiff":
+        return load_datpiff_state(state_path)
+    else:
+        raise NotImplementedError("Unknown app {app}")

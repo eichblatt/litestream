@@ -601,7 +601,7 @@ def show_collections(collection_list):
         tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
     if ncoll > 5:
         tm.tft.write(pfont_small, f"...", 0, 25 + 20 * 5, st7789.WHITE)
-    time.sleep(1)
+    time.sleep(0.1)
 
 
 def test_update():
