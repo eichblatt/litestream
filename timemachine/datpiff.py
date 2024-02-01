@@ -43,11 +43,12 @@ CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
-ARTIST_SET_TIME = time.ticks_ms()
-TAPE_SET_TIME = time.ticks_ms()
+ARTIST_KEY_TIME = time.ticks_ms()
+TAPE_KEY_TIME = time.ticks_ms()
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
+purple_color = st7789.color565(255, 100, 255)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
@@ -67,17 +68,16 @@ def set_tapeid_index(index):
 
 
 def set_tapeid_range(keyed_artist):
+    print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
     artist_tapeids = sorted(json.load(open(f"/metadata/datpiff/{keyed_artist}.json")), key=lambda x: x["title"])
     # set the range of the "day" knob to be this number.
     tm.d._max_val = len(artist_tapeids) - 1
-    tm.d._value = 0
+    # tm.d._value = 0
     return artist_tapeids
 
 
 def select_tapeid(tapeid):
-    global TAPE_SET_TIME
-    TAPE_SET_TIME = time.ticks_ms()
     print(f"Selecting tapeid {tapeid}")
     state = utils.load_state("datpiff")
     state["selected_tapeid"] = tapeid
@@ -92,7 +92,6 @@ def select_artist(artist_key_index):
     selected_artist = state["artist_list"][artist_key_index]
     utils.save_state("datpiff")
     artist_tapeids = set_tapeid_range(selected_artist)
-    set_tapeid_index(0)
     return selected_artist, artist_tapeids
 
 
@@ -104,6 +103,14 @@ def set_artist(artist):
             tm.m._value = i
     keyed_artist = artist
     return keyed_artist
+
+
+def set_knob_times():
+    global TAPE_KEY_TIME
+    global ARTIST_KEY_TIME
+    TAPE_KEY_TIME = time.ticks_ms()
+    ARTIST_KEY_TIME = time.ticks_ms()
+    return
 
 
 # def set_date(date):
@@ -202,7 +209,7 @@ def main_loop(player, state, artist_tapeids):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
-    selected_tape_id = None
+    selected_tape_id = {}
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -281,14 +288,18 @@ def main_loop(player, state, artist_tapeids):
                         print(f"volume set to {player.get_volume()}")
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
-        if (keyed_artist != selected_artist) and (time.ticks_diff(time.ticks_ms(), ARTIST_SET_TIME) > 20_000):
-            print(f"setting keyed_artist to {selected_artist}")
-            keyed_artist = set_artist(selected_artist)
+        if time.ticks_diff(time.ticks_ms(), ARTIST_KEY_TIME) > 20_000:
+            if (keyed_artist != selected_artist) or (keyed_tapeid != selected_tape_id.get("identifier", keyed_tapeid)):
+                print(f"resetting keyed_artist to {selected_artist}")
+                keyed_artist = selected_artist
+                keyed_tapeid = selected_tape_id["identifier"]
+                display_keyed_title(selected_title, color=yellow_color)
+                display_keyed_artist(selected_artist, color=yellow_color)
 
-        if selected_tape_id is not None:
-            if (keyed_tapeid != selected_tape_id["identifier"]) and (time.ticks_diff(time.ticks_ms(), TAPE_SET_TIME) > 20_000):
-                print(f"setting keyed_tapeid to {selected_tape_id['identifier']}")
-                keyed_tapeid = set_tapeid_name(selected_tape_id["identifier"], artist_tapeids)
+        # if selected_tape_id is not None:
+        #    if (keyed_tapeid != selected_tape_id["identifier"]) and (time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME) > 20_000):
+        #        print(f"setting keyed_tapeid to {selected_tape_id['identifier']}")
+        #        keyed_tapeid = set_tapeid_name(selected_tape_id["identifier"], artist_tapeids)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -297,6 +308,15 @@ def main_loop(player, state, artist_tapeids):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
+                selected_artist, artist_tapeids = select_artist(tm.m.value())
+                selected_title = artist_tapeids[tm.d.value()]["title"]
+
+                player.stop()
+                selected_tape_id = select_tapeid(artist_tapeids[tm.d.value()])
+                state = select_tape_by_id(selected_tape_id["identifier"], player, state)
+
+                display_keyed_title(selected_title, color=yellow_color)
+                display_keyed_artist(selected_artist, color=yellow_color)
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
@@ -343,9 +363,6 @@ def main_loop(player, state, artist_tapeids):
             if pMSw_old:
                 print("Month DOWN")
             else:
-                selected_artist, artist_tapeids = select_artist(tm.m.value())
-                keyed_title = artist_tapeids[tm.d.value()]["title"]
-                display_keyed_title(keyed_title)
                 print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
@@ -353,9 +370,6 @@ def main_loop(player, state, artist_tapeids):
             if pDSw_old:
                 print("Day UP")
             else:
-                player.stop()
-                selected_tape_id = select_tapeid(artist_tapeids[tm.d.value()])
-                state = select_tape_by_id(selected_tape_id["identifier"], player, state)
                 print("Day DOWN")
 
         year_new = tm.y.value()
@@ -363,21 +377,23 @@ def main_loop(player, state, artist_tapeids):
         day_new = tm.d.value()
 
         if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
-            TAPE_SET_TIME = time.ticks_ms()
-            ARTIST_SET_TIME = time.ticks_ms()
+            year_old = year_new
+            print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
+            set_knob_times()
             tm.power(1)
-        if month_old != month_new:
-            print(f"Month knob turned .. value {month_new}")
-            month_old = month_new
+        if (month_old != month_new) or (day_old != day_new):
+            print(f"Month {month_new}, Day {day_new}/{tm.d._max_val}")
             keyed_artist = state["artist_list"][month_new]
-            display_keyed_artist(keyed_artist)
-        if day_old != day_new:
-            print(f"Day knob turned .. value {day_new}")
-            day_old = day_new
+            if month_old != month_new:
+                artist_tapeids = set_tapeid_range(keyed_artist)
             tape_id_dict = artist_tapeids[day_new]
             keyed_tapeid = tape_id_dict["identifier"]
             keyed_title = tape_id_dict["title"]
             display_keyed_title(keyed_title)
+            display_keyed_artist(keyed_artist)
+            print(f"selected artist {selected_artist}")
+            month_old = month_new
+            day_old = day_new
 
         player.audio_pump()
 
@@ -402,22 +418,22 @@ def display_tracks(current_track_name, next_track_name):
     return
 
 
-def display_keyed_title(keyed_title):
+def display_keyed_title(keyed_title, color=purple_color):
     print(f"in display_keyed_title {keyed_title}")
     tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title[:17], tm.title_bbox.x0, tm.title_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
+    tm.write(keyed_title[:17], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
     if len(keyed_title) > 17:
-        tm.write(keyed_title[17:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=yellow_color, font=pfont_small, clear=False)
+        tm.write(keyed_title[17:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=color, font=pfont_small, clear=False)
 
 
-def display_keyed_artist(artist):
+def display_keyed_artist(artist, color=purple_color):
     print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
     if len(artist) < 19:
         artist = (9 - len(artist) // 2) * " " + artist
     elif len(artist) > 20:
         artist = artist[:16] + "~" + artist[-4:]
-    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=yellow_color, font=pfont_small, clear=False)
+    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False)
 
 
 def display_selected_artist(artist):
@@ -449,6 +465,10 @@ def run():
         wifi = utils.connect_wifi()
         state = utils.load_state(app="datpiff")
         show_artists(state["artist_list"])
+
+        tm.y._min_val = 0
+        tm.m._min_val = 0
+        tm.d._min_val = 0
 
         tm.m._max_val = len(state["artist_list"]) - 1
         tm.m._value = 0
