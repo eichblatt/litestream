@@ -538,6 +538,7 @@ def save_state(state, app="livemusic"):
 
 
 def load_livemusic_state(state_path):
+    state = {}
     if path_exists(state_path):
         state = read_json(state_path)
         collection_list = state.get("collection_list", "GratefulDead")
@@ -570,9 +571,10 @@ def load_livemusic_state(state_path):
 
 
 def load_datpiff_state(state_path):
+    state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
         selected_artist = state.get("selected_artist", artist_list[0])
         selected_tape_id = state.get("selected_tape_id", "datpiff-mixtape-m014640a")
         boot_mode = state.get("boot_mode", "normal")
@@ -583,7 +585,7 @@ def load_datpiff_state(state_path):
             "boot_mode": boot_mode,
         }
     else:
-        artist_list = state.get("artist_list", ["Jay-Z", "2Pac", "50 Cent", "Drake", "Gucci Mane", "Instrumentals"])
+        artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
         selected_artist = artist_list[0]
         selected_tape_id = "datpiff-mixtape-m014640a"
         boot_mode = "normal"
