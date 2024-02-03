@@ -29,6 +29,10 @@
             "github:eichblatt/litestream/timemachine/livemusic.py"
         ],
         [
+            "datpiff.py",
+            "github:eichblatt/litestream/timemachine/datpiff.py"
+        ],
+        [
             "fonts/__init__.py",
             "github:eichblatt/litestream/timemachine/fonts/__init__.py"
         ],

@@ -301,6 +301,34 @@ def copy_dir(src_d, dest_d):
     remove_dir(f"{dest_d}_tmp")
 
 
+def set_main_app(main_app):
+    try:
+        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+            main_app = "livemusic"
+        app_path = "/.main_app"
+        main_app = write_json(main_app, app_path)
+    except Exception as e:
+        pass
+    return main_app
+
+
+def get_main_app():
+    main_app = "livemusic"
+    try:
+        app_path = "/.main_app"
+        if path_exists(app_path):
+            main_app = read_json(app_path)
+        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+            main_app = "livemusic"
+    except Exception as e:
+        pass
+    return main_app
+
+
+def is_dev_box():
+    return path_exists("/.is_dev_box")
+
+
 def create_factory_image():
     # Use this function when you have the filesystem as desired for factory settings.
     # Copy the code into a "/factory_lib" folder
@@ -317,7 +345,7 @@ def create_factory_image():
     remove_file("/exception.log")
     for app_string in ["", "_datpiff"]:
         remove_file(STATE_PATH.format(app_string=app_string))
-    if path_exists("/.is_dev_box"):
+    if is_dev_box():
         os.rename("/.is_dev_box", "/.not_dev_box")
 
 

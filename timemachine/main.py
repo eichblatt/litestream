@@ -254,26 +254,36 @@ def update_firmware():
         utils.reset()
 
 
+def choose_main_app():
+    app_choices = ["livemusic", "datpiff", "no change"]
+    new_main_app = utils.select_option("Main App", app_choices)
+    if new_main_app != "no change":
+        main_app = utils.set_main_app(new_main_app)
+    else:
+        main_app = utils.get_main_app()
+    return main_app
+
+
 def reconfigure():
     tm.tft.on()
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
     time.sleep(0.1)
-    choice = utils.select_option(
-        "Config Menu",
-        [
-            "Collections",
-            "Update Code",
-            "Exit",
-            "Update Firmware",
-            "Wifi",
-            "Reboot",
-            "Test Buttons",
-            "Calibrate Knobs",
-            "Calibrate Screen",
-            "Factory Reset",
-        ],
-    )
+    config_choices = [
+        "Collections",
+        "Update Code",
+        "Exit",
+        "Update Firmware",
+        "Wifi",
+        "Reboot",
+        "Test Buttons",
+        "Calibrate Knobs",
+        "Calibrate Screen",
+        "Factory Reset",
+    ]
+    if utils.is_dev_box():
+        config_choices.append("Main App")
+    choice = utils.select_option("Config Menu", config_choices)
 
     if choice == "Collections":
         configure_collections()
@@ -297,6 +307,8 @@ def reconfigure():
         tm.calibrate_screen(force=True)
     elif choice == "Exit":
         return choice
+    elif choice == "Main App":
+        main_app = choose_main_app()
     return choice
 
 
@@ -337,13 +349,23 @@ def basic_main():
 
 
 def run_livemusic():
-    import livemusic
-
-    utils.mark_partition()  # If we make it this far, the firmware is good.
+    main_app = "livemusic"
     while True:
-        livemusic.run()
+        if utils.is_dev_box():
+            main_app = utils.get_main_app()
+        if main_app == "livemusic":
+            import livemusic
+
+            utils.mark_partition()  # If we make it this far, the firmware is good.
+            livemusic.run()
+        elif main_app == "datpiff":
+            import datpiff
+
+            utils.mark_partition()
+            datpiff.run()
+        else:
+            raise NotImplementedError(f"Unknown app {main_app}")
         reconfigure()
-    # utils.reset()
 
 
 # basic_main()
