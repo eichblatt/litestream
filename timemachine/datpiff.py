@@ -81,7 +81,7 @@ def select_tapeid(tapeid):
     print(f"Selecting tapeid {tapeid}")
     state = utils.load_state("datpiff")
     state["selected_tapeid"] = tapeid
-    utils.save_state("datpiff")
+    utils.save_state(state, "datpiff")
     return tapeid
 
 
@@ -90,7 +90,7 @@ def select_artist(artist_key_index):
     print(f"setting artist to {artist_key_index}")
     state = utils.load_state("datpiff")
     selected_artist = state["artist_list"][artist_key_index]
-    utils.save_state("datpiff")
+    utils.save_state(state, "datpiff")
     artist_tapeids = set_tapeid_range(selected_artist)
     return selected_artist, artist_tapeids
 
@@ -177,7 +177,7 @@ def select_tape_by_id(identifier, player, state):
     player.set_playlist(tracklist, urls)
     state["selected_artist"] = artists[0]
     state["selected_tape_id"] = identifier
-    utils.save_state(state)
+    utils.save_state(state, "datpiff")
     print(f"Displaying artist is {artists[0][:17]}")
     display_selected_artist(artists[0][:17])
     return state
@@ -463,7 +463,7 @@ def run():
     """run the livemusic controls"""
     try:
         wifi = utils.connect_wifi()
-        state = utils.load_state(app="datpiff")
+        state = utils.load_state("datpiff")
         show_artists(state["artist_list"])
 
         tm.y._min_val = 0
