@@ -86,9 +86,9 @@ def select_tapeid(tapeid):
     return tapeid
 
 
-def select_artist(artist_key_index):
+def select_artist_by_index(artist_key_index):
     # run this function when we SELECT a new artist (not when we key them)
-    print(f"setting artist to {artist_key_index}")
+    print(f"setting artist index to {artist_key_index}")
     state = utils.load_state("datpiff")
     selected_artist = state["artist_list"][artist_key_index]
     utils.save_state(state, "datpiff")
@@ -100,10 +100,10 @@ def set_artist(artist):
     print(f"setting artist to {artist}")
     state = utils.load_state("datpiff")
     for i, a in enumerate(state["artist_list"]):
-        if a == artist:
+        if a.lower() == artist.lower():
             tm.m._value = i
-    keyed_artist = artist
-    return keyed_artist
+            return i
+    return None
 
 
 def set_knob_times():
@@ -196,11 +196,10 @@ def play_pause(player):
     return
 
 
-def main_loop(player, state, artist_tapeids):
+def main_loop(player, state):
     year_old = -1
     month_old = -1
     day_old = -1
-    date_old = ""
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
@@ -307,7 +306,7 @@ def main_loop(player, state, artist_tapeids):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
-                selected_artist, artist_tapes = select_artist(tm.m.value())
+                selected_artist, artist_tapes = select_artist_by_index(tm.m.value())
                 selected_title = artist_tapes[tm.d.value()]["title"]
 
                 player.stop()
@@ -429,6 +428,7 @@ def display_keyed_title(keyed_title, color=purple_color):
 def display_keyed_artist(artist, color=purple_color):
     print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
+    artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
         artist = (9 - len(artist) // 2) * " " + artist
     elif len(artist) > 20:
@@ -474,11 +474,12 @@ def run():
         tm.m._value = 0
 
         print(f"Range of month knob is {tm.m._max_val}")
-        keyed_artist = set_artist(state["selected_artist"])  # set the knobs
-        selected_artist, artist_tapeids = select_artist(tm.m.value())
-
+        artist_index = set_artist(state["selected_artist"])  # set the knobs
+        print(f"tm.m.value() is {tm.m.value()}. index {artist_index}")
+        select_tapeid(state["selected_tape"])
+        _, _ = select_artist_by_index(artist_index)
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
-        main_loop(player, state, artist_tapeids)
+        main_loop(player, state)
     except Exception as e:
         msg = f"Error in playback loop {e}"
         print(msg)

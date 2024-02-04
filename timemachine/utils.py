@@ -595,7 +595,7 @@ def load_livemusic_state(state_path):
             "selected_tape_id": selected_tape_id,
             "boot_mode": boot_mode,
         }
-    write_json(state, state_path)
+        write_json(state, state_path)
     return state
 
 
@@ -624,7 +624,7 @@ def load_datpiff_state(state_path):
             "selected_tape": selected_tape,
             "boot_mode": boot_mode,
         }
-    write_json(state, state_path)
+        write_json(state, state_path)
     return state
 
 
