@@ -452,11 +452,13 @@ def show_artists(artist_list):
     print(message)
     tm.clear_screen()
     tm.tft.write(pfont_med, message, 0, 0, yellow_color)
-    for i, coll in enumerate(artist_list[:5]):
-        tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
-    if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, 25 + 20 * 5, st7789.WHITE)
-    time.sleep(1)
+    colls_to_write = 5
+
+    for min_col in range(0, 1 + ncoll - colls_to_write, 1):
+        tm.clear_area(0, 25, 160, 103)
+        for i, coll in enumerate(artist_list[min_col : min_col + colls_to_write]):
+            tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=st7789.WHITE, clear=False)
+        time.sleep(0.5)
 
 
 def run():
