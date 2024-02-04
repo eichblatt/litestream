@@ -316,6 +316,7 @@ def main_loop(player, state, artist_tapeids):
 
                 display_keyed_title(selected_title, color=yellow_color)
                 display_keyed_artist(selected_artist, color=yellow_color)
+                play_pause(player)
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
