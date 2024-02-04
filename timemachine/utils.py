@@ -38,7 +38,8 @@ yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-choices_color = st7789.color565(128, 255, 128)
+choices_color = st7789.color565(255, 255, 255)  # white
+purple_color = st7789.color565(255, 0, 255)
 
 
 def reset():
@@ -94,7 +95,7 @@ def select_option(message, choices):
                 tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
 
             text = ">" + choices[step]
-            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), st7789.RED)
+            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), purple_color)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
                 tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color)
@@ -162,7 +163,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -179,7 +180,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step != 0 else st7789.RED
+                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step != 0 else purple_color
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -204,7 +205,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
+                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, purple_color)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
@@ -223,7 +224,7 @@ def select_chars(message, message2="", already=None):
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             tm.clear_bbox(selected_bbox)
-            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
         if singleLetter:
             print(f"singleLetter chosen {selected}")
             finished = True
@@ -232,7 +233,7 @@ def select_chars(message, message2="", already=None):
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
-    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, st7789.RED)
+    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, purple_color)
     time.sleep(0.3)
     return selected
 
@@ -604,23 +605,23 @@ def load_datpiff_state(state_path):
         state = read_json(state_path)
         artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
         selected_artist = state.get("selected_artist", artist_list[0])
-        selected_tape_id = state.get("selected_tape_id", "datpiff-mixtape-m014640a")
+        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
         boot_mode = state.get("boot_mode", "normal")
         state = {
             "artist_list": artist_list,
             "selected_artist": selected_artist,
-            "selected_tape_id": selected_tape_id,
+            "selected_tape": selected_tape,
             "boot_mode": boot_mode,
         }
     else:
         artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
         selected_artist = artist_list[0]
-        selected_tape_id = "datpiff-mixtape-m014640a"
+        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
         boot_mode = "normal"
         state = {
             "artist_list": artist_list,
             "selected_artist": selected_artist,
-            "selected_tape_id": selected_tape_id,
+            "selected_tape": selected_tape,
             "boot_mode": boot_mode,
         }
     write_json(state, state_path)
