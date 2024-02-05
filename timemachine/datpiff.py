@@ -461,13 +461,30 @@ def show_artists(artist_list):
         time.sleep(0.5)
 
 
+def get_artist_metadata(artist_list):
+    for artist in artist_list:
+        path_to_meta = f"/metadata/datpiff/{artist}.json"
+        if not utils.path_exists(path_to_meta):
+            try:
+                url = f"https://default-withdatpiff-3pqgajc26a-uc.a.run.app/tapes_by_artist/{artist.lower()}"
+                resp = requests.get(url)
+                if resp.status_code != 200:
+                    raise Exception(f"Failed to load from {url}")
+                metadata = resp.json()
+                utils.write_json(metadata, path_to_meta)
+            finally:
+                resp.close()
+
+
 def run():
     """run the livemusic controls"""
     try:
         wifi = utils.connect_wifi()
         state = utils.load_state("datpiff")
-        show_artists(state["artist_list"])
+        artist_list = state["artist_list"]
+        show_artists(artist_list)
 
+        get_artist_metadata(artist_list)
         tm.y._min_val = 0
         tm.m._min_val = 0
         tm.d._min_val = 0

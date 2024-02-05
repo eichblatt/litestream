@@ -559,10 +559,9 @@ def set_collection_list(collection_list):
 
 
 def save_state(state, app="livemusic"):
-    # print(f"writing {state} to {STATE_PATH}")
+    print(f"writing {state} to {STATE_PATH}")
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
-    with open(state_path, "w") as f:
-        json.dump(state, f)
+    write_json(state, state_path)
     return
 
 

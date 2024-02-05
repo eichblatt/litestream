@@ -109,6 +109,66 @@ def test_update():
     return update_code
 
 
+def _datpiff_collection_names():
+    try:
+        url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            raise Exception(f"error downloading from {url}")
+        collection_names = resp.json()
+    finally:
+        resp.close()
+    return collection_names
+
+
+def configure_datpiff_collections():
+    choices = ["Add Collection", "Remove Collection", "Cancel"]
+    choice = utils.select_option("Year/Select", choices)
+    print(f"configure_collection: chose to {choice}")
+
+    if choice == "Cancel":
+        return
+
+    state = utils.load_state("datpiff")
+    collection_list = state["artist_list"]
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Collection":
+        keepGoing = True
+        reset_required = False
+        all_collections = _datpiff_collection_names()
+
+        while keepGoing:
+            coll_to_add = add_collection(all_collections, collection_list)
+            if coll_to_add != "_CANCEL":
+                collection_list.append(coll_to_add)
+                reset_required = True
+            choices = ["Add Another", "Finished"]
+            choice2 = utils.select_option("Year/Select", choices)
+            if choice2 == "Finished":
+                keepGoing = False
+
+            state["artist_list"] = collection_list
+            utils.save_state("datpiff")
+        if reset_required:
+            utils.reset()
+
+    elif choice == "Remove Collection":
+        keepGoing = True
+        while keepGoing & (len(collection_list) > 0):
+            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
+            collection_list = [x for x in collection_list if not x == coll_to_remove]
+            choices = ["Remove Another", "Finished"]
+            choice2 = utils.select_option("Year/Select", choices)
+            if choice2 == "Finished":
+                keepGoing = False
+
+            state["artist_list"] = collection_list
+            utils.save_state("datpiff")
+
+    return
+
+
 def _collection_names():
     # Note: This function appears to only work right after a reboot.
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
@@ -145,6 +205,10 @@ def _collection_names():
 
 
 def configure_collections():
+    main_app = utils.get_main_app()
+    if main_app == "datpiff":
+        return configure_datpiff_collections()
+
     choices = ["Add Collection", "Remove Collection", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
@@ -164,7 +228,7 @@ def configure_collections():
             all_collections = all_collections + all_collections_dict[archive]
 
         while keepGoing:
-            coll_to_add = add_collection(all_collections)
+            coll_to_add = add_collection(all_collections, utils.get_collection_list())
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
                 reset_required = True
@@ -191,9 +255,7 @@ def configure_collections():
     return
 
 
-def add_collection(all_collections):
-    collection_list = utils.get_collection_list()
-
+def add_collection(all_collections, collection_list):
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)
 
