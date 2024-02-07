@@ -464,9 +464,11 @@ def show_artists(artist_list):
 def get_artist_metadata(artist_list):
     for artist in artist_list:
         path_to_meta = f"/metadata/datpiff/{artist}.json"
+        print(f"loading {path_to_meta}")
         if not utils.path_exists(path_to_meta):
             try:
                 url = f"https://default-withdatpiff-3pqgajc26a-uc.a.run.app/tapes_by_artist/{artist.lower().replace(' ','%20')}"
+                print(f"Querying from {url}")
                 resp = requests.get(url)
                 if resp.status_code != 200:
                     raise Exception(f"Failed to load from {url}")
