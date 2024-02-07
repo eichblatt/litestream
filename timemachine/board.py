@@ -359,8 +359,8 @@ def poll_for_button(button, timeout=None):
     pButton_old = True
     while pButton_old == button.value():
         if (timeout is not None) and (time.ticks_diff(time.ticks_ms(), start_time) > (timeout * 1000)):
-            break
-    return
+            return False
+    return True
 
 
 def poll_for_which_button(button_dict, timeout=None, default=None):
