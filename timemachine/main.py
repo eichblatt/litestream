@@ -149,7 +149,7 @@ def configure_datpiff_collections():
                 keepGoing = False
 
             state["artist_list"] = collection_list
-            utils.save_state("datpiff")
+            utils.save_state(state, "datpiff")
         if reset_required:
             utils.reset()
 
@@ -164,7 +164,7 @@ def configure_datpiff_collections():
                 keepGoing = False
 
             state["artist_list"] = collection_list
-            utils.save_state("datpiff")
+            utils.save_state(state, "datpiff")
 
     return
 

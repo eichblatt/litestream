@@ -70,7 +70,7 @@ def set_tapeid_index(index):
 def set_tapeid_range(keyed_artist):
     print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
-    artist_tapes = sorted(json.load(open(f"/metadata/datpiff/{keyed_artist}.json")), key=lambda x: x["title"])
+    artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"])
     # set the range of the "day" knob to be this number.
     tm.d._max_val = len(artist_tapes) - 1
     # tm.d._value = 0
@@ -466,11 +466,13 @@ def get_artist_metadata(artist_list):
         path_to_meta = f"/metadata/datpiff/{artist}.json"
         if not utils.path_exists(path_to_meta):
             try:
-                url = f"https://default-withdatpiff-3pqgajc26a-uc.a.run.app/tapes_by_artist/{artist.lower()}"
+                url = f"https://default-withdatpiff-3pqgajc26a-uc.a.run.app/tapes_by_artist/{artist.lower().replace(' ','%20')}"
                 resp = requests.get(url)
                 if resp.status_code != 200:
                     raise Exception(f"Failed to load from {url}")
                 metadata = resp.json()
+                keys = ["artist", "title", "identifier"]
+                metadata = [dict(zip(keys, x)) for x in metadata]
                 utils.write_json(metadata, path_to_meta)
             finally:
                 resp.close()
