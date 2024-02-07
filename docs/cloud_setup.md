@@ -44,6 +44,7 @@ Test the local version, if you want to make sure it does what it is supposed to:
 `(env) : ~/projects/deadstream/tmp ; flask run`
 
 Go back to the cloud_server folder and deploy from there.
+go to app engine settings and enable the application <https://console.cloud.google.com/appengine/settings?serviceId=default&hl=en&project=able-folio-397115>
 Then deploy (this takes forever, but it works)
 
 `: ~/projects/deadstream/cloud_server ; gcloud app deploy [--version=<name> --verbosity=info]`

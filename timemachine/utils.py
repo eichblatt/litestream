@@ -412,8 +412,21 @@ def set_datetime(hidden=False):
         return None
 
 
+def mkdirs(path):
+    # Make all the dirs on the way to path
+    if path_exists(path):
+        return
+    parent = "/".join(path.split("/")[:-1])
+    if not path_exists(parent):
+        mkdirs(parent)
+    print(f"making dir {path}")
+    os.mkdir(path)
+
+
 def write_json(obj, path):
     print(f"writing json to {path}")
+    parent_dir = "/".join(path.split("/")[:-1])
+    mkdirs(parent_dir)
     with open(path, "w") as f:
         json.dump(obj, f)
 
@@ -559,10 +572,9 @@ def set_collection_list(collection_list):
 
 
 def save_state(state, app="livemusic"):
-    # print(f"writing {state} to {STATE_PATH}")
+    print(f"writing {state} to {STATE_PATH}")
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
-    with open(state_path, "w") as f:
-        json.dump(state, f)
+    write_json(state, state_path)
     return
 
 
