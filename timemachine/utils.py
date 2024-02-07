@@ -269,6 +269,16 @@ def touch(path):
             f.write("0")
 
 
+def keep_only_n_files(dir, n):
+    files_in_dir = [f"{dir}/x" for x in os.listdir(dir)]
+    files_in_dir = [x for x in files_in_dir if not isdir(x)]
+    files_in_dir = sorted(files_in_dir, key=lambda x: os.stat(x)[7])
+    if len(files_in_dir) <= n:
+        return
+    for file in files_in_dir[n:]:
+        remove_file(file)
+
+
 def remove_file(path):
     if not path_exists(path):
         return
