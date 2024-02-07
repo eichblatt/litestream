@@ -396,6 +396,9 @@ def basic_main():
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
     print(f"firmware version: {uversion}. Software version {software_version}")
 
+    if tm.poll_for_button(tm.pPlayPause, timeout=2):
+        reconfigure()
+
     wifi = utils.connect_wifi()
     if not utils.path_exists("/.knob_sense"):
         hidden_setdate = True
