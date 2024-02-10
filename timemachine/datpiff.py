@@ -103,7 +103,8 @@ def set_artist(artist):
         if a.lower() == artist.lower():
             tm.m._value = i
             return i
-    return None
+    print(f"ERROR Unknown Artist {artist}. Returning 0")
+    return 0
 
 
 def set_knob_times():
