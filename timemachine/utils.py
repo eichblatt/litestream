@@ -596,26 +596,22 @@ def load_livemusic_state(state_path):
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         selected_tape_id = state.get("selected_tape_id", "unknown")
-        boot_mode = state.get("boot_mode", "normal")
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
-            "boot_mode": boot_mode,
         }
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
         selected_collection = collection_list[0]
         selected_tape_id = "unknown"
-        boot_mode = "normal"
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
-            "boot_mode": boot_mode,
         }
         write_json(state, state_path)
     return state
@@ -626,25 +622,17 @@ def load_datpiff_state(state_path):
     if path_exists(state_path):
         state = read_json(state_path)
         artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
-        selected_artist = state.get("selected_artist", artist_list[0])
         selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
-        boot_mode = state.get("boot_mode", "normal")
         state = {
             "artist_list": artist_list,
-            "selected_artist": selected_artist,
             "selected_tape": selected_tape,
-            "boot_mode": boot_mode,
         }
     else:
         artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
-        selected_artist = artist_list[0]
         selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
-        boot_mode = "normal"
         state = {
             "artist_list": artist_list,
-            "selected_artist": selected_artist,
             "selected_tape": selected_tape,
-            "boot_mode": boot_mode,
         }
         write_json(state, state_path)
     return state

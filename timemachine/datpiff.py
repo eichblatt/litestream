@@ -177,7 +177,6 @@ def select_tape(tape, player, state):
     tracklist, urls, albums, artists = get_tape_metadata(tape["identifier"])
 
     player.set_playlist(tracklist, urls)
-    state["selected_artist"] = artists[0]
     state["selected_tape"] = tape
     utils.save_state(state, "datpiff")
     print(f"Displaying artist is {artists[0][:17]}")
@@ -204,9 +203,9 @@ def main_loop(player, state):
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
-    keyed_artist = state["selected_artist"]
-    selected_artist = keyed_artist
     keyed_tape = state["selected_tape"]
+    keyed_artist = keyed_tape["artist"]
+    selected_artist = keyed_artist
     selected_tape = keyed_tape
     select_press_time = 0
     power_press_time = 0
@@ -233,8 +232,8 @@ def main_loop(player, state):
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
                     state = select_tape(keyed_tape, player, state)
-                    selected_artist = state["selected_artist"]
                     selected_tape = state["selected_tape"]
+                    selected_artist = selected_tape["artist"]
                     gc.collect()
                 play_pause(player)
 
@@ -498,7 +497,7 @@ def run():
         tm.m._value = 0
 
         print(f"Range of month knob is {tm.m._max_val}")
-        artist_index = set_artist(state["selected_artist"])  # set the knobs
+        artist_index = set_artist(state["selected_tape"]["artist"])  # set the knobs
         print(f"tm.m.value() is {tm.m.value()}. index {artist_index}")
         select_tapeid(state["selected_tape"])
         _, _ = select_artist_by_index(artist_index)
