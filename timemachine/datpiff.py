@@ -55,14 +55,15 @@ nshows_color = st7789.color565(0, 100, 255)
 new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
 
 
-def set_tapeid_name(id, artist_tapeids):
-    for i, tid in enumerate(artist_tapeids):
+def set_tapeid_name(id, artist_tapes):
+    for i, tid in enumerate(artist_tapes):
         if tid["identifier"] == id:
             set_tapeid_index(i)
             return
 
 
 def set_tapeid_index(index):
+    print(f"setting tapeid index to {index}")
     tm.d._value = index
     return
 
@@ -73,11 +74,11 @@ def set_tapeid_range(keyed_artist):
     artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"])
     # set the range of the "day" knob to be this number.
     tm.d._max_val = len(artist_tapes) - 1
-    # tm.d._value = 0
+    tm.d._value = min(tm.d.value(), tm.d._max_val)
     return artist_tapes
 
 
-def select_tapeid(tapeid):
+def select_tape_other(tapeid):
     print(f"Selecting tapeid {tapeid}")
 
     state = utils.load_state("datpiff")
@@ -91,7 +92,6 @@ def select_artist_by_index(artist_key_index):
     print(f"setting artist index to {artist_key_index}")
     state = utils.load_state("datpiff")
     selected_artist = state["artist_list"][artist_key_index]
-    utils.save_state(state, "datpiff")
     artist_tapes = set_tapeid_range(selected_artist)
     return selected_artist, artist_tapes
 
@@ -310,7 +310,8 @@ def main_loop(player, state):
                 selected_title = artist_tapes[tm.d.value()]["title"]
 
                 player.stop()
-                selected_tape = select_tapeid(artist_tapes[tm.d.value()])
+                # selected_tape = select_tape_other(artist_tapes[tm.d.value()])
+                selected_tape = artist_tapes[tm.d.value()]
                 state = select_tape(selected_tape, player, state)
 
                 display_keyed_title(selected_title, color=yellow_color)
@@ -385,6 +386,7 @@ def main_loop(player, state):
             keyed_artist = state["artist_list"][month_new]
             if month_old != month_new:
                 artist_tapes = set_tapeid_range(keyed_artist)
+                day_new = tm.d.value()
             tape_id_dict = artist_tapes[day_new]
             keyed_tape = tape_id_dict
             keyed_title = tape_id_dict["title"]
@@ -497,10 +499,11 @@ def run():
         tm.m._value = 0
 
         print(f"Range of month knob is {tm.m._max_val}")
-        artist_index = set_artist(state["selected_tape"]["artist"])  # set the knobs
+        artist_index = set_artist(state["selected_tape"]["artist"])  # set the artist knob
         print(f"tm.m.value() is {tm.m.value()}. index {artist_index}")
-        select_tapeid(state["selected_tape"])
-        _, _ = select_artist_by_index(artist_index)
+        tape = state["selected_tape"]
+        _, artist_tapes = select_artist_by_index(artist_index)
+        set_tapeid_name(tape["identifier"], artist_tapes)  # set the tapeid knobs
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, state)
     except Exception as e:
