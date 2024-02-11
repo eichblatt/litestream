@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import math
 import st7789
 import time
 from machine import SPI, Pin
@@ -380,3 +381,55 @@ def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, cle
     text = msg.split("\n")
     for i, line in enumerate(text):
         tft.write(font, line, x, y + (i * text_height), color)
+
+
+class decade_counter:
+    def __init__(self, knobs, max_val, decade_size=None):
+        self.knobs = knobs
+        self.knobs[1]._range_mode = self.knobs[1].RANGE_WRAP
+        self.max_val = max_val
+        self.compute_decade_size(decade_size)
+        self.set_max_value(max_val)
+        self.get_value()
+
+    def __repr__(self):
+        return str(
+            f"({self.knobs[0]._value} * {self.decade_size}) + {self.knobs[1]._value} = {self.get_value()}. Max {self.max_val}"
+        )
+
+    def compute_decade_size(self, decade_size=None):
+        print(f"decade_counter decade size is {decade_size}")
+        if decade_size is not None:
+            self.decade_size = decade_size
+        elif self.max_val < 13:
+            self.decade_size = 1
+        elif self.max_val < 100:
+            self.decade_size = 10
+        else:
+            self.decade_size = int(math.sqrt(self.max_val))
+        return self.decade_size
+
+    def get_value(self):
+        val = (self.decade_size * self.knobs[0].value()) + self.knobs[1].value() % self.decade_size
+        return min(val, self.max_val)
+
+    def set_value(self, value):
+        value = min(value, self.max_val)
+        value = max(value, 0)
+
+        self.knobs[0]._value = value // self.decade_size
+        self.knobs[1]._value = value % self.decade_size
+
+    def set_max_value(self, max_val):
+        print(f"setting max value in decade_counter to {max_val}")
+        if max_val is None:
+            self.max_val = self.decade_size * (self.knobs[0]._max_val + 1)
+        else:
+            self.max_val = max_val
+        self.compute_decade_size()
+        print(f"decade_size to {self.decade_size}")
+        self.knobs[0]._max_val = self.max_val // self.decade_size
+        self.knobs[1]._max_val = self.max_val
+        self.knobs[1]._min_val = 0
+        self.knobs[0]._min_val = 0
+        self.set_value(self.get_value())

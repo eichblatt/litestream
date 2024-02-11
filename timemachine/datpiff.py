@@ -53,6 +53,8 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
+dc = tm.decade_counter((tm.d, tm.y), 100, 10)
+tapeid_range_dict = {}
 
 
 def set_tapeid_name(id, artist_tapes):
@@ -64,17 +66,26 @@ def set_tapeid_name(id, artist_tapes):
 
 def set_tapeid_index(index):
     print(f"setting tapeid index to {index}")
-    tm.d._value = index
+    dc.set_value(index)
+    # tm.d._value = index
     return
 
 
 def set_tapeid_range(keyed_artist):
+    if keyed_artist in tapeid_range_dict.keys():
+        artist_tapes = tapeid_range_dict[keyed_artist]
+        dc.set_max_value(len(artist_tapes) - 1)
+        return artist_tapes
     print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
     artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"])
     # set the range of the "day" knob to be this number.
-    tm.d._max_val = len(artist_tapes) - 1
-    tm.d._value = min(tm.d.value(), tm.d._max_val)
+    print(f"setting max value of dc to {len(artist_tapes) -1}")
+    dc.set_max_value(len(artist_tapes) - 1)
+    print(f"dc {dc}")
+    tapeid_range_dict[keyed_artist] = artist_tapes
+    # tm.d._max_val = len(artist_tapes) - 1
+    # tm.d._value = min(tm.d.value(), tm.d._max_val)
     return artist_tapes
 
 
@@ -200,6 +211,7 @@ def main_loop(player, state):
     year_old = -1
     month_old = -1
     day_old = -1
+    dc_old = -1
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
@@ -307,11 +319,12 @@ def main_loop(player, state):
             else:
                 select_press_time = time.ticks_ms()
                 selected_artist, artist_tapes = select_artist_by_index(tm.m.value())
-                selected_title = artist_tapes[tm.d.value()]["title"]
+                selected_title = artist_tapes[dc.get_value()]["title"]
+                # selected_title = artist_tapes[tm.d.value()]["title"]
 
                 player.stop()
-                # selected_tape = select_tape_other(artist_tapes[tm.d.value()])
-                selected_tape = artist_tapes[tm.d.value()]
+                selected_tape = artist_tapes[dc.get_value()]
+                # selected_tape = artist_tapes[tm.d.value()]
                 state = select_tape(selected_tape, player, state)
 
                 display_keyed_title(selected_title, color=yellow_color)
@@ -372,29 +385,34 @@ def main_loop(player, state):
             else:
                 print("Day DOWN")
 
-        year_new = tm.y.value()
+        # year_new = tm.y.value()
         month_new = tm.m.value()
         day_new = tm.d.value()
+        dc_new = dc.get_value()
 
-        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
-            year_old = year_new
+        #        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+        if (month_old != month_new) | (dc_old != dc_new):
+            # year_old = year_new
             print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
             set_knob_times()
             tm.power(1)
-        if (month_old != month_new) or (day_old != day_new):
-            print(f"Month {month_new}, Day {day_new}/{tm.d._max_val}")
+            # if (month_old != month_new) or (day_old != day_new):
+            # print(f"Month {month_new}, Day {day_new}/{tm.d._max_val}")
+            print(f"decade_counter {dc}")
             keyed_artist = state["artist_list"][month_new]
             if month_old != month_new:
                 artist_tapes = set_tapeid_range(keyed_artist)
-                day_new = tm.d.value()
-            tape_id_dict = artist_tapes[day_new]
+                # day_new = tm.d.value()
+                dc_new = dc.get_value()
+            tape_id_dict = artist_tapes[dc_new]
             keyed_tape = tape_id_dict
             keyed_title = tape_id_dict["title"]
             display_keyed_title(keyed_title)
             display_keyed_artist(keyed_artist)
             print(f"selected artist {selected_artist}")
             month_old = month_new
-            day_old = day_new
+            # day_old = day_new
+            dc_old = dc_new
 
         player.audio_pump()
 
