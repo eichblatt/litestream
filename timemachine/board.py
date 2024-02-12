@@ -161,7 +161,7 @@ tracklist_bbox = Bbox(0, 70, 160, 112)
 selected_date_bbox = Bbox(15, 112, 145, 128)
 playpause_bbox = Bbox(145, 113, 160, 128)
 keyed_artist_bbox = Bbox(0, 0, 160, 22)
-title_bbox = Bbox(0, 23, 160, 60)
+title_bbox = Bbox(0, 23, 160, 61)
 selected_artist_bbox = Bbox(0, 110, 145, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
@@ -390,15 +390,20 @@ class decade_counter:
         self.max_val = max_val
         self.compute_decade_size(decade_size)
         self.set_max_value(max_val)
-        self.get_value()
+        value = self.get_value()
 
     def __repr__(self):
         return str(
             f"({self.knobs[0]._value} * {self.decade_size}) + {self.knobs[1]._value} = {self.get_value()}. Max {self.max_val}"
         )
 
+    def _reduce_vals(self, val):
+        # Set the knob vals to their lowest values.
+        self.knobs[0]._value = val // self.decade_size
+        self.knobs[1]._value = val % self.decade_size
+
     def compute_decade_size(self, decade_size=None):
-        print(f"decade_counter decade size is {decade_size}")
+        # print(f"decade_counter decade size is {decade_size}")
         if decade_size is not None:
             self.decade_size = decade_size
         elif self.max_val < 13:
@@ -410,26 +415,28 @@ class decade_counter:
         return self.decade_size
 
     def get_value(self):
-        val = (self.decade_size * self.knobs[0].value()) + self.knobs[1].value() % self.decade_size
-        return min(val, self.max_val)
+        val = (self.decade_size * self.knobs[0].value()) + self.knobs[1].value()
+        val = min(val, self.max_val)
+        val = max(val, 0)
+        self._reduce_vals(val)
+        return val
 
     def set_value(self, value):
         value = min(value, self.max_val)
         value = max(value, 0)
-
-        self.knobs[0]._value = value // self.decade_size
-        self.knobs[1]._value = value % self.decade_size
+        self._reduce_vals(value)
 
     def set_max_value(self, max_val):
-        print(f"setting max value in decade_counter to {max_val}")
+        # print(f"setting max value in decade_counter to {max_val}")
         if max_val is None:
             self.max_val = self.decade_size * (self.knobs[0]._max_val + 1)
         else:
             self.max_val = max_val
         self.compute_decade_size()
-        print(f"decade_size to {self.decade_size}")
-        self.knobs[0]._max_val = self.max_val // self.decade_size
+        self.n_decades = 1 + self.max_val // self.decade_size
+        # print(f"decade_size to {self.decade_size}")
+        self.knobs[0]._max_val = 1 + self.max_val // self.decade_size
         self.knobs[1]._max_val = self.max_val
-        self.knobs[1]._min_val = 0
+        self.knobs[1]._min_val = -self.max_val
         self.knobs[0]._min_val = 0
         self.set_value(self.get_value())
