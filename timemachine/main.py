@@ -408,13 +408,12 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
     software_version = utils.get_software_version()
-    if utils.is_dev_box():
-        software_version = software_version + " dev"
-    tm.tft.write(pfont_med, f"{software_version}", 0, 80, yellow_color)
+    dev_flag = "dev" if utils.is_dev_box() else ""
+    tm.tft.write(pfont_med, f"{software_version} {dev_flag}", 0, 80, yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
-    print(f"firmware version: {uversion}. Software version {software_version}")
+    print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
         reconfigure()
