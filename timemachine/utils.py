@@ -346,16 +346,13 @@ def create_factory_image():
     remove_dir("/previous_lib")
     remove_dir("/factory_lib")
     remove_dir("/test_download")
+    remove_dir("/config")
     copy_dir("/lib", "/factory_lib")
     # put the wifi_cred of the factory in place
-    remove_wifi_cred(hist=True)
+    os.mkdir("/config")
     copy_file("/wifi_cred.json.factory.py", WIFI_CRED_PATH)
     # remove files that are peculiar to this instance
-    remove_file(tm.KNOB_SENSE_PATH)
-    remove_file(tm.SCREEN_TYPE_PATH)
     remove_file("/exception.log")
-    for app_string in ["", "_datpiff"]:
-        remove_file(STATE_PATH.format(app_string=app_string))
     if is_dev_box():
         os.rename(DEV_BOX_PATH, "/config/.not_dev_box")
 
