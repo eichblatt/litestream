@@ -219,6 +219,7 @@ def main_loop(player, state):
     resume_playing_delay = 500
     player.set_volume(7)
     month_change_time = 1e12
+    nprints_old = 0
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -400,6 +401,12 @@ def main_loop(player, state):
             month_change_time = 1e12
             dc_new = dc.get_value()
             keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc)
+
+        nprints = (time.ticks_ms() - select_press_time) // 12_000
+        if nprints > nprints_old:
+            nprints_old = nprints
+            print(player)
+            update_display(player)
 
         player.audio_pump()
 
