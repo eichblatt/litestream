@@ -408,6 +408,8 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
     software_version = utils.get_software_version()
+    if utils.is_dev_box():
+        software_version = software_version + " dev"
     tm.tft.write(pfont_med, f"{software_version}", 0, 80, yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
