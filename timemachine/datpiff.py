@@ -504,6 +504,8 @@ def run():
     try:
         wifi = utils.connect_wifi()
         state = utils.load_state("datpiff")
+        state["artist_list"] = sorted(state["artist_list"])
+        utils.save_state(state, "datpiff")
         artist_list = state["artist_list"]
         show_artists(artist_list)
 
