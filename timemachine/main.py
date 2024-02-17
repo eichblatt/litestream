@@ -122,7 +122,7 @@ def _datpiff_collection_names():
 
 
 def configure_datpiff_collections():
-    choices = ["Add Collection", "Remove Collection", "Cancel"]
+    choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
 
@@ -133,7 +133,7 @@ def configure_datpiff_collections():
     collection_list = state["artist_list"]
 
     print(f"current collection_list is {collection_list}")
-    if choice == "Add Collection":
+    if choice == "Add Artist":
         keepGoing = True
         reset_required = False
         all_collections = _datpiff_collection_names()
@@ -153,7 +153,7 @@ def configure_datpiff_collections():
         if reset_required:
             utils.reset()
 
-    elif choice == "Remove Collection":
+    elif choice == "Remove Artist":
         keepGoing = True
         while keepGoing & (len(collection_list) > 0):
             coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
@@ -209,7 +209,7 @@ def configure_collections():
     if main_app == "datpiff":
         return configure_datpiff_collections()
 
-    choices = ["Add Collection", "Remove Collection", "Cancel"]
+    choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
 
@@ -219,7 +219,7 @@ def configure_collections():
     collection_list = utils.get_collection_list()
 
     print(f"current collection_list is {collection_list}")
-    if choice == "Add Collection":
+    if choice == "Add Artist":
         keepGoing = True
         reset_required = False
         all_collections = []
@@ -241,7 +241,7 @@ def configure_collections():
         if reset_required:
             utils.reset()
 
-    elif choice == "Remove Collection":
+    elif choice == "Remove Artist":
         keepGoing = True
         while keepGoing & (len(collection_list) > 0):
             coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
@@ -263,8 +263,8 @@ def add_collection(all_collections, collection_list):
     while n_matching > 20:
         m2 = f"{n_matching} Matching"
         print(m2)
-        selected_chars = utils.select_chars("Spell desired\nCollection", message2=m2, already=selected_chars)
-        matching = [x for x in matching if selected_chars.lower() in x.lower()]
+        selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        matching = [x for x in matching if selected_chars.lower().replace(" ", "") in x.lower().replace(" ", "")]
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
