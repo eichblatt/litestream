@@ -412,7 +412,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 2_500:
+            if (time.ticks_ms() - power_press_time) > 1_250:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.power(1)
