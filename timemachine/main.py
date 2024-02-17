@@ -319,7 +319,7 @@ def update_firmware():
 
 
 def choose_dev_mode():
-    app_choices = ["prod", "dev", "no change"]
+    app_choices = ["no change", "prod", "dev"]
     dev_mode = "dev" if utils.is_dev_box() else "prod"
     new_dev_mode = utils.select_option("Mode", app_choices)
     if (new_dev_mode == "no change") or (new_dev_mode == dev_mode):
@@ -332,7 +332,7 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["livemusic", "datpiff", "no change"]
+    app_choices = ["no change", "livemusic", "datpiff"]
     new_main_app = utils.select_option("Main App", app_choices)
     if new_main_app != "no change":
         main_app = utils.set_main_app(new_main_app)
