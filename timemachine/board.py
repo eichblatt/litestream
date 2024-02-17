@@ -25,8 +25,8 @@ import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_18 as pfont_small
 
 
-KNOB_SENSE_PATH = "/.knob_sense"
-SCREEN_TYPE_PATH = "/.screen_type"
+KNOB_SENSE_PATH = "/config/knob_sense"
+SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)

@@ -29,9 +29,11 @@ import fonts.NotoSans_18 as pfont_small
 
 import board as tm
 
-WIFI_CRED_HIST_PATH = "/wifi_cred_hist.json"
-WIFI_CRED_PATH = "/wifi_cred.json"
-STATE_PATH = "/latest_state{app_string}.json"
+WIFI_CRED_HIST_PATH = "/config/wifi_cred_hist.json"
+WIFI_CRED_PATH = "/config/wifi_cred.json"
+STATE_PATH = "/config/latest_state{app_string}.json"
+DEV_BOX_PATH = "/config/.is_dev_box"
+MAIN_APP_PATH = "/config/.main_app"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -316,8 +318,7 @@ def set_main_app(main_app):
     try:
         if not main_app in ["livemusic", "datpiff", "78rpm"]:
             main_app = "livemusic"
-        app_path = "/.main_app"
-        main_app = write_json(main_app, app_path)
+        main_app = write_json(main_app, MAIN_APP_PATH)
     except Exception as e:
         pass
     return main_app
@@ -326,9 +327,8 @@ def set_main_app(main_app):
 def get_main_app():
     main_app = "livemusic"
     try:
-        app_path = "/.main_app"
-        if path_exists(app_path):
-            main_app = read_json(app_path)
+        if path_exists(MAIN_APP_PATH):
+            main_app = read_json(MAIN_APP_PATH)
         if not main_app in ["livemusic", "datpiff", "78rpm"]:
             main_app = "livemusic"
     except Exception as e:
@@ -337,7 +337,7 @@ def get_main_app():
 
 
 def is_dev_box():
-    return path_exists("/.is_dev_box")
+    return path_exists(DEV_BOX_PATH)
 
 
 def create_factory_image():
@@ -357,7 +357,7 @@ def create_factory_image():
     for app_string in ["", "_datpiff"]:
         remove_file(STATE_PATH.format(app_string=app_string))
     if is_dev_box():
-        os.rename("/.is_dev_box", "/.not_dev_box")
+        os.rename(DEV_BOX_PATH, "/config/.not_dev_box")
 
 
 def remove_wifi_cred(hist=False):

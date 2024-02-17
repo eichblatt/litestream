@@ -648,7 +648,7 @@ def run():
         print(msg)
         with open("/exception.log", "w") as f:
             f.write(msg)
-        if utils.path_exists("/.is_dev_box"):
+        if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)

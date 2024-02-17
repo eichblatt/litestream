@@ -137,16 +137,21 @@ def get_tape_metadata(identifier):
     # url_details = f"https://archive.org/details/{identifier}"
     url_download = f"https://archive.org/download/{identifier}"
     print(url_metadata)
-    resp = requests.get(url_metadata)
-    if resp.status_code != 200:
-        print(f"Error in request from {resp.url}. Status code {resp.status_code}")
-        raise Exception("Download Error")
-    if not resp.chunked:
-        j = resp.json()
-    else:
-        resp.save("/tmp.json")
-        j = json.load(open("/tmp.json", "r"))
-    resp.close()
+    resp = None
+    try:
+        resp = requests.get(url_metadata)
+        if resp.status_code != 200:
+            print(f"Error in request from {resp.url}. Status code {resp.status_code}")
+            raise Exception("Download Error")
+        if not resp.chunked:
+            j = resp.json()
+        else:
+            resp.save("/tmp.json")
+            j = json.load(open("/tmp.json", "r"))
+    finally:
+        utils.remove_file("/tmp.json")
+        if resp is not None:
+            resp.close()
 
     track_data = [x for x in j["files"] if "mp3" in x["format"].lower()]
     tracklist = []
@@ -523,7 +528,7 @@ def run():
         print(msg)
         with open("/exception.log", "w") as f:
             f.write(msg)
-        if utils.path_exists("/.is_dev_box"):
+        if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
