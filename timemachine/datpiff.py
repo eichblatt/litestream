@@ -81,9 +81,18 @@ def set_tapeid_range(keyed_artist):
     artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"].lower())
     print(f"setting max value of dc to {len(artist_tapes) -1}")
     dc.set_max_value(len(artist_tapes) - 1)
-    print(f"dc {dc}")
     tapeid_range_dict[keyed_artist] = artist_tapes
     return artist_tapes
+
+
+def set_range_display_title(keyed_artist, dc):
+    artist_tapes = set_tapeid_range(keyed_artist)
+    dc_new = dc.get_value()
+    tape_id_dict = artist_tapes[dc_new]
+    keyed_tape = tape_id_dict
+    keyed_title = tape_id_dict["title"]
+    display_keyed_title(keyed_title)
+    return keyed_tape, artist_tapes
 
 
 def select_tape_other(tapeid):
@@ -208,6 +217,8 @@ def main_loop(player, state):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
+    player.set_volume(7)
+    month_change_time = 1e12
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -351,7 +362,6 @@ def main_loop(player, state):
             if pYSw_old:
                 print("Year DOWN")
             else:
-                tm.screen_off()  # screen off while playing
                 print("Year UP")
 
         if pMSw_old != tm.pMSw.value():
@@ -359,6 +369,7 @@ def main_loop(player, state):
             if pMSw_old:
                 print("Month DOWN")
             else:
+                tm.screen_off()  # screen off while playing
                 print("Month UP")
 
         if pDSw_old != tm.pDSw.value():
@@ -375,19 +386,20 @@ def main_loop(player, state):
             print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
             set_knob_times()
             tm.power(1)
-            print(f"decade_counter {dc}")
             keyed_artist = state["artist_list"][month_new]
-            if month_old != month_new:
-                artist_tapes = set_tapeid_range(keyed_artist)
-                dc_new = dc.get_value()
-            tape_id_dict = artist_tapes[dc_new]
-            keyed_tape = tape_id_dict
-            keyed_title = tape_id_dict["title"]
-            display_keyed_title(keyed_title)
+            if month_old != month_new:  # artist change -- delay
+                month_change_time = time.ticks_ms()
+            else:  # tape change -- do now
+                keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc)
             display_keyed_artist(keyed_artist)
             print(f"selected artist {selected_artist}")
             month_old = month_new
             dc_old = dc_new
+
+        if time.ticks_diff(time.ticks_ms(), month_change_time) > 60:
+            month_change_time = 1e12
+            dc_new = dc.get_value()
+            keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc)
 
         player.audio_pump()
 
@@ -462,7 +474,7 @@ def get_artist_metadata(artist_list):
         print(f"loading {path_to_meta}")
         if not utils.path_exists(path_to_meta):
             try:
-                url = f"https://default-withdatpiff-3pqgajc26a-uc.a.run.app/tapes_by_artist/{artist.lower().replace(' ','%20')}"
+                url = f"https://gratefuldeadtimemachine.com/datpiff_tapes_by_artist/{artist.lower().replace(' ','%20')}"
                 print(f"Querying from {url}")
                 resp = requests.get(url)
                 if resp.status_code != 200:
