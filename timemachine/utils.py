@@ -247,10 +247,6 @@ def isdir(path):
         return False
 
 
-if not isdir("/config"):
-    os.mkdir("/config")
-
-
 def path_exists(path):
     try:
         os.stat(path)
@@ -472,9 +468,11 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
         hidden = False
         if itry <= 1:
-            tm.self_test()
-            tm.calibrate_knobs()
-
+            try:
+                tm.self_test()
+                tm.calibrate_knobs()
+            except:
+                pass
         try:
             disconnect_wifi()
         except Exception as e:
@@ -655,3 +653,7 @@ def load_state(app="livemusic"):
         return load_datpiff_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
+
+
+if not isdir("/config"):
+    os.mkdir("/config")
