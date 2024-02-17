@@ -487,8 +487,9 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
         software_version = get_software_version()
-        print(f"Software_version {software_version}")
-        tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
+        dev_flag = "dev" if is_dev_box() else ""
+        print(f"Software_version {software_version} {dev_flag}")
+        tm.write(f"{software_version} {dev_flag}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
