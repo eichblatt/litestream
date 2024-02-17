@@ -353,8 +353,15 @@ def main_loop(player, coll_dict, state):
                         tm.clear_bbox(tm.venue_bbox)
                         tm.tft.write(pfont_small, f"{tape_id}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
                         software_version = utils.get_software_version()
+                        dev_flag = "dev" if utils.is_dev_box() else ""
                         tm.clear_bbox(tm.artist_bbox)
-                        tm.tft.write(pfont_small, f"{software_version}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
+                        tm.tft.write(
+                            pfont_small,
+                            f"{software_version} {dev_flag}",
+                            tm.artist_bbox.x0,
+                            tm.artist_bbox.y0,
+                            stage_date_color,
+                        )
                 elif (key_date in valid_dates) and tm.power():
                     player.stop()
                     # player.reset_player()
