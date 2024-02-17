@@ -340,6 +340,14 @@ def get_main_app():
     return main_app
 
 
+def make_not_dev_box():
+    remove_file(DEV_BOX_PATH)
+
+
+def make_dev_box():
+    touch(DEV_BOX_PATH)
+
+
 def is_dev_box():
     return path_exists(DEV_BOX_PATH)
 

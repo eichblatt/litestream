@@ -318,6 +318,19 @@ def update_firmware():
         utils.reset()
 
 
+def choose_dev_mode():
+    app_choices = ["prod", "dev", "no change"]
+    dev_mode = "dev" if utils.is_dev_box() else "prod"
+    new_dev_mode = utils.select_option("Mode", app_choices)
+    if (new_dev_mode == "no change") or (new_dev_mode == dev_mode):
+        return
+    elif new_dev_mode == "dev":
+        utils.make_dev_box()
+    elif new_dev_mode == "prod":
+        utils.make_not_dev_box()
+    utils.reset()
+
+
 def choose_main_app():
     app_choices = ["livemusic", "datpiff", "no change"]
     new_main_app = utils.select_option("Main App", app_choices)
@@ -344,6 +357,7 @@ def reconfigure():
         "Calibrate Knobs",
         "Calibrate Screen",
         "Factory Reset",
+        "Dev Mode",
     ]
     if utils.is_dev_box():
         config_choices.append("Main App")
@@ -371,6 +385,8 @@ def reconfigure():
         tm.calibrate_screen(force=True)
     elif choice == "Exit":
         return choice
+    elif choice == "Dev Mode":
+        dev_mode = choose_dev_mode()
     elif choice == "Main App":
         main_app = choose_main_app()
     return choice
