@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import math
+import os
 import st7789
 import time
 from machine import SPI, Pin
@@ -25,6 +26,10 @@ import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_18 as pfont_small
 
 
+try:
+    os.mkdir("/config")
+except:
+    pass
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
