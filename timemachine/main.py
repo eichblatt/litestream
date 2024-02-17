@@ -332,7 +332,7 @@ def reconfigure():
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
     time.sleep(0.1)
     config_choices = [
-        "Collections",
+        "Artists",
         "Update Code",
         "Exit",
         "Update Firmware",
@@ -347,7 +347,7 @@ def reconfigure():
         config_choices.append("Main App")
     choice = utils.select_option("Config Menu", config_choices)
 
-    if choice == "Collections":
+    if choice == "Artists":
         configure_collections()
     elif choice == "Wifi":
         wifi = configure_wifi()
