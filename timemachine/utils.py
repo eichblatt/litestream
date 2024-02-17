@@ -31,6 +31,7 @@ import board as tm
 
 WIFI_CRED_HIST_PATH = "/config/wifi_cred_hist.json"
 WIFI_CRED_PATH = "/config/wifi_cred.json"
+OLD_WIFI_CRED_PATH = "/wifi_cred.json"
 STATE_PATH = "/config/latest_state{app_string}.json"
 DEV_BOX_PATH = "/config/.is_dev_box"
 MAIN_APP_PATH = "/config/.main_app"
@@ -460,6 +461,9 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     if wifi.isconnected():
         return wifi
 
+    if path_exists(OLD_WIFI_CRED_PATH):
+        copy_file(OLD_WIFI_CRED_PATH, WIFI_CRED_PATH)
+        # remove_file(OLD_WIFI_CRED_PATH)
     if path_exists(WIFI_CRED_PATH):
         wifi_cred = read_json(WIFI_CRED_PATH)
     else:
