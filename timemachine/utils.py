@@ -247,6 +247,10 @@ def isdir(path):
         return False
 
 
+if not isdir("/config"):
+    os.mkdir("/config")
+
+
 def path_exists(path):
     try:
         os.stat(path)
