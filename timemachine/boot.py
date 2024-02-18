@@ -93,7 +93,7 @@ def test_new_package(new_path):
         sys.path.insert(2, "/lib") if "/lib" not in sys.path else None
         return False
     else:
-        time.sleep(5)
+        time.sleep(10)
         touch(f"{new_path}/tried")
         sys.path.insert(2, new_path) if new_path not in sys.path else None
         sys.path.remove("/lib") if "/lib" in sys.path else None
