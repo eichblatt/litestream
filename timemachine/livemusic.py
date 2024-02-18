@@ -353,8 +353,15 @@ def main_loop(player, coll_dict, state):
                         tm.clear_bbox(tm.venue_bbox)
                         tm.tft.write(pfont_small, f"{tape_id}", tm.venue_bbox.x0, tm.venue_bbox.y0, stage_date_color)
                         software_version = utils.get_software_version()
+                        dev_flag = "dev" if utils.is_dev_box() else ""
                         tm.clear_bbox(tm.artist_bbox)
-                        tm.tft.write(pfont_small, f"{software_version}", tm.artist_bbox.x0, tm.artist_bbox.y0, stage_date_color)
+                        tm.tft.write(
+                            pfont_small,
+                            f"{software_version} {dev_flag}",
+                            tm.artist_bbox.x0,
+                            tm.artist_bbox.y0,
+                            stage_date_color,
+                        )
                 elif (key_date in valid_dates) and tm.power():
                     player.stop()
                     # player.reset_player()
@@ -412,7 +419,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 2_500:
+            if (time.ticks_ms() - power_press_time) > 1_250:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.power(1)
@@ -601,7 +608,7 @@ def show_collections(collection_list):
         tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, st7789.WHITE)
     if ncoll > 5:
         tm.tft.write(pfont_small, f"...", 0, 25 + 20 * 5, st7789.WHITE)
-    time.sleep(1)
+    time.sleep(0.1)
 
 
 def test_update():
@@ -648,7 +655,7 @@ def run():
         print(msg)
         with open("/exception.log", "w") as f:
             f.write(msg)
-        if utils.path_exists("/.is_dev_box"):
+        if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)

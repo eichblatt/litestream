@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import math
+import os
 import st7789
 import time
 from machine import SPI, Pin
@@ -24,8 +26,12 @@ import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_18 as pfont_small
 
 
-KNOB_SENSE_PATH = "/.knob_sense"
-SCREEN_TYPE_PATH = "/.screen_type"
+try:
+    os.mkdir("/config")
+except:
+    pass
+KNOB_SENSE_PATH = "/config/knob_sense"
+SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -159,6 +165,9 @@ artist_bbox = Bbox(0, 51, 160, 51 + 19)
 tracklist_bbox = Bbox(0, 70, 160, 112)
 selected_date_bbox = Bbox(15, 112, 145, 128)
 playpause_bbox = Bbox(145, 113, 160, 128)
+keyed_artist_bbox = Bbox(0, 0, 160, 22)
+title_bbox = Bbox(0, 23, 160, 61)
+selected_artist_bbox = Bbox(0, 110, 145, 128)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -347,7 +356,7 @@ def self_test():
         write("Button", 0, 50, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
-    time.sleep(2)
+    time.sleep(0.2)
     return
 
 
@@ -356,8 +365,8 @@ def poll_for_button(button, timeout=None):
     pButton_old = True
     while pButton_old == button.value():
         if (timeout is not None) and (time.ticks_diff(time.ticks_ms(), start_time) > (timeout * 1000)):
-            break
-    return
+            return False
+    return True
 
 
 def poll_for_which_button(button_dict, timeout=None, default=None):
@@ -377,3 +386,62 @@ def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, cle
     text = msg.split("\n")
     for i, line in enumerate(text):
         tft.write(font, line, x, y + (i * text_height), color)
+
+
+class decade_counter:
+    def __init__(self, knobs, max_val, decade_size=None):
+        self.knobs = knobs
+        self.knobs[1]._range_mode = self.knobs[1].RANGE_WRAP
+        self.max_val = max_val
+        self.compute_decade_size(decade_size)
+        self.set_max_value(max_val)
+        value = self.get_value()
+
+    def __repr__(self):
+        return str(
+            f"({self.knobs[0]._value} * {self.decade_size}) + {self.knobs[1]._value} = {self.get_value()}. Max {self.max_val}"
+        )
+
+    def _reduce_vals(self, val):
+        # Set the knob vals to their lowest values.
+        self.knobs[0]._value = val // self.decade_size
+        self.knobs[1]._value = val % self.decade_size
+
+    def compute_decade_size(self, decade_size=None):
+        # print(f"decade_counter decade size is {decade_size}")
+        if decade_size is not None:
+            self.decade_size = decade_size
+        elif self.max_val < 13:
+            self.decade_size = 1
+        elif self.max_val < 100:
+            self.decade_size = 10
+        else:
+            self.decade_size = int(math.sqrt(self.max_val))
+        return self.decade_size
+
+    def get_value(self):
+        val = (self.decade_size * self.knobs[0].value()) + self.knobs[1].value()
+        val = min(val, self.max_val)
+        val = max(val, 0)
+        self._reduce_vals(val)
+        return val
+
+    def set_value(self, value):
+        value = min(value, self.max_val)
+        value = max(value, 0)
+        self._reduce_vals(value)
+
+    def set_max_value(self, max_val):
+        # print(f"setting max value in decade_counter to {max_val}")
+        if max_val is None:
+            self.max_val = self.decade_size * (self.knobs[0]._max_val + 1)
+        else:
+            self.max_val = max_val
+        self.compute_decade_size()
+        self.n_decades = 1 + self.max_val // self.decade_size
+        # print(f"decade_size to {self.decade_size}")
+        self.knobs[0]._max_val = 1 + self.max_val // self.decade_size
+        self.knobs[1]._max_val = self.max_val
+        self.knobs[1]._min_val = -self.max_val
+        self.knobs[0]._min_val = 0
+        self.set_value(self.get_value())

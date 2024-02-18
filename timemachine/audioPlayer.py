@@ -122,7 +122,7 @@ class InRingBuffer:
             if self.BytesInBuffer > 0:  # The buffer is full
                 return 0
             else:  # The buffer is empty
-                return self.BufferSize - self._writePos
+                return self.BufferSize + self.OverflowSize - self._writePos
 
     # Tell the buffer how many bytes we just wrote. Must call this after every write to the buffer
     def bytes_wasWritten(self, count):

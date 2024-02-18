@@ -47,6 +47,10 @@ def factory_reset():
         return
     utils.remove_dir("/lib")
     utils.copy_dir("/factory_lib", "/lib")
+    utils.remove_dir("/metadata")
+    os.mkdir("/metadata")
+    utils.remove_dir("/config")
+    os.mkdir("/config")
     return
 
 
@@ -109,6 +113,66 @@ def test_update():
     return update_code
 
 
+def _datpiff_collection_names():
+    try:
+        url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            raise Exception(f"error downloading from {url}")
+        collection_names = resp.json()
+    finally:
+        resp.close()
+    return collection_names
+
+
+def configure_datpiff_collections():
+    choices = ["Add Artist", "Remove Artist", "Cancel"]
+    choice = utils.select_option("Year/Select", choices)
+    print(f"configure_collection: chose to {choice}")
+
+    if choice == "Cancel":
+        return
+
+    state = utils.load_state("datpiff")
+    collection_list = state["artist_list"]
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Artist":
+        keepGoing = True
+        reset_required = False
+        all_collections = _datpiff_collection_names()
+
+        while keepGoing:
+            coll_to_add = add_collection(all_collections, collection_list)
+            if coll_to_add != "_CANCEL":
+                collection_list.append(coll_to_add)
+                reset_required = True
+            choices = ["Add Another", "Finished"]
+            choice2 = utils.select_option("Year/Select", choices)
+            if choice2 == "Finished":
+                keepGoing = False
+
+            state["artist_list"] = collection_list
+            utils.save_state(state, "datpiff")
+        if reset_required:
+            utils.reset()
+
+    elif choice == "Remove Artist":
+        keepGoing = True
+        while keepGoing & (len(collection_list) > 0):
+            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
+            collection_list = [x for x in collection_list if not x == coll_to_remove]
+            choices = ["Remove Another", "Finished"]
+            choice2 = utils.select_option("Year/Select", choices)
+            if choice2 == "Finished":
+                keepGoing = False
+
+            state["artist_list"] = collection_list
+            utils.save_state(state, "datpiff")
+
+    return
+
+
 def _collection_names():
     # Note: This function appears to only work right after a reboot.
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
@@ -145,7 +209,11 @@ def _collection_names():
 
 
 def configure_collections():
-    choices = ["Add Collection", "Remove Collection", "Cancel"]
+    main_app = utils.get_main_app()
+    if main_app == "datpiff":
+        return configure_datpiff_collections()
+
+    choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
 
@@ -155,7 +223,7 @@ def configure_collections():
     collection_list = utils.get_collection_list()
 
     print(f"current collection_list is {collection_list}")
-    if choice == "Add Collection":
+    if choice == "Add Artist":
         keepGoing = True
         reset_required = False
         all_collections = []
@@ -164,7 +232,7 @@ def configure_collections():
             all_collections = all_collections + all_collections_dict[archive]
 
         while keepGoing:
-            coll_to_add = add_collection(all_collections)
+            coll_to_add = add_collection(all_collections, utils.get_collection_list())
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
                 reset_required = True
@@ -177,7 +245,7 @@ def configure_collections():
         if reset_required:
             utils.reset()
 
-    elif choice == "Remove Collection":
+    elif choice == "Remove Artist":
         keepGoing = True
         while keepGoing & (len(collection_list) > 0):
             coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
@@ -191,9 +259,7 @@ def configure_collections():
     return
 
 
-def add_collection(all_collections):
-    collection_list = utils.get_collection_list()
-
+def add_collection(all_collections, collection_list):
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)
 
@@ -201,8 +267,8 @@ def add_collection(all_collections):
     while n_matching > 20:
         m2 = f"{n_matching} Matching"
         print(m2)
-        selected_chars = utils.select_chars("Spell desired\nCollection", message2=m2, already=selected_chars)
-        matching = [x for x in matching if selected_chars.lower() in x.lower()]
+        selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        matching = [x for x in matching if selected_chars.lower().replace(" ", "") in x.lower().replace(" ", "")]
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
@@ -227,7 +293,7 @@ def update_code():
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
-        version = "releases" if not utils.path_exists("/.is_dev_box") else "dev"
+        version = "releases" if not utils.is_dev_box() else "dev"
         target = "test_download"
         print(f"Installing from {base_url}, version {version}, target {target}")
         mip.install(base_url, version=version, target=target)
@@ -254,28 +320,52 @@ def update_firmware():
         utils.reset()
 
 
+def choose_dev_mode():
+    app_choices = ["no change", "prod", "dev"]
+    dev_mode = "dev" if utils.is_dev_box() else "prod"
+    new_dev_mode = utils.select_option("Mode", app_choices)
+    if (new_dev_mode == "no change") or (new_dev_mode == dev_mode):
+        return
+    elif new_dev_mode == "dev":
+        utils.make_dev_box()
+    elif new_dev_mode == "prod":
+        utils.make_not_dev_box()
+    utils.reset()
+
+
+def choose_main_app():
+    app_choices = ["no change", "livemusic", "datpiff"]
+    new_main_app = utils.select_option("Main App", app_choices)
+    if new_main_app != "no change":
+        main_app = utils.set_main_app(new_main_app)
+    else:
+        main_app = utils.get_main_app()
+    return main_app
+
+
 def reconfigure():
     tm.tft.on()
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-    time.sleep(1)
-    choice = utils.select_option(
-        "Config Menu",
-        [
-            "Collections",
-            "Update Code",
-            "Exit",
-            "Update Firmware",
-            "Wifi",
-            "Reboot",
-            "Test Buttons",
-            "Calibrate Knobs",
-            "Calibrate Screen",
-            "Factory Reset",
-        ],
-    )
+    time.sleep(0.1)
+    config_choices = [
+        "Artists",
+        "Update Code",
+        "Exit",
+        "Update Firmware",
+        "Wifi",
+        "Reboot",
+        "Test Buttons",
+        "Calibrate Knobs",
+        "Calibrate Screen",
+        "Factory Reset",
+        "Dev Mode",
+    ]
+    if utils.is_dev_box():
+        config_choices.append("Main App")
+    choice = utils.select_option("Config Menu", config_choices)
 
-    if choice == "Collections":
+    if choice == "Artists":
         configure_collections()
     elif choice == "Wifi":
         wifi = configure_wifi()
@@ -297,6 +387,10 @@ def reconfigure():
         tm.calibrate_screen(force=True)
     elif choice == "Exit":
         return choice
+    elif choice == "Dev Mode":
+        dev_mode = choose_dev_mode()
+    elif choice == "Main App":
+        main_app = choose_main_app()
     return choice
 
 
@@ -316,14 +410,18 @@ def basic_main():
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
     software_version = utils.get_software_version()
-    tm.tft.write(pfont_med, f"{software_version}", 0, 80, yellow_color)
+    dev_flag = "dev" if utils.is_dev_box() else ""
+    tm.tft.write(pfont_med, f"{software_version} {dev_flag}", 0, 80, yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
-    print(f"firmware version: {uversion}. Software version {software_version}")
+    print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
+
+    if tm.poll_for_button(tm.pPlayPause, timeout=2):
+        reconfigure()
 
     wifi = utils.connect_wifi()
-    if not utils.path_exists("/.knob_sense"):
+    if not utils.path_exists(tm.KNOB_SENSE_PATH):
         hidden_setdate = True
         print("knob sense not present")
         tm.self_test()
@@ -337,13 +435,23 @@ def basic_main():
 
 
 def run_livemusic():
-    import livemusic
-
-    utils.mark_partition()  # If we make it this far, the firmware is good.
+    main_app = "livemusic"
     while True:
-        livemusic.run()
+        if utils.is_dev_box():
+            main_app = utils.get_main_app()
+        if main_app == "livemusic":
+            import livemusic
+
+            utils.mark_partition()  # If we make it this far, the firmware is good.
+            livemusic.run()
+        elif main_app == "datpiff":
+            import datpiff
+
+            utils.mark_partition()
+            datpiff.run()
+        else:
+            raise NotImplementedError(f"Unknown app {main_app}")
         reconfigure()
-    # utils.reset()
 
 
 # basic_main()
