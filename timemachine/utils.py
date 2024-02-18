@@ -29,15 +29,19 @@ import fonts.NotoSans_18 as pfont_small
 
 import board as tm
 
+WIFI_CRED_HIST_PATH = "/config/wifi_cred_hist.json"
 WIFI_CRED_PATH = "/wifi_cred.json"
-STATE_PATH = "/latest_state.json"
+STATE_PATH = "/config/latest_state{app_string}.json"
+DEV_BOX_PATH = "/config/.is_dev_box"
+MAIN_APP_PATH = "/config/.main_app"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-choices_color = st7789.color565(128, 255, 128)
+choices_color = st7789.color565(255, 255, 255)  # white
+purple_color = st7789.color565(255, 0, 255)
 
 
 def reset():
@@ -93,7 +97,7 @@ def select_option(message, choices):
                 tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
 
             text = ">" + choices[step]
-            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), st7789.RED)
+            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), purple_color)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
                 tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color)
@@ -161,7 +165,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -178,7 +182,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step != 0 else st7789.RED
+                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, st7789.WHITE if step != 0 else purple_color
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -203,7 +207,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, st7789.RED)
+                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, purple_color)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
@@ -222,7 +226,7 @@ def select_chars(message, message2="", already=None):
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             tm.clear_bbox(selected_bbox)
-            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, st7789.RED)
+            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
         if singleLetter:
             print(f"singleLetter chosen {selected}")
             finished = True
@@ -231,7 +235,7 @@ def select_chars(message, message2="", already=None):
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
-    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, st7789.RED)
+    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, purple_color)
     time.sleep(0.3)
     return selected
 
@@ -267,6 +271,16 @@ def touch(path):
             f.write("0")
 
 
+def keep_only_n_files(dir, n):
+    files_in_dir = [f"{dir}/x" for x in os.listdir(dir)]
+    files_in_dir = [x for x in files_in_dir if not isdir(x)]
+    files_in_dir = sorted(files_in_dir, key=lambda x: os.stat(x)[7])
+    if len(files_in_dir) <= n:
+        return
+    for file in files_in_dir[n:]:
+        remove_file(file)
+
+
 def remove_file(path):
     if not path_exists(path):
         return
@@ -300,27 +314,62 @@ def copy_dir(src_d, dest_d):
     remove_dir(f"{dest_d}_tmp")
 
 
+def set_main_app(main_app):
+    try:
+        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+            main_app = "livemusic"
+        main_app = write_json(main_app, MAIN_APP_PATH)
+    except Exception as e:
+        pass
+    return main_app
+
+
+def get_main_app():
+    main_app = "livemusic"
+    try:
+        if path_exists(MAIN_APP_PATH):
+            main_app = read_json(MAIN_APP_PATH)
+        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+            main_app = "livemusic"
+    except Exception as e:
+        pass
+    return main_app
+
+
+def make_not_dev_box():
+    remove_file(DEV_BOX_PATH)
+
+
+def make_dev_box():
+    touch(DEV_BOX_PATH)
+
+
+def is_dev_box():
+    return path_exists(DEV_BOX_PATH)
+
+
 def create_factory_image():
     # Use this function when you have the filesystem as desired for factory settings.
     # Copy the code into a "/factory_lib" folder
     remove_dir("/previous_lib")
     remove_dir("/factory_lib")
     remove_dir("/test_download")
+    remove_dir("/metadata")
+    remove_wifi_cred(hist=True)
+    remove_dir("/config")
     copy_dir("/lib", "/factory_lib")
     # put the wifi_cred of the factory in place
-    remove_wifi_cred()
     copy_file("/wifi_cred.json.factory.py", WIFI_CRED_PATH)
     # remove files that are peculiar to this instance
-    remove_file(tm.KNOB_SENSE_PATH)
-    remove_file(tm.SCREEN_TYPE_PATH)
     remove_file("/exception.log")
-    remove_file(STATE_PATH)
-    if path_exists("/.is_dev_box"):
-        os.rename("/.is_dev_box", "/.not_dev_box")
+    remove_file("/tmp.json")
+    os.mkdir("/config")
 
 
-def remove_wifi_cred():
+def remove_wifi_cred(hist=False):
     os.remove(WIFI_CRED_PATH)
+    if hist:
+        os.remove(WIFI_CRED_HIST_PATH)
 
 
 def get_wifi_cred(wifi):
@@ -333,6 +382,17 @@ def get_wifi_cred(wifi):
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
         choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+    if path_exists(WIFI_CRED_HIST_PATH):
+        wch = read_json(WIFI_CRED_HIST_PATH)
+        if choice in wch.keys():
+            ask_passkey = wch[choice]
+            use_passkey = select_option(f"Use {ask_passkey} ?", ["Yes", "No"])
+            if use_passkey == "Yes":
+                return {"name": choice, "passkey": ask_passkey}
+            else:
+                del wch[choice]
+                write_json(wch, WIFI_CRED_HIST_PATH)
+
     passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
@@ -368,6 +428,32 @@ def set_datetime(hidden=False):
         return None
 
 
+def mkdirs(path):
+    # Make all the dirs on the way to path
+    if path_exists(path):
+        return
+    parent = "/".join(path.split("/")[:-1])
+    if not path_exists(parent):
+        mkdirs(parent)
+    print(f"making dir {path}")
+    os.mkdir(path)
+
+
+def write_json(obj, path):
+    print(f"writing json to {path}")
+    parent_dir = "/".join(path.split("/")[:-1])
+    mkdirs(parent_dir)
+    with open(path, "w") as f:
+        json.dump(obj, f)
+
+
+def read_json(path):
+    print(f"reading json from {path}")
+    with open(path, "r") as f:
+        obj = json.load(f)
+    return obj
+
+
 def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
@@ -376,24 +462,24 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         return wifi
 
     if path_exists(WIFI_CRED_PATH):
-        with open(WIFI_CRED_PATH, "r") as f:
-            wifi_cred = json.load(f)
+        wifi_cred = read_json(WIFI_CRED_PATH)
     else:
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
         hidden = False
         if itry <= 1:
-            tm.self_test()
-            tm.calibrate_knobs()
-
+            try:
+                tm.self_test()
+                tm.calibrate_knobs()
+            except:
+                pass
         try:
             disconnect_wifi()
         except Exception as e:
             print(e)
         wifi_cred = get_wifi_cred(wifi)
-        with open(WIFI_CRED_PATH, "w") as f:
-            json.dump(wifi_cred, f)
+        write_json(wifi_cred, WIFI_CRED_PATH)
         reset()
 
     if not hidden:
@@ -402,10 +488,14 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         tm.write(f"{uversion}", y=110, color=st7789.WHITE, font=pfont_small, clear=False)
         software_version = get_software_version()
-        print(f"Software_version {software_version}")
-        tm.write(f"{software_version}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
+        dev_flag = "dev" if is_dev_box() else ""
+        print(f"Software_version {software_version} {dev_flag}")
+        tm.write(f"{software_version} {dev_flag}", y=85, color=st7789.WHITE, font=pfont_small, clear=False)
 
-    wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+    try:
+        wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
+    except Exception as e:
+        print("Exception connecting to wifi {e}")
     s = wifi.status()
     wait_time = 0
 
@@ -425,6 +515,11 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         tm.clear_area(0, 50, 160, 30)
         if not hidden:
             tm.write("Connected", y=50, color=st7789.WHITE, clear=False)
+
+        wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
+        wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
+        write_json(wifi_cred_hist, WIFI_CRED_HIST_PATH)
+        print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
@@ -481,8 +576,8 @@ def update_firmware():
     return 0
 
 
-def get_tape_id():
-    return load_state()["selected_tape_id"]
+def get_tape_id(app="livemusic"):
+    return load_state(app)["selected_tape_id"]
 
 
 def get_collection_list():
@@ -495,42 +590,72 @@ def set_collection_list(collection_list):
     save_state(state)
 
 
-def save_state(state):
-    # print(f"writing {state} to {STATE_PATH}")
-    with open(STATE_PATH, "w") as f:
-        json.dump(state, f)
+def save_state(state, app="livemusic"):
+    print(f"writing {state} to {STATE_PATH}")
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    write_json(state, state_path)
     return
 
 
-def load_state():
-    if path_exists(STATE_PATH):
-        with open(STATE_PATH, "r") as f:
-            state = json.load(f)
+def load_livemusic_state(state_path):
+    state = {}
+    if path_exists(state_path):
+        state = read_json(state_path)
         collection_list = state.get("collection_list", "GratefulDead")
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         selected_tape_id = state.get("selected_tape_id", "unknown")
-        boot_mode = state.get("boot_mode", "normal")
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
-            "boot_mode": boot_mode,
         }
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
         selected_collection = collection_list[0]
         selected_tape_id = "unknown"
-        boot_mode = "normal"
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
-            "boot_mode": boot_mode,
         }
-    with open(STATE_PATH, "w") as f:
-        json.dump(state, f)
+        write_json(state, state_path)
     return state
+
+
+def load_datpiff_state(state_path):
+    state = {}
+    if path_exists(state_path):
+        state = read_json(state_path)
+        artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
+        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+        }
+    else:
+        artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
+        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+        }
+        write_json(state, state_path)
+    return state
+
+
+def load_state(app="livemusic"):
+    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    if app == "livemusic":
+        return load_livemusic_state(state_path)
+    elif app == "datpiff":
+        return load_datpiff_state(state_path)
+    else:
+        raise NotImplementedError("Unknown app {app}")
+
+
+if not isdir("/config"):
+    os.mkdir("/config")
