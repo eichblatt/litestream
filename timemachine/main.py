@@ -335,7 +335,7 @@ def choose_dev_mode():
 
 def choose_main_app():
     app_choices = ["no change", "livemusic", "datpiff"]
-    new_main_app = utils.select_option("Main App", app_choices)
+    new_main_app = utils.select_option("Choose App", app_choices)
     if new_main_app != "no change":
         main_app = utils.set_main_app(new_main_app)
     else:
@@ -362,7 +362,7 @@ def reconfigure():
         "Dev Mode",
     ]
     if utils.is_dev_box():
-        config_choices.append("Main App")
+        config_choices.append("Choose App")
     choice = utils.select_option("Config Menu", config_choices)
 
     if choice == "Artists":
@@ -389,7 +389,7 @@ def reconfigure():
         return choice
     elif choice == "Dev Mode":
         dev_mode = choose_dev_mode()
-    elif choice == "Main App":
+    elif choice == "Choose App":
         main_app = choose_main_app()
     return choice
 

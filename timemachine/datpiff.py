@@ -304,7 +304,9 @@ def main_loop(player, state):
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
         if time.ticks_diff(time.ticks_ms(), ARTIST_KEY_TIME) > 20_000:
-            if (keyed_artist != selected_artist) or (keyed_tape["identifier"] != selected_tape["identifier"]):
+            if ((keyed_artist != selected_artist) or (keyed_tape["identifier"] != selected_tape["identifier"])) or (
+                time.ticks_diff(time.ticks_ms(), select_press_time) < 30_000
+            ):
                 set_knob_times()
                 print(f"resetting keyed_artist to {selected_artist}")
                 selected_title = selected_tape["title"]
@@ -320,16 +322,22 @@ def main_loop(player, state):
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
-                selected_artist, artist_tapes = select_artist_by_index(tm.m.value())
-                selected_title = artist_tapes[dc.get_value()]["title"]
+                if (keyed_tape["identifier"] == selected_tape["identifier"]) and (not player.is_stopped()):
+                    display_keyed_title(keyed_tape["identifier"], color=st7789.WHITE)
+                    dev_flag = "dev" if utils.is_dev_box() else ""
+                    display_keyed_artist(f"{utils.get_software_version()} {dev_flag}", color=st7789.WHITE)
+                    set_knob_times()
+                else:
+                    selected_artist, artist_tapes = select_artist_by_index(tm.m.value())
+                    selected_title = artist_tapes[dc.get_value()]["title"]
 
-                player.stop()
-                selected_tape = artist_tapes[dc.get_value()]
-                state = select_tape(selected_tape, player, state)
+                    player.stop()
+                    selected_tape = artist_tapes[dc.get_value()]
+                    state = select_tape(selected_tape, player, state)
 
-                display_keyed_title(selected_title, color=yellow_color)
-                display_keyed_artist(selected_artist, color=yellow_color)
-                play_pause(player)
+                    display_keyed_title(selected_title, color=yellow_color)
+                    display_keyed_artist(selected_artist, color=yellow_color)
+                    play_pause(player)
                 print("Select DOWN")
 
         if not tm.pSelect.value():  # long press Select
@@ -438,10 +446,11 @@ def display_tracks(current_track_name, next_track_name):
 
 def display_keyed_title(keyed_title, color=purple_color):
     print(f"in display_keyed_title {keyed_title}")
+    chars = 16
     tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title[:17], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
-    if len(keyed_title) > 17:
-        tm.write(keyed_title[17:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=color, font=pfont_small, clear=False)
+    tm.write(keyed_title[:chars], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
+    if len(keyed_title) > chars:
+        tm.write(keyed_title[chars:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=color, font=pfont_small, clear=False)
 
 
 def display_keyed_artist(artist, color=purple_color):
