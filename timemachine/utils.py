@@ -354,6 +354,7 @@ def create_factory_image():
     remove_dir("/previous_lib")
     remove_dir("/factory_lib")
     remove_dir("/test_download")
+    remove_dir("/metadata")
     remove_wifi_cred(hist=True)
     remove_dir("/config")
     copy_dir("/lib", "/factory_lib")

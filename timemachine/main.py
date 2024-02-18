@@ -47,6 +47,8 @@ def factory_reset():
         return
     utils.remove_dir("/lib")
     utils.copy_dir("/factory_lib", "/lib")
+    utils.remove_dir("/metadata")
+    os.mkdir("/metadata")
     utils.remove_dir("/config")
     os.mkdir("/config")
     return
