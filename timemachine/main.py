@@ -264,10 +264,10 @@ def add_collection(all_collections, collection_list):
     n_matching = len(matching)
 
     selected_chars = ""
-    while n_matching > 20:
+    while n_matching > 25:
         m2 = f"{n_matching} Matching"
         print(m2)
-        selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        selected_chars = utils.select_chars("Spell desired\nArtist ($)", message2=m2, already=selected_chars)
         selected_chars = selected_chars.lower().replace(" ", "")
         matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
         n_matching = len(matching)
