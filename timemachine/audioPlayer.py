@@ -893,6 +893,10 @@ class AudioPlayer:
                         raise RuntimeError("Corrupted packet")
                     pass
 
+                # If the packet is short/corrupted we can hopefully recover by the next packet
+                elif Result == -2:
+                    pass
+                    
                 else:
                     print("Decode Packet failed. Error:", Result)
                     print(pos, end=":")
