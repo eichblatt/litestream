@@ -499,13 +499,20 @@ def get_artist_metadata(artist_list):
                 print(f"Querying from {url}")
                 resp = requests.get(url)
                 if resp.status_code != 200:
-                    raise Exception(f"Failed to load from {url}")
+                    print(f"Failed to load from {url}")
+                    artist_list = [x for x in artist_list if not x == artist]  # Remove artist from artist_list
+                    state = utils.load_state("datpiff")
+                    state["artist_list"] = sorted(artist_list)
+                    utils.save_state(state, "datpiff")
+                    continue
                 metadata = resp.json()
                 keys = ["artist", "title", "identifier"]
                 metadata = [dict(zip(keys, x)) for x in metadata]
                 utils.write_json(metadata, path_to_meta)
             finally:
                 resp.close()
+    if len(artist_list) == 0:
+        raise Exception(f"Failed to load all artists")
 
 
 def run():
