@@ -34,6 +34,7 @@ WIFI_CRED_PATH = "/wifi_cred.json"
 STATE_PATH = "/config/latest_state{app_string}.json"
 DEV_BOX_PATH = "/config/.is_dev_box"
 MAIN_APP_PATH = "/config/.main_app"
+STOP_CHAR = "$StoP$"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -74,8 +75,10 @@ def select_option(message, choices):
     if len(choices) == 0:
         return ""
     pSelect_old = True
-    tm.y._value = tm.y._min_val
-    tm.d._value = tm.d._min_val
+    tm.y._value = tm.y._min_val = 0
+    tm.d._value = tm.d._min_val = 0
+    tm.y._max_val = len(choices)
+    tm.d._max_val = len(choices)
     step = step_old = 0
     text_height = 16
     choice = ""
@@ -106,14 +109,17 @@ def select_option(message, choices):
     choice = choices[step]
     # print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
-    return choices[step]
+    return choice
 
 
 def select_chars(message, message2="", already=None):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"
     message = message.split("\n")
     pSelect_old = pStop_old = True
-    tm.y._max_val = tm.y._max_val + 100
+    tm.y._min_val = 0
+    tm.y._max_val = len(charset)  # tm.y._max_val + 100
+    tm.d._min_val = 0
+    tm.d._max_val = len(charset) // 5
     tm.y._value = int((tm.y._min_val + tm.y._max_val) / 2)
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
@@ -152,6 +158,7 @@ def select_chars(message, message2="", already=None):
     text = "DEL"
     first_time = True
     finished = False
+    stopped = False
     prev_selected = ""
 
     while not finished:
@@ -159,6 +166,7 @@ def select_chars(message, message2="", already=None):
         while pSelect_old == tm.pSelect.value():
             if pStop_old != tm.pStop.value():
                 finished = True
+                stopped = True
                 break
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
@@ -226,14 +234,16 @@ def select_chars(message, message2="", already=None):
             tm.clear_bbox(selected_bbox)
             tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
         if singleLetter:
-            print(f"singleLetter chosen {selected}")
+            if stopped:
+                selected = selected + STOP_CHAR
+            print(f"singleLetter chosen {selected.replace(STOP_CHAR,'')}")
             finished = True
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
-    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, purple_color)
+    tm.tft.write(pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, purple_color)
     time.sleep(0.3)
     return selected
 
@@ -243,6 +253,10 @@ def isdir(path):
         return (os.stat(path)[0] & 0x4000) != 0
     except OSError:
         return False
+
+
+def distinct(lis):
+    return sorted(list(set(lis)))
 
 
 def path_exists(path):

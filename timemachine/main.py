@@ -38,6 +38,7 @@ import utils
 
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
+MAX_COLLECTIONS = 35
 
 
 def factory_reset():
@@ -113,7 +114,17 @@ def test_update():
     return update_code
 
 
-def _datpiff_collection_names():
+def _datpiff_collection_names(first_char=""):
+    if len(first_char) > 1:
+        return []
+    if first_char == "":
+        filename = "top10.json"
+    elif first_char in "#abcdefghijklmnopqrstuvwxyz":
+        filename = f"bottom_{first_char}.json"
+    else:
+        filename = "bottom_#.json"
+
+    url = f"https://storage.googleapis.com/spertilo-data/datpiff/{filename}"
     try:
         url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
         resp = requests.get(url)
@@ -126,15 +137,20 @@ def _datpiff_collection_names():
 
 
 def configure_datpiff_collections():
-    choices = ["Add Artist", "Remove Artist", "Cancel"]
+    state = utils.load_state("datpiff")
+    collection_list = state["artist_list"]
+
+    if len(collection_list) >= MAX_COLLECTIONS:
+        choices = ["Remove Artist", "Cancel"]
+    elif len(collection_list) == 0:
+        choices = ["Add Artist", "Cancel"]
+    else:
+        choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     utils.print_log(f"configure_collection: chose to {choice}")
 
     if choice == "Cancel":
         return
-
-    state = utils.load_state("datpiff")
-    collection_list = state["artist_list"]
 
     utils.print_log(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
@@ -142,15 +158,26 @@ def configure_datpiff_collections():
         reset_required = False
         all_collections = _datpiff_collection_names()
 
+        choices = ["Artists >3 tapes", "All Artists"]
+        choice = utils.select_option("Year/Select", choices)
+        utils.print_log(f"configure_collection: chose to {choice}")
+        if choice == "All Artists":
+            colls_fn = _datpiff_collection_names
+        else:
+            colls_fn = None
+
         while keepGoing:
-            coll_to_add = add_collection(all_collections, collection_list)
+            coll_to_add = add_collection(all_collections, collection_list, colls_fn)
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
                 reset_required = True
-            choices = ["Add Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
+            if len(collection_list) >= MAX_COLLECTIONS:
                 keepGoing = False
+            else:
+                choices = ["Add Another", "Finished"]
+                choice2 = utils.select_option("Year/Select", choices)
+                if choice2 == "Finished":
+                    keepGoing = False
 
             state["artist_list"] = collection_list
             utils.save_state(state, "datpiff")
@@ -259,17 +286,28 @@ def configure_collections():
     return
 
 
-def add_collection(all_collections, collection_list):
+def add_collection(all_collections, collection_list, colls_fn=None):
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)
 
     selected_chars = ""
+    subset_match = True
     while n_matching > 25:
-        m2 = f"{n_matching} Matching\n($ to terminate)"
+        m2 = f"{n_matching} Matching\n(STOP to terminate)"
         print(m2)
         selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        if selected_chars.endswith(utils.STOP_CHAR):
+            subset_match = False
+            print(f"raw selected {selected_chars}")
+            selected_chars = selected_chars.replace(utils.STOP_CHAR, "")
         selected_chars = selected_chars.lower().replace(" ", "")
-        matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
+        print(f"selected {selected_chars}")
+        if colls_fn is not None:
+            matching = utils.distinct(matching + colls_fn(selected_chars))
+        if subset_match:
+            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
+        else:
+            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
