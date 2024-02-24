@@ -658,5 +658,16 @@ def load_state(app="livemusic"):
         raise NotImplementedError("Unknown app {app}")
 
 
+def clear_log(outpath="/log_out.py"):
+    remove_file(outpath)
+
+
+def print_log(msg, outpath="/log_out.py"):
+    fout = open(outpath, "a")
+    fout.write(msg + "\n")
+    fout.close()
+    print(msg)
+
+
 if not isdir("/config"):
     os.mkdir("/config")

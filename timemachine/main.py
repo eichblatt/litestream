@@ -128,7 +128,7 @@ def _datpiff_collection_names():
 def configure_datpiff_collections():
     choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
-    print(f"configure_collection: chose to {choice}")
+    utils.print_log(f"configure_collection: chose to {choice}")
 
     if choice == "Cancel":
         return
@@ -136,7 +136,7 @@ def configure_datpiff_collections():
     state = utils.load_state("datpiff")
     collection_list = state["artist_list"]
 
-    print(f"current collection_list is {collection_list}")
+    utils.print_log(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
         keepGoing = True
         reset_required = False
@@ -190,10 +190,10 @@ def _collection_names():
             itries = itries + 1
             gc.collect()
             resp = requests.get(cloud_url)
-            print(f"Trying to download collections names from {cloud_url}")
+            utils.print_log(f"Trying to download collections names from {cloud_url}")
             status = resp.status_code
             if status == 200:
-                print("Collection Names successfully downloaded")
+                utils.print_log("Collection Names successfully downloaded")
                 colls = resp.json()["items"]
                 all_collection_names_dict["Internet Archive"] = colls
     #        else:
@@ -201,7 +201,7 @@ def _collection_names():
     #            resp = requests.get(api_request).json()
     #            all_collection_names_dict = resp["collection_names"]
     except Exception as e:
-        print(f"Exception when loading collnames {e}")
+        utils.print_log(f"Exception when loading collnames {e}")
     finally:
         if resp is not None:
             resp.close()
