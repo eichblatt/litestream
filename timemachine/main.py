@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import gc
 import json
-import sys
 import os
+import sys
 import time
 
 import st7789
