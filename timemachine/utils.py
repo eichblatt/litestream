@@ -137,14 +137,12 @@ def select_chars(message, message2="", already=None):
         return value
 
     for i, msg in enumerate(message):
-        tm.init_screen()
-        tm.tft.write(pfont_small, f"{msg}", 0, i * text_height, stage_date_color)
+        tm.write(f"{msg}", 0, i * text_height, pfont_small, stage_date_color, clear=False)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.init_screen()
-        tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
+        tm.write(f"{message2}", 0, message2_bbox.y0, pfont_small, stage_date_color, clear=False)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
