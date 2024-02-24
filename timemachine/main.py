@@ -293,7 +293,7 @@ def add_collection(all_collections, collection_list, colls_fn=None):
     selected_chars = ""
     subset_match = True
     while n_matching > 25:
-        m2 = f"{n_matching} Matching\n(STOP to terminate)"
+        m2 = f"{n_matching} Matching\n(STOP to end)"
         print(m2)
         selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
         if selected_chars.endswith(utils.STOP_CHAR):
