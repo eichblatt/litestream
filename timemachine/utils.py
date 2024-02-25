@@ -535,7 +535,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
-        if itry > 1:
+        if itry > 3:
             remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
