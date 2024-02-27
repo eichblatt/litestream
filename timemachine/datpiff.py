@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import json
+import os
 import re
 import time
 from collections import OrderedDict
@@ -70,6 +71,13 @@ def set_tapeid_index(index):
     return
 
 
+def get_artist_tapes(artist, index=0):
+    path = f"/metadata/datpiff/{artist}.json"
+    if utils.isdir(path):
+        path = f"{path}/{artist}_{index:02d}.json"
+    return utils.read_json(path)
+
+
 @micropython.native
 def set_tapeid_range(keyed_artist):
     if keyed_artist in tapeid_range_dict.keys():
@@ -78,7 +86,7 @@ def set_tapeid_range(keyed_artist):
         return artist_tapes
     print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
-    artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"].lower())
+    artist_tapes = get_artist_tapes(keyed_artist)
     print(f"setting max value of dc to {len(artist_tapes) -1}")
     dc.set_max_value(len(artist_tapes) - 1)
     tapeid_range_dict[keyed_artist] = artist_tapes
@@ -222,7 +230,7 @@ def main_loop(player, state):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
-    player.set_volume(7)
+    player.set_volume(8)
     month_change_time = 1e12
     nprints_old = 0
 
@@ -492,11 +500,19 @@ def show_artists(artist_list):
 def get_artist_metadata(artist_list):
     for artist in artist_list:
         path_to_meta = f"/metadata/datpiff/{artist}.json"
-        print(f"loading {path_to_meta}")
+        need_to_download = False
         if not utils.path_exists(path_to_meta):
+            need_to_download = True
+        elif utils.isdir(path_to_meta) and not utils.path_exists(f"{path_to_meta}/completed"):
+            need_to_download = True
+            utils.remove_dir(path_to_meta)
+        if need_to_download:
+            if utils.disk_free() < 3_000:
+                raise Exception("Failed to load artists -- disk full")
             try:
                 url = f"https://gratefuldeadtimemachine.com/datpiff_tapes_by_artist/{artist.lower().replace(' ','%20')}"
                 print(f"Querying from {url}")
+                print(f"saving to {path_to_meta}")
                 resp = requests.get(url)
                 if resp.status_code != 200:
                     print(f"Failed to load from {url}")
@@ -505,10 +521,45 @@ def get_artist_metadata(artist_list):
                     state["artist_list"] = sorted(artist_list)
                     utils.save_state(state, "datpiff")
                     continue
-                metadata = resp.json()
+                if resp.chunked:
+                    print("saving json to /tmp.json")
+                    resp.save("/tmp.json")
+                    resp.close()
+                    metadata = json.load(open("/tmp.json", "r"))
+                elif len(resp.text) > 1_000_000:
+                    print("saving json to /tmp.json")
+                    with open("/tmp.json", "w") as f:
+                        f.write(resp.text)
+                    resp.close()
+                    gc.collect()
+                    metadata = utils.read_json("/tmp.json")
+                    utils.remove_file("/tmp.json")
+                else:
+                    metadata = resp.json()
+
                 keys = ["artist", "title", "identifier"]
-                metadata = [dict(zip(keys, x)) for x in metadata]
-                utils.write_json(metadata, path_to_meta)
+                chunk_size = 1_600
+                if len(metadata) > chunk_size:
+                    if not utils.isdir(path_to_meta):
+                        utils.remove_file(path_to_meta)
+                        os.mkdir(path_to_meta)
+
+                    for chunk_i in range(1 + len(metadata) // chunk_size):
+                        sub_path = f"{path_to_meta}/{artist}_{chunk_i:02d}.json"
+                        end = min(chunk_size, len(metadata))
+                        chunk = metadata[:end]
+                        gc.collect()
+                        chunk = [dict(zip(keys, x)) for x in chunk]
+                        utils.write_json(chunk, sub_path)
+                        metadata = metadata[end:]
+                        print(f"len metadata is {len(metadata)}")
+                    utils.touch(f"{path_to_meta}/completed")
+                else:
+                    metadata = [dict(zip(keys, x)) for x in metadata]
+                    utils.write_json(metadata, path_to_meta)
+            except Exception as e:
+                print(f"Exception in getting artist metadata: {e}")
+                raise e
             finally:
                 resp.close()
     if len(artist_list) == 0:

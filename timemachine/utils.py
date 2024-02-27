@@ -21,6 +21,7 @@ import machine
 import network
 import ntptime
 import os
+import re
 import st7789
 import sys
 import time
@@ -293,10 +294,49 @@ def keep_only_n_files(dir, n):
         remove_file(file)
 
 
+def disk_free():
+    stat = os.statvfs("/")
+    return stat[3] * stat[0] / 1024  # in kbytes
+
+
+def disk_usage():
+    stat = os.statvfs("/")
+    return (stat[3] - stat[2]) * stat[0] / 1024  # in kbytes
+
+
+def dirname(path):
+    if isdir(path):
+        return path
+    return "/".join(path.split("/")[:-1])
+
+
+def basename(path):
+    return path.split("/")[-1]
+
+
 def remove_file(path):
     if not path_exists(path):
         return
-    os.remove(path)
+    try:
+        os.remove(path)
+    except Exception as e:
+        print(f"Failed to remove {path}. {e}")
+
+
+def remove_files(files):
+    files = [files] if isinstance(files, str) else files
+    print(f"files: {files}")
+    for file in files:
+        dir = dirname(file)
+        fname = basename(file)
+        if ("*" in fname) and isdir(dir):
+            for x in os.listdir(dir):
+                if re.match(fname, x):
+                    remove_file("/".join([dir, x]))
+        elif isdir(dir):
+            remove_file(file)
+        else:
+            print(f"Failed to remove {file}")
 
 
 def remove_dir(path):
