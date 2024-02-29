@@ -87,6 +87,7 @@ def get_artist_tapes(artist, state={}):
 
 @micropython.native
 def set_tapeid_range(keyed_artist, state={}, index_change=False):
+    global tapeid_range_dict
     if (keyed_artist in tapeid_range_dict.keys()) and not index_change:
         artist_tapes = tapeid_range_dict[keyed_artist]
         dc.set_max_value(len(artist_tapes) - 1)
@@ -94,7 +95,7 @@ def set_tapeid_range(keyed_artist, state={}, index_change=False):
     print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
     artist_tapes = get_artist_tapes(keyed_artist, state)
-    print(f"setting max value of dc to {len(artist_tapes) -1}")
+    # print(f"setting max value of dc to {len(artist_tapes) -1}")
     dc.set_max_value(len(artist_tapes) - 1)
     tapeid_range_dict[keyed_artist] = artist_tapes
     return artist_tapes
@@ -425,7 +426,7 @@ def main_loop(player, state):
         dc_new = dc.get_value()
 
         if (month_old != month_new) | (dc_old != dc_new):
-            print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
+            # print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
             set_knob_times()
             tm.power(1)
             keyed_artist = state["artist_list"][month_new]
@@ -434,7 +435,7 @@ def main_loop(player, state):
             else:  # tape change -- do now
                 keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc, state)
             display_keyed_artist(keyed_artist)
-            print(f"selected artist {selected_artist}")
+            # print(f"selected artist {selected_artist}")
             month_old = month_new
             dc_old = dc_new
 
@@ -473,7 +474,7 @@ def display_tracks(current_track_name, next_track_name):
 
 
 def display_keyed_title(keyed_title, color=purple_color):
-    print(f"in display_keyed_title {keyed_title}")
+    # print(f"in display_keyed_title {keyed_title}")
     chars = 16
     tm.clear_bbox(tm.title_bbox)
     tm.write(keyed_title[:chars], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
@@ -482,7 +483,7 @@ def display_keyed_title(keyed_title, color=purple_color):
 
 
 def display_keyed_artist(artist, color=purple_color):
-    print(f"in display_keyed_artist {artist}")
+    # print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
     artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
@@ -493,7 +494,7 @@ def display_keyed_artist(artist, color=purple_color):
 
 
 def display_selected_artist(artist):
-    print(f"in display_selected_artist {artist}")
+    # print(f"in display_selected_artist {artist}")
     tm.clear_bbox(tm.selected_artist_bbox)
     if len(artist) < 15:
         artist = (7 - len(artist) // 2) * " " + artist

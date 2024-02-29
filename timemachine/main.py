@@ -195,6 +195,9 @@ def configure_datpiff_collections():
                 keepGoing = False
 
             state["artist_list"] = collection_list
+            # Remove the metadata for this collection
+            path_to_meta = f"/metadata/datpiff/{coll_to_remove}.json"
+            utils.remove_dir(path_to_meta) if utils.isdir(path_to_meta) else utils.remove_file(path_to_meta)
             utils.save_state(state, "datpiff")
 
     return
