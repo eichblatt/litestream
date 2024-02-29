@@ -685,16 +685,20 @@ def load_datpiff_state(state_path):
         state = read_json(state_path)
         artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
         selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        artist_ind_range = state.get("artist_ind_range", {})
         state = {
             "artist_list": artist_list,
             "selected_tape": selected_tape,
+            "artist_ind_range": artist_ind_range,
         }
     else:
         artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
-        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        selected_tape = {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"}
+        artist_ind_range = {}
         state = {
             "artist_list": artist_list,
             "selected_tape": selected_tape,
+            "artist_ind_range": artist_ind_range,
         }
         write_json(state, state_path)
     return state
