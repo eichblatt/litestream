@@ -392,6 +392,10 @@ def main_loop(player, state):
             if pYSw_old:
                 print("Year DOWN")
             else:
+                ind, range = state["artist_ind_range"].get(keyed_artist, (0, None))
+                if range:
+                    ind = (ind - 1) % range
+                    keyed_tape, artists_tapes, state = update_artist_ind(keyed_artist, ind, range, dc)
                 print("Year UP")
 
         if pMSw_old != tm.pMSw.value():
@@ -411,15 +415,7 @@ def main_loop(player, state):
                 ind, range = state["artist_ind_range"].get(keyed_artist, (0, None))
                 if range:
                     ind = (ind + 1) % range
-                    print(f"ind is now {ind}/{range}")
-                    state = utils.load_state("datpiff")  # Needed?
-                    state["artist_ind_range"][keyed_artist] = (ind, range)
-                    utils.save_state(state, "datpiff")  # Needed?
-                    keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc, state, index_change=True)
-                    display_keyed_artist(keyed_artist)
-                    print(
-                        f"selected artist {selected_artist}. Keyed artist {keyed_artist}, keyed_tape {keyed_tape}, len(artist_tapes) {len(artist_tapes)}"
-                    )
+                    keyed_tape, artists_tapes, state = update_artist_ind(keyed_artist, ind, range, dc)
                 print("Day DOWN")
 
         month_new = tm.m.value()
@@ -516,6 +512,17 @@ def show_artists(artist_list):
         for i, coll in enumerate(artist_list[min_col : min_col + colls_to_write]):
             tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=st7789.WHITE, clear=False)
         time.sleep(0.5)
+
+
+def update_artist_ind(artist, ind, range, dc):
+    print(f"ind is now {ind}/{range}")
+    state = utils.load_state("datpiff")  # Needed?
+    state["artist_ind_range"][artist] = (ind, range)
+    utils.save_state(state, "datpiff")  # Needed?
+    keyed_tape, artist_tapes = set_range_display_title(artist, dc, state, index_change=True)
+    display_keyed_artist(artist)
+    print(f"Keyed artist {artist}, keyed_tape {keyed_tape}, len(artist_tapes) {len(artist_tapes)}")
+    return keyed_tape, artist_tapes, state
 
 
 def get_artist_metadata(artist_list):
