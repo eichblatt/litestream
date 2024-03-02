@@ -479,21 +479,25 @@ def basic_main():
 def run_livemusic():
     main_app = "livemusic"
     while True:
-        if utils.is_dev_box():
-            main_app = utils.get_main_app()
-        if main_app == "livemusic":
-            import livemusic
+        try:
+            if utils.is_dev_box():
+                main_app = utils.get_main_app()
+            if main_app == "livemusic":
+                import livemusic
 
-            utils.mark_partition()  # If we make it this far, the firmware is good.
-            livemusic.run()
-        elif main_app == "datpiff":
-            import datpiff
+                utils.mark_partition()  # If we make it this far, the firmware is good.
+                livemusic.run()
+            elif main_app == "datpiff":
+                import datpiff
 
-            utils.mark_partition()
-            datpiff.run()
-        else:
-            raise NotImplementedError(f"Unknown app {main_app}")
-        reconfigure()
+                utils.mark_partition()
+                datpiff.run()
+            else:
+                raise NotImplementedError(f"Unknown app {main_app}")
+        except Exception as e:
+            print(f"Exception in main. {e} -- reconfiguring")
+        finally:
+            reconfigure()
 
 
 # basic_main()
