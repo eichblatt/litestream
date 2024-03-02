@@ -536,6 +536,10 @@ def get_artist_metadata(artist_list):
             utils.remove_dir(path_to_meta)
         if need_to_download:
             if utils.disk_free() < 3_000:
+                state = utils.load_state("datpiff")
+                state["artist_list"] = [x for x in artist_list if not x == artist]
+                utils.save_state(state, "datpiff")
+                utils.remove_dir(path_to_meta)
                 raise Exception("Failed to load artists -- disk full")
             try:
                 url = f"https://gratefuldeadtimemachine.com/datpiff_tapes_by_artist/{artist.lower().replace(' ','%20')}"

@@ -416,6 +416,8 @@ def create_factory_image():
     remove_file("/exception.log")
     remove_file("/tmp.json")
     os.mkdir("/config")
+    if path_exists("/BOOT.py"):
+        os.rename("/BOOT.py", "/boot.py")
 
 
 def remove_wifi_cred(hist=False):
@@ -644,8 +646,8 @@ def set_collection_list(collection_list):
 
 
 def save_state(state, app="livemusic"):
-    print(f"writing {state} to {STATE_PATH}")
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    print(f"writing {state} to {state_path}")
     write_json(state, state_path)
     return
 

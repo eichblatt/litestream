@@ -116,9 +116,7 @@ if isdir("/test_download"):
         remove_dir("test_download")
     machine.reset()
 
-if not path_exists("/config/.no_auto_boot"):
+import main
 
-    import main
-
-    wifi = main.basic_main()  # Connect wifi, allow reconfigure
-    main.run_livemusic()
+wifi = main.basic_main()  # Connect wifi, allow reconfigure
+main.run_livemusic()
