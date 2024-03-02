@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import gc
 import json
-import sys
 import os
+import sys
 import time
 
 import st7789
@@ -38,6 +38,7 @@ import utils
 
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
+MAX_COLLECTIONS = 35
 
 
 def factory_reset():
@@ -113,7 +114,17 @@ def test_update():
     return update_code
 
 
-def _datpiff_collection_names():
+def _datpiff_collection_names(first_char=""):
+    if len(first_char) > 1:
+        return []
+    if first_char == "":
+        filename = "top10.json"
+    elif first_char in "#abcdefghijklmnopqrstuvwxyz":
+        filename = f"bottom_{first_char}.json"
+    else:
+        filename = "bottom_#.json"
+
+    url = f"https://storage.googleapis.com/spertilo-data/datpiff/{filename}"
     try:
         url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
         resp = requests.get(url)
@@ -126,31 +137,47 @@ def _datpiff_collection_names():
 
 
 def configure_datpiff_collections():
-    choices = ["Add Artist", "Remove Artist", "Cancel"]
+    state = utils.load_state("datpiff")
+    collection_list = state["artist_list"]
+
+    if len(collection_list) >= MAX_COLLECTIONS:
+        choices = ["Remove Artist", "Cancel"]
+    elif len(collection_list) == 0:
+        choices = ["Add Artist", "Cancel"]
+    else:
+        choices = ["Add Artist", "Remove Artist", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
-    print(f"configure_collection: chose to {choice}")
+    utils.print_log(f"configure_collection: chose to {choice}")
 
     if choice == "Cancel":
         return
 
-    state = utils.load_state("datpiff")
-    collection_list = state["artist_list"]
-
-    print(f"current collection_list is {collection_list}")
+    utils.print_log(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
         keepGoing = True
         reset_required = False
         all_collections = _datpiff_collection_names()
 
+        choices = ["Artists >3 tapes", "All Artists"]
+        choice = utils.select_option("Year/Select", choices)
+        utils.print_log(f"configure_collection: chose to {choice}")
+        if choice == "All Artists":
+            colls_fn = _datpiff_collection_names
+        else:
+            colls_fn = None
+
         while keepGoing:
-            coll_to_add = add_collection(all_collections, collection_list)
+            coll_to_add = add_collection(all_collections, collection_list, colls_fn)
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
                 reset_required = True
-            choices = ["Add Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
+            if len(collection_list) >= MAX_COLLECTIONS:
                 keepGoing = False
+            else:
+                choices = ["Add Another", "Finished"]
+                choice2 = utils.select_option("Year/Select", choices)
+                if choice2 == "Finished":
+                    keepGoing = False
 
             state["artist_list"] = collection_list
             utils.save_state(state, "datpiff")
@@ -168,6 +195,9 @@ def configure_datpiff_collections():
                 keepGoing = False
 
             state["artist_list"] = collection_list
+            # Remove the metadata for this collection
+            path_to_meta = f"/metadata/datpiff/{coll_to_remove}.json"
+            utils.remove_dir(path_to_meta) if utils.isdir(path_to_meta) else utils.remove_file(path_to_meta)
             utils.save_state(state, "datpiff")
 
     return
@@ -190,10 +220,10 @@ def _collection_names():
             itries = itries + 1
             gc.collect()
             resp = requests.get(cloud_url)
-            print(f"Trying to download collections names from {cloud_url}")
+            utils.print_log(f"Trying to download collections names from {cloud_url}")
             status = resp.status_code
             if status == 200:
-                print("Collection Names successfully downloaded")
+                utils.print_log("Collection Names successfully downloaded")
                 colls = resp.json()["items"]
                 all_collection_names_dict["Internet Archive"] = colls
     #        else:
@@ -201,7 +231,7 @@ def _collection_names():
     #            resp = requests.get(api_request).json()
     #            all_collection_names_dict = resp["collection_names"]
     except Exception as e:
-        print(f"Exception when loading collnames {e}")
+        utils.print_log(f"Exception when loading collnames {e}")
     finally:
         if resp is not None:
             resp.close()
@@ -259,16 +289,28 @@ def configure_collections():
     return
 
 
-def add_collection(all_collections, collection_list):
+def add_collection(all_collections, collection_list, colls_fn=None):
     matching = [x for x in all_collections if not x in collection_list]
     n_matching = len(matching)
 
     selected_chars = ""
-    while n_matching > 20:
-        m2 = f"{n_matching} Matching"
+    subset_match = True
+    while n_matching > 25:
+        m2 = f"{n_matching} Matching\n(STOP to end)"
         print(m2)
         selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
-        matching = [x for x in matching if selected_chars.lower().replace(" ", "") in x.lower().replace(" ", "")]
+        if selected_chars.endswith(utils.STOP_CHAR):
+            subset_match = False
+            print(f"raw selected {selected_chars}")
+            selected_chars = selected_chars.replace(utils.STOP_CHAR, "")
+        selected_chars = selected_chars.lower().replace(" ", "")
+        print(f"selected {selected_chars}")
+        if colls_fn is not None:
+            matching = utils.distinct(matching + colls_fn(selected_chars))
+        if subset_match:
+            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
+        else:
+            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
@@ -335,7 +377,7 @@ def choose_dev_mode():
 
 def choose_main_app():
     app_choices = ["no change", "livemusic", "datpiff"]
-    new_main_app = utils.select_option("Main App", app_choices)
+    new_main_app = utils.select_option("Choose App", app_choices)
     if new_main_app != "no change":
         main_app = utils.set_main_app(new_main_app)
     else:
@@ -362,7 +404,7 @@ def reconfigure():
         "Dev Mode",
     ]
     if utils.is_dev_box():
-        config_choices.append("Main App")
+        config_choices.append("Choose App")
     choice = utils.select_option("Config Menu", config_choices)
 
     if choice == "Artists":
@@ -389,7 +431,7 @@ def reconfigure():
         return choice
     elif choice == "Dev Mode":
         dev_mode = choose_dev_mode()
-    elif choice == "Main App":
+    elif choice == "Choose App":
         main_app = choose_main_app()
     return choice
 

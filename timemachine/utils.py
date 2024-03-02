@@ -21,6 +21,7 @@ import machine
 import network
 import ntptime
 import os
+import re
 import st7789
 import sys
 import time
@@ -34,6 +35,7 @@ WIFI_CRED_PATH = "/wifi_cred.json"
 STATE_PATH = "/config/latest_state{app_string}.json"
 DEV_BOX_PATH = "/config/.is_dev_box"
 MAIN_APP_PATH = "/config/.main_app"
+STOP_CHAR = "$StoP$"
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -74,8 +76,10 @@ def select_option(message, choices):
     if len(choices) == 0:
         return ""
     pSelect_old = True
-    tm.y._value = tm.y._min_val
-    tm.d._value = tm.d._min_val
+    tm.y._value = tm.y._min_val = 0
+    tm.d._value = tm.d._min_val = 0
+    tm.y._max_val = len(choices)
+    tm.d._max_val = len(choices)
     step = step_old = 0
     text_height = 16
     choice = ""
@@ -106,14 +110,17 @@ def select_option(message, choices):
     choice = choices[step]
     # print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
-    return choices[step]
+    return choice
 
 
 def select_chars(message, message2="", already=None):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"
     message = message.split("\n")
     pSelect_old = pStop_old = True
-    tm.y._max_val = tm.y._max_val + 100
+    tm.y._min_val = 0
+    tm.y._max_val = len(charset)  # tm.y._max_val + 100
+    tm.d._min_val = 0
+    tm.d._max_val = len(charset) // 5
     tm.y._value = int((tm.y._min_val + tm.y._max_val) / 2)
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
@@ -137,14 +144,12 @@ def select_chars(message, message2="", already=None):
         return value
 
     for i, msg in enumerate(message):
-        tm.init_screen()
-        tm.tft.write(pfont_small, f"{msg}", 0, i * text_height, stage_date_color)
+        tm.write(f"{msg}", 0, i * text_height, pfont_small, stage_date_color, clear=False)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.init_screen()
-        tm.tft.write(pfont_small, f"{message2}", 0, message2_bbox.y0, stage_date_color)
+        tm.write(f"{message2}", 0, message2_bbox.y0, pfont_small, stage_date_color, clear=False)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -154,6 +159,7 @@ def select_chars(message, message2="", already=None):
     text = "DEL"
     first_time = True
     finished = False
+    stopped = False
     prev_selected = ""
 
     while not finished:
@@ -161,6 +167,7 @@ def select_chars(message, message2="", already=None):
         while pSelect_old == tm.pSelect.value():
             if pStop_old != tm.pStop.value():
                 finished = True
+                stopped = True
                 break
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
@@ -228,14 +235,16 @@ def select_chars(message, message2="", already=None):
             tm.clear_bbox(selected_bbox)
             tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
         if singleLetter:
-            print(f"singleLetter chosen {selected}")
+            if stopped:
+                selected = selected + STOP_CHAR
+            print(f"singleLetter chosen {selected.replace(STOP_CHAR,'')}")
             finished = True
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
     tm.tft.write(pfont_small, "Selected:", 0, 0, stage_date_color)
-    tm.tft.write(pfont_small, selected, selected_bbox.x0, text_height + 5, purple_color)
+    tm.tft.write(pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, purple_color)
     time.sleep(0.3)
     return selected
 
@@ -245,6 +254,10 @@ def isdir(path):
         return (os.stat(path)[0] & 0x4000) != 0
     except OSError:
         return False
+
+
+def distinct(lis):
+    return sorted(list(set(lis)))
 
 
 def path_exists(path):
@@ -281,10 +294,49 @@ def keep_only_n_files(dir, n):
         remove_file(file)
 
 
+def disk_free():
+    stat = os.statvfs("/")
+    return stat[3] * stat[0] / 1024  # in kbytes
+
+
+def disk_usage():
+    stat = os.statvfs("/")
+    return (stat[3] - stat[2]) * stat[0] / 1024  # in kbytes
+
+
+def dirname(path):
+    if isdir(path):
+        return path
+    return "/".join(path.split("/")[:-1])
+
+
+def basename(path):
+    return path.split("/")[-1]
+
+
 def remove_file(path):
     if not path_exists(path):
         return
-    os.remove(path)
+    try:
+        os.remove(path)
+    except Exception as e:
+        print(f"Failed to remove {path}. {e}")
+
+
+def remove_files(files):
+    files = [files] if isinstance(files, str) else files
+    print(f"files: {files}")
+    for file in files:
+        dir = dirname(file)
+        fname = basename(file)
+        if ("*" in fname) and isdir(dir):
+            for x in os.listdir(dir):
+                if re.match(fname, x):
+                    remove_file("/".join([dir, x]))
+        elif isdir(dir):
+            remove_file(file)
+        else:
+            print(f"Failed to remove {file}")
 
 
 def remove_dir(path):
@@ -364,6 +416,8 @@ def create_factory_image():
     remove_file("/exception.log")
     remove_file("/tmp.json")
     os.mkdir("/config")
+    if path_exists("/BOOT.py"):
+        os.rename("/BOOT.py", "/boot.py")
 
 
 def remove_wifi_cred(hist=False):
@@ -523,7 +577,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         return wifi
     else:
         tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
-        remove_wifi_cred()
+        if itry > 3:
+            remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
 
@@ -591,8 +646,8 @@ def set_collection_list(collection_list):
 
 
 def save_state(state, app="livemusic"):
-    print(f"writing {state} to {STATE_PATH}")
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+    print(f"writing {state} to {state_path}")
     write_json(state, state_path)
     return
 
@@ -632,16 +687,20 @@ def load_datpiff_state(state_path):
         state = read_json(state_path)
         artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
         selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        artist_ind_range = state.get("artist_ind_range", {})
         state = {
             "artist_list": artist_list,
             "selected_tape": selected_tape,
+            "artist_ind_range": artist_ind_range,
         }
     else:
         artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
-        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
+        selected_tape = {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"}
+        artist_ind_range = {}
         state = {
             "artist_list": artist_list,
             "selected_tape": selected_tape,
+            "artist_ind_range": artist_ind_range,
         }
         write_json(state, state_path)
     return state
@@ -655,6 +714,17 @@ def load_state(app="livemusic"):
         return load_datpiff_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
+
+
+def clear_log(outpath="/log_out.py"):
+    remove_file(outpath)
+
+
+def print_log(msg, outpath="/log_out.py"):
+    fout = open(outpath, "a")
+    fout.write(msg + "\n")
+    fout.close()
+    print(msg)
 
 
 if not isdir("/config"):
