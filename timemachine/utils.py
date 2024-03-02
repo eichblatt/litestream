@@ -421,9 +421,9 @@ def create_factory_image():
 
 
 def remove_wifi_cred(hist=False):
-    os.remove(WIFI_CRED_PATH)
+    remove_file(WIFI_CRED_PATH)
     if hist:
-        os.remove(WIFI_CRED_HIST_PATH)
+        remove_file(WIFI_CRED_HIST_PATH)
 
 
 def get_wifi_cred(wifi):
