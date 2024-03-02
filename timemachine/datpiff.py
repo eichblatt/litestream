@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import json
+import os
 import re
 import time
 from collections import OrderedDict
@@ -70,23 +71,38 @@ def set_tapeid_index(index):
     return
 
 
+def get_artist_tapes(artist, state={}):
+    path = f"/metadata/datpiff/{artist}.json"
+    range_index = 0
+    if state != {}:
+        range_index, range_size = state["artist_ind_range"].get(artist, (0, None))
+    if utils.isdir(path):
+        range_size = len([x for x in os.listdir(path) if x.endswith(".json")])
+        state = utils.load_state("datpiff")
+        state["artist_ind_range"][artist] = (range_index, range_size)
+        utils.save_state(state, "datpiff")
+        path = f"{path}/{artist}_{range_index:02d}.json"
+    return utils.read_json(path)
+
+
 @micropython.native
-def set_tapeid_range(keyed_artist):
-    if keyed_artist in tapeid_range_dict.keys():
+def set_tapeid_range(keyed_artist, state={}, index_change=False):
+    global tapeid_range_dict
+    if (keyed_artist in tapeid_range_dict.keys()) and not index_change:
         artist_tapes = tapeid_range_dict[keyed_artist]
         dc.set_max_value(len(artist_tapes) - 1)
         return artist_tapes
     print(f"Setting tapeid range for {keyed_artist}")
     # load data file for artist
-    artist_tapes = sorted(utils.read_json(f"/metadata/datpiff/{keyed_artist}.json"), key=lambda x: x["title"].lower())
-    print(f"setting max value of dc to {len(artist_tapes) -1}")
+    artist_tapes = get_artist_tapes(keyed_artist, state)
+    # print(f"setting max value of dc to {len(artist_tapes) -1}")
     dc.set_max_value(len(artist_tapes) - 1)
     tapeid_range_dict[keyed_artist] = artist_tapes
     return artist_tapes
 
 
-def set_range_display_title(keyed_artist, dc):
-    artist_tapes = set_tapeid_range(keyed_artist)
+def set_range_display_title(keyed_artist, dc, state, index_change=False):
+    artist_tapes = set_tapeid_range(keyed_artist, state, index_change)
     dc_new = dc.get_value()
     tape_id_dict = artist_tapes[dc_new]
     keyed_tape = tape_id_dict
@@ -109,7 +125,7 @@ def select_artist_by_index(artist_key_index):
     print(f"setting artist index to {artist_key_index}")
     state = utils.load_state("datpiff")
     selected_artist = state["artist_list"][artist_key_index]
-    artist_tapes = set_tapeid_range(selected_artist)
+    artist_tapes = set_tapeid_range(selected_artist, state)
     return selected_artist, artist_tapes
 
 
@@ -141,7 +157,7 @@ def get_tape_metadata(identifier):
     try:
         resp = requests.get(url_metadata)
         if resp.status_code != 200:
-            print(f"Error in request from {resp.url}. Status code {resp.status_code}")
+            print(f"Error in request from {url_metadata}. Status code {resp.status_code}")
             raise Exception("Download Error")
         if not resp.chunked:
             j = resp.json()
@@ -222,7 +238,7 @@ def main_loop(player, state):
     power_press_time = 0
     resume_playing = -1
     resume_playing_delay = 500
-    player.set_volume(7)
+    player.set_volume(8)
     month_change_time = 1e12
     nprints_old = 0
 
@@ -376,6 +392,10 @@ def main_loop(player, state):
             if pYSw_old:
                 print("Year DOWN")
             else:
+                ind, range = state["artist_ind_range"].get(keyed_artist, (0, None))
+                if range:
+                    ind = (ind - 1) % range
+                    keyed_tape, artists_tapes, state = update_artist_ind(keyed_artist, ind, range, dc)
                 print("Year UP")
 
         if pMSw_old != tm.pMSw.value():
@@ -391,29 +411,34 @@ def main_loop(player, state):
             if pDSw_old:
                 print("Day UP")
             else:
+                # If we are in a collection with indices, increase the index by 1 (modulo)
+                ind, range = state["artist_ind_range"].get(keyed_artist, (0, None))
+                if range:
+                    ind = (ind + 1) % range
+                    keyed_tape, artists_tapes, state = update_artist_ind(keyed_artist, ind, range, dc)
                 print("Day DOWN")
 
         month_new = tm.m.value()
         dc_new = dc.get_value()
 
         if (month_old != month_new) | (dc_old != dc_new):
-            print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
+            # print(f"time diff is {time.ticks_diff(time.ticks_ms(), TAPE_KEY_TIME)}")
             set_knob_times()
             tm.power(1)
             keyed_artist = state["artist_list"][month_new]
             if month_old != month_new:  # artist change -- delay
                 month_change_time = time.ticks_ms()
             else:  # tape change -- do now
-                keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc)
+                keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc, state)
             display_keyed_artist(keyed_artist)
-            print(f"selected artist {selected_artist}")
+            # print(f"selected artist {selected_artist}")
             month_old = month_new
             dc_old = dc_new
 
         if time.ticks_diff(time.ticks_ms(), month_change_time) > 60:
             month_change_time = 1e12
             dc_new = dc.get_value()
-            keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc)
+            keyed_tape, artist_tapes = set_range_display_title(keyed_artist, dc, state)
 
         nprints = (time.ticks_ms() - select_press_time) // 12_000
         if nprints > nprints_old:
@@ -445,7 +470,7 @@ def display_tracks(current_track_name, next_track_name):
 
 
 def display_keyed_title(keyed_title, color=purple_color):
-    print(f"in display_keyed_title {keyed_title}")
+    # print(f"in display_keyed_title {keyed_title}")
     chars = 16
     tm.clear_bbox(tm.title_bbox)
     tm.write(keyed_title[:chars], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
@@ -454,7 +479,7 @@ def display_keyed_title(keyed_title, color=purple_color):
 
 
 def display_keyed_artist(artist, color=purple_color):
-    print(f"in display_keyed_artist {artist}")
+    # print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
     artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
@@ -465,7 +490,7 @@ def display_keyed_artist(artist, color=purple_color):
 
 
 def display_selected_artist(artist):
-    print(f"in display_selected_artist {artist}")
+    # print(f"in display_selected_artist {artist}")
     tm.clear_bbox(tm.selected_artist_bbox)
     if len(artist) < 15:
         artist = (7 - len(artist) // 2) * " " + artist
@@ -489,14 +514,37 @@ def show_artists(artist_list):
         time.sleep(0.5)
 
 
+def update_artist_ind(artist, ind, range, dc):
+    print(f"ind is now {ind}/{range}")
+    state = utils.load_state("datpiff")  # Needed?
+    state["artist_ind_range"][artist] = (ind, range)
+    utils.save_state(state, "datpiff")  # Needed?
+    keyed_tape, artist_tapes = set_range_display_title(artist, dc, state, index_change=True)
+    display_keyed_artist(artist)
+    print(f"Keyed artist {artist}, keyed_tape {keyed_tape}, len(artist_tapes) {len(artist_tapes)}")
+    return keyed_tape, artist_tapes, state
+
+
 def get_artist_metadata(artist_list):
     for artist in artist_list:
         path_to_meta = f"/metadata/datpiff/{artist}.json"
-        print(f"loading {path_to_meta}")
+        need_to_download = False
         if not utils.path_exists(path_to_meta):
+            need_to_download = True
+        elif utils.isdir(path_to_meta) and not utils.path_exists(f"{path_to_meta}/completed"):
+            need_to_download = True
+            utils.remove_dir(path_to_meta)
+        if need_to_download:
+            if utils.disk_free() < 3_000:
+                state = utils.load_state("datpiff")
+                state["artist_list"] = [x for x in artist_list if not x == artist]
+                utils.save_state(state, "datpiff")
+                utils.remove_dir(path_to_meta)
+                raise Exception("Failed to load artists -- disk full")
             try:
                 url = f"https://gratefuldeadtimemachine.com/datpiff_tapes_by_artist/{artist.lower().replace(' ','%20')}"
                 print(f"Querying from {url}")
+                print(f"saving to {path_to_meta}")
                 resp = requests.get(url)
                 if resp.status_code != 200:
                     print(f"Failed to load from {url}")
@@ -505,10 +553,48 @@ def get_artist_metadata(artist_list):
                     state["artist_list"] = sorted(artist_list)
                     utils.save_state(state, "datpiff")
                     continue
-                metadata = resp.json()
+                if resp.chunked:
+                    print("saving json to /tmp.json")
+                    resp.save("/tmp.json")
+                    resp.close()
+                    metadata = json.load(open("/tmp.json", "r"))
+                elif len(resp.text) > 1_000_000:
+                    print("saving json to /tmp.json")
+                    with open("/tmp.json", "w") as f:
+                        f.write(resp.text)
+                    resp.close()
+                    gc.collect()
+                    metadata = utils.read_json("/tmp.json")
+                    utils.remove_file("/tmp.json")
+                else:
+                    metadata = resp.json()
+
                 keys = ["artist", "title", "identifier"]
-                metadata = [dict(zip(keys, x)) for x in metadata]
-                utils.write_json(metadata, path_to_meta)
+                chunk_size = 1_600
+                if len(metadata) > chunk_size:
+                    if not utils.isdir(path_to_meta):
+                        utils.remove_file(path_to_meta)
+                        os.mkdir(path_to_meta)
+
+                    for chunk_i in range(1 + len(metadata) // chunk_size):
+                        sub_path = f"{path_to_meta}/{artist}_{chunk_i:02d}.json"
+                        end = min(chunk_size, len(metadata))
+                        chunk = metadata[:end]
+                        gc.collect()
+                        chunk = [dict(zip(keys, x)) for x in chunk]
+                        utils.write_json(chunk, sub_path)
+                        metadata = metadata[end:]
+                        print(f"len metadata is {len(metadata)}")
+                    utils.touch(f"{path_to_meta}/completed")
+                    state = utils.load_state("datpiff")
+                    state["artist_ind_range"][artist] = (0, chunk_i)
+                    utils.save_state(state, "datpiff")
+                else:
+                    metadata = [dict(zip(keys, x)) for x in metadata]
+                    utils.write_json(metadata, path_to_meta)
+            except Exception as e:
+                print(f"Exception in getting artist metadata: {e}")
+                raise e
             finally:
                 resp.close()
     if len(artist_list) == 0:
