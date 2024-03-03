@@ -260,8 +260,6 @@ def main_loop(player, coll_dict, state):
         nshows = 0
         buffer_fill = audio_pump(player)
         poll_count = poll_count + 1
-        # if player.is_playing() and (poll_count % 5 != 0):  # throttle the polling, to pump more often.
-        #     continue
         if player.is_playing():
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
