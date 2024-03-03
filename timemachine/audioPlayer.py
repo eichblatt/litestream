@@ -896,7 +896,7 @@ class AudioPlayer:
                 # If the packet is short/corrupted we can hopefully recover by the next packet
                 elif Result == -2:
                     pass
-                    
+
                 else:
                     print("Decode Packet failed. Error:", Result)
                     print(pos, end=":")
@@ -1071,6 +1071,7 @@ class AudioPlayer:
                 if not self.DecodeLoopRunning:
                     self.PlayLoopRunning = False
                     print("Finished playing playlist")
+                    self.PLAY_STATE = play_state_Stopped
 
                 # Do this so that when the BytesToPlay gets added at the end of this function that current_track_bytes_played will then be zero
                 self.current_track_bytes_played = -BytesToPlay
