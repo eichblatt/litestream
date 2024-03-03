@@ -1071,7 +1071,7 @@ class AudioPlayer:
                 if not self.DecodeLoopRunning:
                     self.PlayLoopRunning = False
                     print("Finished playing playlist")
-                    self.PLAY_STATE = play_state_Stopped
+                    self.stop()
 
                 # Do this so that when the BytesToPlay gets added at the end of this function that current_track_bytes_played will then be zero
                 self.current_track_bytes_played = -BytesToPlay
