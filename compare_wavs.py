@@ -12,6 +12,8 @@ parms, remainder = parser.parse_known_args()
 
 click = None
 good = None
+click_offset = 0
+good_offset = 0
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d %(levelname)s: %(name)s %(message)s",
@@ -19,6 +21,10 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+def hex2(n):
+    return "0x%04x" % (((n & 0xFF) << 8) | ((n & 0xFF00) >> 8))
 
 
 def find_close(arr, seq, thresh=2):
@@ -53,22 +59,28 @@ def find_match(arr, seq):
         return []  # No match found
 
 
-def show_bytes(start, n=10, shift=0):
+def show_bytes(start, n=10, shift=0, hex_mode=False):
     good_start = start + shift
-    logger.info(f"click[{start:6d}:] {click[start : start + n]}")
-    logger.info(f"good [{good_start:6d}:] {good[good_start: good_start + n]}")
+    logger.info(f"click[{start:d}:] {click[start : start + n]}")
+    logger.info(f"good [{good_start:d}:] {good[good_start: good_start + n]}")
+    if hex_mode:
+        logger.info(f"click[{hex((click_offset + start)//8)}:] {[hex2(x) for x in click[start : start + n]]}")
+        logger.info(f"good [{hex((good_offset + good_start)//8)}:] {[hex2(x) for x in good[good_start: good_start + n]]}")
+    logger.info(f"file offsets are good[{good_offset + good_start}], click[{click_offset + start}]")
 
 
 def load_data():
     global good
     global click
+    global good_offset
+    global click_offset
     click = np.fromfile(parms.path_clicks, dtype=np.int16)
     good = np.fromfile(parms.path_good, dtype=np.int16)
     # Find first signal after header + other bs.
-    click_start = 1200 + np.where(click[1200:] > 10)[0][0]
-    click = click[click_start:]
-    good_start = 1200 + np.where(good[1200:] > 10)[0][0]
-    good = good[good_start : good_start + len(click)]
+    click_offset = 1200 + np.where(click[1200:] > 10)[0][0]
+    click = click[click_offset:]
+    good_offset = 1200 + np.where(good[1200:] > 10)[0][0]
+    good = good[good_offset : good_offset + len(click)]
 
 
 def main(parms):
