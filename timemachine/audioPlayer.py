@@ -920,7 +920,7 @@ class AudioPlayer:
                     self.current_track_bytes_decoded_in += InBytesAvailable - BytesLeft
                     self.InBuffer.bytes_wasRead(InBytesAvailable - BytesLeft)
 
-                    if Result == 0:
+                    if Result == 0 or Result == 110:
                         self.OutBuffer.bytes_wasWritten(AudioSamples * 4)
                         self.current_track_bytes_decoded_out += (AudioSamples) * 4
                     pass

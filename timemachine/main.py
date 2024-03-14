@@ -46,6 +46,7 @@ def factory_reset():
     if not utils.path_exists("/factory_lib"):
         print("Unable to perform factory reset")
         return
+    utils.remove_dir("/test_download")
     utils.copy_dir("/factory_lib", "/test_download")  # as if we downloaded this
     utils.remove_wifi_cred()
     utils.remove_dir("/metadata")

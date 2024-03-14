@@ -101,21 +101,6 @@ to:
 uint8_t cl = commentLength < (uint32_t)254 ? commentLength : (uint32_t)254;
 
 
-9) We found two more Vorbis files that won't play, but do play in other players.
-
-https://archive.org/download/gd1982-04-11.sbd.miller.108852.flac16/gd82-04-11d1t02.ogg
-and
-https://archive.org/download/gd1978-08-30.s2.sbd.miller.110151.flac16/gd78-08-30d3t03.ogg
-
-Both seem to have the same problem in that there is excessive padding before the third OggS marker.
-
-The third marker is at 0x1800, so the code in VORBISparseOGG(uint8_t *inbuf, int *bytesLeft) that calls VORBIS_specialIndexOf() doesn't find it.
-
-Changing the line to:
-int idx = VORBIS_specialIndexOf(inbuf, "OggS", 8192);
-allows them to be played.
-
-
 
 ===============================
 = Changes for the MP3 Decoder =
