@@ -42,31 +42,14 @@ def find_close(arr, seq, thresh=2):
     return best_shift
 
 
-def find_match(arr, seq):
-    Na, Nseq = arr.size, seq.size
-
-    # Range of sequence
-    r_seq = np.arange(Nseq)
-
-    # Create a 2D array of sliding indices across the entire length of input array.
-    # Match up with the input sequence & get the matching starting indices.
-    M = (arr[np.arange(Na - Nseq + 1)[:, None] + r_seq] == seq).all(1)
-
-    # Get the range of those indices as final output
-    if M.any() > 0:
-        return np.where(np.convolve(M, np.ones((Nseq), dtype=int)) > 0)[0]
-    else:
-        return []  # No match found
-
-
-def show_bytes(start, n=10, shift=0, hex_mode=False):
+def show_bytes(start, n=10, shift=0, hex_mode=True):
     good_start = start + shift
     logger.info(f"click[{start:d}:] {click[start : start + n]}")
     logger.info(f"good [{good_start:d}:] {good[good_start: good_start + n]}")
     if hex_mode:
-        logger.info(f"click[{hex((click_offset + start)//8)}:] {[hex2(x) for x in click[start : start + n]]}")
-        logger.info(f"good [{hex((good_offset + good_start)//8)}:] {[hex2(x) for x in good[good_start: good_start + n]]}")
-    logger.info(f"file offsets are good[{good_offset + good_start}], click[{click_offset + start}]")
+        logger.info(f"click[{hex((click_offset + start)*2)}:] {[hex2(x) for x in click[start : start + n]]}")
+        logger.info(f"good [{hex((good_offset + good_start)*2)}:] {[hex2(x) for x in good[good_start: good_start + n]]}")
+    # logger.info(f"file offsets are good[{hex((good_offset + good_start)*2)}], click[{hex((click_offset + start)*2)}]")
 
 
 def load_data():
