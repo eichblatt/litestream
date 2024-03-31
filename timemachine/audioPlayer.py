@@ -18,6 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re, socket, time, gc
 from machine import Pin, I2S
+from errno import EINPROGRESS
+import select
+import ssl
 
 try:
     import AudioDecoder
@@ -444,20 +447,6 @@ class AudioPlayer:
         next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
         return current_name, next_name
 
-    def get_redirect_location(self, headers):
-        for line in headers.split(b"\r\n"):
-            if line.startswith(b"Location:"):
-                return line.split(b": ", 1)[1]
-        return None
-
-    def parse_redirect_location(self, location):
-        parts = location.decode().split("://", 1)[1].split("/", 1)
-        host_port = parts[0].split(":", 1)
-        host = host_port[0]
-        port = int(host_port[1]) if len(host_port) > 1 else 80
-        path = "/" + parts[1] if len(parts) > 1 else "/"
-        return host, port, path
-
     # Set volume from 1 (quietest) to 11 (loudest)
     def set_volume(self, vol):
         assert vol >= 1 and vol <= 11, "Invalid Volume value"
@@ -557,15 +546,24 @@ class AudioPlayer:
     def is_started(self):
         return self.playlist_started
 
+    def parse_url(self, location):
+        parts = location.decode().split("://", 1)
+        port = 80 if parts[0] == "http" else 443
+        url = parts[1].split("/", 1)
+        host = url[0]
+        path = url[1] if url[1].startswith("/") else "/" + url[1]
+        return host, port, path
+
     def read_http_header(self, trackno, offset=0, port=80):
         if trackno is None:
             return
 
         track_length = 0
+        self.current_track_bytes_read = offset
         self.playlist_started = True
         self.track_being_read = trackno
         url = self.playlist[trackno]
-        _, _, host, path = url.split("/", 3)
+        host, port, path = self.parse_url(url.encode())
 
         # We might have a socket already from the previous track
         if self.sock is not None:
@@ -577,18 +575,47 @@ class AudioPlayer:
         self.play_chunk()
 
         # Establish a socket connection to the server
-        self.sock = socket.socket()
-        self.DEBUG and print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
+        conn = socket.socket()
+        print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
         addr = socket.getaddrinfo(host, port)[0][-1]
-        self.sock.connect(addr)
 
         # Tell the socket to return straight away (async)
-        self.sock.setblocking(False)
+        conn.setblocking(False)
 
+        # Connect the socket.
+        # We need to set the socket to non-blocking before connecting or it can block for some time if the connection is SSL
+        # However, by design we will get a EINPROGRESS error, so catch it.
+        try:
+            conn.connect(addr)
+        except OSError as er:
+            if er.errno != EINPROGRESS:
+                raise RuntimeError("Socket connect error")
+
+        if port == 443:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            self.sock = ctx.wrap_socket(conn, server_hostname=host, do_handshake_on_connect=False)
+            self.sock.setblocking(False)
+        else:
+            self.sock = conn
+
+        self.decode_chunk()
         self.play_chunk()
 
+        poller = select.poll()
+        poller.register(self.sock, select.POLLOUT)
+
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-        self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
+        data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+
+        # Write the data to the async socket. Use poller with a 50ms timeout
+        while data:
+            poller.poll(50)
+            n = self.sock.write(data)
+            self.decode_chunk()
+            self.play_chunk()
+
+            if n is not None:
+                data = data[n:]
 
         # Read the response headers
         response_headers = b""
@@ -607,12 +634,17 @@ class AudioPlayer:
                 break
 
         # Check if the response is a redirect. If so, kill the socket and re-open it on the redirected host/path
-        if b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
-            redirect_location = self.get_redirect_location(response_headers)
+        while b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
+
+            redirect_location = None
+            for line in response_headers.split(b"\r\n"):
+                if line.startswith(b"Location:"):
+                    redirect_location = line.split(b": ", 1)[1]
+                    break
 
             if redirect_location:
                 # Extract the new host, port, and path from the redirect location
-                host, port, path = self.parse_redirect_location(redirect_location)
+                host, port, path = self.parse_url(redirect_location)
                 self.sock.close()
                 del self.sock
 
@@ -621,18 +653,47 @@ class AudioPlayer:
                 self.play_chunk()
 
                 # Establish a new socket connection to the server
-                self.sock = socket.socket()
+                conn = socket.socket()
                 self.DEBUG and print(f"Redirecting to {path} from {host}, Port:{port}, Offset {offset}")
                 addr = socket.getaddrinfo(host, port)[0][-1]
-                self.sock.connect(addr)
 
                 # Tell the socket to return straight away (async)
-                self.sock.setblocking(False)
+                conn.setblocking(False)
 
+                # Connect the socket.
+                # We need to set the socket to non-blocking before connecting or it can block for some time if the connection is SSL
+                # However, by design we will get a EINPROGRESS error, so catch it.
+                try:
+                    conn.connect(addr)
+                except OSError as er:
+                    if er.errno != EINPROGRESS:
+                        raise RuntimeError("Socket connect error")
+
+                if port == 443:
+                    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                    self.sock = ctx.wrap_socket(conn, server_hostname=host, do_handshake_on_connect=False)
+                    self.sock.setblocking(False)
+                else:
+                    self.sock = conn
+
+                self.decode_chunk()
                 self.play_chunk()
 
+                poller = select.poll()
+                poller.register(self.sock, select.POLLOUT)
+
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-                self.sock.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8"))
+                data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+
+                # Write the data to the async socket. Use poller with a 50ms timeout
+                while data:
+                    poller.poll(50)
+                    n = self.sock.write(data)
+                    self.decode_chunk()
+                    self.play_chunk()
+
+                    if n is not None:
+                        data = data[n:]
 
                 # Read the response headers
                 response_headers = b""
@@ -671,8 +732,6 @@ class AudioPlayer:
                 self.TrackInfo.append((track_length, format_Vorbis))
         else:
             raise RuntimeError("Unsupported audio type")
-
-        self.current_track_bytes_read = offset
 
         # Start the read loop
         self.ReadLoopRunning = True
@@ -1122,6 +1181,9 @@ class AudioPlayer:
     @micropython.native
     def i2s_callback(self, t):
         self.I2SAvailable = True
+
+        # if not self.DecodeLoopRunning and not self.PlayLoopRunning:
+        #    self.stop()
 
     ###############################################################################################################################################
 
