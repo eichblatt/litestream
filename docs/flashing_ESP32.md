@@ -13,6 +13,7 @@
   - [Flashing Filesystem](#flashing-filesystem)
     - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
     - [Flash Everything](#flash-everything)
+    - [Rolling Back to a Previous Version of the Firmware](#rolling-back-to-a-previous-version-of-the-firmware)
 
 ## Install ESP-IDF
 
@@ -162,3 +163,10 @@ If this is the first time, then follow instructions on how to [Download the firm
 : /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
 : /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo $HOME/.espressif/python_env/idf5.0_py3.10_env/bin/python $HOME/esp/esp-idf/components/esptool_py/esptool/esptool.py -p $DEVICE -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin 0x4f0000 fsbackup.bin
 ```
+
+### Rolling Back to a Previous Version of the Firmware
+
+There a few things you need to know when rolling back firmware.
+
+- When writing a different version of the firmware, use the `--erase-all` option in the `esptool.py` command. Otherwise, the filesystem will not be erased, and it will be invalid.
+- The file fsbackup.bin is specific to the version of the firmware. You cannot copy it to a different firmware version
