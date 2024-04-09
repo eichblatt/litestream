@@ -51,10 +51,6 @@ ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
 mute_pin = Pin(3, Pin.OUT, value=1)  # XSMT on DAC chip
 
-# Begin PHISH HACK
-finished_reading_silence_time = None
-# End PHISH HACK
-
 # ---------------------------------------------     InRingBuffer     ------------------------------------------ #
 #
 # For the buffer between the network and the decoder we use a Ring Buffer with an exta "overflow" area at the beginning.
@@ -757,7 +753,6 @@ class AudioPlayer:
     def read_chunk(self):
         # If there is any free space in the input buffer then add any data available from the network
         # If there is no socket then we have already read to the end of the playlist
-        global finished_reading_silence_time
         if self.sock is not None:
             if (BytesAvailable := self.InBuffer.get_write_available()) > 0:
                 # We can get an exception here if we pause too long and the underlying socket gets closed
@@ -776,23 +771,7 @@ class AudioPlayer:
 
                     # We have read to the end of the track
                     if self.current_track_bytes_read == self.TrackInfo[-1][0]:
-                        # -------------------------- BEGIN PHISH HACK
-                        # This hack defers the end of track handling until 5 seconds before the set break ends, so that we
-                        # can re-establish the socket that has closed during the set break.
-                        if "silence600" in self.playlist[self.current_track]:
-                            if finished_reading_silence_time is None:
-                                finished_reading_silence_time = time.ticks_ms()
-                            silence_waiting_time = time.ticks_ms() - finished_reading_silence_time
-                            if silence_waiting_time > 594_000:
-                                self.handle_end_of_track_read()
-                            else:
-                                data = -1
-                        else:
-                            finished_reading_silence_time = None
-                            self.handle_end_of_track_read()
-                        # # -------------------------- END PHISH HACK
-                        # NOTE When removing PHISH HACK, uncomment the following line
-                        # self.handle_end_of_track_read()
+                        self.handle_end_of_track_read()
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
                     if data == 0:
