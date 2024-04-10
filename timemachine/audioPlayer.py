@@ -340,7 +340,7 @@ class AudioPlayer:
         self.decode_phase = decode_phase_trackstart
         self.I2SAvailable = True
         self.ID3Tag_size = 0
-        self.player_state = play_state_Stopped
+        self.PLAY_STATE = play_state_Stopped
 
         if reset_head:
             if self.ntracks > 0:
@@ -458,7 +458,7 @@ class AudioPlayer:
         self.mute_pin(1)
 
     def play(self):
-        self.unmute_audio()
+        #self.unmute_audio() # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
 
         if self.PLAY_STATE == play_state_Stopped:
             if self.MP3Decoder.MP3_Init():
@@ -479,9 +479,10 @@ class AudioPlayer:
         elif self.PLAY_STATE == play_state_Paused:
             print(f"Un-pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = play_state_Playing
-
             # Kick off the playback loop
             self.play_chunk()
+            
+        self.unmute_audio()
 
     def pause(self):
         if self.PLAY_STATE == play_state_Playing:
@@ -1109,7 +1110,6 @@ class AudioPlayer:
                 if not self.DecodeLoopRunning:
                     self.PlayLoopRunning = False
                     print("Finished playing playlist")
-                    self.stop()
 
                 # Do this so that when the BytesToPlay gets added at the end of this function that current_track_bytes_played will then be zero
                 self.current_track_bytes_played = -BytesToPlay
@@ -1161,8 +1161,8 @@ class AudioPlayer:
     def i2s_callback(self, t):
         self.I2SAvailable = True
 
-        # if not self.DecodeLoopRunning and not self.PlayLoopRunning:
-        #    self.stop()
+        if not self.ReadLoopRunning and not self.DecodeLoopRunning and not self.PlayLoopRunning and self.PLAY_STATE != play_state_Stopped:
+           self.stop()
 
     ###############################################################################################################################################
 
