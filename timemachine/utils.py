@@ -88,6 +88,7 @@ def select_option(message, choices):
     # init_screen()
     select_bbox = tm.Bbox(0, 20, 160, 128)
     tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
+    choices_display = [f"{x[:10]}~{x[-4:]}" if len(x) > 14 else x for x in choices]
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -98,13 +99,15 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
+                tm.tft.write(pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
 
-            text = ">" + choices[step]
+            text = ">" + choices_display[step]
             tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), purple_color)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                tm.tft.write(pfont_small, choices[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color)
+                tm.tft.write(
+                    pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color
+                )
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -172,7 +175,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, purple_color)
+                tm.tft.write(pfont_small, selected[-10:], selected_bbox.x0, selected_bbox.y0, purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
