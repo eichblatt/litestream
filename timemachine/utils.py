@@ -175,7 +175,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected[-10:], selected_bbox.x0, selected_bbox.y0, purple_color)
+                tm.tft.write(pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
