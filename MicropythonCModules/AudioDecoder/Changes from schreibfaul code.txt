@@ -11,6 +11,11 @@ We need to modify the decoders a little bit to get them to compile in the MicroP
 = Changes for the Vorbis Decoder =
 ==================================
 
+************************************************************************************* NOTE *************************************************************************************
+The latest vorbis decoder from https://github.com/schreibfaul1/ESP32-audioI2S/tree/master/src/vorbis_decoder doesn't work any more (crackling audio)
+The latest build that worked was this version: https://github.com/schreibfaul1/ESP32-audioI2S/tree/dd1afff76f85f3dd2f82c7d601a428e3c38e9b4c (Commit name is "some var renamed")
+********************************************************************************************************************************************************************************
+
 1) Add extern "C"
 In order to allow the C++ functions to be called by C, we have to bracket the entire vorbis_decoder.h file with:
 #ifdef __cplusplus
