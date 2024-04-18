@@ -414,7 +414,7 @@ int parseVorbisFirstPacket(uint8_t *inbuf, int16_t nBytes){ // 4.2.2. Identifica
     s_vorbisChannels = channels;
 
     if(sampleRate < 4096 || sampleRate > 96000){
-        log_e("sampleRate is not valid sr=%i", sampleRate);
+        log_e("sampleRate is not valid sr=%u", sampleRate);
         return -1;
     }
     s_vorbisSamplerate = sampleRate;
