@@ -25,13 +25,8 @@ import ssl
 try:
     import AudioDecoder
 
-    # VorbisDecoder = AudioDecoder.VorbisDecoder()
-    # MP3Decoder = AudioDecoder.MP3Decoder()
 except ImportError:
     import MP3Decoder, VorbisDecoder
-
-    # import VorbisPlayer as VorbisDecoder
-    # import MP3Player as MP3Decoder
 
 # Use const() so that micropython inlines these and saves a lookup
 play_state_Stopped = const(0)
@@ -320,7 +315,6 @@ class AudioPlayer:
         # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
         InBufferSize = 160 * 1024
 
-        # Maximum segment size is 512 bytes, so use 600 to be sure
         InOverflowBufferSize = 5000
         self.InBuffer = InRingBuffer(InBufferSize, InOverflowBufferSize)
 
@@ -348,12 +342,13 @@ class AudioPlayer:
                 self.next_track = 1 if self.ntracks > 1 else None
                 self.callbacks["display"](*self.track_names())
 
-        # A list of track lengths and their corresponding audio type (vorbis or MP3). This tells the decoder when to move onto the next track, and also which decoder to use.
+        # TrackInfo is a list of track lengths and their corresponding audio type (vorbis or MP3). This tells the decoder when to move onto the next track, and also which decoder to use.
         self.TrackInfo = []
 
         # PlayInfo is filled out when the decoder starts a new track, and tells the play loop the format of the track (rate, bits, channels)
-        # PlayLength is filled out when we finish decoding a track, and tells the play loop how many decoded bytes are in the track
         self.PlayInfo = []
+
+        # PlayLength is filled out when we finish decoding a track, and tells the play loop how many decoded bytes are in the track
         self.PlayLength = []
 
         # The number of bytes of the current track that we have read from the network
@@ -377,20 +372,25 @@ class AudioPlayer:
         self.MP3Decoder.MP3_Close()
         self.VorbisDecoder.Vorbis_Close()
 
+        # If this is an SSL socket, this also closes the underlying "real" socket
         if self.sock is not None:
             self.sock.close()
             self.sock = None
 
+        # Used for statistics during debugging
         self.consecutive_zeros = 0
+
         print(self)
 
     def __repr__(self):
         if not self.playlist_started:
             return "Playlist not started"
+
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
         ratio = bytes / max(length, 1)
+
         if self.PLAY_STATE == play_state_Playing:
             status = "Playing"
         elif self.PLAY_STATE == play_state_Paused:
@@ -399,11 +399,14 @@ class AudioPlayer:
             status = "Stopped"
         else:
             status = " !?! "
+
         retstring = f"{status} --"
+
         if self.PLAY_STATE != play_state_Stopped:
             retstring += f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]-1}'
             retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
             retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
+
         return retstring
 
     def set_playlist(self, tracklist, urllist):
@@ -458,27 +461,20 @@ class AudioPlayer:
         self.mute_pin(1)
 
     def play(self):
-        #self.unmute_audio() # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
+        # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
 
         if self.PLAY_STATE == play_state_Stopped:
-            if self.MP3Decoder.MP3_Init():
-                self.DEBUG and print("MP3 decoder Init success")
-            else:
-                raise RuntimeError("MP3 decoder Init failed")
-
-            if self.VorbisDecoder.Vorbis_Init():
-                self.DEBUG and print("Vorbis decoder Init success")
-            else:
-                raise RuntimeError("Vorbis decoder Init failed")
-
             print("Track read start")
             self.read_http_header(self.current_track)
             self.PLAY_STATE = play_state_Playing
+
         elif self.PLAY_STATE == play_state_Playing:
             print(f"Playing URL {self.playlist[self.current_track]}")
+
         elif self.PLAY_STATE == play_state_Paused:
             print(f"Un-pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = play_state_Playing
+            
             # Kick off the playback loop
             self.play_chunk()
             
@@ -545,7 +541,7 @@ class AudioPlayer:
 
     def parse_url(self, location):
         parts = location.decode().split("://", 1)
-        port = 80 if parts[0] == "http" else 443
+        port = 80 if parts[0] == "http" else 443 if parts[0] == "https" else 0
         url = parts[1].split("/", 1)
         host = url[0]
         path = url[1] if url[1].startswith("/") else "/" + url[1]
@@ -561,11 +557,13 @@ class AudioPlayer:
         self.track_being_read = trackno
         url = self.playlist[trackno]
         host, port, path = self.parse_url(url.encode())
+        assert port > 0, "Invalid URL prefix"
 
         # We might have a socket already from the previous track
         if self.sock is not None:
             self.sock.close()
             del self.sock
+            self.sock = None
 
         # Load up the outbuffer before we fetch a new file
         self.decode_chunk(timeout=50)
@@ -588,6 +586,9 @@ class AudioPlayer:
             if er.errno != EINPROGRESS:
                 raise RuntimeError("Socket connect error")
 
+        # If this is an SSL connection, wrap the socket in an SSLContext. 
+        # This provides a "virtual socket" on top of the real socket and handles all the encryption/decryption
+        # For non-SSL, just use the socket as-is
         if port == 443:
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             self.sock = ctx.wrap_socket(conn, server_hostname=host, do_handshake_on_connect=False)
@@ -604,7 +605,9 @@ class AudioPlayer:
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
         data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
 
-        # Write the data to the async socket. Use poller with a 50ms timeout
+        # Write the data to the async socket. Use a poller with a 50ms timeout
+        # Because this is an async socket it will return straight away, allowing the SSL handshake to happen under the covers
+        # We keep looping until all the data has been sent (which is after the SSL handshake is complete)
         while data:
             poller.poll(50)
             n = self.sock.write(data)
@@ -623,10 +626,12 @@ class AudioPlayer:
 
             if header is not None:
                 response_headers += header.decode("utf-8")
+
                 # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                 # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.startswith(b"Content-Range:"):
                     track_length = int(header.split(b"/", 1)[1])
+            
             if header == b"\r\n":
                 break
 
@@ -634,6 +639,7 @@ class AudioPlayer:
         while b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
 
             redirect_location = None
+            
             for line in response_headers.split(b"\r\n"):
                 if line.startswith(b"Location:"):
                     redirect_location = line.split(b": ", 1)[1]
@@ -642,8 +648,11 @@ class AudioPlayer:
             if redirect_location:
                 # Extract the new host, port, and path from the redirect location
                 host, port, path = self.parse_url(redirect_location)
+                assert port > 0, "Invalid URL prefix"
+
                 self.sock.close()
                 del self.sock
+                self.sock = None
 
                 # Load up the outbuffer before we fetch the new file
                 self.decode_chunk(timeout=50)
@@ -666,6 +675,7 @@ class AudioPlayer:
                     if er.errno != EINPROGRESS:
                         raise RuntimeError("Socket connect error")
 
+                # If this is an SSL connection, wrap the socket in an SSLContext.
                 if port == 443:
                     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
                     self.sock = ctx.wrap_socket(conn, server_hostname=host, do_handshake_on_connect=False)
@@ -682,7 +692,7 @@ class AudioPlayer:
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
                 data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
 
-                # Write the data to the async socket. Use poller with a 50ms timeout
+                # Write the data to the async socket.
                 while data:
                     poller.poll(50)
                     n = self.sock.write(data)
@@ -701,6 +711,7 @@ class AudioPlayer:
 
                     if header is not None:
                         response_headers += header.decode("utf-8")
+
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                         # EOF is indistinguishable from the host closing a socket when we pause too long
                         if header.startswith(b"Content-Range:"):
@@ -843,11 +854,26 @@ class AudioPlayer:
                 self.decode_phase = decode_phase_inheader
 
         if self.decode_phase == decode_phase_inheader:
+            # De-allocate buffers from previous decoder instances
+            self.MP3Decoder.MP3_Close()
+            self.VorbisDecoder.Vorbis_Close()
+
+            # Init (allocate memory) and Start (look for sync word) the correct decoder
             if self.TrackInfo[0][1] == format_MP3:
+                if self.MP3Decoder.MP3_Init():
+                    self.DEBUG and print("MP3 decoder Init success")
+                else:
+                    raise RuntimeError("MP3 decoder Init failed")
+
                 FoundSyncWordAt = self.MP3Decoder.MP3_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
             elif self.TrackInfo[0][1] == format_Vorbis:
+                if self.VorbisDecoder.Vorbis_Init():
+                    self.DEBUG and print("Vorbis decoder Init success")
+                else:
+                    raise RuntimeError("Vorbis decoder Init failed")
+
                 FoundSyncWordAt = self.VorbisDecoder.Vorbis_Start(
                     self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
                 )
@@ -871,6 +897,8 @@ class AudioPlayer:
                 break
 
             # Do we have at least 5000 bytes available for the decoder to write to? If not we return and wait for the play loop to free up some space.
+            # 5000 comes from the max number of samples returned from decoding a chunk being 1024 samples x 2 channels x 2 bytes per 16-bit sample = 4096 bytes
+            # Make it a bit bigger for safety
             if self.OutBuffer.get_write_available() < 5000:  # Note: this can change write_pos
                 break_reason = 1
                 break
@@ -928,6 +956,7 @@ class AudioPlayer:
                     else:
                         print(pos, end=":")
                         print(self.InBuffer.Buffer[pos:].hex())
+
                         # Not sure what we should do here. Maybe we could handle it?
                         raise RuntimeError("Corrupted packet")
                     pass
@@ -968,6 +997,7 @@ class AudioPlayer:
                 elif Result == -6:
                     print(pos, end=":")
                     print(self.InBuffer.Buffer[pos:].hex())
+
                     # Not sure what we should do here. Maybe we could handle it?
                     raise RuntimeError("Corrupted packet")
                     pass
@@ -1110,6 +1140,7 @@ class AudioPlayer:
                 if not self.DecodeLoopRunning:
                     self.PlayLoopRunning = False
                     print("Finished playing playlist")
+                    # Don't stop() here as we need to let the play loop run out
 
                 # Do this so that when the BytesToPlay gets added at the end of this function that current_track_bytes_played will then be zero
                 self.current_track_bytes_played = -BytesToPlay
@@ -1134,13 +1165,13 @@ class AudioPlayer:
         Offset = self.OutBuffer.get_readPos()
 
         # Make a memoryview of the output buffer slice.
-        # Not sure why we have to do this instead of slicing the OutBuffer.Buffer memoryview.
+        # Not sure why we have to do this instead of slicing the OutBuffer.Buffer memoryview directly.
+        # This should work: outbytes = self.OutBuffer.Buffer[Offset : Offset + BytesToPlay]
         # Slicing a memoryview creates a new memoryview (which allocates a small amount of memory),
         # but we are not in an ISR here so it shouldn't matter.
         # However, we get corrupted audio if we slice the memoryview directly
         outbytes = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
-        # outbytes = self.OutBuffer.Buffer[Offset : Offset + BytesToPlay]
-
+        
         try:
             self.OutBuffer.bytes_wasRead(BytesToPlay)
         except Exception as e:
@@ -1157,12 +1188,15 @@ class AudioPlayer:
 
         self.current_track_bytes_played += BytesToPlay
 
+        # If this is the last chunk of the playlist, let the I2S DMA run out and then stop() so that the screensaver works properly
+        if not self.PlayLoopRunning:
+           # 500ms is enough for one chunk to play
+           time.sleep_ms(500) 
+           self.stop() 
+
     @micropython.native
     def i2s_callback(self, t):
         self.I2SAvailable = True
-
-        if not self.ReadLoopRunning and not self.DecodeLoopRunning and not self.PlayLoopRunning and self.PLAY_STATE != play_state_Stopped:
-           self.stop()
 
     ###############################################################################################################################################
 
