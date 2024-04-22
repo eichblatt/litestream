@@ -386,8 +386,8 @@ class AudioPlayer:
         # if not self.playlist_started:
         #    return "Playlist not started"
         tstat = self.track_status()
-        bytes = tstat["bytes_read"]
-        length = tstat["length"]
+        bytes = tstat.get("bytes_read", 0)
+        length = tstat.get("length", 0)
         ratio = bytes / max(length, 1)
 
         if self.PLAY_STATE == play_state_Playing:
