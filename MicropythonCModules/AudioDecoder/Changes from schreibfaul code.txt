@@ -45,8 +45,10 @@ We change them to use m_tracked_calloc & m_tracked_free with the following code 
 The original only allows files up to a sample rate of 64,000 to be decoded. This means that a uint16_t is sufficient to store the sample rate.
 However, we found a file (1993-05-14) which had a sample rate of 96,000
 The decoder was actually able to decode it, but was being prevented by "if(sampleRate < 4096 || sampleRate > 64000)"
-The fix is to change s_VorbisSamplerate to unit32_t and change the if statement in parseVorbisFirstPacket() to "if(sampleRate < 4096 || sampleRate > 96000)" as well as the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate);"
-Also, update "uint16_t  s_vorbisSamplerate" in the global vars section of vorbis_decoder.cpp to "uint32_t  s_vorbisSamplerate", as we need a 32-bit variable to handle a sample rate of 96000
+The fix is:
+    a) Update "uint16_t  s_vorbisSamplerate" in the global vars section of vorbis_decoder.cpp to "uint32_t  s_vorbisSamplerate", as we need a 32-bit variable to handle a sample rate of 96000
+    b) Change the if statement in parseVorbisFirstPacket() to "if(sampleRate < 4096 || sampleRate > 96000)" 
+    c) Change the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate); 
 
 
 ===============================
