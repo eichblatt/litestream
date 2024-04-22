@@ -291,7 +291,7 @@ class AudioPlayer:
         self.PLAY_STATE = play_state_Stopped
         self.sock = None
         self.volume = 0
-        self.playlist_started = False
+        # self.playlist_started = False
         self.song_transition = None
 
         self.VorbisDecoder = AudioDecoder.VorbisDecoder()
@@ -330,7 +330,7 @@ class AudioPlayer:
         self.PlayLoopRunning = False
         self.ReadLoopRunning = False
         self.DecodeLoopRunning = False
-        self.playlist_started = False
+        # self.playlist_started = False
         self.decode_phase = decode_phase_trackstart
         self.I2SAvailable = True
         self.ID3Tag_size = 0
@@ -383,9 +383,8 @@ class AudioPlayer:
         print(self)
 
     def __repr__(self):
-        if not self.playlist_started:
-            return "Playlist not started"
-
+        # if not self.playlist_started:
+        #    return "Playlist not started"
         tstat = self.track_status()
         bytes = tstat["bytes_read"]
         length = tstat["length"]
@@ -461,7 +460,7 @@ class AudioPlayer:
         self.mute_pin(1)
 
     def play(self):
-        # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
+        # self.unmute_audio() # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
 
         if self.PLAY_STATE == play_state_Stopped:
             print("Track read start")
@@ -474,10 +473,10 @@ class AudioPlayer:
         elif self.PLAY_STATE == play_state_Paused:
             print(f"Un-pausing URL {self.playlist[self.current_track]}")
             self.PLAY_STATE = play_state_Playing
-            
+
             # Kick off the playback loop
             self.play_chunk()
-            
+
         self.unmute_audio()
 
     def pause(self):
@@ -536,8 +535,8 @@ class AudioPlayer:
     def is_playing(self):
         return self.PLAY_STATE == play_state_Playing
 
-    def is_started(self):
-        return self.playlist_started
+    #     def is_started(self):
+    #        return self.playlist_started
 
     def parse_url(self, location):
         parts = location.decode().split("://", 1)
@@ -553,7 +552,7 @@ class AudioPlayer:
 
         track_length = 0
         self.current_track_bytes_read = offset
-        self.playlist_started = True
+        #        self.playlist_started = True
         self.track_being_read = trackno
         url = self.playlist[trackno]
         host, port, path = self.parse_url(url.encode())
@@ -586,7 +585,7 @@ class AudioPlayer:
             if er.errno != EINPROGRESS:
                 raise RuntimeError("Socket connect error")
 
-        # If this is an SSL connection, wrap the socket in an SSLContext. 
+        # If this is an SSL connection, wrap the socket in an SSLContext.
         # This provides a "virtual socket" on top of the real socket and handles all the encryption/decryption
         # For non-SSL, just use the socket as-is
         if port == 443:
@@ -631,7 +630,7 @@ class AudioPlayer:
                 # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.startswith(b"Content-Range:"):
                     track_length = int(header.split(b"/", 1)[1])
-            
+
             if header == b"\r\n":
                 break
 
@@ -639,7 +638,7 @@ class AudioPlayer:
         while b"HTTP/1.1 301" in response_headers or b"HTTP/1.1 302" in response_headers:
 
             redirect_location = None
-            
+
             for line in response_headers.split(b"\r\n"):
                 if line.startswith(b"Location:"):
                     redirect_location = line.split(b": ", 1)[1]
@@ -760,7 +759,7 @@ class AudioPlayer:
             del self.sock
             self.sock = None
             self.ReadLoopRunning = False
-            self.playlist_started = False
+            # self.playlist_started = False
 
     def read_chunk(self):
         # If there is any free space in the input buffer then add any data available from the network
@@ -1049,7 +1048,7 @@ class AudioPlayer:
                 else:
                     print("Finished decoding playlist")
                     self.DecodeLoopRunning = False
-                    self.playlist_started = False
+                    # self.playlist_started = False
 
                     # This frees up all the buffers that the decoders allocated, and resets their state
                     self.MP3Decoder.MP3_Close()
@@ -1171,7 +1170,7 @@ class AudioPlayer:
         # but we are not in an ISR here so it shouldn't matter.
         # However, we get corrupted audio if we slice the memoryview directly
         outbytes = memoryview(self.OutBuffer.Bytes[Offset : Offset + BytesToPlay])
-        
+
         try:
             self.OutBuffer.bytes_wasRead(BytesToPlay)
         except Exception as e:
@@ -1190,13 +1189,21 @@ class AudioPlayer:
 
         # If this is the last chunk of the playlist, let the I2S DMA run out and then stop() so that the screensaver works properly
         if not self.PlayLoopRunning:
-           # 500ms is enough for one chunk to play
-           time.sleep_ms(500) 
-           self.stop() 
+            # 500ms is enough for one chunk to play
+            time.sleep_ms(500)
+            self.stop()
 
     @micropython.native
     def i2s_callback(self, t):
         self.I2SAvailable = True
+
+        if (
+            not self.ReadLoopRunning
+            and not self.DecodeLoopRunning
+            and not self.PlayLoopRunning
+            and self.PLAY_STATE != play_state_Stopped
+        ):
+            self.stop()
 
     ###############################################################################################################################################
 
