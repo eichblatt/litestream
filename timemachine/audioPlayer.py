@@ -460,7 +460,7 @@ class AudioPlayer:
         self.mute_pin(1)
 
     def play(self):
-        # self.unmute_audio() # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
+        # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
 
         if self.PLAY_STATE == play_state_Stopped:
             print("Track read start")
@@ -616,6 +616,8 @@ class AudioPlayer:
             if n is not None:
                 data = data[n:]
 
+        poller.unregister(self.sock)
+        
         # Read the response headers
         response_headers = b""
         while True:
@@ -1196,14 +1198,6 @@ class AudioPlayer:
     @micropython.native
     def i2s_callback(self, t):
         self.I2SAvailable = True
-
-        if (
-            not self.ReadLoopRunning
-            and not self.DecodeLoopRunning
-            and not self.PlayLoopRunning
-            and self.PLAY_STATE != play_state_Stopped
-        ):
-            self.stop()
 
     ###############################################################################################################################################
 
