@@ -33,6 +33,8 @@ except:
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
+SCREEN_WIDTH = 160
+SCREEN_HEIGHT = 128
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -158,16 +160,16 @@ class Bbox:
         return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
 
 
-stage_date_bbox = Bbox(0, 0, 160, 32)
-nshows_bbox = Bbox(150, 32, 160, 48)
-venue_bbox = Bbox(0, 32, 160, 32 + 19)
-artist_bbox = Bbox(0, 51, 160, 51 + 19)
-tracklist_bbox = Bbox(0, 70, 160, 112)
-selected_date_bbox = Bbox(15, 112, 145, 128)
-playpause_bbox = Bbox(145, 113, 160, 128)
-keyed_artist_bbox = Bbox(0, 0, 160, 22)
-title_bbox = Bbox(0, 23, 160, 61)
-selected_artist_bbox = Bbox(0, 110, 145, 128)
+stage_date_bbox = Bbox(0, 0, SCREEN_WIDTH, 32)
+nshows_bbox = Bbox(150, 32, SCREEN_WIDTH, 48)
+venue_bbox = Bbox(0, 32, SCREEN_WIDTH, 32 + 19)
+artist_bbox = Bbox(0, 51, SCREEN_WIDTH, 51 + 19)
+tracklist_bbox = Bbox(0, 70, SCREEN_WIDTH, 112)
+selected_date_bbox = Bbox(15, 112, 145, SCREEN_HEIGHT)
+playpause_bbox = Bbox(145, 113, SCREEN_WIDTH, SCREEN_HEIGHT)
+keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 22)
+title_bbox = Bbox(0, 23, SCREEN_WIDTH, 61)
+selected_artist_bbox = Bbox(0, 110, 145, SCREEN_HEIGHT)
 
 stage_date_color = st7789.color565(255, 255, 0)
 yellow_color = st7789.color565(255, 255, 0)
@@ -191,7 +193,7 @@ def clear_area(x, y, width, height):
 
 
 def clear_screen():
-    clear_area(0, 0, 160, 128)
+    clear_area(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
 
 def clear_area(x, y, width, height):
@@ -224,8 +226,8 @@ def screen_on():
 def conf_screen(rotation=0, buffer_size=0, options=0):
     return st7789.ST7789(
         screen_spi,
-        128,
-        160,
+        SCREEN_HEIGHT,
+        SCREEN_WIDTH,
         reset=Pin(4, Pin.OUT),
         cs=Pin(10, Pin.OUT),
         dc=Pin(6, Pin.OUT),
@@ -319,7 +321,7 @@ def calibrate_screen(force=False):
     tft.on()
     clear_screen()
     tft.offset(0, 0)
-    tft.rect(0, 0, 160, 128, st7789.WHITE)
+    tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, st7789.WHITE)
     # Can you see all 4 sides?
     write("Press SELECT if", 1, 5, font=pfont_small, clear=False)
     write("all 4 sides visible", 1, 25, font=pfont_small, clear=False)
@@ -380,11 +382,22 @@ def poll_for_which_button(button_dict, timeout=None, default=None):
     return default
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True):
+def trim_string_middle(text, x_pos, font):
+    pixel_width = tft.write_len(font, text)
+    while (pixel_width + x_pos) > SCREEN_WIDTH:
+        middle_char = len(text) // 2
+        text = text[: middle_char - 1] + "~" + text[middle_char + 1 :]
+        pixel_width = tft.write_len(font, text)
+    return text
+
+
+def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=False):
     if clear:
         clear_screen()
     text = msg.split("\n")
     for i, line in enumerate(text):
+        if show_end:
+            line = trim_string_middle(line, x, font)
         tft.write(font, line, x, y + (i * text_height), color)
 
 

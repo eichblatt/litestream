@@ -78,8 +78,11 @@ def select_option(message, choices):
     pSelect_old = True
     tm.y._value = tm.y._min_val = 0
     tm.d._value = tm.d._min_val = 0
-    tm.y._max_val = len(choices)
-    tm.d._max_val = len(choices)
+    tm.y._max_val = len(choices) - 1
+    tm.d._max_val = len(choices) - 1
+    tm.y._range_mode = tm.y.RANGE_WRAP
+    tm.d._range_mode = tm.d.RANGE_WRAP
+
     step = step_old = 0
     text_height = 16
     choice = ""
@@ -87,8 +90,7 @@ def select_option(message, choices):
     tm.clear_screen()
     # init_screen()
     select_bbox = tm.Bbox(0, 20, 160, 128)
-    tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
-    choices_display = [f"{x[:10]}~{x[-4:]}" if len(x) > 14 else x for x in choices]
+    tm.write(f"{message}", 0, 0, pfont_small, tracklist_color)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -99,15 +101,16 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.tft.write(pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
+                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
+                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
 
-            text = ">" + choices_display[step]
-            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), purple_color)
+            text = ">" + choices[step]
+            xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
+            tm.write(text, xval, yval, pfont_small, purple_color, clear=False, show_end=True)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                tm.tft.write(
-                    pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color
-                )
+                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
+                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]

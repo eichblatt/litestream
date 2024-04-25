@@ -318,7 +318,7 @@ def add_collection(all_collections, collection_list, colls_fn=None):
     print(f"Matching is {matching}")
     choice = "_CANCEL"
     if n_matching > 0:
-        choice = utils.select_option("Choose coll to add", matching + ["_CANCEL"])
+        choice = utils.select_option("Choose artist to add", matching + ["_CANCEL"])
 
     return choice
 
