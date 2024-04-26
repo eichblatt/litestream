@@ -78,8 +78,11 @@ def select_option(message, choices):
     pSelect_old = True
     tm.y._value = tm.y._min_val = 0
     tm.d._value = tm.d._min_val = 0
-    tm.y._max_val = len(choices)
-    tm.d._max_val = len(choices)
+    tm.y._max_val = len(choices) - 1
+    tm.d._max_val = len(choices) - 1
+    tm.y._range_mode = tm.y.RANGE_WRAP
+    tm.d._range_mode = tm.d.RANGE_WRAP
+
     step = step_old = 0
     text_height = 16
     choice = ""
@@ -87,8 +90,7 @@ def select_option(message, choices):
     tm.clear_screen()
     # init_screen()
     select_bbox = tm.Bbox(0, 20, 160, 128)
-    tm.tft.write(pfont_small, f"{message}", 0, 0, tracklist_color)
-    choices_display = [f"{x[:10]}~{x[-4:]}" if len(x) > 14 else x for x in choices]
+    tm.write(f"{message}", 0, 0, pfont_small, tracklist_color)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -99,19 +101,20 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.tft.write(pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * i, choices_color)
+                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
+                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
 
-            text = ">" + choices_display[step]
-            tm.tft.write(pfont_small, text, select_bbox.x0, select_bbox.y0 + text_height * (i + 1), purple_color)
+            text = ">" + choices[step]
+            xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
+            tm.write(text, xval, yval, pfont_small, purple_color, clear=False, show_end=True)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                tm.tft.write(
-                    pfont_small, choices_display[s], select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2), choices_color
-                )
+                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
+                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
-    # print(f"step is now {step}. Choice: {choice}")
+    print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
     return choice
 
@@ -175,7 +178,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected[-10:], selected_bbox.x0, selected_bbox.y0, purple_color)
+                tm.tft.write(pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -434,11 +437,15 @@ def get_wifi_cred(wifi):
     choices = [x[0].decode().replace('"', "") for x in choices]
     choices = [x for x in choices if x != ""]
     choices = sorted(set(choices), key=choices.index)
-    choices = choices + ["Hidden WiFi"]
+    choices = choices + ["Hidden WiFi", "Rescan WiFi"]
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
         choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+    elif choice == "Rescan WiFi":
+        print("Chose to rescan wifi")
+        return get_wifi_cred(wifi)
+
     if path_exists(WIFI_CRED_HIST_PATH):
         wch = read_json(WIFI_CRED_HIST_PATH)
         if choice in wch.keys():
@@ -579,7 +586,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
+        tm.write("Not Connected", y=81, color=st7789.RED, clear=False, font=pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)

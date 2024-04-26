@@ -1,18 +1,6 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #pragma once
-//#pragma GCC optimize "O3"
-//#pragma pack(1)
-//#pragma GCC optimize "std=gnu++11"
-//#pragma GCC target "longcalls"
-//#pragma GCC optimize "function-sections"
-//#pragma GCC optimize "data-sections"
-////#pragma GCC optimize "reorder-blocks"
-////#pragma GCC optimize "no-jump-tables"
-////#pragma GCC optimize "no-tree-switch-conversion"
-//#pragma GCC optimize "no-rtti"
+//#pragma GCC optimize ("O3")
 //#pragma GCC diagnostic ignored "-Wnarrowing"
 
 /********************************************************************
@@ -35,9 +23,12 @@ extern "C" {
  *  Updated on: 06.01.2023
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 #include "Arduino.h"
-#include "Decoder.h"
 
 #define VI_FLOORB       2
 #define VIF_POSIT      63
@@ -66,7 +57,7 @@ extern "C" {
 #define cPI2_8 (0x5a82799a)
 #define cPI1_8 (0x7641af3d)
 
-enum           {VORBIS_CONTINUE = 110,   //M.A. took out int8_t
+enum : int8_t  {VORBIS_CONTINUE = 110,
                 VORBIS_PARSE_OGG_DONE = 100,
                 ERR_VORBIS_NONE = 0,
                 ERR_VORBIS_CHANNELS_OUT_OF_RANGE = -1,
@@ -301,7 +292,7 @@ void     mdct_unroll_lap(int n0, int n1, int lW, int W, int32_t *in, int32_t *ri
                      int end /* samples, this frame */);
 
 // some helper functions
-int      VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen); //, bool exact = false); M.A.
+int      VORBIS_specialIndexOf(uint8_t* base, const char* str, int baselen, bool exact = false);
 void     bitReader_clear();
 void     bitReader_setData(uint8_t *buff, uint16_t buffSize);
 int32_t  bitReader(uint16_t bits);

@@ -6,8 +6,6 @@
  *  Updated on: 29.03.2023
  */
 #include "mp3_decoder.h"
-
-
 /* clip to range [-2^n, 2^n - 1] */
 #if 0 //Fast on ARM:
 #define CLIP_2N(y, n) { \
@@ -37,6 +35,7 @@ const uint8_t  m_IMDCT_SCALE            =2;   // additional scaling (by sqrt(2))
 const uint8_t  m_NGRANS_MPEG1           =2;
 const uint8_t  m_NGRANS_MPEG2           =1;
 const uint32_t m_SQRTHALF               =0x5a82799a;  // sqrt(0.5) in Q31 format
+
 
 MP3FrameInfo_t *m_MP3FrameInfo;
 SFBandTable_t m_SFBandTable;

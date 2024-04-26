@@ -5,7 +5,7 @@
 
 const mp_obj_type_t Vorbis_Decoder_type;
 
-STATIC void Decoder_Vorbis_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void Decoder_Vorbis_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     (void)kind;
     //Vorbis_Decoder_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_print_str(print, "Vorbis Decoder v");
@@ -14,7 +14,7 @@ STATIC void Decoder_Vorbis_print(const mp_print_t *print, mp_obj_t self_in, mp_p
     mp_obj_print_helper(print, mp_obj_new_int(MinorVersion), PRINT_REPR);
 }
 
-STATIC mp_obj_t Decoder_Vorbis_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t Decoder_Vorbis_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 0, true);
     Vorbis_Decoder_obj_t *self = m_new_obj(Vorbis_Decoder_obj_t);
     self->base.type = &Vorbis_Decoder_type;
@@ -34,7 +34,7 @@ STATIC mp_obj_t Decoder_sum(size_t n_args, const mp_obj_t *args) {
 //MP_DEFINE_CONST_FUN_OBJ_1(Decoder_sum_obj, Decoder_sum);
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_sum_obj, 4, 4, Decoder_sum);*/
 
-STATIC mp_obj_t Decoder_Vorbis_Init(mp_obj_t self_in)
+static mp_obj_t Decoder_Vorbis_Init(mp_obj_t self_in)
 {
     int Result;
     Result = VORBISDecoder_AllocateBuffers();
@@ -45,10 +45,10 @@ STATIC mp_obj_t Decoder_Vorbis_Init(mp_obj_t self_in)
     return mp_obj_new_int(Result);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_Init_obj, Decoder_Vorbis_Init);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_Init_obj, Decoder_Vorbis_Init);
 
 
-STATIC mp_obj_t Decoder_Vorbis_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj_t BytesInBuffer)
+static mp_obj_t Decoder_Vorbis_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj_t BytesInBuffer)
 {
     mp_buffer_info_t InBufferInfo;
     mp_get_buffer_raise(InBuffer, &InBufferInfo, MP_BUFFER_READ);
@@ -63,10 +63,10 @@ STATIC mp_obj_t Decoder_Vorbis_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj
     return mp_obj_new_int(Result);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(Decoder_Vorbis_Start_obj, Decoder_Vorbis_Start);
+static MP_DEFINE_CONST_FUN_OBJ_3(Decoder_Vorbis_Start_obj, Decoder_Vorbis_Start);
 
 
-STATIC mp_obj_t Decoder_Vorbis_GetInfo(mp_obj_t self_in)
+static mp_obj_t Decoder_Vorbis_GetInfo(mp_obj_t self_in)
 {
     // Create a tuple object to return the values - Channels, Sample Rate, Bits per Sample, BitRate
     mp_obj_t tuple[4];
@@ -78,13 +78,13 @@ STATIC mp_obj_t Decoder_Vorbis_GetInfo(mp_obj_t self_in)
     return mp_obj_new_tuple(4, tuple);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_GetInfo_obj, Decoder_Vorbis_GetInfo);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_GetInfo_obj, Decoder_Vorbis_GetInfo);
 
 
 // The main function that we call repeatedly to decode the incoming stream into audio samples, which are stored in OutBuffer
 // arg[0] = self_in, arg[1] = InBuffer, arg[2] = BytesLeft, arg[3] = OutBuffer
-STATIC mp_obj_t Decoder_Vorbis_Decode(size_t n_args, const mp_obj_t *args)
-{
+static mp_obj_t Decoder_Vorbis_Decode(size_t n_args, const mp_obj_t *args)
+{   
     //gc_lock();
     mp_buffer_info_t InBufferInfo;
     mp_get_buffer_raise(args[1], &InBufferInfo, MP_BUFFER_READ);
@@ -109,22 +109,22 @@ STATIC mp_obj_t Decoder_Vorbis_Decode(size_t n_args, const mp_obj_t *args)
     return mp_obj_new_tuple(3, tuple);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_Vorbis_Decode_obj, 4, 4, Decoder_Vorbis_Decode);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_Vorbis_Decode_obj, 4, 4, Decoder_Vorbis_Decode);
 
 
-STATIC mp_obj_t Decoder_Vorbis_Close(mp_obj_t self_in)
+static mp_obj_t Decoder_Vorbis_Close(mp_obj_t self_in)
 {
     VORBISDecoder_FreeBuffers();
 
     return mp_const_none;
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_Close_obj, Decoder_Vorbis_Close);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_Vorbis_Close_obj, Decoder_Vorbis_Close);
 
 
 // Table entries are key/value pairs of the attribute name (a string) and the MicroPython object reference.
 // All identifiers and strings are written as MP_QSTR_xxx and will be optimized to word-sized integers by the build system (interned strings).
-STATIC const mp_rom_map_elem_t Vorbis_Decoder_locals_dict_table[] = {
+static const mp_rom_map_elem_t Vorbis_Decoder_locals_dict_table[] = {
     //{ MP_ROM_QSTR(MP_QSTR_mysum), MP_ROM_PTR(&Decoder_sum_obj) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Init), MP_ROM_PTR(&Decoder_Vorbis_Init_obj) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Start), MP_ROM_PTR(&Decoder_Vorbis_Start_obj) },
@@ -132,7 +132,7 @@ STATIC const mp_rom_map_elem_t Vorbis_Decoder_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Decode), MP_ROM_PTR(&Decoder_Vorbis_Decode_obj) },
     { MP_ROM_QSTR(MP_QSTR_Vorbis_Close), MP_ROM_PTR(&Decoder_Vorbis_Close_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(Vorbis_Decoder_locals_dict, Vorbis_Decoder_locals_dict_table);
+static MP_DEFINE_CONST_DICT(Vorbis_Decoder_locals_dict, Vorbis_Decoder_locals_dict_table);
 
 
 #ifdef MP_OBJ_TYPE_GET_SLOT
@@ -158,7 +158,7 @@ const mp_obj_type_t Vorbis_Decoder_type = {
 
 const mp_obj_type_t MP3_Decoder_type;
 
-STATIC void Decoder_MP3_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+static void Decoder_MP3_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     (void)kind;
     //MP3_Decoder_obj_t *self = MP_OBJ_TO_PTR(self_in);
     mp_print_str(print, "MP3 Decoder v");
@@ -168,7 +168,7 @@ STATIC void Decoder_MP3_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 }
 
 
-STATIC mp_obj_t Decoder_MP3_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t Decoder_MP3_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 0, true);
     MP3_Decoder_obj_t *self = m_new_obj(MP3_Decoder_obj_t);
     self->base.type = &MP3_Decoder_type;
@@ -176,7 +176,7 @@ STATIC mp_obj_t Decoder_MP3_make_new(const mp_obj_type_t *type, size_t n_args, s
 }
 
 
-STATIC mp_obj_t Decoder_MP3_Init(mp_obj_t self_in)
+static mp_obj_t Decoder_MP3_Init(mp_obj_t self_in)
 {
     int Result;
     Result = MP3Decoder_AllocateBuffers();
@@ -187,10 +187,10 @@ STATIC mp_obj_t Decoder_MP3_Init(mp_obj_t self_in)
     return mp_obj_new_int(Result);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_Init_obj, Decoder_MP3_Init);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_Init_obj, Decoder_MP3_Init);
 
 
-STATIC mp_obj_t Decoder_MP3_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj_t BytesInBuffer)
+static mp_obj_t Decoder_MP3_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj_t BytesInBuffer)
 {
     mp_buffer_info_t InBufferInfo;
     mp_get_buffer_raise(InBuffer, &InBufferInfo, MP_BUFFER_READ);
@@ -205,10 +205,10 @@ STATIC mp_obj_t Decoder_MP3_Start(mp_obj_t self_in, mp_obj_t InBuffer, mp_obj_t 
     return mp_obj_new_int(Result);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(Decoder_MP3_Start_obj, Decoder_MP3_Start);
+static MP_DEFINE_CONST_FUN_OBJ_3(Decoder_MP3_Start_obj, Decoder_MP3_Start);
 
 
-STATIC mp_obj_t Decoder_MP3_GetInfo(mp_obj_t self_in)
+static mp_obj_t Decoder_MP3_GetInfo(mp_obj_t self_in)
 {
     // Create a tuple object to return the values - Channels, Sample Rate, Bits per Sample, BitRate
     mp_obj_t tuple[4];
@@ -220,11 +220,11 @@ STATIC mp_obj_t Decoder_MP3_GetInfo(mp_obj_t self_in)
     return mp_obj_new_tuple(4, tuple);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_GetInfo_obj, Decoder_MP3_GetInfo);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_GetInfo_obj, Decoder_MP3_GetInfo);
 
 // The main function that we call repeatedly to decode the incoming stream into audio samples, which are stored in OutBuffer
 // arg[0] = self_in, arg[1] = InBuffer, arg[2] = BytesLeft, arg[3] = OutBuffer
-STATIC mp_obj_t Decoder_MP3_Decode(size_t n_args, const mp_obj_t *args)
+static mp_obj_t Decoder_MP3_Decode(size_t n_args, const mp_obj_t *args)
 {
     mp_buffer_info_t InBufferInfo;
     mp_get_buffer_raise(args[1], &InBufferInfo, MP_BUFFER_READ);
@@ -252,27 +252,27 @@ STATIC mp_obj_t Decoder_MP3_Decode(size_t n_args, const mp_obj_t *args)
     return mp_obj_new_tuple(3, tuple);
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_MP3_Decode_obj, 4, 4, Decoder_MP3_Decode);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(Decoder_MP3_Decode_obj, 4, 4, Decoder_MP3_Decode);
 
-STATIC mp_obj_t Decoder_MP3_Close(mp_obj_t self_in)
+static mp_obj_t Decoder_MP3_Close(mp_obj_t self_in)
 {
     MP3Decoder_FreeBuffers();
 
     return mp_const_none;
 }
 // Define a Python reference to the function above.
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_Close_obj, Decoder_MP3_Close);
+static MP_DEFINE_CONST_FUN_OBJ_1(Decoder_MP3_Close_obj, Decoder_MP3_Close);
 
 // Table entries are key/value pairs of the attribute name (a string) and the MicroPython object reference.
 // All identifiers and strings are written as MP_QSTR_xxx and will be optimized to word-sized integers by the build system (interned strings).
-STATIC const mp_rom_map_elem_t MP3_Decoder_locals_dict_table[] = {
+static const mp_rom_map_elem_t MP3_Decoder_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_MP3_Init), MP_ROM_PTR(&Decoder_MP3_Init_obj) },
     { MP_ROM_QSTR(MP_QSTR_MP3_Start), MP_ROM_PTR(&Decoder_MP3_Start_obj) },
     { MP_ROM_QSTR(MP_QSTR_MP3_GetInfo), MP_ROM_PTR(&Decoder_MP3_GetInfo_obj) },
     { MP_ROM_QSTR(MP_QSTR_MP3_Decode), MP_ROM_PTR(&Decoder_MP3_Decode_obj) },
     { MP_ROM_QSTR(MP_QSTR_MP3_Close), MP_ROM_PTR(&Decoder_MP3_Close_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(MP3_Decoder_locals_dict, MP3_Decoder_locals_dict_table);
+static MP_DEFINE_CONST_DICT(MP3_Decoder_locals_dict, MP3_Decoder_locals_dict_table);
 
 #ifdef MP_OBJ_TYPE_GET_SLOT
 MP_DEFINE_CONST_OBJ_TYPE(
@@ -295,13 +295,13 @@ const mp_obj_type_t MP3_Decoder_type = {
 
 ////////////////////////// Module functions //////////////////////////
 
-STATIC const mp_map_elem_t AudioDecoder_globals_table[] = {
+static const mp_map_elem_t AudioDecoder_globals_table[] = {
     {MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_AudioDecoder)},
     {MP_OBJ_NEW_QSTR(MP_QSTR_VorbisDecoder), (mp_obj_t)&Vorbis_Decoder_type},	
     {MP_OBJ_NEW_QSTR(MP_QSTR_MP3Decoder), (mp_obj_t)&MP3_Decoder_type},	
 };
 
-STATIC MP_DEFINE_CONST_DICT (
+static MP_DEFINE_CONST_DICT (
     mp_module_AudioDecoder_globals,
     AudioDecoder_globals_table
 );

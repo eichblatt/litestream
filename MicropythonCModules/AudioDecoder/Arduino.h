@@ -1,5 +1,9 @@
 #pragma once
 
+#include <esp_heap_caps.h>
+#include <string.h>
+#include "py/runtime.h"
+
 // Dummy file so that the decoder compiles
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -19,6 +23,18 @@ typedef long long int64_t;
 #define pgm_read_word *
 #define pgm_read_byte *
 
-#include <esp_heap_caps.h>
-#include <string.h>
-#include "py/runtime.h"
+#define _min(a,b) ((a)<(b)?(a):(b))
+#define min _min
+
+// We need to redefine strndup as the C stdlib version uses malloc, and when we free (which is redefined to m_tracked_free) we get a guru error. So need it to use m_tracked_calloc instead
+#define _strndup(src, n) ({ \
+    size_t len = strnlen(src, n); \
+    char *dest = (char *)__malloc_heap_psram(len + 1); \
+    if (dest) { \
+        strncpy(dest, src, len); \
+        dest[len] = '\0'; \
+    } \
+    dest; \
+})
+
+#define strndup _strndup
