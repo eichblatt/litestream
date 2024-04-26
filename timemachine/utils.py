@@ -114,7 +114,7 @@ def select_option(message, choices):
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
-    # print(f"step is now {step}. Choice: {choice}")
+    print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
     return choice
 
@@ -437,11 +437,15 @@ def get_wifi_cred(wifi):
     choices = [x[0].decode().replace('"', "") for x in choices]
     choices = [x for x in choices if x != ""]
     choices = sorted(set(choices), key=choices.index)
-    choices = choices + ["Hidden WiFi"]
+    choices = choices + ["Hidden WiFi", "Rescan WiFi"]
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
         choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+    elif choice == "Rescan WiFi":
+        print("Chose to rescan wifi")
+        return get_wifi_cred(wifi)
+
     if path_exists(WIFI_CRED_HIST_PATH):
         wch = read_json(WIFI_CRED_HIST_PATH)
         if choice in wch.keys():
