@@ -586,7 +586,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=80, color=st7789.RED, clear=False, font=pfont_small)
+        tm.write("Not Connected", y=81, color=st7789.RED, clear=False, font=pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)
