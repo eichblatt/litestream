@@ -661,7 +661,7 @@ class AudioPlayer:
 
                 # Establish a new socket connection to the server
                 conn = socket.socket()
-                self.DEBUG and print(f"Redirecting to {path} from {host}, Port:{port}, Offset {offset}")
+                print(f"Redirecting to {path} from {host}, Port:{port}, Offset {offset}")
                 addr = socket.getaddrinfo(host, port)[0][-1]
 
                 # Tell the socket to return straight away (async)
@@ -702,7 +702,9 @@ class AudioPlayer:
 
                     if n is not None:
                         data = data[n:]
-
+                
+                poller.unregister(self.sock)
+                
                 # Read the response headers
                 response_headers = b""
                 while True:
@@ -1006,8 +1008,10 @@ class AudioPlayer:
                 # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
                 elif Result == -7:
                     print("Not an audio track")
-                    self.ffwd()
-                    self.play()
+                    # Read the rest of the bytes for this track
+                    self.InBuffer.bytes_wasRead(self.TrackInfo[0][0] - self.current_track_bytes_decoded_in)
+                    # Make the number of decoded bytes equal to the track length
+                    self.current_track_bytes_decoded_in = self.TrackInfo[0][0]
                     pass
 
                 else:
