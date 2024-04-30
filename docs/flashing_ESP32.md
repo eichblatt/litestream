@@ -21,7 +21,7 @@
 : ~ ; cd
 : ~ ; mkdir esp
 : ~ ; cd esp
-: ~/esp ; git clone -b v5.2.1 --recursive https://github.com/espressif/esp-idf.git # This takes several minutes
+: ~/esp ; git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git # This takes several minutes
 : ~/esp ; cd esp-idf/
 : ~/esp/esp-idf ; ./install.sh esp32,esp32s3
 ```
@@ -49,17 +49,17 @@ first source the file  $HOME/esp/esp-idf/export.sh
 : ~ ; source $HOME/esp/esp-idf/export.sh 
 
 : ~ ; cd $HOME/projects/litestream
-: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/activate
-: idf5.2_py3.10_env ~/projects/litestream ; pip3 install pyserial   # No longer required?
-: idf5.2_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
-: idf5.2_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
+: idf5.0_py3.10_env ~/projects/litestream ; pip3 install pyserial   # No longer required?
+: idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
+: idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyACM0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 ```
 
 **NOTE**:
 For the Serial Board version, I need to replace `/dev/ttyACM0` with `/dev/ttyUSB0`. The command becomes:
 
 ```{}
-: idf5.2_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
+: idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p /dev/ttyUSB0 -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 ./bootloader.bin 0x8000 ./partition-table.bin 0x10000 ./micropython.bin
 ```
 
 ## Installing the Software
@@ -129,9 +129,9 @@ Disconnect the device from Jama, which will interfere with this process.
 : ~ ; export DEVICE=/dev/ttyACM0 # Note: Old board was /dev/ttyUSB0
 : ~ ; source $HOME/esp/esp-idf/export.sh 
 : ~ ; cd $HOME/projects/litestream
-: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/activate
-: /home/steve/.espressif/python_env/idf5.2_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
-: /home/steve/.espressif/python_env/idf5.2_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p $DEVICE -b 460800 --before default_reset --after no_reset --chip esp32s3  read_flash 0x4f0000 0xb10000 fsbackup.bin
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/python /home/steve/esp/esp-idf/components/esptool_py/esptool/esptool.py -p $DEVICE -b 460800 --before default_reset --after no_reset --chip esp32s3  read_flash 0x4f0000 0xb10000 fsbackup.bin
 ```
 
 Note, this takes a few minutes.
@@ -159,9 +159,9 @@ If this is the first time, then follow instructions on how to [Download the firm
 : ~ ; export DEVICE=/dev/ttyUSB0 # Note: New serial board is /dev/ttyACM0
 : ~ ; source $HOME/esp/esp-idf/export.sh 
 : ~ ; cd $HOME/projects/litestream
-: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.2_py3.10_env/bin/activate
-: /home/steve/.espressif/python_env/idf5.2_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
-: /home/steve/.espressif/python_env/idf5.2_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo $HOME/.espressif/python_env/idf5.2_py3.10_env/bin/python $HOME/esp/esp-idf/components/esptool_py/esptool/esptool.py -p $DEVICE -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin 0x4f0000 fsbackup.bin
+: ~/projects/litestream ; source /home/steve/.espressif/python_env/idf5.0_py3.10_env/bin/activate
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream ; cd MicropythonFirmware/latest
+: /home/steve/.espressif/python_env/idf5.0_py3.10_env ~/projects/litestream/MicropythonFirmware/latest ; sudo $HOME/.espressif/python_env/idf5.0_py3.10_env/bin/python $HOME/esp/esp-idf/components/esptool_py/esptool/esptool.py -p $DEVICE -b 460800 --before default_reset --after no_reset --chip esp32s3  write_flash --flash_mode dio --flash_size detect --flash_freq 80m 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 micropython.bin 0x4f0000 fsbackup.bin
 ```
 
 ### Rolling Back to a Previous Version of the Firmware
