@@ -1,5 +1,6 @@
 import usocket
 
+
 # open url and return socket
 def open_url(url):
     try:
@@ -10,7 +11,10 @@ def open_url(url):
     if proto == "http:":
         port = 80
     elif proto == "https:":
-        import ussl
+        try:
+            import ussl
+        except ImportError:
+            import ssl as ussl
         port = 443
     else:
         raise ValueError("Unsupported protocol: " + proto)
@@ -18,17 +22,17 @@ def open_url(url):
     if ":" in host:
         host, port = host.split(":", 1)
         port = int(port)
-        
+
     ai = usocket.getaddrinfo(host, port, 0, usocket.SOCK_STREAM)
     ai = ai[0]
-    
+
     # s = usocket.socket(ai[0], ai[1], ai[2])
     s = usocket.socket(ai[0], 1, ai[2])
     try:
         s.connect(ai[-1])
         if proto == "https:":
             s = ussl.wrap_socket(s, server_hostname=host)
-        s.write(b"%s /%s HTTP/1.0\r\n" % ('GET', path))
+        s.write(b"%s /%s HTTP/1.0\r\n" % ("GET", path))
         s.write(b"Host: %s\r\n\r\n" % host)
 
         l = s.readline()
@@ -58,7 +62,7 @@ def open_url(url):
 
 
 def example():
-    url = 'https://raw.githubusercontent.com/micropython/micropython-lib/master/LICENSE'
+    url = "https://raw.githubusercontent.com/micropython/micropython-lib/master/LICENSE"
     sock = open_url(url)
 
     try:
@@ -71,4 +75,4 @@ def example():
             print(buffer.decode(), end="")
     finally:
         print("closing socket")
-        sock.close()    
+        sock.close()
