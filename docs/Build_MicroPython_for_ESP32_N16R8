@@ -3,7 +3,7 @@ Install ESP-IDF
 cd $HOME
 mkdir ~/esp
 cd ~/esp
-git clone -b v5.1.2 --recursive https://github.com/espressif/esp-idf.git
+git clone -b v5.2 --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf
 ./install.sh esp32,esp32s3 (if you get weird errors try rm -rf ~/esp & rm -rf ~/.espressif & PATH=$(getconf PATH) and start again)
 
@@ -52,20 +52,6 @@ cp ~/micropython-rotary/rotary.py ~/micropython/ports/esp32/modules
 cp ~/micropython-rotary/rotary_irq_esp.py ~/micropython/ports/esp32/modules
 
 
-Fix the I2S Bug
-===============
-nano ~/micropython/ports/esp32/machine_i2s.c
-Where machine_i2s_init_helper populates the i2s_config struct (line 474) add the following at the end:
-#if SOC_I2S_SUPPORTS_TDM
-    i2s_config.chan_mask = 0x03;
-    i2s_config.total_chan = 0;
-    i2s_config.left_align = true;
-    i2s_config.big_edin = false;
-    i2s_config.bit_order_msb = false;
-    i2s_config.skip_msk = false;
-#endif
-
-
 Fix the knob-twiddling bug
 ==========================
 nano ~/micropython/ports/esp32/mpconfigport.h
@@ -75,7 +61,7 @@ Add the following:
 nano ~/micropython/ports/esp32/machine_i2s.c
 Add an "mp_sched_node_t I2S_node;" member to machine_i2s_obj_t
 Add a new function:
-STATIC void call_I2S_callback(mp_sched_node_t *node) {
+static void call_I2S_callback(mp_sched_node_t *node) {
     machine_i2s_obj_t *self = (machine_i2s_obj_t*)((uintptr_t)node - offsetof(machine_i2s_obj_t, I2S_node));
     mp_call_function_1(self->callback_for_non_blocking, MP_OBJ_FROM_PTR(self));
 }
@@ -121,26 +107,30 @@ Add the following lines:
 #
 # TCP
 #
-CONFIG_LWIP_MAX_ACTIVE_TCP=512
-CONFIG_LWIP_MAX_LISTENING_TCP=512
-# CONFIG_LWIP_TCP_HIGH_SPEED_RETRANSMISSION is not set
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_LWIP_TCP_NODELAY=y
+CONFIG_LWIP_MAX_ACTIVE_TCP=16
+CONFIG_LWIP_MAX_LISTENING_TCP=16
+CONFIG_LWIP_TCP_HIGH_SPEED_RETRANSMISSION=y
 CONFIG_LWIP_TCP_MAXRTX=12
 CONFIG_LWIP_TCP_SYNMAXRTX=12
 CONFIG_LWIP_TCP_MSS=1460
 CONFIG_LWIP_TCP_TMR_INTERVAL=200
 CONFIG_LWIP_TCP_MSL=60000
 CONFIG_LWIP_TCP_FIN_WAIT_TIMEOUT=20000
-CONFIG_LWIP_TCP_SND_BUF_DEFAULT=8192
-CONFIG_LWIP_TCP_WND_DEFAULT=32768
-CONFIG_LWIP_TCP_RECVMBOX_SIZE=32
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=5840
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=96
 CONFIG_LWIP_TCP_QUEUE_OOSEQ=y
-# CONFIG_LWIP_TCP_SACK_OUT is not set
-# CONFIG_LWIP_TCP_KEEP_CONNECTION_WHEN_IP_CHANGES is not set
-# CONFIG_LWIP_TCP_OVERSIZE_MSS is not set
-# CONFIG_LWIP_TCP_OVERSIZE_QUARTER_MSS is not set
-# CONFIG_LWIP_TCP_OVERSIZE_DISABLE is not set
+CONFIG_LWIP_TCP_SACK_OUT=y
+CONFIG_LWIP_TCP_WND_DEFAULT=32768
+CONFIG_LWIP_WND_SCALE=1
+CONFIG_LWIP_TCP_RCV_SCALE=2
+CONFIG_LWIP_IPV6=n
 CONFIG_LWIP_TCP_RTO_TIME=1500
-# end of TCP
+
+# WiFi
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=128
 
 
 Start a terminal session to compile Micropython

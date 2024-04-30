@@ -289,7 +289,7 @@ def main_loop(player, coll_dict, state):
                 if tm.power():
                     tm.screen_on()
                     if player.stop():
-                        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+                        tm.clear_bbox(tm.playpause_bbox)
                 print("Stop UP")
 
         buffer_fill = audio_pump(player, fill_level=0.3)
@@ -544,10 +544,8 @@ def update_venue(vcs, nshows=1, collection=None):
 def update_display(player):
     # display_tracks(*player.track_names())
     tm.clear_bbox(tm.playpause_bbox)
-    if not player.is_started():
+    if player.is_stopped():
         pass
-    elif player.is_stopped():
-        tm.tft.fill_polygon(tm.StopPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.is_playing():
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.is_paused():
