@@ -465,11 +465,12 @@ def display_tracks(current_track_name, next_track_name):
         state = utils.load_state("datpiff")
         rm_txt = state["selected_tape"]["artist"].lower()  # Don't show artist name in track
         current_track_name, next_track_name = [x.lower().replace(rm_txt, "") for x in (current_track_name, next_track_name)]
+        current_track_name, next_track_name = [utils.capitalize(x.strip("- .~")) for x in (current_track_name, next_track_name)]
     except:
         pass
     tm.clear_bbox(new_tracklist_bbox)
-    tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color)
-    tm.write(f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], pfont_small, tracklist_color)
+    tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color, clear=0)
+    tm.write(f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], pfont_small, tracklist_color, clear=0)
     return
 
 

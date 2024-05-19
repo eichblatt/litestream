@@ -727,6 +727,12 @@ def load_state(app="livemusic"):
         raise NotImplementedError("Unknown app {app}")
 
 
+def capitalize(string):
+    words = string.split(" ")
+    Words = [w[0].upper() + w[1:] for w in words]
+    return " ".join(Words)
+
+
 def clear_log(outpath="/log_out.py"):
     remove_file(outpath)
 
