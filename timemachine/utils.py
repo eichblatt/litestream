@@ -84,12 +84,13 @@ def select_option(message, choices):
     tm.d._range_mode = tm.d.RANGE_WRAP
 
     step = step_old = 0
-    text_height = 16
+    text_height = 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
-    select_bbox = tm.Bbox(0, 20, 160, 128)
+    message_height = len(message.split("\n"))
+    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, 160, 128)
     tm.write(f"{message}", 0, 0, pfont_small, tracklist_color)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
