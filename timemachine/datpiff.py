@@ -207,8 +207,8 @@ def select_tape(tape, player, state):
     player.set_playlist(tracklist, urls)
     state["selected_tape"] = tape
     utils.save_state(state, "datpiff")
-    print(f"Displaying artist is {artists[0][:17]}")
-    display_selected_artist(artists[0][:17])
+    print(f"Displaying artist is {artists[0]}")
+    display_selected_artist(artists[0])
     return state
 
 
@@ -461,19 +461,22 @@ def update_display(player):
 
 
 def display_tracks(current_track_name, next_track_name):
+    try:
+        state = utils.load_state("datpiff")
+        rm_txt = state["selected_tape"]["artist"].lower()  # Don't show artist name in track
+        current_track_name, next_track_name = [x.lower().replace(rm_txt, "") for x in (current_track_name, next_track_name)]
+    except:
+        pass
     tm.clear_bbox(new_tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], tracklist_color)
+    tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color)
+    tm.write(f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], pfont_small, tracklist_color)
     return
 
 
 def display_keyed_title(keyed_title, color=purple_color):
     # print(f"in display_keyed_title {keyed_title}")
-    chars = 16
     tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title[:chars], tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False)
-    if len(keyed_title) > chars:
-        tm.write(keyed_title[chars:], tm.title_bbox.x0, tm.title_bbox.y0 + 20, color=color, font=pfont_small, clear=False)
+    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=2)
 
 
 def display_keyed_artist(artist, color=purple_color):
@@ -482,19 +485,13 @@ def display_keyed_artist(artist, color=purple_color):
     artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
         artist = (9 - len(artist) // 2) * " " + artist
-    elif len(artist) > 20:
-        artist = artist[:16] + "~" + artist[-4:]
-    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False)
+    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False, show_end=1)
 
 
 def display_selected_artist(artist):
     # print(f"in display_selected_artist {artist}")
     tm.clear_bbox(tm.selected_artist_bbox)
-    if len(artist) < 15:
-        artist = (7 - len(artist) // 2) * " " + artist
-    elif len(artist) > 16:
-        artist = artist[:12] + "~" + artist[-4:]
-    tm.write(artist, tm.selected_artist_bbox.x0, tm.selected_artist_bbox.y0, font=pfont_small, clear=False)
+    tm.write(artist, tm.selected_artist_bbox.x0, tm.selected_artist_bbox.y0, font=pfont_small, clear=False, show_end=1)
 
 
 def show_artists(artist_list):
