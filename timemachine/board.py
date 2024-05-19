@@ -396,9 +396,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines):
     new_lines = 0
     lines = text.split("\n")
     for line in lines:
-        print(f"line is {line}")
         while new_lines < max_new_lines:
-            print(f"new_lines {new_lines}")
             test = line
             pixel_width = tft.write_len(font, test)
             while (pixel_width + x_pos) > SCREEN_WIDTH:
@@ -411,7 +409,6 @@ def add_line_breaks(text, x_pos, font, max_new_lines):
             else:
                 break
         out_lines = "\n".join(out_lines)
-        print(f"out_lines is {out_lines}")
         return out_lines
 
 

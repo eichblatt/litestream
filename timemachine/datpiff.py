@@ -466,7 +466,8 @@ def display_tracks(current_track_name, next_track_name):
         rm_txt = state["selected_tape"]["artist"].lower()  # Don't show artist name in track
         current_track_name, next_track_name = [x.lower().replace(rm_txt, "") for x in (current_track_name, next_track_name)]
         current_track_name, next_track_name = [utils.capitalize(x.strip("- .~")) for x in (current_track_name, next_track_name)]
-    except:
+    except Exception as e:
+        print(f"Failed to cleanup track titles {e}")
         pass
     tm.clear_bbox(new_tracklist_bbox)
     tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color, clear=0)
