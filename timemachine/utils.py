@@ -717,12 +717,31 @@ def load_datpiff_state(state_path):
     return state
 
 
+def load_78rpm_state(state_path):
+    state = {}
+    if path_exists(state_path):
+        state = read_json(state_path)
+        date_range = state.get("date_range", [1898, 1965])
+        state = {
+            "date_range": date_range,
+        }
+    else:
+        date_range = [1898, 1965]
+        state = {
+            "date_range": date_range,
+        }
+        write_json(state, state_path)
+    return state
+
+
 def load_state(app="livemusic"):
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
     if app == "livemusic":
         return load_livemusic_state(state_path)
     elif app == "datpiff":
         return load_datpiff_state(state_path)
+    elif app == "78rpm":
+        return load_78rpm_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
 
