@@ -36,6 +36,7 @@ import fonts.NotoSans_32 as pfont_large
 import board as tm
 import utils
 
+import archive_utils
 import audioPlayer
 
 # API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
@@ -66,14 +67,10 @@ def set_knob_times():
     return
 
 
-def set_date_range(date):
+def set_date_range(date_range):
     global DATE_SET_TIME
-    start_year = int(date[:4])
-    if len(date) <= 5:
-        end_year = start_year
-    else:
-        end_year = start_year + (int(date[-2:]) - start_year % 100) % 100
-
+    start_year = date_range[0]
+    end_year = date_range[1]
     tm.y._value = end_year
     tm.m._value = start_year
     tm.d._value = (start_year + end_year) // 2
@@ -83,7 +80,9 @@ def set_date_range(date):
 
 
 def select_date_range(date_range, player):
-    print(f"selecting show from {date_range}.")
+    print(f"selecting tapes from {date_range}.")
+
+    url = url.replace(" ", "%20").replace(":", "%3A").replace("[", "%5B").replace("]", "%5D")
     tape_ids = [
         "78_from-soup-to-nuts_andre-musette-orchestra-n-roubanis_gbia0111465a",
         "78_1-shine-my-star-2-forest-tales_boris-belostozky-t-zarkevich-russian-group-t-z_gbia8000372d",
@@ -152,7 +151,7 @@ def main_loop(player, state):
     resume_playing_delay = 500
     month_change_time = 1e12
     nprints_old = 0
-    date_range = set_date_range("1910-20")
+    date_range = set_date_range([1910, 1920])
     print(f"date range set to {date_range}")
     end_year_old = tm.y.value()
     start_year_old = tm.m.value()
@@ -161,6 +160,7 @@ def main_loop(player, state):
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
+    tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
     poll_count = 0
     while True:
         player.audio_pump()
@@ -333,10 +333,10 @@ def main_loop(player, state):
                     tm.y._value = end_year_new
                     tm.m._value = start_year_new
                 tm.d._value = mid_year_new
-                print(f"offset {offset}. day new {mid_year_new}")
+                # print(f"offset {offset}. day new {mid_year_new}")
 
             if end_year_old != end_year_new:
-                print(f"year new {end_year_new}")
+                # print(f"year new {end_year_new}")
                 if end_year_new < start_year_old:
                     end_year_new = start_year_old
                     tm.y._value = end_year_new
@@ -344,7 +344,7 @@ def main_loop(player, state):
                 tm.d._value = (start_year_new + end_year_new) // 2
 
             if start_year_old != start_year_new:
-                print(f"month new {start_year_new}")
+                # print(f"month new {start_year_new}")
                 if start_year_new > end_year_old:
                     start_year_new = end_year_old
                     tm.m._value = start_year_new
