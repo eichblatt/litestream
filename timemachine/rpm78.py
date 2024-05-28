@@ -55,7 +55,6 @@ tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
 new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
-dc = tm.decade_counter((tm.d, tm.y), 100, 10)
 tapeid_range_dict = {}
 
 
@@ -76,8 +75,8 @@ def set_date_range(date):
         end_year = start_year + (int(date[-2:]) - start_year % 100) % 100
 
     tm.y._value = end_year
-    tm.m._value = end_year - start_year
-    tm.d._value = start_year
+    tm.m._value = start_year
+    tm.d._value = (start_year + end_year) // 2
     date_range = (start_year, end_year)
     DATE_SET_TIME = time.ticks_ms()
     return date_range
@@ -144,8 +143,6 @@ def play_pause(player):
 
 
 def main_loop(player, state):
-    month_old = -1
-    dc_old = -1
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
@@ -157,9 +154,9 @@ def main_loop(player, state):
     nprints_old = 0
     date_range = set_date_range("1910-20")
     print(f"date range set to {date_range}")
-    year_old = tm.y.value()
-    month_old = tm.m.value()
-    day_old = tm.d.value()
+    end_year_old = tm.y.value()
+    start_year_old = tm.m.value()
+    mid_year_old = tm.d.value()
     date_changed_time = 0
 
     tm.screen_on_time = time.ticks_ms()
@@ -310,29 +307,55 @@ def main_loop(player, state):
             else:
                 print("Day DOWN")
 
-        year_new = tm.y.value()
-        month_new = tm.m.value()
-        day_new = tm.d.value()
+        end_year_new = tm.y.value()
+        start_year_new = tm.m.value()
+        mid_year_new = tm.d.value()
 
-        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+        if (end_year_old != end_year_new) | (start_year_old != start_year_new) | (mid_year_old != mid_year_new):
             tm.power(1)
             date_changed_time = time.ticks_ms()
-            if day_old != day_new:
-                offset = day_new - day_old
-                month_new = month_old + offset
-                year_new = year_old + offset
-                day_old = day_new
+            if mid_year_old != mid_year_new:
+                offset = mid_year_new - mid_year_old
+                proposed_max = min(end_year_old + offset, tm.y._max_val)
+                proposed_min = max(start_year_old + offset, tm.m._min_val)
+                if proposed_min <= tm.m._min_val:
+                    mid_year_new = mid_year_old
+                    tm.m._value = tm.m._min_val
+                    start_year_new = tm.m._min_val
+                elif proposed_max >= tm.y._max_val:
+                    mid_year_new = mid_year_old
+                    tm.y._value = tm.y._max_val
+                    end_year_new = tm.y._max_val
+                else:
+                    start_year_new = proposed_min
+                    end_year_new = proposed_max
+                    mid_year_old = mid_year_new
+                    tm.y._value = end_year_new
+                    tm.m._value = start_year_new
+                tm.d._value = mid_year_new
+                print(f"offset {offset}. day new {mid_year_new}")
 
-            if year_old != year_new:
-                year_old = year_new
+            if end_year_old != end_year_new:
+                print(f"year new {end_year_new}")
+                if end_year_new < start_year_old:
+                    end_year_new = start_year_old
+                    tm.y._value = end_year_new
+                end_year_old = end_year_new
+                tm.d._value = (start_year_new + end_year_new) // 2
 
-            if month_old != month_new:
-                month_old = month_new
-
-            date_range = [month_new, year_new]
+            if start_year_old != start_year_new:
+                print(f"month new {start_year_new}")
+                if start_year_new > end_year_old:
+                    start_year_new = end_year_old
+                    tm.m._value = start_year_new
+                start_year_old = start_year_new
+                tm.d._value = (start_year_new + end_year_new) // 2
+            date_range = [start_year_new, end_year_new]
+            mid_year_old = tm.d.value()
+            print(f"date_range is now {date_range}")
 
             tm.clear_bbox(tm.stage_date_bbox)
-            tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100}", 0, 0, stage_date_color)
+            tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
             update_display(player)
 
         player.audio_pump()
@@ -373,8 +396,9 @@ def run():
         tm.y._max_val = max_year
         tm.m._value = 1920
         tm.y._value = 1940
-        tm.d._min_val = 0
-        tm.d._max_val = 1 + (max_year - min_year)
+        tm.d._min_val = min_year
+        tm.d._max_val = max_year
+        tm.d._value = (tm.y.value() + tm.m.value()) // 2
 
         print(f"Range of month knob is {tm.m._max_val}")
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
