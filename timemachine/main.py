@@ -378,7 +378,7 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "datpiff"]
+    app_choices = ["no change", "livemusic", "datpiff", "78 rpm"]
     main_app = utils.get_main_app()
     new_main_app = utils.select_option(f"Choose App\nNow:{main_app}", app_choices)
     if new_main_app != "no change":
@@ -493,6 +493,11 @@ def run_livemusic():
 
                 utils.mark_partition()
                 datpiff.run()
+            elif main_app == "78 rpm":
+                import rpm78
+
+                utils.mark_partition()
+                rpm78.run()
             else:
                 raise NotImplementedError(f"Unknown app {main_app}")
         except Exception as e:
