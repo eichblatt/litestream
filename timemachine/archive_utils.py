@@ -27,17 +27,13 @@ from mrequests import mrequests as requests
 STOP_CHAR = "$StoP$"
 
 
-def get_collection_query(collection, startdate, enddate):
-    query = f"q=collection:({collection}) AND date:[{startdate} TO {enddate}]"
-    query = query.replace(" ", "%20").replace(":", "%3A").replace("[", "%5B").replace("]", "%5D")
+def get_collection_query(collection, year):
+    query = f"collection:({collection}) AND year:{year}"
+    query = query.replace(" ", "%20").replace(":", "%3A").replace("[", "%5B").replace("]", "%5D").replace(",", "%2C")
     return query
 
 
-def get_collection_metadata(fields, collection, startdate, enddate, count=1000):
-    base_url = "https://archive.org/services/search/v1/scrape"
-    query = get_collection_query(collection, startdate, enddate)
-    url = f"{base_url}?debug=false&xvar=production&total_only=false&count={count}&fields={fields}&q={query}"
-    print(url)
+def _get_collection_year_chunk(url):
     resp = None
     try:
         resp = requests.get(url)
@@ -54,6 +50,35 @@ def get_collection_metadata(fields, collection, startdate, enddate, count=1000):
         if resp is not None:
             resp.close()
     return j
+
+
+def get_collection_year(fields, collection, year):
+    n_items = 0
+    total = 1
+    cursor = ""
+    result = {}
+    base_url = "https://archive.org/services/search/v1/scrape"
+    query = get_collection_query(collection, year)
+    if isinstance(fields, str):
+        fields = [fields]
+    field_str = "%2C".join(fields)
+    while n_items < total:
+        if len(cursor) > 0:
+            url = f"{base_url}?debug=false&xvar=production&total_only=false&cursor={cursor}&fields={field_str}&q={query}"
+        else:
+            url = f"{base_url}?debug=false&xvar=production&total_only=false&fields={field_str}&q={query}"
+        print(url)
+        j = _get_collection_year_chunk(url)
+        n_items += int(j["count"])
+        total = j["total"]
+        cursor = j.get("cursor", "")
+        print(f"{n_items}/{total} items downloaded")
+        for item in j["items"]:
+            for field in fields:
+                if not field in result.keys():
+                    result[field] = []
+                result[field].append(item.get(field, None))
+    return result
 
 
 def get_tape_metadata(identifier):
@@ -74,3 +99,5 @@ def get_tape_metadata(identifier):
         utils.remove_file("/tmp.json")
         if resp is not None:
             resp.close()
+
+    return j

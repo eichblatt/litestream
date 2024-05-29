@@ -21,6 +21,7 @@ import machine
 import network
 import ntptime
 import os
+import random
 import re
 import st7789
 import sys
@@ -46,30 +47,9 @@ choices_color = st7789.color565(255, 255, 255)  # white
 purple_color = st7789.color565(255, 0, 255)
 
 
-def reset():
-    machine.reset()
-
-
-def reload(mod):
-    # This doesn't seem to work. I wish it did.
-    z = __import__(mod)
-    del z
-    del sys.modules[mod]
-    return __import__(mod)
-
-
-def read_file(path):
-    fh = None
-    contents = [""]
-    try:
-        fh = open(path, "r")
-        contents = fh.readlines()
-    except Exception as e:
-        print(f"Exception suppressed in read_file {e}. Path {path}")
-    finally:
-        if fh is not None:
-            fh.close()
-    return contents
+# Utils using TM hardware
+######################################################################################### Utils using TM hardware
+#
 
 
 def select_option(message, choices):
@@ -256,15 +236,16 @@ def select_chars(message, message2="", already=None):
     return selected
 
 
+# OS Utils
+################################################################################################################# OS-related utils
+#
+
+
 def isdir(path):
     try:
         return (os.stat(path)[0] & 0x4000) != 0
     except OSError:
         return False
-
-
-def distinct(lis):
-    return sorted(list(set(lis)))
 
 
 def path_exists(path):
@@ -373,6 +354,154 @@ def copy_dir(src_d, dest_d):
     remove_dir(f"{dest_d}_tmp")
 
 
+def mkdirs(path):
+    # Make all the dirs on the way to path
+    if path_exists(path):
+        return
+    parent = "/".join(path.split("/")[:-1])
+    if not path_exists(parent):
+        mkdirs(parent)
+    print(f"making dir {path}")
+    os.mkdir(path)
+
+
+def write_json(obj, path):
+    print(f"writing json to {path}")
+    parent_dir = "/".join(path.split("/")[:-1])
+    mkdirs(parent_dir)
+    with open(path, "w") as f:
+        json.dump(obj, f)
+
+
+def read_json(path):
+    print(f"reading json from {path}")
+    with open(path, "r") as f:
+        obj = json.load(f)
+    return obj
+
+
+def reset():
+    machine.reset()
+
+
+def reload(mod):
+    # This doesn't seem to work. I wish it did.
+    z = __import__(mod)
+    del z
+    del sys.modules[mod]
+    return __import__(mod)
+
+
+def read_file(path):
+    fh = None
+    contents = [""]
+    try:
+        fh = open(path, "r")
+        contents = fh.readlines()
+    except Exception as e:
+        print(f"Exception suppressed in read_file {e}. Path {path}")
+    finally:
+        if fh is not None:
+            fh.close()
+    return contents
+
+
+def set_datetime(hidden=False):
+    print("Setting datetime")
+    if not hidden:
+        tm.write("Setting Date", y=45, clear=False)
+    time_set = time.localtime()[0] >= 2024
+    # for some reason, we have to try several times before it works.
+    for i in range(10):
+        if time_set:
+            return time.localtime()
+        try:
+            ntptime.time()
+            ntptime.settime()
+            time_set = True
+        except OSError:
+            time.sleep(0.3)
+            pass
+        except OverflowError:
+            time.sleep(0.3)
+            pass
+        except Exception:
+            pass
+    else:
+        return None
+
+
+def get_current_partition_name():
+    from esp32 import Partition
+
+    current_partition = Partition(Partition.RUNNING).info()[4]
+    return current_partition
+
+
+def mark_partition():
+    from esp32 import Partition
+
+    current_partition = Partition(Partition.RUNNING)
+    current_partition.mark_app_valid_cancel_rollback()
+
+
+def capitalize(string):
+    words = string.split(" ")
+    Words = [w[0].upper() + w[1:] for w in words]
+    return " ".join(Words)
+
+
+def clear_log(outpath="/log_out.py"):
+    remove_file(outpath)
+
+
+def print_log(msg, outpath="/log_out.py"):
+    fout = open(outpath, "a")
+    fout.write(msg + "\n")
+    fout.close()
+    print(msg)
+
+
+# math
+############################################################################################### math
+#
+
+
+def distinct(lis):
+    return sorted(list(set(lis)))
+
+
+def deal_n(all_items, n, unique=True):
+    result = []
+    if unique:
+        all_items = distinct(all_items)
+    n_items = len(all_items)
+    if n > n_items:
+        raise ValueError(f"Cannot deal {n} items from list of length {n_items}")
+    for i in range(n):
+        ind = random.randrange(n_items - i)
+        result.append(all_items[ind])
+        all_items = all_items[:ind] + all_items[(ind + 1) :]
+    return result
+
+
+def deal_frac(all_items, frac, unique=True):
+    if unique:
+        all_items = distinct(all_items)
+    n_items = len(all_items)
+    return deal_n(all_items, int(frac * n_items), unique)
+
+
+def shuffle(all_items, unique=True):
+    # Return the items from a list in a random order
+    return deal_frac(all_items, 1, unique)
+
+
+# Application-Specific
+############################################################################################### Application-Specific
+#
+
+
 def set_main_app(main_app):
     try:
         if not main_app in ["livemusic", "datpiff", "78rpm"]:
@@ -427,6 +556,59 @@ def create_factory_image():
         os.rename("/BOOT.py", "/boot.py")
 
 
+def get_software_version():
+    code_version = read_file("/lib/.VERSION")[0]
+    if len(code_version) == 0:
+        code_version = "unknown"
+    return code_version
+
+
+def update_firmware():
+    from ota32.ota import OTA
+    from ota32 import open_url
+    import gc
+
+    latest_release = "latest"
+    branch = "releases"
+    server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
+    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.sha"
+    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.bin"
+
+    try:
+        s = open_url(sha_url)
+        sha = s.read(1024).split()[0].decode()
+        s.close()
+        gc.collect()
+
+        ota = OTA(verbose=True)
+        ota.ota(micropython_url, sha)
+
+    except Exception as e:
+        print(f"{e}\nFailed to update to a new partition")
+        return -1
+
+    return 0
+
+
+def get_tape_id(app="livemusic"):
+    return load_state(app)["selected_tape_id"]
+
+
+def get_collection_list():
+    return load_state()["collection_list"]
+
+
+def set_collection_list(collection_list):
+    state = load_state()
+    state["collection_list"] = collection_list
+    save_state(state)
+
+
+# wifi
+####################################################################################################################### wifi
+#
+
+
 def remove_wifi_cred(hist=False):
     remove_file(WIFI_CRED_PATH)
     if hist:
@@ -466,57 +648,6 @@ def disconnect_wifi():
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.disconnect()
-
-
-def set_datetime(hidden=False):
-    print("Setting datetime")
-    if not hidden:
-        tm.write("Setting Date", y=45, clear=False)
-    time_set = time.localtime()[0] >= 2024
-    # for some reason, we have to try several times before it works.
-    for i in range(10):
-        if time_set:
-            return time.localtime()
-        try:
-            ntptime.time()
-            ntptime.settime()
-            time_set = True
-        except OSError:
-            time.sleep(0.3)
-            pass
-        except OverflowError:
-            time.sleep(0.3)
-            pass
-        except Exception:
-            pass
-    else:
-        return None
-
-
-def mkdirs(path):
-    # Make all the dirs on the way to path
-    if path_exists(path):
-        return
-    parent = "/".join(path.split("/")[:-1])
-    if not path_exists(parent):
-        mkdirs(parent)
-    print(f"making dir {path}")
-    os.mkdir(path)
-
-
-def write_json(obj, path):
-    print(f"writing json to {path}")
-    parent_dir = "/".join(path.split("/")[:-1])
-    mkdirs(parent_dir)
-    with open(path, "w") as f:
-        json.dump(obj, f)
-
-
-def read_json(path):
-    print(f"reading json from {path}")
-    with open(path, "r") as f:
-        obj = json.load(f)
-    return obj
 
 
 def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
@@ -594,66 +725,9 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         connect_wifi(itry=itry + 1)
 
 
-def get_current_partition_name():
-    from esp32 import Partition
-
-    current_partition = Partition(Partition.RUNNING).info()[4]
-    return current_partition
-
-
-def mark_partition():
-    from esp32 import Partition
-
-    current_partition = Partition(Partition.RUNNING)
-    current_partition.mark_app_valid_cancel_rollback()
-
-
-def get_software_version():
-    code_version = read_file("/lib/.VERSION")[0]
-    if len(code_version) == 0:
-        code_version = "unknown"
-    return code_version
-
-
-def update_firmware():
-    from ota32.ota import OTA
-    from ota32 import open_url
-    import gc
-
-    latest_release = "latest"
-    branch = "releases"
-    server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
-    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.sha"
-    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.bin"
-
-    try:
-        s = open_url(sha_url)
-        sha = s.read(1024).split()[0].decode()
-        s.close()
-        gc.collect()
-
-        ota = OTA(verbose=True)
-        ota.ota(micropython_url, sha)
-
-    except Exception as e:
-        print(f"{e}\nFailed to update to a new partition")
-        return -1
-
-    return 0
-
-
-def get_tape_id(app="livemusic"):
-    return load_state(app)["selected_tape_id"]
-
-
-def get_collection_list():
-    return load_state()["collection_list"]
-
-
-def set_collection_list(collection_list):
-    state = load_state()
-    state["collection_list"] = collection_list
-    save_state(state)
+# app states
+############################################################################################# app states
+#
 
 
 def save_state(state, app="livemusic"):
@@ -744,23 +818,6 @@ def load_state(app="livemusic"):
         return load_78rpm_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
-
-
-def capitalize(string):
-    words = string.split(" ")
-    Words = [w[0].upper() + w[1:] for w in words]
-    return " ".join(Words)
-
-
-def clear_log(outpath="/log_out.py"):
-    remove_file(outpath)
-
-
-def print_log(msg, outpath="/log_out.py"):
-    fout = open(outpath, "a")
-    fout.write(msg + "\n")
-    fout.close()
-    print(msg)
 
 
 if not isdir("/config"):

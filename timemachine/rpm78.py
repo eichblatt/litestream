@@ -79,28 +79,56 @@ def set_date_range(date_range):
     return date_range
 
 
-def select_date_range(date_range, player):
+def get_ids_from_year(year):
+    meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
+    ids = []
+    if utils.path_exists(meta_path):
+        ids = utils.read_json(meta_path)
+    else:
+        resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
+        ids = resdict["identifier"]
+        utils.write_json(ids, meta_path)
+        print(f"{meta_path} written")
+    return ids
+
+
+def select_date_range(date_range):
     print(f"selecting tapes from {date_range}.")
 
-    url = url.replace(" ", "%20").replace(":", "%3A").replace("[", "%5B").replace("]", "%5D")
-    tape_ids = [
-        "78_from-soup-to-nuts_andre-musette-orchestra-n-roubanis_gbia0111465a",
-        "78_1-shine-my-star-2-forest-tales_boris-belostozky-t-zarkevich-russian-group-t-z_gbia8000372d",
-        "78_im-old-fashioned_benny-goodman-and-his-orchestra-buzz-alston-mercer-kern_gbia0013700b",
-        "78_tailspin_jimmy-dorsey-and-his-orchestra-jimmy-dorsey-walter-donaldson-edgar-leslie_gbia0063648",
-    ]
+    N_to_select = 60
+    # To minimize memory, select at most 20 different years.
+    max_N_years = 20
+    min_year = date_range[0]
+    max_year = date_range[1] + 1
+    year_list = list(range(min_year, max_year))
+    if (max_year - min_year) > max_N_years:
+        year_list = utils.deal_n(year_list, 20)
+
+    print(f"Selecting from years {year_list}")
+    tape_ids = []
+    for year in year_list:
+        try:
+            ids = utils.deal_n(get_ids_from_year(year), N_to_select // len(year_list))
+            _ = [tape_ids.append(x) for x in ids]
+            print(f"len of tape_ids now {len(tape_ids)}")
+        except:
+            pass
+
+    tape_ids = utils.shuffle(tape_ids)
+
     urls = []
     tracklist = []
     artists = []
     for identifier in tape_ids:
+        print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
         _ = [urls.append(x) for x in u]
         _ = [tracklist.append(x) for x in t]
         _ = [artists.append(x) for x in a]
-    player.set_playlist(tracklist, urls)
     return urls, tracklist, artists
 
 
+@micropython.native
 def get_tape_metadata(identifier):
     tracklist = []
     urls = []
@@ -177,7 +205,8 @@ def main_loop(player, state):
             else:
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
-                    state = select_date_range(date_range, player)
+                    urls, tracklist, artists = select_date_range(date_range)
+                    player.set_playlist(tracklist, urls)
                     gc.collect()
                 play_pause(player)
 
@@ -246,7 +275,8 @@ def main_loop(player, state):
                 #     pass
                 # elif (key_date in valid_dates) and tm.power():
                 player.stop()
-                urls, tracklist, artists = select_date_range(date_range, player)
+                urls, tracklist, artists = select_date_range(date_range)
+                player.set_playlist(tracklist, urls)
                 gc.collect()
                 play_pause(player)
                 print("Select UP")

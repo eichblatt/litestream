@@ -33,6 +33,7 @@ import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 
+import archive_utils
 import board as tm
 import utils
 
@@ -149,25 +150,8 @@ def set_knob_times():
 
 
 def get_tape_metadata(identifier):
-    url_metadata = f"https://archive.org/metadata/{identifier}"
-    # url_details = f"https://archive.org/details/{identifier}"
     url_download = f"https://archive.org/download/{identifier}"
-    print(url_metadata)
-    resp = None
-    try:
-        resp = requests.get(url_metadata)
-        if resp.status_code != 200:
-            print(f"Error in request from {url_metadata}. Status code {resp.status_code}")
-            raise Exception("Download Error")
-        if not resp.chunked:
-            j = resp.json()
-        else:
-            resp.save("/tmp.json")
-            j = json.load(open("/tmp.json", "r"))
-    finally:
-        utils.remove_file("/tmp.json")
-        if resp is not None:
-            resp.close()
+    j = archive_utils.get_tape_metadata(identifier)
 
     track_data = [x for x in j["files"] if "mp3" in x["format"].lower()]
     tracklist = []
