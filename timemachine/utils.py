@@ -501,10 +501,12 @@ def shuffle(all_items, unique=True):
 ############################################################################################### Application-Specific
 #
 
+KNOWN_APPS = ["livemusic", "datpiff", "78rpm"]
+
 
 def set_main_app(main_app):
     try:
-        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+        if not main_app in KNOWN_APPS:
             main_app = "livemusic"
         main_app = write_json(main_app, MAIN_APP_PATH)
     except Exception as e:
@@ -517,7 +519,7 @@ def get_main_app():
     try:
         if path_exists(MAIN_APP_PATH):
             main_app = read_json(MAIN_APP_PATH)
-        if not main_app in ["livemusic", "datpiff", "78rpm"]:
+        if not main_app in KNOWN_APPS:
             main_app = "livemusic"
     except Exception as e:
         pass
