@@ -92,17 +92,16 @@ def get_ids_from_year(year):
     return ids
 
 
-def select_date_range(date_range):
+def select_date_range(date_range, N_to_select=60):
     print(f"selecting tapes from {date_range}.")
 
-    N_to_select = 60
-    # To minimize memory, select at most 20 different years.
-    max_N_years = 20
+    # To minimize memory, select at most 15 different years.
+    max_N_years = 15
     min_year = date_range[0]
     max_year = date_range[1] + 1
     year_list = list(range(min_year, max_year))
     if (max_year - min_year) > max_N_years:
-        year_list = utils.deal_n(year_list, 20)
+        year_list = utils.deal_n(year_list, max_N_years)
 
     print(f"Selecting from years {year_list}")
     tape_ids = []
@@ -110,12 +109,14 @@ def select_date_range(date_range):
         try:
             ids = utils.deal_n(get_ids_from_year(year), N_to_select // len(year_list))
             _ = [tape_ids.append(x) for x in ids]
-            print(f"len of tape_ids now {len(tape_ids)}")
         except:
             pass
 
     tape_ids = utils.shuffle(tape_ids)
+    return tape_ids
 
+
+def get_urls_for_ids(tape_ids):
     urls = []
     tracklist = []
     artists = []
@@ -185,6 +186,7 @@ def main_loop(player, state):
     start_year_old = tm.m.value()
     mid_year_old = tm.d.value()
     date_changed_time = 0
+    tape_ids = []
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -205,8 +207,12 @@ def main_loop(player, state):
             else:
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
-                    urls, tracklist, artists = select_date_range(date_range)
+                    tm.clear_bbox(tm.venue_bbox)
+                    tm.write("Loading\nMusic", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
+                    tape_ids = select_date_range(date_range)
+                    urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                     player.set_playlist(tracklist, urls)
+                    tape_ids = tape_ids[5:]
                     gc.collect()
                 play_pause(player)
 
@@ -270,19 +276,31 @@ def main_loop(player, state):
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
                 print("short press of select")
-                # print(f"key {key_date}, selected {selected_date} stopped {player.is_stopped()}")
-                # if (key_date == selected_date) and (not player.is_stopped()):  # We're already on this date
-                #     pass
-                # elif (key_date in valid_dates) and tm.power():
                 player.stop()
-                urls, tracklist, artists = select_date_range(date_range)
+                tm.clear_bbox(tm.venue_bbox)
+                tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
+                tape_ids = select_date_range(date_range)
+                urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 player.set_playlist(tracklist, urls)
+                tape_ids = tape_ids[5:]
+                tm.clear_bbox(tm.venue_bbox)
                 gc.collect()
                 play_pause(player)
                 print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
+
+        if (len(tape_ids) > 0) and player.is_stopped():
+            pts = player.track_status()
+            if pts["current_track"] == 0:
+                tm.clear_bbox(tm.venue_bbox)
+                tm.write("Flipping Record", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
+                urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                player.set_playlist(tracklist, urls)
+                tape_ids = tape_ids[5:]
+                tm.clear_bbox(tm.venue_bbox)
+                play_pause(player)
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
