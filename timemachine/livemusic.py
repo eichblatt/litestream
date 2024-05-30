@@ -641,6 +641,10 @@ def run():
         state = utils.load_state()
         show_collections(state["collection_list"])
 
+        tm.m._min_val = 1
+        tm.m._max_val = 12
+        tm.d._min_val = 1
+        tm.d._max_val = 31
         coll_dict = get_coll_dict(state["collection_list"])
         print(f"Loaded collections {coll_dict.keys()}")
 
