@@ -440,10 +440,11 @@ class AudioPlayer:
 
     def track_names(self):
         if self.current_track is None:
-            return "", ""
-        current_name = self.tracklist[self.current_track]
-        next_name = self.tracklist[self.next_track] if self.next_track is not None else ""
-        return current_name, next_name
+            return 10 * [""]
+        track_names = self.tracklist[self.current_track :]
+        if len(track_names) < 10:
+            track_names = track_names + (10 - len(track_names)) * [""]
+        return track_names
 
     # Set volume from 1 (quietest) to 11 (loudest)
     def set_volume(self, vol):
@@ -617,7 +618,7 @@ class AudioPlayer:
                 data = data[n:]
 
         poller.unregister(self.sock)
-        
+
         # Read the response headers
         response_headers = b""
         while True:
@@ -702,9 +703,9 @@ class AudioPlayer:
 
                     if n is not None:
                         data = data[n:]
-                
+
                 poller.unregister(self.sock)
-                
+
                 # Read the response headers
                 response_headers = b""
                 while True:

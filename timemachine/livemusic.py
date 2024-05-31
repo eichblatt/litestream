@@ -552,7 +552,9 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
-def display_tracks(current_track_name, next_track_name):
+def display_tracks(*tracks):
+    current_track_name = tracks[0]
+    next_track_name = tracks[1]
     tm.init_screen()  # Do we need this if not sharing SPI bus?
     tm.clear_bbox(tm.tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)

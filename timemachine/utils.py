@@ -272,10 +272,23 @@ def touch(path):
             f.write("0")
 
 
-def keep_only_n_files(dir, n):
-    files_in_dir = [f"{dir}/x" for x in os.listdir(dir)]
+def ls_by_time(dir, ascending=True):
+    files_in_dir = [f"{dir}/{x}" for x in os.listdir(dir)]
     files_in_dir = [x for x in files_in_dir if not isdir(x)]
     files_in_dir = sorted(files_in_dir, key=lambda x: os.stat(x)[7])
+    if not ascending:
+        files_in_dir = files_in_dir[::-1]
+    return files_in_dir
+
+
+def remove_oldest_files(dir, n=1):
+    files_in_dir = ls_by_time(dir)
+    for file in files_in_dir[:n]:
+        remove_file(file)
+
+
+def keep_only_n_files(dir, n):
+    files_in_dir = ls_by_time(dir, ascending=False)
     if len(files_in_dir) <= n:
         return
     for file in files_in_dir[n:]:
@@ -307,6 +320,7 @@ def remove_file(path):
         return
     try:
         os.remove(path)
+        return path
     except Exception as e:
         print(f"Failed to remove {path}. {e}")
 
@@ -446,7 +460,9 @@ def mark_partition():
 
 
 def capitalize(string):
-    words = string.split(" ")
+    if len(string) == 0:
+        return string
+    words = string.split()
     Words = [w[0].upper() + w[1:] for w in words]
     return " ".join(Words)
 

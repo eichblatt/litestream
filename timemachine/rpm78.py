@@ -45,8 +45,6 @@ CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
-ARTIST_KEY_TIME = time.ticks_ms()
-TAPE_KEY_TIME = time.ticks_ms()
 DATE_SET_TIME = time.ticks_ms()
 
 stage_date_color = st7789.color565(255, 255, 0)
@@ -55,16 +53,8 @@ purple_color = st7789.color565(255, 100, 255)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
+rpm78_tracklist_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, 112)
 tapeid_range_dict = {}
-
-
-def set_knob_times():
-    global TAPE_KEY_TIME
-    global ARTIST_KEY_TIME
-    TAPE_KEY_TIME = time.ticks_ms()
-    ARTIST_KEY_TIME = time.ticks_ms()
-    return
 
 
 def set_date_range(date_range):
@@ -81,13 +71,17 @@ def set_date_range(date_range):
 
 def get_ids_from_year(year):
     meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
+    tm.write(f"Loading {year}", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     ids = []
     if utils.path_exists(meta_path):
         ids = utils.read_json(meta_path)
     else:
         resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
         ids = resdict["identifier"]
-        utils.write_json(ids, meta_path)
+        if utils.disk_free() > 1_000:
+            utils.write_json(ids, meta_path)
+        else:
+            utils.remove_oldest_files(utils.dirname(meta_path), 1)
         print(f"{meta_path} written")
     return ids
 
@@ -107,11 +101,13 @@ def select_date_range(date_range, N_to_select=60):
     tape_ids = []
     for year in year_list:
         try:
+            tm.clear_bbox(tm.venue_bbox)
             ids = utils.deal_n(get_ids_from_year(year), N_to_select // len(year_list))
             _ = [tape_ids.append(x) for x in ids]
         except:
             pass
 
+    tm.clear_bbox(tm.venue_bbox)
     tape_ids = utils.shuffle(tape_ids)
     return tape_ids
 
@@ -120,6 +116,9 @@ def get_urls_for_ids(tape_ids):
     urls = []
     tracklist = []
     artists = []
+    tm.clear_bbox(tm.venue_bbox)
+    tm.clear_bbox(rpm78_tracklist_bbox)
+    tm.write("Choosing Songs", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
@@ -174,6 +173,7 @@ def main_loop(player, state):
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
+    current_track_old = -1
     select_press_time = 0
     power_press_time = 0
     resume_playing = -1
@@ -208,9 +208,10 @@ def main_loop(player, state):
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
                     tm.clear_bbox(tm.venue_bbox)
-                    tm.write("Loading\nMusic", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
+                    tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
                     tape_ids = select_date_range(date_range)
                     urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                    tm.clear_bbox(tm.venue_bbox)
                     player.set_playlist(tracklist, urls)
                     tape_ids = tape_ids[5:]
                     gc.collect()
@@ -281,9 +282,9 @@ def main_loop(player, state):
                 tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
                 tape_ids = select_date_range(date_range)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                tm.clear_bbox(tm.venue_bbox)
                 player.set_playlist(tracklist, urls)
                 tape_ids = tape_ids[5:]
-                tm.clear_bbox(tm.venue_bbox)
                 gc.collect()
                 play_pause(player)
                 print("Select UP")
@@ -405,7 +406,9 @@ def main_loop(player, state):
             tm.clear_bbox(tm.stage_date_bbox)
             tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
             update_display(player)
-
+        if player.is_playing() and player.current_track != current_track_old:
+            current_track_old = player.current_track
+            display_artist(utils.capitalize(artists[player.current_track]))
         player.audio_pump()
 
 
@@ -419,15 +422,36 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
-def display_tracks(current_track_name, next_track_name):
+def display_artist(artist):
+    print(f"in display_artist {artist}")
     try:
         state = utils.load_state("78rpm")
     except Exception as e:
-        print(f"Failed to cleanup track titles {e}")
-        pass
-    tm.clear_bbox(new_tracklist_bbox)
-    tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color, clear=0)
-    tm.write(f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], pfont_small, tracklist_color, clear=0)
+        print(f"Failed to load state {e}")
+    tm.clear_bbox(tm.selected_date_bbox)
+
+    artist = tm.trim_string_middle(artist, 16, pfont_small)
+    tm.write(f"{artist}", 0, tm.selected_date_bbox.y0 - 3, pfont_small, st7789.WHITE, clear=0)
+    return
+
+
+def display_tracks(*track_names):
+    print(f"in display_tracks {track_names}")
+    try:
+        state = utils.load_state("78rpm")
+    except Exception as e:
+        print(f"Failed to load state {e}")
+    tm.clear_bbox(rpm78_tracklist_bbox)
+    last_valid_str = 0
+    for i in range(len(track_names)):
+        if len(track_names[i]) > 0:
+            last_valid_str = i
+    for i in range(5):
+        name = track_names[i]
+        if i < last_valid_str and len(name) == 0:
+            name = "Unknown"
+        name = utils.capitalize(name.lower())
+        tm.write(f"{name}", rpm78_tracklist_bbox.x0, rpm78_tracklist_bbox.y0 + (16 * i), pfont_small, tracklist_color, clear=0)
     return
 
 

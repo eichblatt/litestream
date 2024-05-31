@@ -131,7 +131,7 @@ screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
 
 class Bbox:
-    """Bounding Box -- Initialize with corners."""
+    """Bounding Box -- Initialize with corners, x0, y0, x1, y1."""
 
     def __init__(self, x0, y0, x1, y1):
         self.corners = (x0, y0, x1, y1)

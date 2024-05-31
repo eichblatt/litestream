@@ -444,7 +444,9 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
-def display_tracks(current_track_name, next_track_name):
+def display_tracks(*track_names):
+    current_track_name = track_names[0]
+    next_track_name = track_names[1]
     try:
         state = utils.load_state("datpiff")
         rm_txt = state["selected_tape"]["artist"].lower()  # Don't show artist name in track
