@@ -813,12 +813,12 @@ def load_78rpm_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        date_range = state.get("date_range", [1898, 1965])
+        date_range = state.get("date_range", [1898, 1910])
         state = {
             "date_range": date_range,
         }
     else:
-        date_range = [1898, 1965]
+        date_range = [1898, 1910]
         state = {
             "date_range": date_range,
         }

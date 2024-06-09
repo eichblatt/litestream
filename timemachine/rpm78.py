@@ -71,17 +71,20 @@ def set_date_range(date_range):
 
 def get_ids_from_year(year):
     meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
+    tm.clear_bbox(tm.Bbox(0, rpm78_tracklist_bbox.y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
     tm.write(f"Loading {year}", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     ids = []
     if utils.path_exists(meta_path):
         ids = utils.read_json(meta_path)
     else:
+        tm.clear_bbox(tm.Bbox(0, tm.venue_bbox.y0 + 20, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
+        tm.write(f"...from archive", tm.venue_bbox.x0, tm.venue_bbox.y0 + 20, pfont_small, st7789.WHITE, clear=0, show_end=1)
         resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
         ids = resdict["identifier"]
-        if utils.disk_free() > 1_000:
-            utils.write_json(ids, meta_path)
-        else:
+        if utils.disk_free() < 1_000:
             utils.remove_oldest_files(utils.dirname(meta_path), 1)
+        tm.write(f"...saving", tm.venue_bbox.x0, tm.venue_bbox.y0 + 40, pfont_small, st7789.WHITE, clear=0, show_end=1)
+        utils.write_json(ids, meta_path)
         print(f"{meta_path} written")
     return ids
 
@@ -180,7 +183,8 @@ def main_loop(player, state):
     resume_playing_delay = 500
     month_change_time = 1e12
     nprints_old = 0
-    date_range = set_date_range([1910, 1920])
+    min_year, max_year = state["date_range"]
+    date_range = set_date_range([min_year, max_year])
     print(f"date range set to {date_range}")
     end_year_old = tm.y.value()
     start_year_old = tm.m.value()
@@ -189,8 +193,9 @@ def main_loop(player, state):
     tape_ids = []
 
     tm.screen_on_time = time.ticks_ms()
-    tm.clear_screen()
-    tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
+    tm.write(f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, color=stage_date_color, font=large_font, clear=True)
+    tm.write("Turn knobs to\nChange timespan", 0, 50, color=yellow_color, font=pfont_small, clear=False)
+    tm.write("min  mid  max", 0, 100, color=st7789.WHITE, font=pfont_med, clear=False)
     poll_count = 0
     while True:
         player.audio_pump()
@@ -402,6 +407,8 @@ def main_loop(player, state):
             date_range = [start_year_new, end_year_new]
             mid_year_old = tm.d.value()
             print(f"date_range is now {date_range}")
+            state["date_range"] = date_range
+            utils.save_state(state, "78rpm")
 
             tm.clear_bbox(tm.stage_date_bbox)
             tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
@@ -460,8 +467,7 @@ def run():
     try:
         wifi = utils.connect_wifi()
         state = utils.load_state("78rpm")
-        min_year, max_year = state["date_range"]
-
+        min_year, max_year = [1898, 1965]
         tm.y._min_val = min_year
         tm.m._min_val = min_year
         tm.m._max_val = max_year
