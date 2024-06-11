@@ -21,6 +21,10 @@
             "github:eichblatt/litestream/timemachine/utils.py"
         ],
         [
+            "archive_utils.py",
+            "github:eichblatt/litestream/timemachine/archive_utils.py"
+        ],
+        [
             "main.py",
             "github:eichblatt/litestream/timemachine/main.py"
         ],
@@ -31,6 +35,10 @@
         [
             "datpiff.py",
             "github:eichblatt/litestream/timemachine/datpiff.py"
+        ],
+        [
+            "rpm78.py",
+            "github:eichblatt/litestream/timemachine/rpm78.py"
         ],
         [
             "fonts/__init__.py",
