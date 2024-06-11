@@ -131,7 +131,7 @@ screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
 
 class Bbox:
-    """Bounding Box -- Initialize with corners."""
+    """Bounding Box -- Initialize with corners, x0, y0, x1, y1."""
 
     def __init__(self, x0, y0, x1, y1):
         self.corners = (x0, y0, x1, y1)
@@ -391,12 +391,35 @@ def trim_string_middle(text, x_pos, font):
     return text
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=False):
+def add_line_breaks(text, x_pos, font, max_new_lines):
+    out_lines = []
+    new_lines = 0
+    lines = text.split("\n")
+    for line in lines:
+        while new_lines < max_new_lines:
+            test = line
+            pixel_width = tft.write_len(font, test)
+            while (pixel_width + x_pos) > SCREEN_WIDTH:
+                test = test[:-1]
+                pixel_width = tft.write_len(font, test)
+            out_lines.append(test)
+            if len(test) < len(line):
+                new_lines = new_lines + 1
+                line = line[len(test) :]
+            else:
+                break
+        out_lines = "\n".join(out_lines)
+        return out_lines
+
+
+def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=0):
     if clear:
         clear_screen()
+    if show_end > 1:
+        msg = add_line_breaks(msg, x, font, show_end)
     text = msg.split("\n")
     for i, line in enumerate(text):
-        if show_end:
+        if show_end == 1:
             line = trim_string_middle(line, x, font)
         tft.write(font, line, x, y + (i * text_height), color)
 
