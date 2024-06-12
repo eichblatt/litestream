@@ -57,7 +57,7 @@ rpm78_tracklist_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, 112)
 tapeid_range_dict = {}
 
 
-def set_date_range(date_range):
+def set_date_range(date_range, state=None):
     global DATE_SET_TIME
     start_year = date_range[0]
     end_year = date_range[1]
@@ -66,6 +66,9 @@ def set_date_range(date_range):
     tm.d._value = (start_year + end_year) // 2
     date_range = (start_year, end_year)
     DATE_SET_TIME = time.ticks_ms()
+    if state is not None:
+        state["date_range"] = date_range
+        utils.save_state(state, "78rpm")
     return date_range
 
 
@@ -184,7 +187,8 @@ def main_loop(player, state):
     month_change_time = 1e12
     nprints_old = 0
     min_year, max_year = state["date_range"]
-    date_range = set_date_range([min_year, max_year])
+    date_range = set_date_range([min_year, max_year], state)
+    staged_date_range = date_range
     print(f"date range set to {date_range}")
     end_year_old = tm.y.value()
     start_year_old = tm.m.value()
@@ -194,7 +198,7 @@ def main_loop(player, state):
 
     tm.screen_on_time = time.ticks_ms()
     tm.write(f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, color=stage_date_color, font=large_font, clear=True)
-    tm.write("Turn knobs to\nChange timespan", 0, 50, color=yellow_color, font=pfont_small, clear=False)
+    tm.write("Turn knobs to\nChange timespan\nand Select", 0, 42, color=yellow_color, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=st7789.WHITE, font=pfont_med, clear=False)
     poll_count = 0
     while True:
@@ -214,7 +218,8 @@ def main_loop(player, state):
                 if (player.is_stopped()) and (player.current_track is None):
                     tm.clear_bbox(tm.venue_bbox)
                     tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
-                    tape_ids = select_date_range(date_range)
+                    tape_ids = select_date_range(staged_date_range)
+                    date_range = set_date_range(staged_date_range, state)
                     urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                     tm.clear_bbox(tm.venue_bbox)
                     player.set_playlist(tracklist, urls)
@@ -273,11 +278,6 @@ def main_loop(player, state):
                             pass
                         print(f"volume set to {player.get_volume()}")
 
-        # set the knobs to the most recently selected date after 20 seconds of inaction
-        # if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
-        #     print(f"setting key_date to {selected_date}")
-        #     key_date = set_date(selected_date)
-
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if pSelect_old:
@@ -285,7 +285,8 @@ def main_loop(player, state):
                 player.stop()
                 tm.clear_bbox(tm.venue_bbox)
                 tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
-                tape_ids = select_date_range(date_range)
+                tape_ids = select_date_range(staged_date_range)
+                date_range = set_date_range(staged_date_range, state)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 tm.clear_bbox(tm.venue_bbox)
                 player.set_playlist(tracklist, urls)
@@ -361,13 +362,22 @@ def main_loop(player, state):
             else:
                 print("Day DOWN")
 
+        if (staged_date_range != date_range) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
+            print(f"setting date_range to {date_range}")
+            staged_date_range = set_date_range(date_range, state)
+            tm.clear_bbox(tm.stage_date_bbox)
+            tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
+            update_display(player)
+            end_year_old = tm.y.value()
+            start_year_old = tm.m.value()
+            mid_year_old = tm.d.value()
+
         end_year_new = tm.y.value()
         start_year_new = tm.m.value()
         mid_year_new = tm.d.value()
 
         if (end_year_old != end_year_new) | (start_year_old != start_year_new) | (mid_year_old != mid_year_new):
             tm.power(1)
-            date_changed_time = time.ticks_ms()
             if mid_year_old != mid_year_new:
                 offset = mid_year_new - mid_year_old
                 proposed_max = min(end_year_old + offset, tm.y._max_val)
@@ -404,14 +414,12 @@ def main_loop(player, state):
                     tm.m._value = start_year_new
                 start_year_old = start_year_new
                 tm.d._value = (start_year_new + end_year_new) // 2
-            date_range = [start_year_new, end_year_new]
+            staged_date_range = set_date_range((start_year_new, end_year_new))
             mid_year_old = tm.d.value()
-            print(f"date_range is now {date_range}")
-            state["date_range"] = date_range
-            utils.save_state(state, "78rpm")
+            print(f"staged date_range is now {staged_date_range}")
 
             tm.clear_bbox(tm.stage_date_bbox)
-            tm.tft.write(large_font, f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, stage_date_color)
+            tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
             update_display(player)
         if player.is_playing() and player.current_track != current_track_old:
             current_track_old = player.current_track
@@ -427,6 +435,7 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
     elif player.is_paused():
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
+    display_tracks(*player.track_names())
 
 
 def display_artist(artist):
