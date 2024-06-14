@@ -53,7 +53,7 @@ purple_color = st7789.color565(255, 100, 255)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 10)
+playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 32)
 bottom_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 tapeid_range_dict = {}
 
@@ -96,13 +96,13 @@ def get_ids_from_year(year):
 def select_date_range(date_range, N_to_select=60):
     print(f"selecting tapes from {date_range}.")
 
-    # To minimize memory, select at most 15 different years.
-    max_N_years = 15
+    # To minimize memory, select at most 6 different years.
+    max_N_years = 6
     min_year = date_range[0]
     max_year = date_range[1] + 1
     year_list = list(range(min_year, max_year))
     if (max_year - min_year) > max_N_years:
-        year_list = utils.deal_n(year_list, max_N_years)
+        year_list = sorted(utils.deal_n(year_list, max_N_years))
 
     print(f"Selecting from years {year_list}")
     tape_ids = []
@@ -170,7 +170,7 @@ def play_pause(player):
     elif len(player.playlist) > 0:
         player.play()
         tm.power(1)
-    update_display(player)
+    update_playpause(player)
     return
 
 
@@ -216,6 +216,7 @@ def main_loop(player, state):
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
                     tm.clear_bbox(tm.venue_bbox)
+                    tm.clear_bbox(playpause_bbox)
                     tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
                     tape_ids = select_date_range(staged_date_range)
                     date_range = set_date_range(staged_date_range, state)
@@ -283,6 +284,7 @@ def main_loop(player, state):
                 print("short press of select")
                 player.stop()
                 tm.clear_bbox(tm.venue_bbox)
+                tm.clear_bbox(playpause_bbox)
                 tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
                 tape_ids = select_date_range(staged_date_range)
                 date_range = set_date_range(staged_date_range, state)
@@ -366,7 +368,7 @@ def main_loop(player, state):
             staged_date_range = set_date_range(date_range, state)
             tm.clear_bbox(tm.stage_date_bbox)
             tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
-            update_display(player)
+            update_playpause(player)
             end_year_old = tm.y.value()
             start_year_old = tm.m.value()
             mid_year_old = tm.d.value()
@@ -419,14 +421,14 @@ def main_loop(player, state):
 
             tm.clear_bbox(tm.stage_date_bbox)
             tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
-            update_display(player)
+            update_playpause(player)
         if player.is_playing() and player.current_track != current_track_old:
             current_track_old = player.current_track
             display_artist(utils.capitalize(artists[player.current_track]))
         player.audio_pump()
 
 
-def update_display(player):
+def update_playpause(player):
     tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
         pass
@@ -434,7 +436,7 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, 10, play_color)
     elif player.is_paused():
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, 10, st7789.WHITE)
-    display_tracks(*player.track_names())
+    # display_tracks(*player.track_names())
 
 
 def display_artist(artist):
