@@ -53,7 +53,8 @@ purple_color = st7789.color565(255, 100, 255)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-rpm78_tracklist_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, 112)
+playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 10)
+bottom_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 tapeid_range_dict = {}
 
 
@@ -74,7 +75,7 @@ def set_date_range(date_range, state=None):
 
 def get_ids_from_year(year):
     meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
-    tm.clear_bbox(tm.Bbox(0, rpm78_tracklist_bbox.y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
+    tm.clear_bbox(bottom_bbox)
     tm.write(f"Loading {year}", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     ids = []
     if utils.path_exists(meta_path):
@@ -123,7 +124,7 @@ def get_urls_for_ids(tape_ids):
     tracklist = []
     artists = []
     tm.clear_bbox(tm.venue_bbox)
-    tm.clear_bbox(rpm78_tracklist_bbox)
+    tm.clear_bbox(bottom_bbox)
     tm.write("Choosing Songs", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
@@ -164,14 +165,12 @@ def get_tape_metadata(identifier):
 
 
 def play_pause(player):
-    tm.clear_bbox(tm.playpause_bbox)
     if player.is_playing():
         player.pause()
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
     elif len(player.playlist) > 0:
         player.play()
         tm.power(1)
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+    update_display(player)
     return
 
 
@@ -235,7 +234,7 @@ def main_loop(player, state):
                 if tm.power():
                     tm.screen_on()
                     if player.stop():
-                        tm.clear_bbox(tm.playpause_bbox)
+                        tm.clear_bbox(playpause_bbox)
                 print("Stop UP")
 
         player.audio_pump()
@@ -428,51 +427,52 @@ def main_loop(player, state):
 
 
 def update_display(player):
-    tm.clear_bbox(tm.playpause_bbox)
+    tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
         pass
     elif player.is_playing():
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, 10, play_color)
     elif player.is_paused():
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, 10, st7789.WHITE)
     display_tracks(*player.track_names())
 
 
 def display_artist(artist):
-    print(f"in display_artist {artist}")
-    try:
-        state = utils.load_state("78rpm")
-    except Exception as e:
-        print(f"Failed to load state {e}")
-    tm.clear_bbox(tm.selected_date_bbox)
-
-    artist = tm.trim_string_middle(artist, 16, pfont_small)
-    tm.write(f"{artist}", 0, tm.selected_date_bbox.y0 - 3, pfont_small, st7789.WHITE, clear=0)
-    return
+    artist_bbox = tm.Bbox(0, 80, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+    tm.clear_bbox(artist_bbox)
+    artist = utils.capitalize(artist.lower())
+    text_height = 15
+    max_lines = 3
+    artist_msg = tm.add_line_breaks(artist, 0, pfont_small, -max_lines, indent=1)
+    n_lines = len(artist_msg.split("\n"))
+    y0 = artist_bbox.y0 + (text_height * (max_lines - n_lines))
+    msg = tm.write(f"{artist}", 0, y0, pfont_small, st7789.WHITE, text_height, 0, -max_lines, indent=1)
+    print(f"in display_artist {artist},\n{msg} at 0,{y0}")
+    return msg
 
 
 def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     max_lines = 3
     lines_written = 0
-    tm.clear_bbox(rpm78_tracklist_bbox)
+    tm.clear_bbox(bottom_bbox)
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
     text_height = 17
-    while lines_written <= max_lines:
+    while lines_written < max_lines:
         name = track_names[i]
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
-        y0 = rpm78_tracklist_bbox.y0 + (text_height * lines_written)
+        y0 = bottom_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
-    return
+    return msg
 
 
 def run():
