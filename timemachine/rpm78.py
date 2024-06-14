@@ -198,7 +198,7 @@ def main_loop(player, state):
 
     tm.screen_on_time = time.ticks_ms()
     tm.write(f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, color=stage_date_color, font=large_font, clear=True)
-    tm.write("Turn knobs to\nChange timespan\nand Select", 0, 42, color=yellow_color, font=pfont_small, clear=False)
+    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=yellow_color, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=st7789.WHITE, font=pfont_med, clear=False)
     poll_count = 0
     while True:
@@ -453,21 +453,25 @@ def display_artist(artist):
 
 def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
-    try:
-        state = utils.load_state("78rpm")
-    except Exception as e:
-        print(f"Failed to load state {e}")
+    max_lines = 3
+    lines_written = 0
     tm.clear_bbox(rpm78_tracklist_bbox)
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
             last_valid_str = i
-    for i in range(5):
+    i = 0
+    text_height = 17
+    while lines_written <= max_lines:
         name = track_names[i]
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
-        tm.write(f"{name}", rpm78_tracklist_bbox.x0, rpm78_tracklist_bbox.y0 + (16 * i), pfont_small, tracklist_color, clear=0)
+        y0 = rpm78_tracklist_bbox.y0 + (text_height * lines_written)
+        show_end = -2 if i == 0 else 0
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
+        lines_written += len(msg.split("\n"))
+        i = i + 1
     return
 
 
