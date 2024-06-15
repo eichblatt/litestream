@@ -552,14 +552,40 @@ def update_display(player):
         tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
 
 
+def display_tracks(*track_names):
+    print(f"in display_tracks {track_names}")
+    tm.clear_bbox(tm.tracklist_bbox)
+    max_lines = 2
+    lines_written = 0
+    last_valid_str = 0
+    for i in range(len(track_names)):
+        if len(track_names[i]) > 0:
+            last_valid_str = i
+    i = 0
+    text_height = 17
+    while lines_written < max_lines:
+        name = track_names[i]
+        name = name.strip("> ")  # remove trailing spaces and >'s
+        if i < last_valid_str and len(name) == 0:
+            name = "Unknown"
+        name = utils.capitalize(name.lower())
+        y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
+        show_end = -2 if i == 0 else 0
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
+        lines_written += len(msg.split("\n"))
+        i = i + 1
+    return msg
+
+
+"""
 def display_tracks(*tracks):
     current_track_name = tracks[0]
     next_track_name = tracks[1]
-    tm.init_screen()  # Do we need this if not sharing SPI bus?
     tm.clear_bbox(tm.tracklist_bbox)
     tm.tft.write(pfont_small, f"{current_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.y0, tracklist_color)
     tm.tft.write(pfont_small, f"{next_track_name}", tm.tracklist_bbox.x0, tm.tracklist_bbox.center()[1], tracklist_color)
     return
+"""
 
 
 def add_vcs(coll):
