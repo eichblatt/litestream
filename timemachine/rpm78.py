@@ -302,7 +302,7 @@ def main_loop(player, state):
         if (len(tape_ids) > 0) and player.is_stopped():
             pts = player.track_status()
             if pts["current_track"] == 0:
-                tm.clear_bbox(tm.bottom_bbox)
+                tm.clear_bbox(bottom_bbox)
                 tm.write("Flipping Record", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 player.set_playlist(tracklist, urls)
