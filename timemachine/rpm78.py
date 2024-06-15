@@ -123,7 +123,6 @@ def get_urls_for_ids(tape_ids):
     urls = []
     tracklist = []
     artists = []
-    tm.clear_bbox(tm.venue_bbox)
     tm.clear_bbox(bottom_bbox)
     tm.write("Choosing Songs", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     for identifier in tape_ids:
@@ -221,8 +220,8 @@ def main_loop(player, state):
                     tape_ids = select_date_range(staged_date_range)
                     date_range = set_date_range(staged_date_range, state)
                     urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
-                    tm.clear_bbox(tm.venue_bbox)
                     player.set_playlist(tracklist, urls)
+                    display_tracks(*player.track_names())
                     tape_ids = tape_ids[5:]
                     gc.collect()
                 play_pause(player)
@@ -291,6 +290,7 @@ def main_loop(player, state):
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 tm.clear_bbox(tm.venue_bbox)
                 player.set_playlist(tracklist, urls)
+                display_tracks(*player.track_names())
                 tape_ids = tape_ids[5:]
                 gc.collect()
                 play_pause(player)
@@ -302,12 +302,12 @@ def main_loop(player, state):
         if (len(tape_ids) > 0) and player.is_stopped():
             pts = player.track_status()
             if pts["current_track"] == 0:
-                tm.clear_bbox(tm.venue_bbox)
+                tm.clear_bbox(tm.bottom_bbox)
                 tm.write("Flipping Record", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 player.set_playlist(tracklist, urls)
+                display_tracks(*player.track_names())
                 tape_ids = tape_ids[5:]
-                tm.clear_bbox(tm.venue_bbox)
                 play_pause(player)
 
         if not tm.pSelect.value():  # long press Select
