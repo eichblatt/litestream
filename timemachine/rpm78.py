@@ -53,8 +53,9 @@ purple_color = st7789.color565(255, 100, 255)
 tracklist_color = st7789.color565(0, 255, 255)
 play_color = st7789.color565(255, 0, 0)
 nshows_color = st7789.color565(0, 100, 255)
-playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 32)
-bottom_bbox = tm.Bbox(0, 30, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+stage_date_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, 27)
+playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 27)
+bottom_bbox = tm.Bbox(0, 29, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 tapeid_range_dict = {}
 
 
@@ -76,18 +77,18 @@ def set_date_range(date_range, state=None):
 def get_ids_from_year(year):
     meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
     tm.clear_bbox(bottom_bbox)
-    tm.write(f"Loading {year}", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
+    tm.write(f"Loading {year}", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     ids = []
     if utils.path_exists(meta_path):
         ids = utils.read_json(meta_path)
     else:
-        tm.clear_bbox(tm.Bbox(0, tm.venue_bbox.y0 + 20, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
-        tm.write(f"...from archive", tm.venue_bbox.x0, tm.venue_bbox.y0 + 20, pfont_small, st7789.WHITE, clear=0, show_end=1)
+        tm.clear_bbox(tm.Bbox(0, bottom_bbox.y0 + 20, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
+        tm.write(f"...from archive", bottom_bbox.x0, bottom_bbox.y0 + 20, pfont_small, st7789.WHITE, clear=0, show_end=1)
         resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
         ids = resdict["identifier"]
         if utils.disk_free() < 1_000:
             utils.remove_oldest_files(utils.dirname(meta_path), 1)
-        tm.write(f"...saving", tm.venue_bbox.x0, tm.venue_bbox.y0 + 40, pfont_small, st7789.WHITE, clear=0, show_end=1)
+        tm.write(f"...saving", bottom_bbox.x0, bottom_bbox.y0 + 40, pfont_small, st7789.WHITE, clear=0, show_end=1)
         utils.write_json(ids, meta_path)
         print(f"{meta_path} written")
     return ids
@@ -124,7 +125,8 @@ def get_urls_for_ids(tape_ids):
     tracklist = []
     artists = []
     tm.clear_bbox(bottom_bbox)
-    tm.write("Choosing Songs", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
+    tm.clear_bbox(playpause_bbox)
+    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
@@ -216,7 +218,6 @@ def main_loop(player, state):
                 if (player.is_stopped()) and (player.current_track is None):
                     tm.clear_bbox(tm.venue_bbox)
                     tm.clear_bbox(playpause_bbox)
-                    tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color)
                     tape_ids = select_date_range(staged_date_range)
                     date_range = set_date_range(staged_date_range, state)
                     urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
@@ -284,17 +285,14 @@ def main_loop(player, state):
                 player.stop()
                 tm.clear_bbox(tm.venue_bbox)
                 tm.clear_bbox(playpause_bbox)
-                tm.write("Loading Music", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
                 tape_ids = select_date_range(staged_date_range)
                 date_range = set_date_range(staged_date_range, state)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
-                tm.clear_bbox(tm.venue_bbox)
                 player.set_playlist(tracklist, urls)
                 display_tracks(*player.track_names())
                 tape_ids = tape_ids[5:]
                 gc.collect()
                 play_pause(player)
-                print("Select UP")
             else:
                 select_press_time = time.ticks_ms()
                 print("Select DOWN")
@@ -303,7 +301,7 @@ def main_loop(player, state):
             pts = player.track_status()
             if pts["current_track"] == 0:
                 tm.clear_bbox(bottom_bbox)
-                tm.write("Flipping Record", tm.venue_bbox.x0, tm.venue_bbox.y0, pfont_small, purple_color, clear=0)
+                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 player.set_playlist(tracklist, urls)
                 display_tracks(*player.track_names())
@@ -366,9 +364,8 @@ def main_loop(player, state):
         if (staged_date_range != date_range) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
             print(f"setting date_range to {date_range}")
             staged_date_range = set_date_range(date_range, state)
-            tm.clear_bbox(tm.stage_date_bbox)
-            tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
-            update_playpause(player)
+            msg = update_staged_date_range(staged_date_range, player)
+            display_tracks(*player.track_names())
             end_year_old = tm.y.value()
             start_year_old = tm.m.value()
             mid_year_old = tm.d.value()
@@ -418,10 +415,7 @@ def main_loop(player, state):
             staged_date_range = set_date_range((start_year_new, end_year_new))
             mid_year_old = tm.d.value()
             print(f"staged date_range is now {staged_date_range}")
-
-            tm.clear_bbox(tm.stage_date_bbox)
-            tm.tft.write(large_font, f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, stage_date_color)
-            update_playpause(player)
+            msg = update_staged_date_range(staged_date_range, player)
         if player.is_playing() and player.current_track != current_track_old:
             current_track_old = player.current_track
             display_artist(utils.capitalize(artists[player.current_track]))
@@ -436,13 +430,19 @@ def update_playpause(player):
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, 10, play_color)
     elif player.is_paused():
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, 10, st7789.WHITE)
-    # display_tracks(*player.track_names())
+
+
+def update_staged_date_range(staged_date_range, player):
+    msg = tm.write(f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, large_font, stage_date_color, clear=0)
+    # display_tracks(*player.track_names())  # causes screen flicker. Could avoid by lowering tracks bbox.
+    return msg
 
 
 def display_artist(artist):
     artist_bbox = tm.Bbox(0, 80, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
-    tm.clear_bbox(artist_bbox)
+    tm.clear_bbox(tm.Bbox(0, 82, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
     artist = utils.capitalize(artist.lower())
+    artist = "Unknown" if len(artist) == 0 else artist
     text_height = 15
     max_lines = 3
     artist_msg = tm.add_line_breaks(artist, 0, pfont_small, -max_lines, indent=1)
@@ -457,7 +457,8 @@ def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     max_lines = 3
     lines_written = 0
-    tm.clear_bbox(bottom_bbox)
+    # tm.clear_bbox(bottom_bbox)
+    tm.clear_bbox(tm.Bbox(0, 27, tm.SCREEN_WIDTH, 80))
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
@@ -466,11 +467,11 @@ def display_tracks(*track_names):
     text_height = 17
     while lines_written < max_lines:
         name = track_names[i]
-        name = name.strip("> ")  # remove trailing spaces and >'s
+        name = name.strip("-> ")  # remove trailing spaces and >'s
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
-        y0 = bottom_bbox.y0 + (text_height * lines_written)
+        y0 = bottom_bbox.y0 + 2 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))

@@ -465,7 +465,7 @@ def display_tracks(*track_names):
     text_height = 17
     while lines_written < max_lines:
         name = track_names[i]
-        name = name.strip("> ")  # remove trailing spaces and >'s
+        name = name.strip("-> ")  # remove trailing spaces and >'s
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
