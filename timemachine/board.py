@@ -391,16 +391,22 @@ def trim_string_middle(text, x_pos, font):
     return text
 
 
-def add_line_breaks(text, x_pos, font, max_new_lines):
+def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
     out_lines = []
     new_lines = 0
+    split_on_words = max_new_lines < 0
     lines = text.split("\n")
     for line in lines:
-        while new_lines < max_new_lines:
-            test = line
+        while new_lines < abs(max_new_lines):
+            indention = (indent * " ") if new_lines > 0 else ""
+            test = indention + line
             pixel_width = tft.write_len(font, test)
             while (pixel_width + x_pos) > SCREEN_WIDTH:
-                test = test[:-1]
+                if split_on_words:
+                    test = test.split(" ")
+                    test = " ".join(test[:-1])
+                else:
+                    test = test[:-1]
                 pixel_width = tft.write_len(font, test)
             out_lines.append(test)
             if len(test) < len(line):
@@ -412,16 +418,17 @@ def add_line_breaks(text, x_pos, font, max_new_lines):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=0):
+def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=0, indent=0):
     if clear:
         clear_screen()
-    if show_end > 1:
-        msg = add_line_breaks(msg, x, font, show_end)
+    if abs(show_end) > 1:
+        msg = add_line_breaks(msg, x, font, show_end, indent=indent)
     text = msg.split("\n")
     for i, line in enumerate(text):
         if show_end == 1:
             line = trim_string_middle(line, x, font)
         tft.write(font, line, x, y + (i * text_height), color)
+    return msg
 
 
 class decade_counter:

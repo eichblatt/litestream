@@ -445,26 +445,42 @@ def update_display(player):
 
 
 def display_tracks(*track_names):
-    current_track_name = track_names[0]
-    next_track_name = track_names[1]
     try:
         state = utils.load_state("datpiff")
         rm_txt = state["selected_tape"]["artist"].lower()  # Don't show artist name in track
-        current_track_name, next_track_name = [x.lower().replace(rm_txt, "") for x in (current_track_name, next_track_name)]
-        current_track_name, next_track_name = [utils.capitalize(x.strip("- .~")) for x in (current_track_name, next_track_name)]
+        track_names = [x.lower().replace(rm_txt, "") for x in track_names]
+        track_names = [x.strip("- .~>") for x in track_names]
     except Exception as e:
         print(f"Failed to cleanup track titles {e}")
         pass
     tm.clear_bbox(new_tracklist_bbox)
-    tm.write(f"{current_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.y0, pfont_small, tracklist_color, clear=0)
-    tm.write(f"{next_track_name}", new_tracklist_bbox.x0, new_tracklist_bbox.center()[1], pfont_small, tracklist_color, clear=0)
-    return
+
+    max_lines = 2
+    lines_written = 0
+    last_valid_str = 0
+    for i in range(len(track_names)):
+        if len(track_names[i]) > 0:
+            last_valid_str = i
+    i = 0
+    text_height = 17
+    while lines_written < max_lines:
+        name = track_names[i]
+        name = name.strip("-> ")  # remove trailing spaces and >'s
+        if i < last_valid_str and len(name) == 0:
+            name = "Unknown"
+        name = utils.capitalize(name.lower())
+        y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
+        show_end = -2 if i == 0 else 0
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
+        lines_written += len(msg.split("\n"))
+        i = i + 1
+    return msg
 
 
 def display_keyed_title(keyed_title, color=purple_color):
     # print(f"in display_keyed_title {keyed_title}")
     tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=2)
+    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
 
 
 def display_keyed_artist(artist, color=purple_color):
