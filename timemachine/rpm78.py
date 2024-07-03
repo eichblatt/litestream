@@ -18,11 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
-import json
-import os
 import re
+import sys
 import time
-from collections import OrderedDict
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
@@ -74,49 +72,26 @@ def set_date_range(date_range, state=None):
     return date_range
 
 
-def get_ids_from_year(year):
-    meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
-    tm.clear_bbox(bottom_bbox)
-    tm.write(f"Loading {year}", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
-    ids = []
-    if utils.path_exists(meta_path):
-        ids = utils.read_json(meta_path)
-    else:
-        tm.clear_bbox(tm.Bbox(0, bottom_bbox.y0 + 20, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
-        tm.write(f"...from archive", bottom_bbox.x0, bottom_bbox.y0 + 20, pfont_small, st7789.WHITE, clear=0, show_end=1)
-        resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
-        ids = resdict["identifier"]
-        if utils.disk_free() < 1_000:
-            utils.remove_oldest_files(utils.dirname(meta_path), 1)
-        tm.write(f"...saving", bottom_bbox.x0, bottom_bbox.y0 + 40, pfont_small, st7789.WHITE, clear=0, show_end=1)
-        utils.write_json(ids, meta_path)
-        print(f"{meta_path} written")
-    return ids
-
-
 def select_date_range(date_range, N_to_select=60):
-    print(f"selecting tapes from {date_range}.")
+    print(f"Selecting tapes from {date_range}.")
 
     # To minimize memory, select at most 6 different years.
-    max_N_years = 6
-    min_year = date_range[0]
-    max_year = date_range[1] + 1
-    year_list = list(range(min_year, max_year))
-    if (max_year - min_year) > max_N_years:
-        year_list = sorted(utils.deal_n(year_list, max_N_years))
-
-    print(f"Selecting from years {year_list}")
-    tape_ids = []
-    for year in year_list:
-        try:
-            tm.clear_bbox(tm.venue_bbox)
-            ids = utils.deal_n(get_ids_from_year(year), N_to_select // len(year_list))
-            _ = [tape_ids.append(x) for x in ids]
-        except:
-            pass
-
     tm.clear_bbox(tm.venue_bbox)
+    tm.clear_bbox(bottom_bbox)
+    tm.write(
+        f"Loading {date_range[0]} to {date_range[1]}",
+        bottom_bbox.x0,
+        bottom_bbox.y0,
+        pfont_small,
+        purple_color,
+        clear=0,
+        show_end=-2,
+    )
+    coll_dict = archive_utils.subset_collection(["identifier", "date"], "georgeblood", date_range, N_to_select, prefix="78_")
+    tape_ids = coll_dict["identifier"]
+    tm.clear_bbox(bottom_bbox)
     tape_ids = utils.shuffle(tape_ids)
+    print(f"tape_ids {tape_ids}")
     return tape_ids
 
 
