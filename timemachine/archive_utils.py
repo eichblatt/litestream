@@ -102,12 +102,13 @@ def _get_collection_year_chunk(url):
 
 
 def get_alphabet_bounds(center, radius):
+    radius = abs(radius)
     print(f"alphabet_bounds {center}, {radius}")
     start_pos = max(center - radius, 0)
     end_pos = min(start_pos + 2 * radius, 1)
-    if end_pos == 1:
-        end_pos = 0.99999999
-        start_pos = 0.99999999 - 2 * radius
+    if end_pos >= 1:
+        end_pos = 0.999999
+        start_pos = 0.999999 - 2 * radius
 
     def letters(f, n):
         return chr(97 + int(f * math.pow(26, n + 1) % 26))
@@ -131,7 +132,7 @@ def subset_collection(fields, collection, date_range, N_to_select, prefix=""):
         data = _get_data_from_archive(fields, query)
         result_dict = data
     else:  # choose n_subsets, alphabetically, and combine them together.
-        max_size_to_pull = max(max_size_to_pull // n_subsets, 3000)
+        max_size_to_pull = (1.1 * max_size_to_pull) // n_subsets
         min_size_to_pull = min(N_to_select * 5, max_size_to_pull - 100)
         for i in range(n_subsets):
             print(f"Looping, i is {i}")
@@ -145,6 +146,7 @@ def subset_collection(fields, collection, date_range, N_to_select, prefix=""):
             print(f"cond: {cond}. Size is {size}")
             i_tries = 0
             while ((size > max_size_to_pull) or (size < min_size_to_pull)) & (i_tries < 5):
+                # radius = radius * max(min((max_size_to_pull / (2 * size + 1)), 2), math.pow(0.9, i_tries + 1))
                 radius = radius * max(min((max_size_to_pull / (2 * size + 1)), 2), 0.8)
                 start_chars, end_chars = get_alphabet_bounds(center, radius)
                 start = f"{prefix}{start_chars if start_chars >= 'aa' else ''}"
