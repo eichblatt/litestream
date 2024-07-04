@@ -51,7 +51,7 @@ def get_collection_query(collection, year, other_conds=[]):
     return query
 
 
-def _get_data_from_archive(fields, query, count=10000):
+def _get_data_from_archive(fields, query, count=None):
     if isinstance(fields, str):
         fields = [fields]
     field_str = "%2C".join(fields)
@@ -59,19 +59,20 @@ def _get_data_from_archive(fields, query, count=10000):
     total = 1
     cursor = ""
     result = {}
+    batch_size = 10000 if count is None else min(count, 10000)
     base_url = "https://archive.org/services/search/v1/scrape"
     if isinstance(fields, str):
         fields = [fields]
     field_str = "%2C".join(fields)
     while n_items < total:
         if len(cursor) > 0:
-            url = f"{base_url}?debug=false&xvar=production&total_only=false&count={count}&cursor={cursor}&fields={field_str}&q={query}"
+            url = f"{base_url}?debug=false&xvar=production&total_only=false&count={batch_size}&cursor={cursor}&fields={field_str}&q={query}"
         else:
-            url = f"{base_url}?debug=false&xvar=production&total_only=false&count={count}&fields={field_str}&q={query}"
+            url = f"{base_url}?debug=false&xvar=production&total_only=false&count={batch_size}&fields={field_str}&q={query}"
         print(url)
         j = _get_collection_year_chunk(url)
         n_items += int(j["count"])
-        total = j["total"] if (count == 10000) else min(j["total"], count)
+        total = j["total"] if (count is None) else min(j["total"], count)
         cursor = j.get("cursor", "")
         print(f"{n_items}/{total} items downloaded")
         for item in j["items"]:
@@ -132,7 +133,7 @@ def subset_collection(fields, collection, date_range, N_to_select, prefix=""):
         data = _get_data_from_archive(fields, query)
         result_dict = data
     else:  # choose n_subsets, alphabetically, and combine them together.
-        max_size_to_pull = (1.1 * max_size_to_pull) // n_subsets
+        max_size_to_pull = 200 + max_size_to_pull // n_subsets
         min_size_to_pull = min(N_to_select * 5, max_size_to_pull - 100)
         for i in range(n_subsets):
             print(f"Looping, i is {i}")
