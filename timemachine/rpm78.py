@@ -78,8 +78,11 @@ def select_date_range(date_range, N_to_select=60):
     # To minimize memory, select at most 6 different years.
     tm.clear_bbox(tm.venue_bbox)
     tm.clear_bbox(bottom_bbox)
+    msg = f"Loading {date_range[0]}"
+    if date_range[1] > date_range[0]:
+        msg = msg + f" to {date_range[1]}"
     tm.write(
-        f"Loading {date_range[0]}" + f" to {date_range[1]}" if date_range[1] > date_range[0] else "",
+        msg,
         bottom_bbox.x0,
         bottom_bbox.y0,
         pfont_small,
@@ -94,7 +97,6 @@ def select_date_range(date_range, N_to_select=60):
     indices = utils.shuffle(list(range(len(tape_ids))))
     tape_ids = [tape_ids[i] for i in indices]
     tape_dates = [tape_dates[i] for i in indices]
-    print(f"tape_ids {tape_ids}")
     return tape_ids, tape_dates
 
 
@@ -175,7 +177,10 @@ def main_loop(player, state):
     tape_ids = []
 
     tm.screen_on_time = time.ticks_ms()
-    tm.write(f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, color=stage_date_color, font=large_font, clear=True)
+    date_range_msg = f"{date_range[0]}"
+    if date_range[1] > date_range[0]:
+        date_range_msg += f"-{date_range[1]%100:02d}"
+    tm.write(date_range_msg, 0, 0, color=stage_date_color, font=large_font, clear=True)
     tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=yellow_color, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=st7789.WHITE, font=pfont_med, clear=False)
     poll_count = 0
@@ -417,25 +422,32 @@ def update_playpause(player):
 
 
 def update_staged_date_range(staged_date_range, player):
-    msg = tm.write(f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, large_font, stage_date_color, clear=0)
+    date_range_msg = f"{staged_date_range[0]}"
+    #    if staged_date_range[1] > staged_date_range[0]:
+    date_range_msg += f"-{staged_date_range[1]%100:02d}"
+    msg = tm.write(date_range_msg, 0, 0, large_font, stage_date_color, clear=0)
     # display_tracks(*player.track_names())  # causes screen flicker. Could avoid by lowering tracks bbox.
     return msg
 
 
 def display_artist(artist, date=""):
-    artist_bbox = tm.Bbox(0, 63, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
-    tm.clear_bbox(tm.Bbox(0, 65, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
     artist = utils.capitalize(artist.lower())
     artist = "Unknown" if len(artist) == 0 else artist
     text_height = 15
     max_lines = 3
     artist_msg = tm.add_line_breaks(artist, 0, pfont_small, -max_lines, indent=1)
     n_lines = len(artist_msg.split("\n"))
-    y0 = artist_bbox.y0 + (text_height * (max_lines - n_lines))
-    bottom_y0 = artist_bbox.y0 + (text_height * max_lines) + 4
+
+    y0 = 65
+    y1 = y0 + (max_lines - n_lines) * text_height
+    if n_lines < max_lines:
+        y1 = y1 - 5
+    tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
+
+    bottom_y0 = y0 + (text_height * max_lines) + 2
     date_msg = tm.write(f"{date}", 20, bottom_y0, date_font, st7789.GREEN, text_height, 0)
-    msg = tm.write(f"{artist}", 0, y0, pfont_small, st7789.WHITE, text_height, 0, -max_lines, indent=1)
-    print(f"in display_artist {artist},\n{msg} at 0,{y0}")
+    msg = tm.write(f"{artist}", 0, y1, pfont_small, st7789.WHITE, text_height, 0, -max_lines, indent=1)
+    print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg
 
 

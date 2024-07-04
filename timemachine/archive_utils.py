@@ -129,7 +129,6 @@ def subset_collection(fields, collection, date_range, N_to_select, prefix=""):
     result_dict = {}
     if collection_size <= max_size_to_pull:
         query = get_collection_query(collection, date_range_string)
-        print(f"query: {query}")
         data = _get_data_from_archive(fields, query)
         result_dict = data
     else:  # choose n_subsets, alphabetically, and combine them together.
@@ -168,7 +167,6 @@ def subset_collection(fields, collection, date_range, N_to_select, prefix=""):
     indices = utils.deal_n(list(range(len(result_dict[fields[0]]))), N_to_select)
     for key in result_dict.keys():
         result_dict[key] = [result_dict[key][i] for i in indices]
-    print(f"results are {len(result_dict[fields[0]])}: {result_dict[fields[0]]}")
     return result_dict
 
 
