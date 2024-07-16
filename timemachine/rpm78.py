@@ -109,6 +109,8 @@ def select_date_range(date_range, N_to_select=60):
         coll_dict = archive_utils.subset_collection(
             ["identifier", "date"], "georgeblood", date_range, N_to_select, prefix="78_"
         )
+        indices = utils.shuffle(list(range(len(coll_dict[list(coll_dict.keys())[0]]))))
+        coll_dict = {k: [v[i] for i in indices] for k, v in coll_dict.items()}
         while utils.disk_free() < 100:
             utils.remove_oldest_files("/metadata/rpm78", 1)
         utils.write_json(coll_dict, metadata_cache)
@@ -117,9 +119,6 @@ def select_date_range(date_range, N_to_select=60):
     tape_ids = coll_dict["identifier"]
     tape_dates = [x[:10] for x in coll_dict["date"]]
     tm.clear_bbox(bottom_bbox)
-    indices = utils.shuffle(list(range(len(tape_ids))))
-    tape_ids = [tape_ids[i] for i in indices]
-    tape_dates = [tape_dates[i] for i in indices]
     return tape_ids, tape_dates, track_index
 
 
