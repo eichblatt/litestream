@@ -47,6 +47,13 @@ def get_collection_query(collection, year, other_conds=[]):
         .replace("]", "%5D")
         .replace(",", "%2C")
         .replace('"', "%22")
+        .replace("?", "%3F")
+        .replace("^", "%5E")
+        .replace("~", "%7E")
+        .replace("&", "%26")
+        .replace("$", "%24")
+        .replace("<", "%3C")
+        .replace(">", "%3E")
     )
     return query
 
