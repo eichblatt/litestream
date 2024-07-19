@@ -503,6 +503,7 @@ def run_livemusic():
         except Exception as e:
             print(f"Exception in main. {e} -- reconfiguring")
         finally:
+            time.sleep(2)
             reconfigure()
 
 
