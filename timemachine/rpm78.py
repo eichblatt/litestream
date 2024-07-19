@@ -18,11 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Display driver: https://github.com/russhughes/st7789_mpy
 import gc
-import json
-import os
 import re
+import sys
 import time
-from collections import OrderedDict
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
@@ -74,50 +72,54 @@ def set_date_range(date_range, state=None):
     return date_range
 
 
-def get_ids_from_year(year):
-    meta_path = f"/metadata/78rpm/georgeblood_{year}.json"
-    tm.clear_bbox(bottom_bbox)
-    tm.write(f"Loading {year}", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0, show_end=1)
-    ids = []
-    if utils.path_exists(meta_path):
-        ids = utils.read_json(meta_path)
-    else:
-        tm.clear_bbox(tm.Bbox(0, bottom_bbox.y0 + 20, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
-        tm.write(f"...from archive", bottom_bbox.x0, bottom_bbox.y0 + 20, pfont_small, st7789.WHITE, clear=0, show_end=1)
-        resdict = archive_utils.get_collection_year(["identifier"], "georgeblood", year)
-        ids = resdict["identifier"]
-        if utils.disk_free() < 1_000:
-            utils.remove_oldest_files(utils.dirname(meta_path), 1)
-        tm.write(f"...saving", bottom_bbox.x0, bottom_bbox.y0 + 40, pfont_small, st7789.WHITE, clear=0, show_end=1)
-        utils.write_json(ids, meta_path)
-        print(f"{meta_path} written")
-    return ids
-
-
 def select_date_range(date_range, N_to_select=60):
-    print(f"selecting tapes from {date_range}.")
+    print(f"Selecting tapes from {date_range}.")
 
-    # To minimize memory, select at most 6 different years.
-    max_N_years = 6
-    min_year = date_range[0]
-    max_year = date_range[1] + 1
-    year_list = list(range(min_year, max_year))
-    if (max_year - min_year) > max_N_years:
-        year_list = sorted(utils.deal_n(year_list, max_N_years))
-
-    print(f"Selecting from years {year_list}")
-    tape_ids = []
-    for year in year_list:
-        try:
-            tm.clear_bbox(tm.venue_bbox)
-            ids = utils.deal_n(get_ids_from_year(year), N_to_select // len(year_list))
-            _ = [tape_ids.append(x) for x in ids]
-        except:
-            pass
-
+    track_index = 0
     tm.clear_bbox(tm.venue_bbox)
-    tape_ids = utils.shuffle(tape_ids)
-    return tape_ids
+    tm.clear_bbox(bottom_bbox)
+    msg = f"Loading {date_range[0]}"
+    if date_range[1] > date_range[0]:
+        msg = msg + f" to {date_range[1]}"
+    tm.write(
+        msg,
+        bottom_bbox.x0,
+        bottom_bbox.y0,
+        pfont_small,
+        purple_color,
+        clear=0,
+        show_end=-2,
+    )
+    metadata_cache = f"/metadata/78rpm/{date_range[0]}_{date_range[1]}_tracklist.json"
+    metadata_track_index = f"/metadata/78rpm/{date_range[0]}_{date_range[1]}_tracknum.json"
+    if utils.path_exists(metadata_cache):
+        try:
+            track_index = utils.read_json(metadata_track_index)
+            coll_dict = utils.read_json(metadata_cache)
+            tracks_remaining = len(coll_dict["identifier"]) - track_index
+            if tracks_remaining < 7:
+                print(f"Only {tracks_remaining} remaining. Deleting")
+                utils.remove_file(metadata_cache)
+                utils.remove_file(metadata_track_index)
+                track_index = 0
+        except Exception as e:
+            utils.remove_file(metadata_cache)
+    if not utils.path_exists(metadata_cache):
+        track_index = 0
+        coll_dict = archive_utils.subset_collection(
+            ["identifier", "date"], "georgeblood", date_range, N_to_select, prefix="78_"
+        )
+        indices = utils.shuffle(list(range(len(coll_dict[list(coll_dict.keys())[0]]))))
+        coll_dict = {k: [v[i] for i in indices] for k, v in coll_dict.items()}
+        while utils.disk_free() < 100:
+            utils.remove_oldest_files("/metadata/rpm78", 1)
+        utils.write_json(coll_dict, metadata_cache)
+        utils.write_json(0, metadata_track_index)
+    coll_dict = {k: v[track_index:] for k, v in coll_dict.items()}
+    tape_ids = coll_dict["identifier"]
+    tape_dates = [x[:10] for x in coll_dict["date"]]
+    tm.clear_bbox(bottom_bbox)
+    return tape_ids, tape_dates, track_index
 
 
 def get_urls_for_ids(tape_ids):
@@ -195,9 +197,15 @@ def main_loop(player, state):
     mid_year_old = tm.d.value()
     date_changed_time = 0
     tape_ids = []
+    tracks_played = 0
+    track_index = 0
+    tracks_length = 60
 
     tm.screen_on_time = time.ticks_ms()
-    tm.write(f"{date_range[0]}-{date_range[1]%100:02d}", 0, 0, color=stage_date_color, font=large_font, clear=True)
+    date_range_msg = f"{date_range[0]}"
+    if date_range[1] > date_range[0]:
+        date_range_msg += f"-{date_range[1]%100:02d}"
+    tm.write(date_range_msg, 0, 0, color=stage_date_color, font=large_font, clear=True)
     tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=yellow_color, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=st7789.WHITE, font=pfont_med, clear=False)
     poll_count = 0
@@ -218,12 +226,14 @@ def main_loop(player, state):
                 if (player.is_stopped()) and (player.current_track is None):
                     tm.clear_bbox(tm.venue_bbox)
                     tm.clear_bbox(playpause_bbox)
-                    tape_ids = select_date_range(staged_date_range)
+                    tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                     date_range = set_date_range(staged_date_range, state)
                     urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                    dates = tape_dates[:5]
                     player.set_playlist(tracklist, urls)
                     display_tracks(*player.track_names())
                     tape_ids = tape_ids[5:]
+                    tape_dates = tape_dates[5:]
                     gc.collect()
                 play_pause(player)
 
@@ -285,12 +295,14 @@ def main_loop(player, state):
                 player.stop()
                 tm.clear_bbox(tm.venue_bbox)
                 tm.clear_bbox(playpause_bbox)
-                tape_ids = select_date_range(staged_date_range)
+                tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                 date_range = set_date_range(staged_date_range, state)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                dates = tape_dates[:5]
                 player.set_playlist(tracklist, urls)
                 display_tracks(*player.track_names())
                 tape_ids = tape_ids[5:]
+                tape_dates = tape_dates[5:]
                 gc.collect()
                 play_pause(player)
             else:
@@ -303,9 +315,11 @@ def main_loop(player, state):
                 tm.clear_bbox(bottom_bbox)
                 tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, purple_color, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
+                dates = tape_dates[:5]
                 player.set_playlist(tracklist, urls)
                 display_tracks(*player.track_names())
                 tape_ids = tape_ids[5:]
+                tape_dates = tape_dates[5:]
                 play_pause(player)
 
         if not tm.pSelect.value():  # long press Select
@@ -417,8 +431,11 @@ def main_loop(player, state):
             print(f"staged date_range is now {staged_date_range}")
             msg = update_staged_date_range(staged_date_range, player)
         if player.is_playing() and player.current_track != current_track_old:
+            tracks_played += 1
+            track_index += 1
+            utils.write_json(track_index, f"/metadata/78rpm/{date_range[0]}_{date_range[1]}_tracknum.json")
             current_track_old = player.current_track
-            display_artist(utils.capitalize(artists[player.current_track]))
+            display_artist(utils.capitalize(artists[player.current_track]), dates[player.current_track])
         player.audio_pump()
 
 
@@ -433,39 +450,49 @@ def update_playpause(player):
 
 
 def update_staged_date_range(staged_date_range, player):
-    msg = tm.write(f"{staged_date_range[0]}-{staged_date_range[1]%100:02d}", 0, 0, large_font, stage_date_color, clear=0)
+    date_range_msg = f"{staged_date_range[0]}"
+    #    if staged_date_range[1] > staged_date_range[0]:
+    date_range_msg += f"-{staged_date_range[1]%100:02d}"
+    msg = tm.write(date_range_msg, 0, 0, large_font, stage_date_color, clear=0)
     # display_tracks(*player.track_names())  # causes screen flicker. Could avoid by lowering tracks bbox.
     return msg
 
 
-def display_artist(artist):
-    artist_bbox = tm.Bbox(0, 80, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
-    tm.clear_bbox(tm.Bbox(0, 82, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
-    artist = utils.capitalize(artist.lower())
+def display_artist(artist, date=""):
+    artist = utils.capitalize(artist.lower()).strip()
     artist = "Unknown" if len(artist) == 0 else artist
     text_height = 15
     max_lines = 3
     artist_msg = tm.add_line_breaks(artist, 0, pfont_small, -max_lines, indent=1)
     n_lines = len(artist_msg.split("\n"))
-    y0 = artist_bbox.y0 + (text_height * (max_lines - n_lines))
-    msg = tm.write(f"{artist}", 0, y0, pfont_small, st7789.WHITE, text_height, 0, -max_lines, indent=1)
-    print(f"in display_artist {artist},\n{msg} at 0,{y0}")
+
+    y0 = 65
+    y1 = y0 + (max_lines - n_lines) * text_height
+    if n_lines < max_lines:
+        y1 = y1 - 5
+    tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
+
+    bottom_y0 = y0 + (text_height * max_lines) + 2
+    date_msg = tm.write(f"{date}", 20, bottom_y0, date_font, st7789.GREEN, text_height, 0)
+    msg = tm.write(f"{artist}", 0, y1, pfont_small, st7789.WHITE, text_height, 0, -max_lines, indent=1)
+    print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg
 
 
 def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
-    max_lines = 3
+    max_tracknames = 1
+    max_lines = 2
     lines_written = 0
     # tm.clear_bbox(bottom_bbox)
-    tm.clear_bbox(tm.Bbox(0, 27, tm.SCREEN_WIDTH, 80))
+    tm.clear_bbox(tm.Bbox(0, 27, tm.SCREEN_WIDTH, 65))
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
     text_height = 17
-    while lines_written < max_lines:
+    while (lines_written < max_lines) and i < max_tracknames:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
         if i < last_valid_str and len(name) == 0:

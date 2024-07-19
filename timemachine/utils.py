@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import deflate
 import json
 import machine
 import network
@@ -383,14 +384,24 @@ def write_json(obj, path):
     print(f"writing json to {path}")
     parent_dir = "/".join(path.split("/")[:-1])
     mkdirs(parent_dir)
-    with open(path, "w") as f:
-        json.dump(obj, f)
+    if path.endswith(".gz"):
+        with open(path, "wb") as f:
+            with deflate.DeflateIO(f, deflate.GZIP) as f:
+                json.dump(obj, f)
+    else:
+        with open(path, "w") as f:
+            json.dump(obj, f)
 
 
 def read_json(path):
     print(f"reading json from {path}")
-    with open(path, "r") as f:
-        obj = json.load(f)
+    if path.endswith(".gz"):
+        with open(path, "rb") as f:
+            with deflate.DeflateIO(f, deflate.GZIP) as f:
+                obj = json.load(f)
+    else:
+        with open(path, "r") as f:
+            obj = json.load(f)
     return obj
 
 
@@ -445,6 +456,13 @@ def set_datetime(hidden=False):
         return None
 
 
+def set_boot_partition(part_name):
+    from esp32 import Partition
+
+    Partition.set_boot(Partition(part_name))
+    return
+
+
 def get_current_partition_name():
     from esp32 import Partition
 
@@ -488,16 +506,22 @@ def distinct(lis):
 
 
 def deal_n(all_items, n, unique=True):
-    result = []
-    if unique:
+    """deal n items (without replacement) from list or dictionary `all_items`"""
+    result = [] if isinstance(all_items, (list, tuple)) else {}
+    if unique and not isinstance(all_items, dict):
         all_items = distinct(all_items)
     n_items = len(all_items)
     if n > n_items:
-        raise ValueError(f"Cannot deal {n} items from list of length {n_items}")
+        raise ValueError(f"Cannot deal {n} items from list of length {n_items}.\nall_items:{all_items}")
     for i in range(n):
         ind = random.randrange(n_items - i)
-        result.append(all_items[ind])
-        all_items = all_items[:ind] + all_items[(ind + 1) :]
+        if isinstance(result, list):
+            result.append(all_items[ind])
+            all_items = all_items[:ind] + all_items[(ind + 1) :]
+        elif isinstance(result, dict):
+            key = all_items.keys()[ind]
+            result = result | all_items[key]
+            del all_items[key]
     return result
 
 
@@ -511,6 +535,12 @@ def deal_frac(all_items, frac, unique=True):
 def shuffle(all_items, unique=True):
     # Return the items from a list in a random order
     return deal_frac(all_items, 1, unique)
+
+
+def random_character(first, last):
+    if first > last:
+        raise ValueError("Charcters {first} and {last} are not in order")
+    return chr(random.randint(ord(first), ord(last)))
 
 
 # Application-Specific
