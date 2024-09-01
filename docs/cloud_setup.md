@@ -477,3 +477,25 @@ Data: 34.36.180.121
 Now I can put into the livemusic program API = <https://gratefuldeadtimemachine.com>
 
 I don't know if this is going to end up costing a lot of money, though.
+
+## Updating Cloud Metadata
+
+For example, when Phish plays and uploads a new show, the vcs file becomes stale. I can delete the vcs file and **all** of the metadata, but it makes more sense to update the metadata.
+
+One way to do this is to update the Phish_ids/ids_2020.json file _locally_ and upload the file to the cloud here: <https://console.cloud.google.com/storage/browser/spertilo-data/metadata?pageState=(%22StorageObjectListTable%22:(%22f%22:%22%255B%255D%22))&project=able-folio-397115&supportedpurview=project>
+
+To update the ids file locally:
+
+```{}
+import os
+import time
+from threading import Event
+from timemachine import Archivary
+from timemachine import config
+from timemachine import GD
+
+track_event = Event()
+
+config.load_options()
+aa = Archivary.Archivary(collection_list=["Phish"],with_latest=True)
+```
