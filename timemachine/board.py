@@ -171,11 +171,17 @@ keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 22)
 title_bbox = Bbox(0, 23, SCREEN_WIDTH, 61)
 selected_artist_bbox = Bbox(0, 110, 145, SCREEN_HEIGHT)
 
-stage_date_color = st7789.color565(255, 255, 0)
-yellow_color = st7789.color565(255, 255, 0)
-tracklist_color = st7789.color565(0, 255, 255)
-play_color = st7789.color565(255, 0, 0)
-nshows_color = st7789.color565(0, 100, 255)
+yellow_color = st7789.color565(255, 255, 20)
+stage_date_color = yellow_color
+tracklist_color = st7789.color565(0, 158, 255)
+# play_color = st7789.color565(20, 255, 60)
+play_color = st7789.color565(255, 0, 15)
+pause_color = st7789.color565(255, 0, 15)
+nshows_color = tracklist_color
+purple_color = st7789.color565(255, 72, 255)
+selected_date_color = st7789.color565(255, 255, 150)
+RED = st7789.RED
+WHITE = st7789.WHITE
 
 
 def init_screen():
@@ -248,13 +254,6 @@ screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 tft.fill(st7789.BLACK)
 screen_on_time = time.ticks_ms()
 board_on = 1
-
-
-stage_date_color = st7789.color565(255, 255, 0)
-yellow_color = st7789.color565(255, 255, 0)
-tracklist_color = st7789.color565(0, 255, 255)
-play_color = st7789.color565(255, 0, 0)
-nshows_color = st7789.color565(0, 100, 255)
 
 
 def power(state=None):

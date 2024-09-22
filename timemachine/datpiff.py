@@ -26,7 +26,6 @@ from collections import OrderedDict
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
-import st7789
 import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
@@ -48,12 +47,6 @@ AUTO_PLAY = True
 ARTIST_KEY_TIME = time.ticks_ms()
 TAPE_KEY_TIME = time.ticks_ms()
 
-stage_date_color = st7789.color565(255, 255, 0)
-yellow_color = st7789.color565(255, 255, 0)
-purple_color = st7789.color565(255, 100, 255)
-tracklist_color = st7789.color565(0, 255, 255)
-play_color = st7789.color565(255, 0, 0)
-nshows_color = st7789.color565(0, 100, 255)
 new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
 dc = tm.decade_counter((tm.d, tm.y), 100, 10)
 tapeid_range_dict = {}
@@ -184,7 +177,7 @@ def load_tape_ids(artists):
 
 def select_tape(tape, player, state):
     tm.clear_bbox(tm.playpause_bbox)
-    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.RED)
+    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.RED)
     player.stop()
     tracklist, urls, albums, artists = get_tape_metadata(tape["identifier"])
 
@@ -200,11 +193,11 @@ def play_pause(player):
     tm.clear_bbox(tm.playpause_bbox)
     if player.is_playing():
         player.pause()
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.WHITE)
     elif len(player.playlist) > 0:
         player.play()
         tm.power(1)
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.play_color)
     return
 
 
@@ -312,8 +305,8 @@ def main_loop(player, state):
                 selected_title = selected_tape["title"]
                 keyed_artist = selected_artist
                 keyed_tape = selected_tape
-                display_keyed_title(selected_title, color=yellow_color)
-                display_keyed_artist(selected_artist, color=yellow_color)
+                display_keyed_title(selected_title, color=tm.yellow_color)
+                display_keyed_artist(selected_artist, color=tm.yellow_color)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -323,9 +316,9 @@ def main_loop(player, state):
             else:
                 select_press_time = time.ticks_ms()
                 if (keyed_tape["identifier"] == selected_tape["identifier"]) and (not player.is_stopped()):
-                    display_keyed_title(keyed_tape["identifier"], color=st7789.WHITE)
+                    display_keyed_title(keyed_tape["identifier"], color=tm.WHITE)
                     dev_flag = "dev" if utils.is_dev_box() else ""
-                    display_keyed_artist(f"{utils.get_software_version()} {dev_flag}", color=st7789.WHITE)
+                    display_keyed_artist(f"{utils.get_software_version()} {dev_flag}", color=tm.WHITE)
                     set_knob_times()
                 else:
                     selected_artist, artist_tapes = select_artist_by_index(tm.m.value())
@@ -335,8 +328,8 @@ def main_loop(player, state):
                     selected_tape = artist_tapes[dc.get_value()]
                     state = select_tape(selected_tape, player, state)
 
-                    display_keyed_title(selected_title, color=yellow_color)
-                    display_keyed_artist(selected_artist, color=yellow_color)
+                    display_keyed_title(selected_title, color=tm.yellow_color)
+                    display_keyed_artist(selected_artist, color=tm.yellow_color)
                     play_pause(player)
                 print("Select DOWN")
 
@@ -439,9 +432,9 @@ def update_display(player):
     if player.is_stopped():
         pass
     elif player.is_playing():
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.play_color)
     elif player.is_paused():
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, st7789.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.pause_color)
 
 
 def display_tracks(*track_names):
@@ -471,19 +464,19 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, pfont_small, tracklist_color, text_height, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
 
 
-def display_keyed_title(keyed_title, color=purple_color):
+def display_keyed_title(keyed_title, color=tm.purple_color):
     # print(f"in display_keyed_title {keyed_title}")
     tm.clear_bbox(tm.title_bbox)
     tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
 
 
-def display_keyed_artist(artist, color=purple_color):
+def display_keyed_artist(artist, color=tm.purple_color):
     # print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
     artist = artist[:1].upper() + artist[1:]
@@ -503,13 +496,13 @@ def show_artists(artist_list):
     message = f"Loading {ncoll} Collections"
     print(message)
     tm.clear_screen()
-    tm.tft.write(pfont_med, message, 0, 0, yellow_color)
+    tm.tft.write(pfont_med, message, 0, 0, tm.yellow_color)
     colls_to_write = 5
 
     for min_col in range(0, 1 + ncoll - colls_to_write, 1):
         tm.clear_area(0, 25, 160, 103)
         for i, coll in enumerate(artist_list[min_col : min_col + colls_to_write]):
-            tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=st7789.WHITE, clear=False)
+            tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=tm.WHITE, clear=False)
         time.sleep(0.5)
 
 
@@ -633,6 +626,6 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=yellow_color, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1
