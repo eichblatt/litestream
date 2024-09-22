@@ -244,8 +244,7 @@ def configure_collections():
     main_app = utils.get_main_app()
     if main_app == "datpiff":
         return configure_datpiff_collections()
-
-    choices = ["Add Artist", "Remove Artist", "Cancel"]
+    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
 
@@ -288,6 +287,12 @@ def configure_collections():
                 keepGoing = False
             utils.set_collection_list(collection_list)
 
+    elif choice == "Phish Only":
+        utils.set_collection_list(["Phish"])
+        utils.reset()
+    elif choice == "Dead Only":
+        utils.set_collection_list(["GratefulDead"])
+        utils.reset()
     return
 
 
