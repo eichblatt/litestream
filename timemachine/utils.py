@@ -749,9 +749,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         s = wifi.status()
 
     if wifi.isconnected():
-        tm.clear_area(0, 50, 160, 30)
         if not hidden:
-            tm.write("Connected", y=0, color=tm.WHITE, clear=False)
+            tm.write("Connected   ", y=0, color=tm.WHITE, clear=False)
 
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
