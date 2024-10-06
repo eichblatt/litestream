@@ -294,10 +294,13 @@ def configure_collections():
         utils.set_collection_list(["GratefulDead"])
         utils.reset()
     elif choice == "Other":
-        other_choices = ["Gizzard Only", "Dead + Phish", "Cancel"]
+        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
         other_choice = utils.select_option("Year/Select", other_choices)
         if other_choice == "Gizzard Only":
             utils.set_collection_list(["KingGizzardAndTheLizardWizard"])
+            utils.reset()
+        if other_choice == "Goose Only":
+            utils.set_collection_list(["GooseBand"])
             utils.reset()
         elif other_choice == "Dead + Phish":
             utils.set_collection_list(["GratefulDead", "Phish"])
@@ -404,9 +407,10 @@ def choose_main_app():
 
 def reconfigure():
     tm.tft.on()
+    tm.clear_screen()
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-    time.sleep(0.1)
+    # time.sleep(0.1)
     config_choices = [
         "Artists",
         "Update Code",
