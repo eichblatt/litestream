@@ -244,7 +244,7 @@ def configure_collections():
     main_app = utils.get_main_app()
     if main_app == "datpiff":
         return configure_datpiff_collections()
-    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Cancel"]
+    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
 
@@ -293,6 +293,20 @@ def configure_collections():
     elif choice == "Dead Only":
         utils.set_collection_list(["GratefulDead"])
         utils.reset()
+    elif choice == "Other":
+        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
+        other_choice = utils.select_option("Year/Select", other_choices)
+        if other_choice == "Gizzard Only":
+            utils.set_collection_list(["KingGizzardAndTheLizardWizard"])
+            utils.reset()
+        if other_choice == "Goose Only":
+            utils.set_collection_list(["GooseBand"])
+            utils.reset()
+        elif other_choice == "Dead + Phish":
+            utils.set_collection_list(["GratefulDead", "Phish"])
+            utils.reset()
+        else:
+            pass
     return
 
 
@@ -393,9 +407,10 @@ def choose_main_app():
 
 def reconfigure():
     tm.tft.on()
+    tm.clear_screen()
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
-    time.sleep(0.1)
+    # time.sleep(0.1)
     config_choices = [
         "Artists",
         "Update Code",
