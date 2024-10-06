@@ -42,6 +42,7 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
+COLLS_LOADED_TIME = None
 
 
 def set_date(date):
@@ -397,14 +398,16 @@ def main_loop(player, coll_dict, state):
                 print("Power DOWN")
             else:
                 print(f"power state is {tm.power()}")
-                if tm.power() == 1:
+                if tm.power() == 1:  # power off
                     key_date = set_date(selected_date)
                     year_new = year_old = tm.y._value
                     month_new = month_old = tm.m._value
                     day_new = day_old = tm.d._value
                     player.pause()
                     tm.power(0)
-                else:
+                else:  # power back on.
+                    if refresh_meta_needed():
+                        coll_dict = get_coll_dict(state["collection_list"])
                     tm.power(1)
                 power_press_time = time.ticks_ms()
                 print("Power UP -- screen")
@@ -413,10 +416,9 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 1_250:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
+                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, 30, clear=True, show_end=-3)
+                player.reset_player(reset_head=False)
                 tm.power(1)
-                tm.clear_screen()
-                tm.screen_off()
-                player.reset_player()
                 return
 
         vcs_line = ((time.ticks_ms() - select_press_time) // 12_000) % (1 + len(selected_vcs) // 16)
@@ -641,7 +643,21 @@ def test_update():
     assert (max_year - min_year) >= 29
 
 
+def refresh_meta_needed():
+    if COLLS_LOADED_TIME is None:
+        return True
+    elif time.ticks_diff(time.ticks_ms(), COLLS_LOADED_TIME) > (24 * 3600 * 1000):
+        current_year = time.localtime()[0]
+        max_year = tm.y._max_val
+        if (current_year - max_year) < 2:
+            print("We need to refresh metadata")
+            return True
+    else:
+        return False
+
+
 def get_coll_dict(collection_list):
+    global COLLS_LOADED_TIME
     coll_dict = OrderedDict({})
     min_year = tm.y._min_val
     max_year = tm.y._max_val
@@ -655,6 +671,7 @@ def get_coll_dict(collection_list):
         max_year = max(int(max(coll_dates)[:4]), max_year)
         tm.y._min_val = min_year
         tm.y._max_val = max_year
+    COLLS_LOADED_TIME = time.ticks_ms()
     return coll_dict
 
 
