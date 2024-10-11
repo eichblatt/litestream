@@ -30,6 +30,7 @@ import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 
+import archive_utils
 import board as tm
 import utils
 
@@ -675,6 +676,49 @@ def get_coll_dict(collection_list):
     return coll_dict
 
 
+def ping_archive():
+    # Verify that archive.org is up
+    n = 0
+    i_try = 0
+    while (n == 0) and (i_try < 50):
+        i_try = i_try + 1
+        try:
+            n = archive_utils.count_collection("GratefulDead", (1965, 1968))
+        except archive_utils.ArchiveDownError:
+            tm.write(f"Archive.org not responding. Check status on web. Retry {i_try}", 0, 0, tm.pfont_small, show_end=-4)
+            tm.write(f"Press Power for config menu", 0, 90, tm.pfont_small, tm.purple_color, show_end=-2, clear=False)
+            button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
+            if button == "power":
+                i_try = 100
+        except Exception as e:
+            raise e
+    if i_try >= 50:
+        return -1
+    return 0
+
+
+def ping_phishin():
+    # Verify that phish.in is up
+    raise NotImplementedError("Not Implemented")
+    n = 0
+    i_try = 0
+    while (n == 0) and (i_try < 50):
+        i_try = i_try + 1
+        try:
+            n = None
+        except archive_utils.ArchiveDownError:
+            tm.write(f"Phish.in not responding. Check status on web. Retry {i_try}", 0, 0, tm.pfont_small, show_end=-4)
+            tm.write(f"Press Power for config menu", 0, 90, tm.pfont_small, tm.purple_color, show_end=-2, clear=False)
+            button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
+            if button == "power":
+                i_try = 100
+        except Exception as e:
+            raise e
+    if i_try >= 50:
+        return -1
+    return 0
+
+
 def run():
     """run the livemusic controls"""
     try:
@@ -688,6 +732,12 @@ def run():
         coll_dict = get_coll_dict(state["collection_list"])
         print(f"Loaded collections {coll_dict.keys()}")
 
+        if state["collection_list"] != ["Phish"]:
+            if ping_archive() == -1:
+                return -1
+            # else:
+            # if archive_utils.ping_phishin() == -1:
+            #    return -1
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, coll_dict, state)
     except Exception as e:
