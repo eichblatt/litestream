@@ -90,13 +90,23 @@ def _get_data_from_archive(fields, query, count=None):
     return result
 
 
+class ArchiveDownError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+
 def _get_collection_year_chunk(url):
     resp = None
     try:
         resp = requests.get(url)
+        if resp.status_code == 503:
+            raise ArchiveDownError("Download Error from Archive.org")
         if resp.status_code != 200:
             print(f"Error in request from {url}. Status code {resp.status_code}")
-            raise Exception("Download Error")
+            raise Exception("Unsuccessful download")
         if not resp.chunked:
             j = resp.json()
         else:
