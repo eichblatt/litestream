@@ -689,6 +689,7 @@ def ping_archive():
             tm.write(f"Press Power for config menu", 0, 90, tm.pfont_small, tm.purple_color, show_end=-2, clear=False)
             button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
             if button == "power":
+                tm.clear_screen()
                 i_try = 100
         except Exception as e:
             raise e
@@ -700,23 +701,6 @@ def ping_archive():
 def ping_phishin():
     # Verify that phish.in is up
     raise NotImplementedError("Not Implemented")
-    n = 0
-    i_try = 0
-    while (n == 0) and (i_try < 50):
-        i_try = i_try + 1
-        try:
-            n = None
-        except archive_utils.ArchiveDownError:
-            tm.write(f"Phish.in not responding. Check status on web. Retry {i_try}", 0, 0, tm.pfont_small, show_end=-4)
-            tm.write(f"Press Power for config menu", 0, 90, tm.pfont_small, tm.purple_color, show_end=-2, clear=False)
-            button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
-            if button == "power":
-                i_try = 100
-        except Exception as e:
-            raise e
-    if i_try >= 50:
-        return -1
-    return 0
 
 
 def run():
