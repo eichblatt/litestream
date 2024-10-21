@@ -716,12 +716,12 @@ def run():
         coll_dict = get_coll_dict(state["collection_list"])
         print(f"Loaded collections {coll_dict.keys()}")
 
-        if state["collection_list"] != ["Phish"]:
-            if ping_archive() == -1:
-                return -1
-            # else:
-            # if archive_utils.ping_phishin() == -1:
-            #    return -1
+        # if state["collection_list"] != ["Phish"]:
+        #    if ping_archive() == -1:
+        #        return -1
+        # else:
+        # if archive_utils.ping_phishin() == -1:
+        #    return -1
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, coll_dict, state)
     except Exception as e:
