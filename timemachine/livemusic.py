@@ -238,6 +238,7 @@ def main_loop(player, coll_dict, state):
     vcs = selected_vcs = ""
     pvcs_line = 0
     select_press_time = 0
+    play_pause_press_time = 0
     date_changed_time = 0
     power_press_time = 0
     resume_playing = -1
@@ -263,19 +264,26 @@ def main_loop(player, coll_dict, state):
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
             if pPlayPause_old:
-                print("PlayPause DOWN")
-            else:
+                print("PlayPause RELEASED")
                 if (player.is_stopped()) and (player.current_track is None):
                     if (key_date in valid_dates) and tm.power():
                         selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape)
                         selected_date = state["selected_date"]
                         collection = state["selected_collection"]
-                        selected_tape_id = state["selected_tape_id"]
                         vcs = selected_vcs
                         gc.collect()
                 play_pause(player)
-                print("PlayPause UP")
+            else:
+                play_pause_press_time = time.ticks_ms()
+                print("PlayPause PRESSED")
 
+        if not tm.pPlayPause.value():  # long press PlayPause
+            if (time.ticks_ms() - play_pause_press_time) > 5_000:
+                print("                 Longpress of play_pause")  # Choose a random date
+                player.stop()
+                player.current_track = None
+                play_pause_press_time = time.ticks_ms() + 5_000
+                key_date = set_date(utils.deal_n(valid_dates, 1)[0])
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()
             if pStop_old:
@@ -366,10 +374,10 @@ def main_loop(player, coll_dict, state):
                     if AUTO_PLAY:
                         gc.collect()
                         play_pause(player)
-                print("Select UP")
+                print("Select RELEASED")
             else:
                 select_press_time = time.ticks_ms()
-                print("Select DOWN")
+                print("Select PRESSED")
 
         if not tm.pSelect.value():  # long press Select
             if (time.ticks_ms() - select_press_time) > 1_000:
