@@ -27,7 +27,6 @@ Add the following lines:
 # the individual modules we want to include.
 # Paths are absolute, and ${CMAKE_CURRENT_LIST_DIR} can be
 # used to prefix subdirectories.
-# Add the C example.
 include(${CMAKE_CURRENT_LIST_DIR}/AudioDecoder/micropython.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/st7789/micropython.cmake)
 
