@@ -16,3 +16,5 @@ In [2]: aa = Archivary.Archivary(collection_list=["GratefulDead"],reload_ids=Tru
 ```
 
 This will write the metadata to the folder `/home/steve/projects/deadstream/timemachine/metadata/GratefulDead_ids`
+
+Upload this to the Google Cloud in the browser.
