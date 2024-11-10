@@ -711,6 +711,13 @@ def ping_phishin():
     raise NotImplementedError("Not Implemented")
 
 
+def save_error(e):
+    msg = f"{e}"
+    print(msg)
+    with open("/exception.log", "w") as f:
+        f.write(msg)
+
+
 def run():
     """run the livemusic controls"""
     try:
@@ -732,11 +739,16 @@ def run():
         #    return -1
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, coll_dict, state)
+    except OSError as e:
+        msg = f"livemusic: {e}"
+        if isinstance(e, OSError) and "ECONNABORTED" in msg:
+            tm.write("Error at the archive", 0, 0, color=tm.yellow_color, font=pfont_med, clear=True, show_end=-2)
+            tm.write("Press Select to return", 0, 70, font=pfont_med, clear=False, show_end=-2)
+            if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
+                run()
     except Exception as e:
-        msg = f"Error in playback loop {e}"
-        print(msg)
-        with open("/exception.log", "w") as f:
-            f.write(msg)
+        msg = f"livemusic: {e}"
+        save_error(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
