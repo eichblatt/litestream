@@ -1,5 +1,8 @@
 """XGLCD Font Utility."""
+
 from math import ceil, floor
+
+DEBUG_FONT = False
 
 
 class XglcdFont(object):
@@ -19,7 +22,8 @@ class XglcdFont(object):
     """
 
     # Dict to tranlate bitwise values to byte position
-    BIT_POS = {1: 0, 2: 2, 4: 4, 8: 6, 16: 8, 32: 10, 64: 12, 128: 14, 256: 16}
+    # BIT_POS = {1: 0, 2: 2, 4: 4, 8: 6, 16: 8, 32: 10, 64: 12, 128: 14, 256: 16}
+    BIT_POS = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6, 128: 7, 256: 8}
 
     def __init__(self, path, width, height, start_letter=32, letter_count=96):
         """Constructor for X-GLCD Font object.
@@ -34,8 +38,7 @@ class XglcdFont(object):
         self.height = height
         self.start_letter = start_letter
         self.letter_count = letter_count
-        self.bytes_per_letter = (floor(
-            (self.height - 1) / 8) + 1) * self.width + 1
+        self.bytes_per_letter = (floor((self.height - 1) / 8) + 1) * self.width + 1
         self.__load_xglcd_font(path)
 
     def __load_xglcd_font(self, path):
@@ -48,32 +51,115 @@ class XglcdFont(object):
         self.letters = bytearray(bytes_per_letter * self.letter_count)
         mv = memoryview(self.letters)
         offset = 0
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             for line in f:
                 # Skip lines that do not start with hex values
                 line = line.strip()
-                if len(line) == 0 or line[0:2] != '0x':
+                if len(line) == 0 or line[0:2] != "0x":
                     continue
                 # Remove comments
-                comment = line.find('//')
+                comment = line.find("//")
                 if comment != -1:
                     line = line[0:comment].strip()
                 # Remove trailing commas
-                if line.endswith(','):
-                    line = line[0:len(line) - 1]
+                if line.endswith(","):
+                    line = line[0 : len(line) - 1]
                 # Convert hex strings to bytearray and insert in to letters
-                mv[offset: offset + bytes_per_letter] = bytearray(
-                    int(b, 16) for b in line.split(','))
+                mv[offset : offset + bytes_per_letter] = bytearray(int(b, 16) for b in line.split(","))
                 offset += bytes_per_letter
 
-    def lit_bits(self, n):
+    def lit_bits(self, n, bit_spacing=2):
         """Return positions of 1 bits only."""
         while n:
-            b = n & (~n+1)
-            yield self.BIT_POS[b]
+            b = n & (~n + 1)
+            yield self.BIT_POS[b] * bit_spacing
             n ^= b
 
-    def get_letter(self, letter, color, background=0, landscape=False):
+    def get_letter(self, letter, color, landscape):
+        """Convert letter byte data to pixels for color666 display
+        Args:
+            letter (string): Letter to return (must exist within font).
+            color (int): RGB666 or RGB565 color value.
+            landscape (bool): Orientation (default: False = portrait)
+        Returns:
+            (bytearray): Pixel data.
+            (int, int): Letter width and height.
+        """
+        # Get index of letter
+        letter_ord = ord(letter) - self.start_letter
+        # Confirm font contains letter
+        if letter_ord >= self.letter_count:
+            print("Font does not contain character: " + letter)
+            return b"", 0, 0
+        bytes_per_letter = self.bytes_per_letter
+        offset = letter_ord * bytes_per_letter
+
+        mv = memoryview(self.letters[offset : offset + bytes_per_letter])
+
+        # Get width of letter (specified by first byte)
+        letter_width = mv[0]
+        letter_height = self.height
+        # Get size in bytes of specified letter
+        letter_size = letter_height * letter_width
+        # Create buffer (triple size to accommodate 18 bit colors)
+        if isinstance(color, bytes):
+            bytes_per_pixel = 3
+        elif isinstance(color, int):
+            bytes_per_pixel = 2
+        else:
+            raise ValueError("color must be of type color666 or color565")
+
+        buf = bytearray(letter_size * bytes_per_pixel)
+
+        if bytes_per_pixel == 3:
+            color_bytes = color
+        elif bytes_per_pixel == 2:
+            color_bytes = color.to_bytes(2, "big")
+
+        print(f"color_bytes = {color_bytes}") if DEBUG_FONT else None
+        if landscape:
+            # Populate buffer in order for landscape
+            pos = (letter_size * bytes_per_pixel) - (letter_height * bytes_per_pixel)
+            print(f"pos: {pos}. letter_height {letter_height}, letter_width {letter_width}.") if DEBUG_FONT else None
+            lh = letter_height
+            # Loop through letter byte data and convert to pixel data
+            for b in mv[1:]:
+                # Process only colored bits
+                lbits = list(self.lit_bits(b, bit_spacing=bytes_per_pixel))
+                print(f"lbits for {letter} {b} is {lbits}. pos {pos}") if DEBUG_FONT else None
+                for bit in lbits:
+                    for ib, cb in enumerate(color_bytes):
+                        buf[pos + bit + ib] = cb
+                if lh > 8:
+                    # Increment position by double byte
+                    pos += 8 * bytes_per_pixel
+                    lh -= 8
+                else:
+                    # Descrease position to start of previous column
+                    pos -= (letter_height * 2 * bytes_per_pixel) - (lh * bytes_per_pixel)
+                    lh = letter_height
+        else:
+            # Populate buffer in order for portrait
+            col = 0  # Set column to first column
+            bytes_per_letter = ceil(letter_height / 8)
+            letter_byte = 0
+            # Loop through letter byte data and convert to pixel data
+            for b in mv[1:]:
+                # Process only colored bits
+                segment_size = letter_byte * letter_width * 8 * bytes_per_pixel
+                for bit in self.lit_bits(b, bit_spacing=bytes_per_pixel):
+                    pos = (bit * letter_width) + (col * bytes_per_pixel) + segment_size
+                    for ib, cb in enumerate(color_bytes):
+                        buf[pos + ib] = cb
+                    pos = pos + bytes_per_pixel - 1
+                letter_byte += 1
+                if letter_byte + 1 > bytes_per_letter:
+                    col += 1
+                    letter_byte = 0
+
+        return buf, letter_width, letter_height
+
+    def get_letter_old(self, letter, color, background=0, landscape=False):
         """Convert letter byte data to pixels.
         Args:
             letter (string): Letter to return (must exist within font).
@@ -88,11 +174,11 @@ class XglcdFont(object):
         letter_ord = ord(letter) - self.start_letter
         # Confirm font contains letter
         if letter_ord >= self.letter_count:
-            print('Font does not contain character: ' + letter)
-            return b'', 0, 0
+            print("Font does not contain character: " + letter)
+            return b"", 0, 0
         bytes_per_letter = self.bytes_per_letter
         offset = letter_ord * bytes_per_letter
-        mv = memoryview(self.letters[offset:offset + bytes_per_letter])
+        mv = memoryview(self.letters[offset : offset + bytes_per_letter])
 
         # Get width of letter (specified by first byte)
         letter_width = mv[0]
@@ -101,11 +187,11 @@ class XglcdFont(object):
         letter_size = letter_height * letter_width
         # Create buffer (double size to accommodate 16 bit colors)
         if background:
-            buf = bytearray(background.to_bytes(2, 'big') * letter_size)
+            buf = bytearray(background.to_bytes(2, "big") * letter_size)
         else:
             buf = bytearray(letter_size * 2)
 
-        msb, lsb = color.to_bytes(2, 'big')
+        msb, lsb = color.to_bytes(2, "big")
 
         if landscape:
             # Populate buffer in order for landscape

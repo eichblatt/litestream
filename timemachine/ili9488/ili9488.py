@@ -74,6 +74,8 @@ class Display(object):
     FRMCTR3 = const(0xB3)  # Frame rate control (In partial mode/full colors)
     INVCTR = const(0xB4)  # Display inversion control
     DFUNCTR = const(0xB6)  # Display function control
+    ENTMDSET = const(0xB7)  # Entry Mode Set
+    HSLCTR = const(0xBE)  # HS Lanes Control
     PWCTR1 = const(0xC0)  # Power control 1
     PWCTR2 = const(0xC1)  # Power control 2
     PWCTRA = const(0xCB)  # Power control A
@@ -87,6 +89,7 @@ class Display(object):
     GMCTRP1 = const(0xE0)  # Positive gamma correction
     GMCTRN1 = const(0xE1)  # Negative gamma correction
     DTCA = const(0xE8)  # Driver timing control A
+    SETIMG = const(0xE9)  # Set Image Function
     DTCB = const(0xEA)  # Driver timing control B
     POSC = const(0xED)  # Power on sequence control
     ENABLE3G = const(0xF2)  # Enable 3 gamma control
@@ -138,41 +141,59 @@ class Display(object):
             self.write_data = self.write_data_mpy
         self.reset()
         # Send initialization commands
+
+        self.write_cmd(self.PUMPRC, 0xA9, 0x51, 0x2C, 0x82)
+        self.write_cmd(self.PWCTR1, 0x11, 0x09)  # Pwr ctrl 1
+        self.write_cmd(self.PWCTR2, 0xC1)  # Pwr ctrl 2
+        self.write_cmd(self.VMCTR1, 0x00, 0x0A, 0x80)
+        self.write_cmd(self.FRMCTR1, 0xB0, 0x11)
+        self.write_cmd(self.INVCTR, 0x02)
+        self.write_cmd(self.DFUNCTR, 0x02, 0x42)
+        self.write_cmd(self.ENTMDSET, 0xC6)
+        self.write_cmd(self.HSLCTR, 0x00, 0x04)
+        self.write_cmd(self.SETIMG, 0x00)
+        self.write_cmd(self.MADCTL, 0x68)
+        self.write_cmd(self.PIXFMT, 0x66)
+        self.write_cmd(self.GMCTRP1, 0x00, 0x07, 0x10, 0x09, 0x17, 0x0B, 0x41, 0x89, 0x4B, 0x0A, 0x0C, 0x0E, 0x18, 0x1B, 0x0F)
+        self.write_cmd(self.GMCTRN1, 0x00, 0x17, 0x1A, 0x04, 0x0E, 0x06, 0x2F, 0x45, 0x43, 0x02, 0x0A, 0x09, 0x32, 0x36, 0x0F)
+        self.write_cmd(self.SLPOUT)
+
+        """
         init_backdoor_data = [
-            ["command", "0xF7"],
+            ["command", "0xF7"],  # PUMPRC
             ["data", "0xA9"],
             ["data", "0x51"],
             ["data", "0x2C"],
             ["data", "0x82"],
-            ["command", "0xC0"],
+            ["command", "0xC0"],  # PWCTR1
             ["data", "0x11"],
             ["data", "0x09"],
-            ["command", "0xC1"],
+            ["command", "0xC1"],  # PWCTR2
             ["data", "0x41"],
-            ["command", "0xC5"],
+            ["command", "0xC5"],  # VMCTR1 = const(0xC5)  # VCOM control 1
             ["data", "0x00"],
             ["data", "0x0A"],
             ["data", "0x80"],
-            ["command", "0xB1"],
+            ["command", "0xB1"],  # FRMCTR1 = const(0xB1)  # Frame rate control (In normal mode/full colors)
             ["data", "0xB0"],
             ["data", "0x11"],
-            ["command", "0xB4"],
+            ["command", "0xB4"],  # INVCTR = const(0xB4)  # Display inversion control
             ["data", "0x02"],
-            ["command", "0xB6"],
+            ["command", "0xB6"],  # DFUNCTR = const(0xB6)  # Display function control
             ["data", "0x02"],
             ["data", "0x42"],
-            ["command", "0xB7"],
+            ["command", "0xB7"],  # ENTMDSET
             ["data", "0xc6"],
-            ["command", "0xBE"],
+            ["command", "0xBE"],  # HSLCTR
             ["data", "0x00"],
             ["data", "0x04"],
-            ["command", "0xE9"],
+            ["command", "0xE9"],  # SETIMG = const(0xE9) # Set Image Function
             ["data", "0x00"],
-            ["command", "0x36"],
+            ["command", "0x36"],  # MADCTL
             ["data", "0x68"],
-            ["command", "0x3A"],
-            ["data", "0x66"],
-            ["command", "0xE0"],
+            ["command", "0x3A"],  # PIXFMT
+            ["data", "0x66"],  # for color565, use 0x55, color666: 0x66
+            ["command", "0xE0"],  # GMCTRP1 = const(0xE0)  # Positive gamma correction
             ["data", "0x00"],
             ["data", "0x07"],
             ["data", "0x10"],
@@ -188,7 +209,7 @@ class Display(object):
             ["data", "0x18"],
             ["data", "0x1B"],
             ["data", "0x0F"],
-            ["command", "0xE1"],
+            ["command", "0xE1"],  #  GMCTRN1 = const(0xE1)  # Negative gamma correction
             ["data", "0x00"],
             ["data", "0x17"],
             ["data", "0x1A"],
@@ -204,7 +225,7 @@ class Display(object):
             ["data", "0x32"],
             ["data", "0x36"],
             ["data", "0x0F"],
-            ["command", "0x11"],
+            ["command", "0x11"],  # SLPOUT = const(0x11)  # Exit sleep mode
         ]
         for key, value in init_backdoor_data:
             value = bytes().fromhex(value.split("0x")[1])[0]
@@ -212,9 +233,11 @@ class Display(object):
                 self.write_cmd(value)
             else:
                 self.write_data(bytearray([value]))
+        """
         sleep(0.1)
-        self.write_cmd(0x21)
-        self.write_cmd(0x29)
+        # self.write_cmd(self.INVON) # screen white
+        self.write_cmd(self.INVOFF)  # screen black
+        self.write_cmd(self.DISPLAY_ON)
         sleep(0.1)
         self.clear(color666(0, 0, 0))
 
@@ -281,7 +304,7 @@ class Display(object):
         if color:
             line = color * (w * 8)
         else:
-            line = bytearray(w * 18)
+            line = bytearray(w * 24)
         for y in range(0, h, 8):
             self.block(0, y, w - 1, y + 7, line)
 
@@ -425,7 +448,7 @@ class Display(object):
                 buf = f.read(remainder * w * 2)
                 self.block(x, chunk_y, x2, chunk_y + remainder - 1, buf)
 
-    def draw_letter(self, x, y, letter, font, color, background=0, landscape=False):
+    def draw_letter(self, x, y, letter, font, color, background=0, landscape=True):
         """Draw a letter.
         Args:
             x (int): Starting X position.
@@ -436,7 +459,13 @@ class Display(object):
             background (int): RGB565 background color (default: black).
             landscape (bool): Orientation (default: False = portrait)
         """
-        buf, w, h = font.get_letter(letter, color, background, landscape)
+        buf, w, h = font.get_letter(letter, color, landscape)
+        # print(f"letter:{letter}, buf:{buf}. w:{w}, h:{h}")
+        # r, g, b = color
+        # print(f"Color565 ({r},{g},{b}) is {color}")
+
+        # buf, w, h = font.get_letter(letter, color, background, landscape)
+        # print(f"letter {letter}, buf is {buf}")
         # Check for errors (Font could be missing specified letter)
         if w == 0:
             return w, h
@@ -606,6 +635,8 @@ class Display(object):
             # Get letter array and letter dimensions
             w, h = self.draw_letter(x, y, letter, font, color, background, landscape)
             # Stop on error
+            if background == 0:
+                background = color666(0, 0, 0)
             if w == 0 or h == 0:
                 print("Invalid width {0} or height {1}".format(w, h))
                 return

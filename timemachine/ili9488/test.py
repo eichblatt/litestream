@@ -1,3 +1,4 @@
+#
 from testlib.ili9488 import Display, color565, color666
 from testlib.xglcd_font import XglcdFont
 from time import sleep
@@ -8,35 +9,45 @@ display = Display(spi, dc=Pin(6), cs=Pin(10), rst=Pin(4), rotation=0)
 d = display
 led = Pin(5, Pin.OUT)
 
-display.fill_rectangle(0, 0, 100, 40, color666(255, 0, 255))
-display.fill_rectangle(100, 40, 40, 100, color666(0, 255, 255))
+display.write_cmd(display.INVOFF)
+display.fill_rectangle(0, 0, 100, 40, color666(0, 255, 0))
+display.fill_rectangle(100, 40, 40, 100, color666(255, 0, 0))
 
 for y in range(100, 140):
-    display.draw_hline(255, y, 128, color666(255, 255, 0))
+    display.draw_hline(255, y, 128, color666(0, 0, 255))
 
 for x in range(200, 240):
-    display.draw_vline(x, 128, 128, color666(255, 0, 255))
+    display.draw_vline(x, 128, 128, color666(0, 255, 0))
 
-display.fill_circle(100, 200, 30, color666(128, 0, 128))
-sleep(10)
+bally5x8 = XglcdFont("/testlib/fonts/Bally5x8.c", 5, 8)
+display.draw_letter(25, 250, "B", bally5x8, color666(255, 0, 0))
+display.draw_letter(40, 250, "B", bally5x8, color666(255, 255, 255), landscape=False)
+display.draw_text(0, 100, "Built in 8x8", bally5x8, color666(255, 255, 255), landscape=False)
 
-display.clear()
+
+display.draw_letter(100, 100, "B", bally5x8, color666(200, 100, 100))
+display.draw_text(0, 100, "Built in 8x8", bally5x8, color666(200, 100, 80))
+
+arcade = XglcdFont("/testlib/fonts/ArcadePix9x11.c", 9, 11)
+display.draw_letter(200, 200, "B", arcade, color666(200, 100, 100))
+
+times = XglcdFont("testlib/fonts/Times_New_Roman28x25.h", 28, 25)
+display.draw_letter(200, 200, "B", times, color666(200, 100, 100))
 
 
-bally = XglcdFont("/testlib/fonts/Bally5x8.c", 5, 8)
-import random
-
-for i in range(0, 60):
-    display.draw_text8x8(
-        random.randint(0, 440),
-        random.randint(0, 309),
-        "Built in 8x8",
-        color565(200, 100, 80),
-        background=color565(255, 255, 255),
-    )
-    print("writing 8x8 text")
-sleep(5)
 led.off()
 sleep(2)
 display.clear()
 led.on()
+
+
+def clear565(display, color=color565(0, 0, 0)):
+    w = display.width
+    h = display.height
+    # Clear display in 1024 byte blocks
+    if color:
+        line = color.to_bytes(2, "big") * (w * 8)
+    else:
+        line = bytearray(w * 18)
+    for y in range(0, h, 8):
+        display.block(0, y, w - 1, y + 7, line)
