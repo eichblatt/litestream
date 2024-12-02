@@ -21,6 +21,10 @@ def color565(r, g, b):
     return (r & 0xF8) << 8 | (g & 0xFC) << 3 | b >> 3
 
 
+def color_rgb(r, g, b):
+    return bytes([r, g, b])
+
+
 def color666(r, g, b):
     r_666 = (r & 0xF8) | (r >> 5)
     g_666 = (g & 0xF8) | (g >> 5)
@@ -157,92 +161,8 @@ class Display(object):
         self.write_cmd(self.GMCTRP1, 0x00, 0x07, 0x10, 0x09, 0x17, 0x0B, 0x41, 0x89, 0x4B, 0x0A, 0x0C, 0x0E, 0x18, 0x1B, 0x0F)
         self.write_cmd(self.GMCTRN1, 0x00, 0x17, 0x1A, 0x04, 0x0E, 0x06, 0x2F, 0x45, 0x43, 0x02, 0x0A, 0x09, 0x32, 0x36, 0x0F)
         self.write_cmd(self.SLPOUT)
-
         """
-        init_backdoor_data = [
-            ["command", "0xF7"],  # PUMPRC
-            ["data", "0xA9"],
-            ["data", "0x51"],
-            ["data", "0x2C"],
-            ["data", "0x82"],
-            ["command", "0xC0"],  # PWCTR1
-            ["data", "0x11"],
-            ["data", "0x09"],
-            ["command", "0xC1"],  # PWCTR2
-            ["data", "0x41"],
-            ["command", "0xC5"],  # VMCTR1 = const(0xC5)  # VCOM control 1
-            ["data", "0x00"],
-            ["data", "0x0A"],
-            ["data", "0x80"],
-            ["command", "0xB1"],  # FRMCTR1 = const(0xB1)  # Frame rate control (In normal mode/full colors)
-            ["data", "0xB0"],
-            ["data", "0x11"],
-            ["command", "0xB4"],  # INVCTR = const(0xB4)  # Display inversion control
-            ["data", "0x02"],
-            ["command", "0xB6"],  # DFUNCTR = const(0xB6)  # Display function control
-            ["data", "0x02"],
-            ["data", "0x42"],
-            ["command", "0xB7"],  # ENTMDSET
-            ["data", "0xc6"],
-            ["command", "0xBE"],  # HSLCTR
-            ["data", "0x00"],
-            ["data", "0x04"],
-            ["command", "0xE9"],  # SETIMG = const(0xE9) # Set Image Function
-            ["data", "0x00"],
-            ["command", "0x36"],  # MADCTL
-            ["data", "0x68"],
-            ["command", "0x3A"],  # PIXFMT
-            ["data", "0x66"],  # for color565, use 0x55, color666: 0x66
-            ["command", "0xE0"],  # GMCTRP1 = const(0xE0)  # Positive gamma correction
-            ["data", "0x00"],
-            ["data", "0x07"],
-            ["data", "0x10"],
-            ["data", "0x09"],
-            ["data", "0x17"],
-            ["data", "0x0B"],
-            ["data", "0x41"],
-            ["data", "0x89"],
-            ["data", "0x4B"],
-            ["data", "0x0A"],
-            ["data", "0x0C"],
-            ["data", "0x0E"],
-            ["data", "0x18"],
-            ["data", "0x1B"],
-            ["data", "0x0F"],
-            ["command", "0xE1"],  #  GMCTRN1 = const(0xE1)  # Negative gamma correction
-            ["data", "0x00"],
-            ["data", "0x17"],
-            ["data", "0x1A"],
-            ["data", "0x04"],
-            ["data", "0x0E"],
-            ["data", "0x06"],
-            ["data", "0x2F"],
-            ["data", "0x45"],
-            ["data", "0x43"],
-            ["data", "0x02"],
-            ["data", "0x0A"],
-            ["data", "0x09"],
-            ["data", "0x32"],
-            ["data", "0x36"],
-            ["data", "0x0F"],
-            ["command", "0x11"],  # SLPOUT = const(0x11)  # Exit sleep mode
-        ]
-        for key, value in init_backdoor_data:
-            value = bytes().fromhex(value.split("0x")[1])[0]
-            if key == "command":
-                self.write_cmd(value)
-            else:
-                self.write_data(bytearray([value]))
-        """
-        sleep(0.1)
-        # self.write_cmd(self.INVON) # screen white
-        self.write_cmd(self.INVOFF)  # screen black
-        self.write_cmd(self.DISPLAY_ON)
-        sleep(0.1)
-        self.clear(color666(0, 0, 0))
-
-        """
-        # old code
+        # original library code
         self.write_cmd(self.SWRESET)  # Software reset
         sleep(0.1)
         self.write_cmd(self.PWCTRB, 0x00, 0xC1, 0x30)  # Pwr ctrl B
@@ -265,11 +185,13 @@ class Display(object):
         self.write_cmd(self.GMCTRP1, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00)
         self.write_cmd(self.GMCTRN1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F)
         self.write_cmd(self.SLPOUT)  # Exit sleep
-        sleep(0.1)
-        self.write_cmd(self.DISPLAY_ON)  # Display on
-        sleep(0.1)
-        self.clear()
         """
+        sleep(0.1)
+        # self.write_cmd(self.INVON) # screen white
+        self.write_cmd(self.INVOFF)  # screen black
+        self.write_cmd(self.DISPLAY_ON)
+        sleep(0.1)
+        self.clear(color_rgb(0, 0, 0))
 
     def block(self, x0, y0, x1, y1, data):
         """Write a block of data to display.
@@ -293,7 +215,7 @@ class Display(object):
         self.spi.deinit()
         print("display off")
 
-    def clear(self, color=color666(0, 0, 0)):
+    def clear(self, color=color_rgb(0, 0, 0)):
         """Clear display.
         Args:
             color (Optional int): RGB565 color value (Default: 0 = Black).
@@ -448,7 +370,22 @@ class Display(object):
                 buf = f.read(remainder * w * 2)
                 self.block(x, chunk_y, x2, chunk_y + remainder - 1, buf)
 
-    def draw_letter(self, x, y, letter, font, color, background=0, landscape=True):
+    def scale_buffer(self, buf, w, h, scale_factor, bytes_per_pixel=3):
+        newbuf = bytearray(scale_factor * len(buf))
+        for i, elem in enumerate(buf):
+            newbuf[scale_factor * i : scale_factor * (i + 1)] = bytes([elem]) * scale_factor
+
+        scaledbuf = bytearray(scale_factor * len(newbuf))
+        chunk_size = h * bytes_per_pixel * scale_factor
+        n_chunks = w
+
+        for i in range(n_chunks):
+            bounds = (chunk_size * i, chunk_size * (i + 1))
+            scaled_bounds = (scale_factor * chunk_size * i, scale_factor * chunk_size * (i + 1))
+            scaledbuf[scaled_bounds[0] : scaled_bounds[1]] = newbuf[bounds[0] : bounds[1]] + newbuf[bounds[0] : bounds[1]]
+        return scaledbuf, w * scale_factor, h * scale_factor
+
+    def draw_letter(self, x, y, letter, font, color, background=0, landscape=True, scale_factor=1):
         """Draw a letter.
         Args:
             x (int): Starting X position.
@@ -469,6 +406,11 @@ class Display(object):
         # Check for errors (Font could be missing specified letter)
         if w == 0:
             return w, h
+        if scale_factor != 1:
+            if landscape:
+                buf, w, h = self.scale_buffer(buf, w, h, scale_factor)
+            else:
+                buf, h, w = self.scale_buffer(buf, h, w, scale_factor)
 
         if landscape:
             y -= w
@@ -562,7 +504,7 @@ class Display(object):
     def draw_rgb_pixel(self, x, y, rgb_list):
         if self.is_off_grid(x, y, x, y):
             return
-        data = color666(rgb_list[0], rgb_list[1], rgb_list[2])
+        data = color_rgb(rgb_list[0], rgb_list[1], rgb_list[2])
         self.block(x, y, x, y, data)
 
     def draw_polygon(self, sides, x0, y0, r, color, rotate=0):
@@ -619,7 +561,7 @@ class Display(object):
             return
         self.block(x, y, x2, y2, buf)
 
-    def draw_text(self, x, y, text, font, color, background=0, landscape=False, spacing=1):
+    def draw_text(self, x, y, text, font, color, background=0, landscape=False, spacing=1, scale_factor=1):
         """Draw text.
         Args:
             x (int): Starting X position.
@@ -633,10 +575,10 @@ class Display(object):
         """
         for letter in text:
             # Get letter array and letter dimensions
-            w, h = self.draw_letter(x, y, letter, font, color, background, landscape)
+            w, h = self.draw_letter(x, y, letter, font, color, background, landscape, scale_factor=scale_factor)
             # Stop on error
             if background == 0:
-                background = color666(0, 0, 0)
+                background = color_rgb(0, 0, 0)
             if w == 0 or h == 0:
                 print("Invalid width {0} or height {1}".format(w, h))
                 return
@@ -659,57 +601,6 @@ class Display(object):
                 #     self.fill_vrect(x + w, y, spacing, h, background)
                 # # Position x for next letter
                 # x += w + spacing
-
-    def draw_text8x8(self, x, y, text, color, background=0, rotate=0):
-        """Draw text using built-in MicroPython 8x8 bit font.
-        Args:
-            x (int): Starting X position.
-            y (int): Starting Y position.
-            text (string): Text to draw.
-            color (int): RGB565 color value.
-            background (int): RGB565 background color (default: black).
-            rotate(int): 0, 90, 180, 270
-        """
-        w = len(text) * 8
-        h = 8
-        # Confirm coordinates in boundary
-        if self.is_off_grid(x, y, x + 7, y + 7):
-            return
-        # Rearrange color
-        r = (color & 0xF800) >> 8
-        g = (color & 0x07E0) >> 3
-        b = (color & 0x1F) << 3
-        buf = bytearray(w * 16)
-        fbuf = FrameBuffer(buf, w, h, RGB565)
-        if background != 0:
-            bg_r = (background & 0xF800) >> 8
-            bg_g = (background & 0x07E0) >> 3
-            bg_b = (background & 0x1F) << 3
-            fbuf.fill(color565(bg_b, bg_r, bg_g))
-        fbuf.text(text, 0, 0, color565(b, r, g))
-        if rotate == 0:
-            self.block(x, y, x + w - 1, y + (h - 1), buf)
-        elif rotate == 90:
-            buf2 = bytearray(w * 16)
-            fbuf2 = FrameBuffer(buf2, h, w, RGB565)
-            for y1 in range(h):
-                for x1 in range(w):
-                    fbuf2.pixel(y1, x1, fbuf.pixel(x1, (h - 1) - y1))
-            self.block(x, y, x + (h - 1), y + w - 1, buf2)
-        elif rotate == 180:
-            buf2 = bytearray(w * 16)
-            fbuf2 = FrameBuffer(buf2, w, h, RGB565)
-            for y1 in range(h):
-                for x1 in range(w):
-                    fbuf2.pixel(x1, y1, fbuf.pixel((w - 1) - x1, (h - 1) - y1))
-            self.block(x, y, x + w - 1, y + (h - 1), buf2)
-        elif rotate == 270:
-            buf2 = bytearray(w * 16)
-            fbuf2 = FrameBuffer(buf2, h, w, RGB565)
-            for y1 in range(h):
-                for x1 in range(w):
-                    fbuf2.pixel(y1, x1, fbuf.pixel((w - 1) - x1, y1))
-            self.block(x, y, x + (h - 1), y + w - 1, buf2)
 
     def draw_vline(self, x, y, h, color):
         """Draw a vertical line.
@@ -1067,7 +958,7 @@ class Display(object):
             self.write_data(bytearray(args))
 
     def read_data(self, nbytes, write=0x00):
-        """Read data from OLED (MicroPython)."""
+        """Read data from OLED (MicroPython)  --- NOT WORKING."""
         print(f"Reading {nbytes}")
         self.dc(1)
         try:

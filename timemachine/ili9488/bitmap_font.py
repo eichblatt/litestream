@@ -5,8 +5,8 @@ from math import ceil, floor
 DEBUG_FONT = False
 
 
-class XglcdFont(object):
-    """Font data in X-GLCD format.
+class BitmapFont(object):
+    """Font data in bitmap format.
     Attributes:
         letters: A bytearray of letters (columns consist of bytes)
         width: Maximum pixel width of font
@@ -25,48 +25,29 @@ class XglcdFont(object):
     # BIT_POS = {1: 0, 2: 2, 4: 4, 8: 6, 16: 8, 32: 10, 64: 12, 128: 14, 256: 16}
     BIT_POS = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6, 128: 7, 256: 8}
 
-    def __init__(self, path, width, height, start_letter=32, letter_count=96):
-        """Constructor for X-GLCD Font object.
+    def __init__(self, font):
+        """Constructor for bitmap Font object.
         Args:
-            path (string): Full path of font file
-            width (int): Maximum width in pixels of each letter
-            height (int): Height in pixels of each letter
-            start_letter (int): First ACII letter.  Default is 32.
-            letter_count (int): Total number of letters.  Default is 96.
+            font (module): a python module loaded (eg. NotoSans_18.py)
         """
-        self.width = width
-        self.height = height
-        self.start_letter = start_letter
-        self.letter_count = letter_count
-        self.bytes_per_letter = (floor((self.height - 1) / 8) + 1) * self.width + 1
-        self.__load_xglcd_font(path)
+        self.font = font
+        self.charind = {k: i for i, k in enumerate(font.MAP)}
+        self.offset_dict = self.get_offset_dict()  # integer number of bytes offset, indexed by letter
+        self.width_dict = self.get_width_dict()  # integer width (bits), indexed by letter
 
-    def __load_xglcd_font(self, path):
-        """Load X-GLCD font data from text file.
-        Args:
-            path (string): Full path of font file.
-        """
-        bytes_per_letter = self.bytes_per_letter
-        # Buffer to hold letter byte values
-        self.letters = bytearray(bytes_per_letter * self.letter_count)
-        mv = memoryview(self.letters)
-        offset = 0
-        with open(path, "r") as f:
-            for line in f:
-                # Skip lines that do not start with hex values
-                line = line.strip()
-                if len(line) == 0 or line[0:2] != "0x":
-                    continue
-                # Remove comments
-                comment = line.find("//")
-                if comment != -1:
-                    line = line[0:comment].strip()
-                # Remove trailing commas
-                if line.endswith(","):
-                    line = line[0 : len(line) - 1]
-                # Convert hex strings to bytearray and insert in to letters
-                mv[offset : offset + bytes_per_letter] = bytearray(int(b, 16) for b in line.split(","))
-                offset += bytes_per_letter
+    def get_offset_dict(self):
+        offwid = self.font.OFFSET_WIDTH
+        offset_dict = {}
+        for letter in self.font.MAP:
+            ind = self.charind[letter]
+            offset = int.from_bytes(self.font._OFFSETS[ind * offwid : (ind + 1) * offwid])  # starting bit in the _BITMAPS data
+            offset_dict[letter] = offset
+        return offset_dict
+
+    def get_width_dict(self):
+        # build a dictionary with keys = letters, values = width in bits.
+        width_dict = {letter: self.font._WIDTHS[self.charind[letter]] for letter in self.font.MAP}
+        return width_dict
 
     def lit_bits(self, n, bit_spacing=2):
         """Return positions of 1 bits only."""
@@ -75,22 +56,42 @@ class XglcdFont(object):
             yield self.BIT_POS[b] * bit_spacing
             n ^= b
 
+    def print_bitmap(self, letter_bytes, start_bit, end_bit, width):
+        letter_bits = bin(int.from_bytes(letter_bytes)).lstrip("0b")
+        letter_bits = (b"0" * start_bit) + letter_bits[: len(letter_bits) - ((8 - end_bit) if end_bit else 0)]
+        string = "\n".join(
+            [
+                (letter_bits[i : i + width]).decode().replace("0", " ").replace("1", "*")
+                for i in list(range(0, len(letter_bits), width))[:-1]
+            ]
+        )
+        print(string)
+        return string
+
     def get_letter(self, letter, color, landscape):
         """Convert letter byte data to pixels for color666 display
         Args:
             letter (string): Letter to return (must exist within font).
-            color (int): RGB666 or RGB565 color value.
+            color (int): color value.
             landscape (bool): Orientation (default: False = portrait)
         Returns:
             (bytearray): Pixel data.
             (int, int): Letter width and height.
         """
-        # Get index of letter
-        letter_ord = ord(letter) - self.start_letter
         # Confirm font contains letter
-        if letter_ord >= self.letter_count:
+        if not letter in self.font.MAP:
             print("Font does not contain character: " + letter)
             return b"", 0, 0
+        ind = self.charind[letter]
+        width = self.width_dict[letter]
+        height = self.font.HEIGHT
+        offset = self.offset_dict[letter]
+        start_byte, start_bit = divmod(offset, 8)
+        end_byte, end_bit = divmod((offset + width * height), 8)
+        letter_bytes = self.font._BITMAPS[start_byte : (end_byte + 1 if end_bit else 0)]
+
+        assert divmod(len(bits_in_letter), 8)[1] == 0
+
         bytes_per_letter = self.bytes_per_letter
         offset = letter_ord * bytes_per_letter
 
