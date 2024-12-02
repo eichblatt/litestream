@@ -85,23 +85,21 @@ class BitmapFont(object):
         ind = self.charind[letter]
         width = self.width_dict[letter]
         height = self.font.HEIGHT
+        letter_size = width * height
         offset = self.offset_dict[letter]
         start_byte, start_bit = divmod(offset, 8)
         end_byte, end_bit = divmod((offset + width * height), 8)
-        letter_bytes = self.font._BITMAPS[start_byte : (end_byte + 1 if end_bit else 0)]
+        letter_bytes = bytearray(self.font._BITMAPS[start_byte : (end_byte + 1 if end_bit else 0)])
+        # Zero out start bits when the bits don't start on a byte boundary.
+        if start_bit:
+            letter_bytes[0] = ((letter_bytes[0] << start_bit) & 0xFF) >> start_bit
+        # Zero out end bits that don't end on byte boundary.
+        if end_bit:
+            letter_bytes[-1] = (letter_bytes[-1] >> (8 - end_bit)) << (8 - end_bit)
+            # letter_bytes[-1] = letter_bytes[-1] & 2**end_bit - 1
 
-        assert divmod(len(bits_in_letter), 8)[1] == 0
+        # mv = memoryview(letter_bytes)
 
-        bytes_per_letter = self.bytes_per_letter
-        offset = letter_ord * bytes_per_letter
-
-        mv = memoryview(self.letters[offset : offset + bytes_per_letter])
-
-        # Get width of letter (specified by first byte)
-        letter_width = mv[0]
-        letter_height = self.height
-        # Get size in bytes of specified letter
-        letter_size = letter_height * letter_width
         # Create buffer (triple size to accommodate 18 bit colors)
         if isinstance(color, bytes):
             bytes_per_pixel = 3
@@ -118,11 +116,11 @@ class BitmapFont(object):
         print(f"color_bytes = {color}") if DEBUG_FONT else None
         if landscape:
             # Populate buffer in order for landscape
-            pos = (letter_size * bytes_per_pixel) - (letter_height * bytes_per_pixel)
-            print(f"pos: {pos}. letter_height {letter_height}, letter_width {letter_width}.") if DEBUG_FONT else None
-            lh = letter_height
+            pos = (letter_size * bytes_per_pixel) - (height * bytes_per_pixel)
+            print(f"pos: {pos}. letter_height {height}, letter_width {width}.") if DEBUG_FONT else None
+            lh = height
             # Loop through letter byte data and convert to pixel data
-            for b in mv[1:]:
+            for b in letter_bytes:
                 # Process only colored bits
                 lbits = list(self.lit_bits(b, bit_spacing=bytes_per_pixel))
                 print(f"lbits for {letter} {b} is {lbits}. pos {pos}") if DEBUG_FONT else None
@@ -135,19 +133,19 @@ class BitmapFont(object):
                     lh -= 8
                 else:
                     # Descrease position to start of previous column
-                    pos -= (letter_height * 2 * bytes_per_pixel) - (lh * bytes_per_pixel)
-                    lh = letter_height
+                    pos -= (height * 2 * bytes_per_pixel) - (lh * bytes_per_pixel)
+                    lh = height
         else:
             # Populate buffer in order for portrait
             col = 0  # Set column to first column
-            bytes_per_letter = ceil(letter_height / 8)
+            bytes_per_letter = ceil(height / 8)
             letter_byte = 0
             # Loop through letter byte data and convert to pixel data
-            for b in mv[1:]:
+            for b in letter_bytes:
                 # Process only colored bits
-                segment_size = letter_byte * letter_width * 8 * bytes_per_pixel
+                segment_size = letter_byte * width * 8 * bytes_per_pixel
                 for bit in self.lit_bits(b, bit_spacing=bytes_per_pixel):
-                    pos = (bit * letter_width) + (col * bytes_per_pixel) + segment_size
+                    pos = (bit * width) + (col * bytes_per_pixel) + segment_size
                     for ib, cb in enumerate(color):
                         buf[pos + ib] = cb
                     pos = pos + bytes_per_pixel - 1
@@ -156,80 +154,7 @@ class BitmapFont(object):
                     col += 1
                     letter_byte = 0
 
-        return buf, letter_width, letter_height
-
-    def get_letter_old(self, letter, color, background=0, landscape=False):
-        """Convert letter byte data to pixels.
-        Args:
-            letter (string): Letter to return (must exist within font).
-            color (int): color value.
-            background (int): background color (default: black).
-            landscape (bool): Orientation (default: False = portrait)
-        Returns:
-            (bytearray): Pixel data.
-            (int, int): Letter width and height.
-        """
-        # Get index of letter
-        letter_ord = ord(letter) - self.start_letter
-        # Confirm font contains letter
-        if letter_ord >= self.letter_count:
-            print("Font does not contain character: " + letter)
-            return b"", 0, 0
-        bytes_per_letter = self.bytes_per_letter
-        offset = letter_ord * bytes_per_letter
-        mv = memoryview(self.letters[offset : offset + bytes_per_letter])
-
-        # Get width of letter (specified by first byte)
-        letter_width = mv[0]
-        letter_height = self.height
-        # Get size in bytes of specified letter
-        letter_size = letter_height * letter_width
-        # Create buffer (double size to accommodate 16 bit colors)
-        if background:
-            buf = bytearray(background.to_bytes(2, "big") * letter_size)
-        else:
-            buf = bytearray(letter_size * 2)
-
-        msb, lsb = color.to_bytes(2, "big")
-
-        if landscape:
-            # Populate buffer in order for landscape
-            pos = (letter_size * 2) - (letter_height * 2)
-            lh = letter_height
-            # Loop through letter byte data and convert to pixel data
-            for b in mv[1:]:
-                # Process only colored bits
-                for bit in self.lit_bits(b):
-                    buf[bit + pos] = msb
-                    buf[bit + pos + 1] = lsb
-                if lh > 8:
-                    # Increment position by double byte
-                    pos += 16
-                    lh -= 8
-                else:
-                    # Descrease position to start of previous column
-                    pos -= (letter_height * 4) - (lh * 2)
-                    lh = letter_height
-        else:
-            # Populate buffer in order for portrait
-            col = 0  # Set column to first column
-            bytes_per_letter = ceil(letter_height / 8)
-            letter_byte = 0
-            # Loop through letter byte data and convert to pixel data
-            for b in mv[1:]:
-                # Process only colored bits
-                segment_size = letter_byte * letter_width * 16
-                for bit in self.lit_bits(b):
-                    pos = (bit * letter_width) + (col * 2) + segment_size
-                    buf[pos] = msb
-                    pos = (bit * letter_width) + (col * 2) + 1 + segment_size
-                    buf[pos] = lsb
-                letter_byte += 1
-                if letter_byte + 1 > bytes_per_letter:
-                    col += 1
-                    letter_byte = 0
-
-        return buf, letter_width, letter_height
+        return buf, width, height
 
     def measure_text(self, text, spacing=1):
         """Measure length of text string in pixels.
