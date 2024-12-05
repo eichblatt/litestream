@@ -56,19 +56,18 @@ class BitmapFont(object):
             yield self.BIT_POS[b] * bit_spacing
             n ^= b
 
-    def print_bitmap(self, letter_bytes, start_bit, end_bit, width):
-        letter_bits = bin(int.from_bytes(letter_bytes)).lstrip("0b")
-        letter_bits = (b"0" * start_bit) + letter_bits[: len(letter_bits) - ((8 - end_bit) if end_bit else 0)]
+    def print_bitmap(self, letter_bits, width):
+        print(f"Printing bitmap {letter_bits}")
+        print(f"Printing bits   {letter_bits[:width*self.font.HEIGHT]}")
         string = "\n".join(
             [
-                (letter_bits[i : i + width]).decode().replace("0", " ").replace("1", "*")
+                (letter_bits[i : i + width]).replace("0", " ").replace("1", "*")
                 for i in list(range(0, len(letter_bits), width))[:-1]
             ]
         )
         print(string)
-        return string
 
-    def get_letter(self, letter, color, landscape):
+    def get_letter(self, letter, color, landscape=False):
         """Convert letter byte data to pixels for color666 display
         Args:
             letter (string): Letter to return (must exist within font).
@@ -89,16 +88,18 @@ class BitmapFont(object):
         offset = self.offset_dict[letter]
         start_byte, start_bit = divmod(offset, 8)
         end_byte, end_bit = divmod((offset + width * height), 8)
-        letter_bytes = bytearray(self.font._BITMAPS[start_byte : (end_byte + 1 if end_bit else 0)])
-        # Zero out start bits when the bits don't start on a byte boundary.
-        if start_bit:
-            letter_bytes[0] = ((letter_bytes[0] << start_bit) & 0xFF) >> start_bit
-        # Zero out end bits that don't end on byte boundary.
-        if end_bit:
-            letter_bytes[-1] = (letter_bytes[-1] >> (8 - end_bit)) << (8 - end_bit)
-            # letter_bytes[-1] = letter_bytes[-1] & 2**end_bit - 1
+        letter_bytes = self.font._BITMAPS[start_byte : end_byte + (1 if end_bit > 0 else 0)]
+        print(f"letter_bytes orig {letter_bytes}. Width {width}, Height {height}") if DEBUG_FONT else None
+        print(f"start_byte:{start_byte},{start_bit}. end_byte:{end_byte},{end_bit}") if DEBUG_FONT else None
+        # shift the entire array so that it ends on a byte boundary
+        lba = (int.from_bytes(letter_bytes, "big") >> (8 - end_bit) % 8) & (1 << letter_size) - 1
+        lba = int.to_bytes(lba, len(letter_bytes), "big")
 
-        # mv = memoryview(letter_bytes)
+        letter_bits = str(bin(int.from_bytes(lba)).lstrip("0b"))
+        print(f"Printing bits {letter_bits}") if DEBUG_FONT else None
+        if len(letter_bits) < width * self.font.HEIGHT:
+            letter_bits = "0" * ((width * self.font.HEIGHT) - len(letter_bits)) + letter_bits
+        self.print_bitmap(letter_bits, width) if DEBUG_FONT else None
 
         # Create buffer (triple size to accommodate 18 bit colors)
         if isinstance(color, bytes):
@@ -116,44 +117,33 @@ class BitmapFont(object):
         print(f"color_bytes = {color}") if DEBUG_FONT else None
         if landscape:
             # Populate buffer in order for landscape
-            pos = (letter_size * bytes_per_pixel) - (height * bytes_per_pixel)
+            pos = (letter_size - height) * bytes_per_pixel
             print(f"pos: {pos}. letter_height {height}, letter_width {width}.") if DEBUG_FONT else None
             lh = height
             # Loop through letter byte data and convert to pixel data
-            for b in letter_bytes:
-                # Process only colored bits
-                lbits = list(self.lit_bits(b, bit_spacing=bytes_per_pixel))
-                print(f"lbits for {letter} {b} is {lbits}. pos {pos}") if DEBUG_FONT else None
-                for bit in lbits:
-                    for ib, cb in enumerate(color):
-                        buf[pos + bit + ib] = cb
-                if lh > 8:
-                    # Increment position by double byte
-                    pos += 8 * bytes_per_pixel
-                    lh -= 8
-                else:
-                    # Descrease position to start of previous column
-                    pos -= (height * 2 * bytes_per_pixel) - (lh * bytes_per_pixel)
-                    lh = height
-        else:
-            # Populate buffer in order for portrait
-            col = 0  # Set column to first column
-            bytes_per_letter = ceil(height / 8)
-            letter_byte = 0
-            # Loop through letter byte data and convert to pixel data
-            for b in letter_bytes:
-                # Process only colored bits
-                segment_size = letter_byte * width * 8 * bytes_per_pixel
-                for bit in self.lit_bits(b, bit_spacing=bytes_per_pixel):
-                    pos = (bit * width) + (col * bytes_per_pixel) + segment_size
+            for ibit in range(letter_size):
+                if letter_bits[ibit] == "1":
+                    pos = pos + bytes_per_pixel
                     for ib, cb in enumerate(color):
                         buf[pos + ib] = cb
-                    pos = pos + bytes_per_pixel - 1
-                letter_byte += 1
-                if letter_byte + 1 > bytes_per_letter:
-                    col += 1
-                    letter_byte = 0
+                if lh > 8:
+                    pos += 8 * bytes_per_pixel
+                    lh -= 8
+                    print(f"lh:{lh}, pos:{pos}") if DEBUG_FONT else None
 
+        else:
+            # Populate buffer in order for portrait
+            column = 0  # Set column to first column
+            # Loop through letter byte data and convert to pixel data
+            pos = 0
+            for ibit in range(letter_size):
+                column, row = divmod(ibit, width)
+                # print(f"ibit:{ibit}, width:{width}, column:{column}, row:{row}, len(buf):{len(buf)}") if DEBUG_FONT else None
+                if letter_bits[ibit] == "1":
+                    pos = ibit * bytes_per_pixel
+                    # print(f"pos:{pos}") if DEBUG_FONT else None
+                    for ib, cb in enumerate(color):
+                        buf[pos + ib] = cb
         return buf, width, height
 
     def measure_text(self, text, spacing=1):

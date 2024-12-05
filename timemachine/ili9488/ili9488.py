@@ -385,7 +385,7 @@ class Display(object):
             scaledbuf[scaled_bounds[0] : scaled_bounds[1]] = newbuf[bounds[0] : bounds[1]] + newbuf[bounds[0] : bounds[1]]
         return scaledbuf, w * scale_factor, h * scale_factor
 
-    def draw_letter(self, x, y, letter, font, color, background=0, landscape=True, scale_factor=1):
+    def draw_letter(self, x, y, letter, font, color, background=0, landscape=False, scale_factor=1):
         """Draw a letter.
         Args:
             x (int): Starting X position.
