@@ -373,8 +373,12 @@ class Display(object):
     def scale_buffer(self, buf, w, h, scale_factor, bytes_per_pixel=3):
         assert isinstance(scale_factor, int), "Scale factor must be an integer"
         newbuf = bytearray(scale_factor * len(buf))
-        for i, elem in enumerate(buf):
-            newbuf[scale_factor * i : scale_factor * (i + 1)] = bytes([elem]) * scale_factor
+        # for i, elem in enumerate(buf):
+        # newbuf[scale_factor * i : scale_factor * (i + 1)] = bytes([elem]) * scale_factor
+        for i in range(0, len(buf), bytes_per_pixel):
+            position = i // bytes_per_pixel
+            pixeldesc = bytes(buf[i : i + bytes_per_pixel])
+            newbuf[i * scale_factor : (i + 1) * bytes_per_pixel * scale_factor] = pixeldesc * scale_factor
 
         scaledbuf = bytearray(scale_factor * len(newbuf))
         chunk_size = h * bytes_per_pixel * scale_factor
