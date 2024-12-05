@@ -2,7 +2,6 @@
 from testlib.ili9488 import Display, color565, color_rgb
 from testlib.xglcd_font import XglcdFont
 import fonts.NotoSans_18 as pfont
-import fonts.date_font as datefont
 from testlib import bitmap_font as bmf
 from time import sleep
 from machine import Pin, SPI
@@ -37,7 +36,9 @@ times = XglcdFont("testlib/fonts/Times_New_Roman28x25.h", 28, 25)
 display.draw_letter(200, 200, "B", times, color_rgb(200, 100, 100))
 display.draw_text(0, 220, "Times New Roman 28x25. Hooray!!", times, color_rgb(255, 255, 255), landscape=False)
 
-bmf.DEBUG_FONT = True
+sleep(5)
+display.clear()
+bmf.DEBUG_FONT = False
 noto18 = bmf.BitmapFont(pfont)
 noto18.get_letter("r", color_rgb(250, 250, 0))
 display.draw_letter(200, 200, "r", noto18, color_rgb(200, 100, 100))
@@ -46,8 +47,25 @@ display.draw_text(0, 120, noto18.font.MAP[:30], noto18, color_rgb(255, 255, 255)
 display.draw_text(0, 150, noto18.font.MAP[30:60], noto18, color_rgb(255, 255, 255))
 display.draw_text(0, 180, noto18.font.MAP[60:], noto18, color_rgb(255, 255, 255))
 
+sleep(5)
+import fonts.date_font as datefont
+import fonts.DejaVu_33 as deja33
+
+display.clear()
 
 datef = bmf.BitmapFont(datefont)
+display.draw_text(0, 120, datef.font.MAP, datef, color_rgb(255, 255, 255))
+display.draw_text(0, 120, datef.font.MAP[:4], datef, color_rgb(255, 255, 255), scale_factor=4)
+
+sleep(5)
+
+display.clear()
+d33 = bmf.BitmapFont(deja33)
+display.draw_text(0, 0, d33.font.MAP[:20], d33, color_rgb(255, 255, 255))
+display.draw_text(0, 40, d33.font.MAP[20:40], d33, color_rgb(255, 255, 255))
+display.draw_text(0, 80, d33.font.MAP[40:60], d33, color_rgb(255, 255, 255))
+display.draw_text(0, 120, d33.font.MAP[60:80], d33, color_rgb(255, 255, 255))
+display.draw_text(0, 160, d33.font.MAP[80:], d33, color_rgb(255, 255, 255))
 
 led.off()
 sleep(2)

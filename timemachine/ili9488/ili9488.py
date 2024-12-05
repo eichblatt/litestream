@@ -371,6 +371,7 @@ class Display(object):
                 self.block(x, chunk_y, x2, chunk_y + remainder - 1, buf)
 
     def scale_buffer(self, buf, w, h, scale_factor, bytes_per_pixel=3):
+        assert isinstance(scale_factor, int), "Scale factor must be an integer"
         newbuf = bytearray(scale_factor * len(buf))
         for i, elem in enumerate(buf):
             newbuf[scale_factor * i : scale_factor * (i + 1)] = bytes([elem]) * scale_factor
@@ -382,7 +383,7 @@ class Display(object):
         for i in range(n_chunks):
             bounds = (chunk_size * i, chunk_size * (i + 1))
             scaled_bounds = (scale_factor * chunk_size * i, scale_factor * chunk_size * (i + 1))
-            scaledbuf[scaled_bounds[0] : scaled_bounds[1]] = newbuf[bounds[0] : bounds[1]] + newbuf[bounds[0] : bounds[1]]
+            scaledbuf[scaled_bounds[0] : scaled_bounds[1]] = bytes(newbuf[bounds[0] : bounds[1]]) * scale_factor
         return scaledbuf, w * scale_factor, h * scale_factor
 
     def draw_letter(self, x, y, letter, font, color, background=0, landscape=False, scale_factor=1):
