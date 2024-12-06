@@ -34,6 +34,7 @@ class BitmapFont(object):
         self.charind = {k: i for i, k in enumerate(font.MAP)}
         self.offset_dict = self.get_offset_dict()  # integer number of bytes offset, indexed by letter
         self.width_dict = self.get_width_dict()  # integer width (bits), indexed by letter
+        self.litbit_dict = {}
 
     def get_offset_dict(self):
         offwid = self.font.OFFSET_WIDTH
@@ -67,21 +68,9 @@ class BitmapFont(object):
         )
         print(string)
 
-    def get_letter(self, letter, color, landscape=False):
-        """Convert letter byte data to pixels for color666 display
-        Args:
-            letter (string): Letter to return (must exist within font).
-            color (int): color value.
-            landscape (bool): Orientation (default: False = portrait)
-        Returns:
-            (bytearray): Pixel data.
-            (int, int): Letter width and height.
-        """
-        # Confirm font contains letter
-        if not letter in self.font.MAP:
-            print("Font does not contain character: " + letter)
-            return b"", 0, 0
-        ind = self.charind[letter]
+    def get_lit_bits(self, letter):
+        if letter in self.litbit_dict.keys():
+            return self.litbit_dict[letter]
         width = self.width_dict[letter]
         height = self.font.HEIGHT
         letter_size = width * height
@@ -100,6 +89,31 @@ class BitmapFont(object):
         if len(letter_bits) < width * self.font.HEIGHT:
             letter_bits = "0" * ((width * self.font.HEIGHT) - len(letter_bits)) + letter_bits
         self.print_bitmap(letter_bits, width) if DEBUG_FONT else None
+        self.litbit_dict[letter] = []
+        for ibit in range(letter_size):
+            if letter_bits[ibit] == "1":
+                self.litbit_dict[letter].append(ibit)
+        return self.litbit_dict[letter]
+
+    def get_letter(self, letter, color, landscape=False):
+        """Convert letter byte data to pixels for color666 display
+        Args:
+            letter (string): Letter to return (must exist within font).
+            color (int): color value.
+            landscape (bool): Orientation (default: False = portrait)
+        Returns:
+            (bytearray): Pixel data.
+            (int, int): Letter width and height.
+        """
+        # Confirm font contains letter
+        if not letter in self.font.MAP:
+            print("Font does not contain character: " + letter)
+            return b"", 0, 0
+        width = self.width_dict[letter]
+        height = self.font.HEIGHT
+        # letter_bits = self.get_letter_bits(letter)
+        lit_bits = self.get_lit_bits(letter)
+        letter_size = width * height
 
         # Create buffer (triple size to accommodate 18 bit colors)
         if isinstance(color, bytes):
@@ -122,6 +136,8 @@ class BitmapFont(object):
             lh = height
             # Loop through letter byte data and convert to pixel data
             for ibit in range(letter_size):
+                pass
+                """
                 if letter_bits[ibit] == "1":
                     pos = pos + bytes_per_pixel
                     for ib, cb in enumerate(color):
@@ -130,12 +146,20 @@ class BitmapFont(object):
                     pos += 8 * bytes_per_pixel
                     lh -= 8
                     print(f"lh:{lh}, pos:{pos}") if DEBUG_FONT else None
-
+                """
         else:
             # Populate buffer in order for portrait
             column = 0  # Set column to first column
             # Loop through letter byte data and convert to pixel data
             pos = 0
+            for ibit in lit_bits:
+                column, row = divmod(ibit, width)
+                # print(f"ibit:{ibit}, width:{width}, column:{column}, row:{row}, len(buf):{len(buf)}") if DEBUG_FONT else None
+                pos = ibit * bytes_per_pixel
+                # print(f"pos:{pos}") if DEBUG_FONT else None
+                for ib, cb in enumerate(color):
+                    buf[pos + ib] = cb
+            """
             for ibit in range(letter_size):
                 column, row = divmod(ibit, width)
                 # print(f"ibit:{ibit}, width:{width}, column:{column}, row:{row}, len(buf):{len(buf)}") if DEBUG_FONT else None
@@ -144,6 +168,7 @@ class BitmapFont(object):
                     # print(f"pos:{pos}") if DEBUG_FONT else None
                     for ib, cb in enumerate(color):
                         buf[pos + ib] = cb
+            """
         return buf, width, height
 
     def measure_text(self, text, spacing=1):

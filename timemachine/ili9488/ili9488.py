@@ -4,11 +4,15 @@
 # -*-coding:utf-8 -*-
 
 """ILI9488 LCD/Touch module."""
+import time
 from time import sleep
 from math import cos, sin, pi, radians
 from sys import implementation
-from framebuf import FrameBuffer, RGB565  # type: ignore
-import ustruct  # type: ignore
+
+try:
+    import struct
+except ModuleNotFoundError:
+    import ustruct as struct
 
 
 def color565(r, g, b):
@@ -202,8 +206,8 @@ class Display(object):
             y1 (int):  Ending Y position.
             data (bytes): Data buffer to write.
         """
-        self.write_cmd(self.SET_COLUMN, *ustruct.pack(">HH", x0, x1))
-        self.write_cmd(self.SET_PAGE, *ustruct.pack(">HH", y0, y1))
+        self.write_cmd(self.SET_COLUMN, *struct.pack(">HH", x0, x1))
+        self.write_cmd(self.SET_PAGE, *struct.pack(">HH", y0, y1))
 
         self.write_cmd(self.WRITE_RAM)
         self.write_data(data)
@@ -376,7 +380,6 @@ class Display(object):
         # for i, elem in enumerate(buf):
         # newbuf[scale_factor * i : scale_factor * (i + 1)] = bytes([elem]) * scale_factor
         for i in range(0, len(buf), bytes_per_pixel):
-            position = i // bytes_per_pixel
             pixeldesc = bytes(buf[i : i + bytes_per_pixel])
             newbuf[i * scale_factor : (i + 1) * bytes_per_pixel * scale_factor] = pixeldesc * scale_factor
 
@@ -401,7 +404,9 @@ class Display(object):
             background (int): RGB565 background color (default: black).
             landscape (bool): Orientation (default: False = portrait)
         """
+        start_time = time.ticks_ms()
         buf, w, h = font.get_letter(letter, color, landscape)
+        get_letter_time = time.ticks_ms()
         # print(f"letter:{letter}, buf:{buf}. w:{w}, h:{h}")
         # r, g, b = color
         # print(f"Color565 ({r},{g},{b}) is {color}")
@@ -417,6 +422,7 @@ class Display(object):
             else:
                 buf, h, w = self.scale_buffer(buf, h, w, scale_factor)
 
+        scale_time = time.ticks_ms()
         if landscape:
             y -= w
             if self.is_off_grid(x, y, x + h - 1, y + w - 1):
