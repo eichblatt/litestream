@@ -5,6 +5,7 @@
 
 """ILI9488 LCD/Touch module."""
 import time
+import bitmap_font
 from time import sleep
 from math import cos, sin, pi, radians
 from sys import implementation
@@ -34,6 +35,9 @@ def color666(r, g, b):
     g_666 = (g & 0xF8) | (g >> 5)
     b_666 = (b & 0xF8) | (b >> 5)
     return bytes([r_666, g_666, b_666])
+
+
+WHITE = color_rgb(255, 255, 255)
 
 
 class Display(object):
@@ -110,7 +114,7 @@ class Display(object):
         270: 0x28,
     }
 
-    def __init__(self, spi, cs, dc, rst, width=480, height=320, rotation=270):
+    def __init__(self, spi, cs, dc, rst, backlight, width=480, height=320, rotation=270):
         """Initialize OLED.
         Args:
             spi (Class Spi):  SPI interface for OLED
@@ -127,26 +131,21 @@ class Display(object):
         self.rst = rst
         self.width = width
         self.height = height
+        self.backlight = backlight
+        self.fonts = {}
         if rotation not in self.ROTATE.keys():
             raise RuntimeError("Rotation must be 0, 90, 180 or 270.")
         else:
             self.rotation = self.ROTATE[rotation]
 
         # Initialize GPIO pins and set implementation specific methods
-        if implementation.name == "circuitpython":
-            self.cs.switch_to_output(value=True)
-            self.dc.switch_to_output(value=False)
-            self.rst.switch_to_output(value=True)
-            self.reset = self.reset_cpy
-            self.write_cmd = self.write_cmd_cpy
-            self.write_data = self.write_data_cpy
-        else:
-            self.cs.init(self.cs.OUT, value=1)
-            self.dc.init(self.dc.OUT, value=0)
-            self.rst.init(self.rst.OUT, value=1)
-            self.reset = self.reset_mpy
-            self.write_cmd = self.write_cmd_mpy
-            self.write_data = self.write_data_mpy
+        self.cs.init(self.cs.OUT, value=1)
+        self.dc.init(self.dc.OUT, value=0)
+        self.rst.init(self.rst.OUT, value=1)
+        self.reset = self.reset_mpy
+        self.write_cmd = self.write_cmd_mpy
+        self.write_data = self.write_data_mpy
+        self.backlight.on()
         self.reset()
         # Send initialization commands
 
@@ -196,6 +195,21 @@ class Display(object):
         self.write_cmd(self.DISPLAY_ON)
         sleep(0.1)
         self.clear(color_rgb(0, 0, 0))
+
+    def init(self):
+        self.clear()
+
+    def fill(self, color):
+        self.fill_rect(0, 0, self.width, self.height, color)
+
+    def on(self):
+        self.backlight.on()
+
+    def off(self):
+        self.backlight.off()
+
+    def offset(self, *args):
+        pass
 
     def block(self, x0, y0, x1, y1, data):
         """Write a block of data to display.
@@ -393,26 +407,21 @@ class Display(object):
             scaledbuf[scaled_bounds[0] : scaled_bounds[1]] = bytes(newbuf[bounds[0] : bounds[1]]) * scale_factor
         return scaledbuf, w * scale_factor, h * scale_factor
 
-    def draw_letter(self, x, y, letter, font, color, background=0, landscape=False, scale_factor=1):
+    def draw_letter(self, x, y, letter, font_module, color, background=0, landscape=False, scale_factor=1):
         """Draw a letter.
         Args:
             x (int): Starting X position.
             y (int): Starting Y position.
             letter (string): Letter to draw.
-            font (XglcdFont object): Font.
+            font_module : bitmap font module.
             color (int): RGB565 color value.
             background (int): RGB565 background color (default: black).
             landscape (bool): Orientation (default: False = portrait)
         """
         start_time = time.ticks_ms()
+        font = self.__get_font(font_module)
         buf, w, h = font.get_letter(letter, color, landscape)
         get_letter_time = time.ticks_ms()
-        # print(f"letter:{letter}, buf:{buf}. w:{w}, h:{h}")
-        # r, g, b = color
-        # print(f"Color565 ({r},{g},{b}) is {color}")
-
-        # buf, w, h = font.get_letter(letter, color, background, landscape)
-        # print(f"letter {letter}, buf is {buf}")
         # Check for errors (Font could be missing specified letter)
         if w == 0:
             return w, h
@@ -541,7 +550,7 @@ class Display(object):
         # Cast to python float first to fix rounding errors
         self.draw_lines(coords, color=color)
 
-    def draw_rectangle(self, x, y, w, h, color):
+    def rect(self, x, y, w, h, color):
         """Draw a rectangle.
         Args:
             x (int): Starting X position.
@@ -572,13 +581,31 @@ class Display(object):
             return
         self.block(x, y, x2, y2, buf)
 
-    def draw_text(self, x, y, text, font, color, background=0, landscape=False, spacing=1, scale_factor=1):
+    def __get_font(self, font_module):
+        if not font_module.__name__ in self.fonts.keys():  # Cache the font
+            font = bitmap_font.BitmapFont(font_module)
+            self.fonts[font_module.__name__] = font
+        else:
+            font = self.fonts[font_module.__name__]
+        return font
+
+    def write_len(self, font_module, text):
+        font = self.__get_font(font_module)
+        width = 0
+        for char in text:
+            width += font.width_dict[char] + 1
+        return width
+
+    def text(self, *args, **kwargs):
+        return self.write(*args, **kwargs)
+
+    def write(self, font_module, text, x, y, color=WHITE, background=0, landscape=False, spacing=1, scale_factor=1):
         """Draw text.
         Args:
             x (int): Starting X position.
             y (int): Starting Y position.
             text (string): Text to draw.
-            font (XglcdFont object): Font.
+            font_module: bitmap Font module.
             color (int): RGB565 color value.
             background (int): RGB565 background color (default: black).
             landscape (bool): Orientation (default: False = portrait)
@@ -586,7 +613,7 @@ class Display(object):
         """
         for letter in text:
             # Get letter array and letter dimensions
-            w, h = self.draw_letter(x, y, letter, font, color, background, landscape, scale_factor=scale_factor)
+            w, h = self.draw_letter(x, y, letter, font_module, color, background, landscape, scale_factor=scale_factor)
             # Stop on error
             if background == 0:
                 background = color_rgb(0, 0, 0)
@@ -731,7 +758,7 @@ class Display(object):
             buf = color * remainder * w
             self.block(x, chunk_y, x + w - 1, chunk_y + remainder - 1, buf)
 
-    def fill_rectangle(self, x, y, w, h, color):
+    def fill_rect(self, x, y, w, h, color):
         """Draw a filled rectangle.
         Args:
             x (int): Starting X position.
@@ -747,7 +774,14 @@ class Display(object):
         else:
             self.fill_vrect(x, y, w, h, color)
 
-    def fill_polygon(self, sides, x0, y0, r, color, rotate=0):
+    def fill_polygon(self, poly, x0, y0, color):
+        if poly == [(0, 0), (0, 15), (15, 8), (0, 0)]:
+            self.fill_poly(3, x0 + 7, y0 + 5, 7, color)
+        elif poly == [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]:
+            self.fill_rect(x0, y0, 3, 15, color)
+            self.fill_rect(x0 + 7, y0, 3, 15, color)
+
+    def fill_poly(self, sides, x0, y0, r, color, rotate=0):
         """Draw a filled n-sided regular polygon.
         Args:
             sides (int): Number of polygon sides.
@@ -890,15 +924,6 @@ class Display(object):
         with open(path, "rb") as f:
             return f.read(buf_size)
 
-    def reset_cpy(self):
-        """Perform reset: Low=initialization, High=normal operation.
-        Notes: CircuitPython implemntation
-        """
-        self.rst.value = False
-        sleep(0.05)
-        self.rst.value = True
-        sleep(0.05)
-
     def reset_mpy(self):
         """Perform reset: Low=initialization, High=normal operation.
         Notes: MicroPython implemntation
@@ -950,24 +975,6 @@ class Display(object):
         if len(args) > 0:
             self.write_data(bytearray(args))
 
-    def write_cmd_cpy(self, command, *args):
-        """Write command to OLED (CircuitPython).
-        Args:
-            command (byte): ILI9488 command code.
-            *args (optional bytes): Data to transmit.
-        """
-        self.dc.value = False
-        self.cs.value = False
-        # Confirm SPI locked before writing
-        while not self.spi.try_lock():
-            pass
-        self.spi.write(bytearray([command]))
-        self.spi.unlock()
-        self.cs.value = True
-        # Handle any passed data
-        if len(args) > 0:
-            self.write_data(bytearray(args))
-
     def read_data(self, nbytes, write=0x00):
         """Read data from OLED (MicroPython)  --- NOT WORKING."""
         print(f"Reading {nbytes}")
@@ -988,17 +995,3 @@ class Display(object):
         self.cs(0)
         self.spi.write(data)
         self.cs(1)
-
-    def write_data_cpy(self, data):
-        """Write data to OLED (CircuitPython).
-        Args:
-            data (bytes): Data to transmit.
-        """
-        self.dc.value = True
-        self.cs.value = False
-        # Confirm SPI locked before writing
-        while not self.spi.try_lock():
-            pass
-        self.spi.write(data)
-        self.spi.unlock()
-        self.cs.value = True

@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import ili9488
 import math
 import os
 import st7789
@@ -35,6 +36,7 @@ SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
 SCREEN_WIDTH = 160
 SCREEN_HEIGHT = 128
+SCREEN_DRIVER = "ili9488"
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -71,6 +73,14 @@ def get_int_from_file(path, default_val, max_val):
         if fh is not None:
             fh.close()
     return val
+
+
+def color_rgb(r, g, b):
+    if SCREEN_DRIVER == "st7789":
+        return st7789.color565(r, g, b)
+    elif SCREEN_DRIVER == "ili9488":
+        return bytes([r, g, b])
+    raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
 
 
 def get_knob_sense():
@@ -171,17 +181,18 @@ keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 22)
 title_bbox = Bbox(0, 23, SCREEN_WIDTH, 61)
 selected_artist_bbox = Bbox(0, 110, 145, SCREEN_HEIGHT)
 
-yellow_color = st7789.color565(255, 255, 20)
+yellow_color = color_rgb(255, 255, 20)
 stage_date_color = yellow_color
-tracklist_color = st7789.color565(0, 158, 255)
-# play_color = st7789.color565(20, 255, 60)
-play_color = st7789.color565(255, 0, 15)
-pause_color = st7789.color565(255, 0, 15)
+tracklist_color = color_rgb(0, 158, 255)
+# play_color = color_rgb(20, 255, 60)
+play_color = color_rgb(255, 0, 15)
+pause_color = color_rgb(255, 0, 15)
 nshows_color = tracklist_color
-purple_color = st7789.color565(255, 72, 255)
-selected_date_color = st7789.color565(255, 255, 150)
-RED = st7789.RED
-WHITE = st7789.WHITE
+purple_color = color_rgb(255, 72, 255)
+selected_date_color = color_rgb(255, 255, 150)
+RED = color_rgb(255, 0, 0)
+WHITE = color_rgb(255, 255, 255)
+BLACK = color_rgb(0, 0, 0)
 
 
 def init_screen():
@@ -190,12 +201,12 @@ def init_screen():
 
 def clear_bbox(bbox):
     init_screen()
-    tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, st7789.BLACK)
+    tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, BLACK)
 
 
 def clear_area(x, y, width, height):
     init_screen()
-    tft.fill_rect(x, y, width, height, st7789.BLACK)
+    tft.fill_rect(x, y, width, height, BLACK)
 
 
 def clear_screen():
@@ -204,7 +215,7 @@ def clear_screen():
 
 def clear_area(x, y, width, height):
     init_screen()
-    tft.fill_rect(x, y, width, height, st7789.BLACK)
+    tft.fill_rect(x, y, width, height, BLACK)
 
 
 def screen_state(state=None):
@@ -229,29 +240,40 @@ def screen_on():
 
 
 # Configure display driver
-def conf_screen(rotation=0, buffer_size=0, options=0):
-    return st7789.ST7789(
-        screen_spi,
-        SCREEN_HEIGHT,
-        SCREEN_WIDTH,
-        reset=Pin(4, Pin.OUT),
-        cs=Pin(10, Pin.OUT),
-        dc=Pin(6, Pin.OUT),
-        backlight=Pin(5, Pin.OUT),
-        color_order=st7789.RGB,
-        inversion=False,
-        rotation=rotation,
-        options=options,
-        buffer_size=buffer_size,
-    )
+def conf_screen(rotation=0, buffer_size=0, options=0, driver="st7789"):
+    reset = Pin(4, Pin.OUT)
+    cs = Pin(10, Pin.OUT)
+    dc = Pin(6, Pin.OUT)
+    backlight = Pin(5, Pin.OUT)
+
+    if driver == "st7789":
+        return st7789.ST7789(
+            screen_spi,
+            SCREEN_HEIGHT,
+            SCREEN_WIDTH,
+            reset=reset,
+            cs=cs,
+            dc=dc,
+            backlight=backlight,
+            color_order=st7789.RGB,
+            inversion=False,
+            rotation=rotation,
+            options=options,
+            buffer_size=buffer_size,
+        )
+    elif driver == "ili9488":
+        print(f"initializing driver {driver}")
+        display = ili9488.Display(screen_spi, dc=dc, cs=cs, rst=reset, backlight=backlight)
+        backlight.on()
+        return display
 
 
-tft = conf_screen(1, buffer_size=64 * 64 * 2)
+tft = conf_screen(1, buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
 psychedelic_screen = False
 tft.init()
 
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-tft.fill(st7789.BLACK)
+# tft.fill(BLACK)
 screen_on_time = time.ticks_ms()
 board_on = 1
 
@@ -320,7 +342,7 @@ def calibrate_screen(force=False):
     tft.on()
     clear_screen()
     tft.offset(0, 0)
-    tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, st7789.WHITE)
+    tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE)
     # Can you see all 4 sides?
     write("Press SELECT if", 1, 5, font=pfont_small, clear=False)
     write("all 4 sides visible", 1, 25, font=pfont_small, clear=False)
@@ -417,7 +439,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=st7789.WHITE, text_height=20, clear=True, show_end=0, indent=0):
+def write(msg, x=0, y=0, font=pfont_med, color=WHITE, text_height=20, clear=True, show_end=0, indent=0):
     if clear:
         clear_screen()
     if abs(show_end) > 1:
