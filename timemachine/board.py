@@ -32,8 +32,8 @@ except:
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
-SCREEN_DRIVER = "ili9488"
-# SCREEN_DRIVER = "st7789"
+# SCREEN_DRIVER = "ili9488"
+SCREEN_DRIVER = "st7789"
 if SCREEN_DRIVER == "ili9488":
     SCREEN_WIDTH = 480
     SCREEN_HEIGHT = 320
