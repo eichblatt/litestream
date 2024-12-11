@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import re
 import time
@@ -24,11 +23,10 @@ from collections import OrderedDict
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
-import fonts.date_font as date_font
-import fonts.DejaVu_33 as large_font
-import fonts.NotoSans_18 as pfont_small
-import fonts.NotoSans_24 as pfont_med
-import fonts.NotoSans_32 as pfont_large
+
+# import fonts.DejaVu_33 as large_font
+# import fonts.NotoSans_18 as pfont_small
+# import fonts.NotoSans_24 as pfont_med
 
 import archive_utils
 import board as tm
@@ -167,10 +165,11 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     state["selected_tape_id"] = selected_tape_id
     utils.save_state(state)
     selected_vcs = vcs
+    audio_pump(player, Nmax=3)  # Try to keep buffer filled.
     update_venue(selected_vcs)
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}")
-    tm.tft.write(date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
+    tm.tft.write(tm.date_font, selected_date_str, tm.selected_date_bbox.x0, tm.selected_date_bbox.y0)
     return selected_vcs, state
 
 
@@ -352,12 +351,12 @@ def main_loop(player, coll_dict, state):
                         tape_id = short_tape_id(utils.get_tape_id())
                         print(f"tape_id is {utils.get_tape_id()}, or {tape_id}")
                         tm.clear_bbox(tm.venue_bbox)
-                        tm.tft.write(pfont_small, f"{tape_id}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
+                        tm.tft.write(tm.pfont_small, f"{tape_id}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
                         software_version = utils.get_software_version()
                         dev_flag = "dev" if utils.is_dev_box() else ""
                         tm.clear_bbox(tm.artist_bbox)
                         tm.tft.write(
-                            pfont_small,
+                            tm.pfont_small,
                             f"{software_version} {dev_flag}",
                             tm.artist_bbox.x0,
                             tm.artist_bbox.y0,
@@ -392,12 +391,12 @@ def main_loop(player, coll_dict, state):
                 ntape = (ntape + 1) % len(tape_ids)
                 tm.clear_bbox(tm.artist_bbox)
                 collection = tape_ids[ntape][0]
-                tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
+                tm.tft.write(tm.pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
                 # vcs = coll_dict[collection][key_date]
                 tm.clear_bbox(tm.venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
-                tm.tft.write(pfont_small, f"{display_str}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
+                tm.tft.write(tm.pfont_small, f"{display_str}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -425,7 +424,7 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 1_250:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, 30, clear=True, show_end=-3)
+                tm.write("Configure Time Machine", 0, 0, tm.pfont_med, tm.WHITE, 30, clear=True, show_end=-3)
                 player.reset_player(reset_head=False)
                 tm.power(1)
                 return
@@ -435,9 +434,10 @@ def main_loop(player, coll_dict, state):
             pvcs_line = vcs_line
             tm.clear_bbox(tm.venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
-            tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
-            tm.clear_bbox(tm.artist_bbox)
-            tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
+            audio_pump(player, Nmax=3)  # Try to keep buffer filled.
+            tm.tft.write(tm.pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
+            # tm.clear_bbox(tm.artist_bbox)
+            # tm.tft.write(tm.pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
             print(player)
             update_display(player)
 
@@ -466,6 +466,7 @@ def main_loop(player, coll_dict, state):
                 vcs = coll_dict[collection][date]
                 key_date = set_date(date)
                 print(f"vcs {vcs}. collection {collection}. date {date}")
+                audio_pump(player, Nmax=3)  # Try to keep buffer filled.
                 update_venue(vcs, collection=collection)
                 # for date in valid_dates:
                 #     if date > key_date:
@@ -504,7 +505,7 @@ def main_loop(player, coll_dict, state):
 
             if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
                 tm.clear_bbox(tm.stage_date_bbox)
-                tm.tft.write(large_font, f"{date_new}", 0, 0, tm.stage_date_color)
+                tm.tft.write(tm.large_font, f"{date_new}", 0, 0, tm.stage_date_color)
                 date_old = date_new
                 try:
                     if key_date in valid_dates:
@@ -517,12 +518,13 @@ def main_loop(player, coll_dict, state):
                     else:
                         vcs = ""
                         collection = ""
+                    audio_pump(player, Nmax=3)  # Try to keep buffer filled.
                     update_venue(vcs, nshows=nshows, collection=collection)
                 except KeyError:
                     tm.clear_bbox(tm.venue_bbox)
                     tm.clear_bbox(tm.artist_bbox)
                     tm.tft.write(
-                        pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color
+                        tm.pfont_small, f"{current_collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color
                     )
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
@@ -538,17 +540,18 @@ def short_tape_id(tape_id, max_chars=16):
 
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(tm.venue_bbox)
-    tm.tft.write(pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
+    tm.tft.write(tm.pfont_small, f"{vcs}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
     tm.clear_bbox(tm.nshows_bbox)
     if nshows > 1:
-        tm.tft.write(pfont_small, f"{nshows}", tm.nshows_bbox.x0, tm.nshows_bbox.y0, tm.nshows_color)
+        tm.tft.write(tm.pfont_small, f"{nshows}", tm.nshows_bbox.x0, tm.nshows_bbox.y0, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(tm.artist_bbox)
-        tm.tft.write(pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
+        tm.tft.write(tm.pfont_small, f"{collection}", tm.artist_bbox.x0, tm.artist_bbox.y0, tm.stage_date_color)
 
 
 def update_display(player):
     # display_tracks(*player.track_names())
+    audio_pump(player, Nmax=3)  # Try to keep buffer filled.
     tm.clear_bbox(tm.playpause_bbox)
     if player.is_stopped():
         pass
@@ -568,7 +571,7 @@ def display_tracks(*track_names):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
-    text_height = 17
+    text_height = tm.pfont_small.HEIGHT - 1
     while lines_written < max_lines:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
@@ -577,7 +580,7 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, tm.pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
@@ -633,11 +636,13 @@ def show_collections(collection_list):
     message = f"Loading {ncoll} Collections"
     print(message)
     tm.clear_screen()
-    tm.tft.write(pfont_med, message, 0, 0, tm.yellow_color)
+    text_height = tm.pfont_small.HEIGHT + 2
+    text_start = tm.pfont_med.HEIGHT + 1
+    tm.tft.write(tm.pfont_med, message, 0, 0, tm.yellow_color)
     for i, coll in enumerate(collection_list[:5]):
-        tm.tft.write(pfont_small, f"{coll}", 0, 25 + 20 * i, tm.WHITE)
+        tm.tft.write(tm.pfont_small, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
     if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, 25 + 20 * 5, tm.WHITE)
+        tm.tft.write(tm.pfont_small, f"...", 0, text_start + text_height * 5, tm.WHITE)
     time.sleep(0.1)
 
 
@@ -694,7 +699,15 @@ def ping_archive():
             n = archive_utils.count_collection("GratefulDead", (1965, 1968))
         except archive_utils.ArchiveDownError:
             tm.write(f"Archive.org not responding. Check status on web. Retry {i_try}", 0, 0, tm.pfont_small, show_end=-4)
-            tm.write(f"Press Power for config menu", 0, 90, tm.pfont_small, tm.purple_color, show_end=-2, clear=False)
+            tm.write(
+                f"Press Power for config menu",
+                0,
+                4 * tm.pfont_small.HEIGHT,
+                tm.pfont_small,
+                tm.purple_color,
+                show_end=-2,
+                clear=False,
+            )
             button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
             if button == "power":
                 tm.clear_screen()
@@ -742,16 +755,16 @@ def run():
     except OSError as e:
         msg = f"livemusic: {e}"
         if isinstance(e, OSError) and "ECONNABORTED" in msg:
-            tm.write("Error at the archive", 0, 0, color=tm.yellow_color, font=pfont_med, clear=True, show_end=-2)
-            tm.write("Press Select to return", 0, 70, font=pfont_med, clear=False, show_end=-2)
+            tm.write("Error at the archive", 0, 0, color=tm.yellow_color, font=tm.pfont_med, clear=True, show_end=-2)
+            tm.write("Press Select to return", 0, 2 * tm.pfont_med.HEIGHT, font=tm.pfont_med, clear=False, show_end=-2)
             if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
                 run()
     except Exception as e:
         msg = f"livemusic: {e}"
         save_error(msg)
         if utils.is_dev_box():
-            tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
+            tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=tm.pfont_small)
+            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.yellow_color, font=tm.pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
             utils.reset()

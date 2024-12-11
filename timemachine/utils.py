@@ -37,7 +37,6 @@ MAIN_APP_PATH = "/config/.main_app"
 STOP_CHAR = "$StoP$"
 
 choices_color = tm.WHITE
-pfont_small = tm.pfont_small
 
 
 # Utils using TM hardware
@@ -64,7 +63,7 @@ def select_option(message, choices):
     # init_screen()
     message_height = len(message.split("\n"))
     select_bbox = tm.Bbox(0, (text_height + 1) * message_height, 160, 128)
-    tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color)
+    tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -76,15 +75,15 @@ def select_option(message, choices):
 
             for i, s in enumerate(range(max(0, step - 2), step)):
                 xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
-                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
 
             text = ">" + choices[step]
             xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
-            tm.write(text, xval, yval, pfont_small, tm.purple_color, clear=False, show_end=True)
+            tm.write(text, xval, yval, tm.pfont_small, tm.purple_color, clear=False, show_end=True)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
                 xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
-                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -124,12 +123,12 @@ def select_chars(message, message2="", already=None):
         return value
 
     for i, msg in enumerate(message):
-        tm.write(f"{msg}", 0, i * text_height, pfont_small, tm.stage_date_color, clear=False)
+        tm.write(f"{msg}", 0, i * text_height, tm.pfont_small, tm.stage_date_color, clear=False)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, pfont_small, tm.stage_date_color, clear=False)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, clear=False)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -152,7 +151,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+                tm.tft.write(tm.pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.purple_color)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -169,7 +168,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.purple_color
+                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.purple_color
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -177,7 +176,7 @@ def select_chars(message, message2="", already=None):
                     text = text.replace(x, ".")  # Should be "\u25A1", but I don't think we have the font for this yet.
 
                 # Write the characters before the cursor
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
 
                 # Write the character AT the cursor
                 text = charset[-1 + min(step, len(charset))]
@@ -194,13 +193,13 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.purple_color)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.purple_color)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
                 for x in charset[94:]:
                     text = text.replace(x, ".")
-                tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
+                tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
 
                 # print(f"step is {step}. Text is {text}")
             time.sleep(0.2)
@@ -213,7 +212,7 @@ def select_chars(message, message2="", already=None):
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             tm.clear_bbox(selected_bbox)
-            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+            tm.tft.write(tm.pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.purple_color)
         if singleLetter:
             if stopped:
                 selected = selected + STOP_CHAR
@@ -223,8 +222,8 @@ def select_chars(message, message2="", already=None):
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
-    tm.tft.write(pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    tm.tft.write(pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.purple_color)
+    tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
+    tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.purple_color)
     time.sleep(0.3)
     return selected
 
@@ -720,14 +719,15 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 
     if not hidden:
         tm.write("Connecting..", color=tm.yellow_color)
-        tm.write("Powered by archive.org and phish.in", 0, 23, tm.pfont_med, tm.purple_color, 23, clear=False, show_end=-3)
+        text_height = tm.pfont_med.HEIGHT
+        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.purple_color, text_height, False, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        tm.write(f"{uversion}", y=110, color=tm.WHITE, font=pfont_small, clear=False)
+        tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", y=93, color=tm.WHITE, font=pfont_small, clear=False)
+        tm.write(f"{software_version} {dev_flag}", y=text_height * 5, color=tm.WHITE, font=tm.pfont_small, clear=False)
 
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
@@ -758,7 +758,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=pfont_small)
+        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=tm.pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)

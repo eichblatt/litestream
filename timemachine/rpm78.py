@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import re
 import sys
@@ -24,7 +23,6 @@ import time
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
-import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
@@ -466,7 +464,7 @@ def display_artist(artist, date=""):
     tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
 
     bottom_y0 = y0 + (text_height * max_lines) + 2
-    date_msg = tm.write(f"{date}", 20, bottom_y0, date_font, tm.selected_date_color, text_height, 0)
+    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color, text_height, 0)
     msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, text_height, 0, -max_lines, indent=1)
     print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg

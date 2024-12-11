@@ -22,8 +22,6 @@ import os
 import sys
 import time
 
-import st7789
-import fonts.date_font as date_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
@@ -71,9 +69,9 @@ def configure_wifi():
 
 
 def test_update():
-    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
+    yellow_color = tm.yellow_color
+    red_color = tm.RED
     pSelect_old = True
     pStop_old = True
     update_code = False
@@ -106,7 +104,7 @@ def test_update():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
+    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
     if update_code:
         tm.tft.write(pfont_med, "Updating ... ", 0, 30, yellow_color)
@@ -348,8 +346,8 @@ def update_code():
     if not wifi.isconnected():
         print("Error -- not connected to wifi")
         return
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    yellow_color = tm.yellow_color
+    red_color = tm.RED
     tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
     tm.tft.write(pfont_med, " code", 0, 70, red_color)
@@ -369,8 +367,8 @@ def update_code():
 def update_firmware():
     print("Updating firmware -- This will reboot")
 
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    yellow_color = tm.yellow_color
+    red_color = tm.RED
     tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
     tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
@@ -409,7 +407,7 @@ def reconfigure():
     tm.tft.on()
     tm.clear_screen()
     print("Reconfiguring")
-    tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
     config_choices = [
         "Artists",
@@ -467,8 +465,8 @@ def basic_main():
     hidden_setdate = False
     tm.calibrate_screen()
     tm.clear_screen()
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    yellow_color = tm.yellow_color
+    red_color = tm.RED
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
     tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
@@ -477,7 +475,7 @@ def basic_main():
     tm.tft.write(pfont_med, f"{software_version} {dev_flag}", 0, 80, yellow_color)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
+    tm.tft.write(pfont_small, f"{uversion}", 0, 105, tm.WHITE)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
