@@ -8,7 +8,6 @@ import time
 import bitmap_font
 from time import sleep
 from math import cos, sin, pi, radians
-from sys import implementation
 
 try:
     import struct
@@ -211,6 +210,7 @@ class Display(object):
     def offset(self, *args):
         pass
 
+    @micropython.native
     def block(self, x0, y0, x1, y1, data):
         """Write a block of data to display.
         Args:
@@ -599,6 +599,7 @@ class Display(object):
     def text(self, *args, **kwargs):
         return self.write(*args, **kwargs)
 
+    @micropython.native
     def write(self, font_module, text, x, y, color=WHITE, background=0, landscape=False, spacing=1, scale_factor=1):
         """Draw text.
         Args:
@@ -776,10 +777,10 @@ class Display(object):
 
     def fill_polygon(self, poly, x0, y0, color):
         if poly == [(0, 0), (0, 15), (15, 8), (0, 0)]:
-            self.fill_poly(3, x0 + 7, y0 + 5, 7, color)
+            self.fill_poly(3, x0 + 15, y0 + 15, 15, color)
         elif poly == [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]:
-            self.fill_rect(x0, y0, 3, 15, color)
-            self.fill_rect(x0 + 7, y0, 3, 15, color)
+            self.fill_rect(x0, y0, 7, 30, color)
+            self.fill_rect(x0 + 15, y0, 7, 30, color)
 
     def fill_poly(self, sides, x0, y0, r, color, rotate=0):
         """Draw a filled n-sided regular polygon.
@@ -986,6 +987,7 @@ class Display(object):
             self.cs(1)
         return rxdata
 
+    @micropython.native
     def write_data_mpy(self, data):
         """Write data to OLED (MicroPython).
         Args:

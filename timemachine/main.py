@@ -22,7 +22,6 @@ import os
 import sys
 import time
 
-import fonts.date_font as date_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large

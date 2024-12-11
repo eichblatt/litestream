@@ -68,6 +68,7 @@ class BitmapFont(object):
         )
         print(string)
 
+    @micropython.native
     def get_lit_bits(self, letter):
         if letter in self.litbit_dict.keys():
             return self.litbit_dict[letter]
@@ -95,6 +96,7 @@ class BitmapFont(object):
                 self.litbit_dict[letter].append(ibit)
         return self.litbit_dict[letter]
 
+    @micropython.native
     def get_letter(self, letter, color, landscape=False):
         """Convert letter byte data to pixels for color666 display
         Args:
@@ -171,6 +173,7 @@ class BitmapFont(object):
             """
         return buf, width, height
 
+    @micropython.native
     def measure_text(self, text, spacing=1):
         """Measure length of text string in pixels.
         Args:

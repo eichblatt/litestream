@@ -23,8 +23,6 @@ import st7789
 import time
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
-import fonts.NotoSans_24 as pfont_med
-import fonts.NotoSans_18 as pfont_small
 
 
 try:
@@ -34,9 +32,23 @@ except:
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
 SCREEN_STATE = 1
-SCREEN_WIDTH = 160
-SCREEN_HEIGHT = 128
 SCREEN_DRIVER = "ili9488"
+# SCREEN_DRIVER = "st7789"
+if SCREEN_DRIVER == "ili9488":
+    SCREEN_WIDTH = 480
+    SCREEN_HEIGHT = 320
+    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_36 as pfont_small
+    import fonts.DejaVu_60 as large_font
+    import fonts.DejaVu_33 as date_font
+else:
+    SCREEN_WIDTH = 160
+    SCREEN_HEIGHT = 128
+    import fonts.NotoSans_24 as pfont_med
+    import fonts.NotoSans_18 as pfont_small
+    import fonts.DejaVu_33 as large_font
+    import fonts.date_font as date_font
+
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
 pSelect = Pin(47, Pin.IN, Pin.PULL_UP)
@@ -144,7 +156,7 @@ class Bbox:
     """Bounding Box -- Initialize with corners, x0, y0, x1, y1."""
 
     def __init__(self, x0, y0, x1, y1):
-        self.corners = (x0, y0, x1, y1)
+        self.corners = (int(x0), int(y0), int(x1), int(y1))
         self.x0, self.y0, self.x1, self.y1 = self.corners
         self.width = self.x1 - self.x0
         self.height = self.y1 - self.y0
@@ -170,16 +182,16 @@ class Bbox:
         return Bbox(self.x0 - d.x0, self.y0 - d.y0, self.x1 - d.x1, self.y1 - d.y1)
 
 
-stage_date_bbox = Bbox(0, 0, SCREEN_WIDTH, 32)
-nshows_bbox = Bbox(150, 32, SCREEN_WIDTH, 48)
-venue_bbox = Bbox(0, 32, SCREEN_WIDTH, 32 + 19)
-artist_bbox = Bbox(0, 51, SCREEN_WIDTH, 51 + 19)
-tracklist_bbox = Bbox(0, 70, SCREEN_WIDTH, 112)
-selected_date_bbox = Bbox(15, 112, 145, SCREEN_HEIGHT)
-playpause_bbox = Bbox(145, 113, SCREEN_WIDTH, SCREEN_HEIGHT)
-keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 22)
-title_bbox = Bbox(0, 23, SCREEN_WIDTH, 61)
-selected_artist_bbox = Bbox(0, 110, 145, SCREEN_HEIGHT)
+stage_date_bbox = Bbox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 4)
+nshows_bbox = Bbox(0.95 * SCREEN_WIDTH, SCREEN_HEIGHT // 4, SCREEN_WIDTH, 3 * (SCREEN_HEIGHT // 8))
+venue_bbox = Bbox(0, SCREEN_HEIGHT // 4, SCREEN_WIDTH, (SCREEN_HEIGHT // 4) + SCREEN_HEIGHT * 0.15)
+artist_bbox = Bbox(0, 0.4 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.55 * SCREEN_HEIGHT)
+tracklist_bbox = Bbox(0, 0.55 * SCREEN_HEIGHT, SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8))
+selected_date_bbox = Bbox(0.095 * SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8), 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
+playpause_bbox = Bbox(0.91 * SCREEN_WIDTH, 0.88 * SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT)
+keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 0.172 * SCREEN_HEIGHT)
+title_bbox = Bbox(0, 0.18 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.48 * SCREEN_HEIGHT)
+selected_artist_bbox = Bbox(0, 0.86 * SCREEN_HEIGHT, 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
 
 yellow_color = color_rgb(255, 255, 20)
 stage_date_color = yellow_color
