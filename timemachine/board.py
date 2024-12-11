@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import ili9488
 import math
 import os
 import st7789
@@ -35,6 +34,8 @@ SCREEN_STATE = 1
 # SCREEN_DRIVER = "ili9488"
 SCREEN_DRIVER = "st7789"
 if SCREEN_DRIVER == "ili9488":
+    import ili9488
+
     SCREEN_WIDTH = 480
     SCREEN_HEIGHT = 320
     import fonts.NotoSans_48 as pfont_med
