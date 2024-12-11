@@ -24,6 +24,9 @@ This package also might be useful, but it's in C++ <https://github.com/Bodmer/TF
 
 Maybe I should migrate to the Raspberry Pi, which may have more advanced drivers for this screen.
 
+I have it working now, except for the fonts. I have downloaded a larger font here <https://os.mbed.com/users/star297/code/Fonts//file/b7905075b31a/TimesNR28x25.h/> but it is not putting the pixels in the correct order, so it's coming out all jumbled.
+See page 192 of the datasheet <https://www.hpinfotech.ro/ILI9488.pdf> for information about the pixel ordering.
+
 ### A 5 inch screen
 
 There is a much larger SPI-driven screen:
