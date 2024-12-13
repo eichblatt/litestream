@@ -37,10 +37,6 @@
             "github:eichblatt/litestream/timemachine/livemusic.py"
         ],
         [
-            "datpiff.py",
-            "github:eichblatt/litestream/timemachine/datpiff.py"
-        ],
-        [
             "rpm78.py",
             "github:eichblatt/litestream/timemachine/rpm78.py"
         ],
