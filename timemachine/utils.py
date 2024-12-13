@@ -538,7 +538,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "datpiff", "78rpm"]
+KNOWN_APPS = ["livemusic", "78rpm"]  # "datpiff" removed
 
 
 def set_main_app(main_app):
@@ -806,31 +806,6 @@ def load_livemusic_state(state_path):
     return state
 
 
-def load_datpiff_state(state_path):
-    state = {}
-    if path_exists(state_path):
-        state = read_json(state_path)
-        artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
-        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
-        artist_ind_range = state.get("artist_ind_range", {})
-        state = {
-            "artist_list": artist_list,
-            "selected_tape": selected_tape,
-            "artist_ind_range": artist_ind_range,
-        }
-    else:
-        artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
-        selected_tape = {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"}
-        artist_ind_range = {}
-        state = {
-            "artist_list": artist_list,
-            "selected_tape": selected_tape,
-            "artist_ind_range": artist_ind_range,
-        }
-        write_json(state, state_path)
-    return state
-
-
 def load_78rpm_state(state_path):
     state = {}
     if path_exists(state_path):
@@ -852,8 +827,6 @@ def load_state(app="livemusic"):
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
     if app == "livemusic":
         return load_livemusic_state(state_path)
-    elif app == "datpiff":
-        return load_datpiff_state(state_path)
     elif app == "78rpm":
         return load_78rpm_state(state_path)
     else:

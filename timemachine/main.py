@@ -114,95 +114,6 @@ def test_update():
     return update_code
 
 
-def _datpiff_collection_names(first_char=""):
-    if len(first_char) > 1:
-        return []
-    if first_char == "":
-        filename = "top10.json"
-    elif first_char in "#abcdefghijklmnopqrstuvwxyz":
-        filename = f"bottom_{first_char}.json"
-    else:
-        filename = "bottom_#.json"
-
-    url = f"https://storage.googleapis.com/spertilo-data/datpiff/{filename}"
-    try:
-        url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
-        resp = requests.get(url)
-        if resp.status_code != 200:
-            raise Exception(f"error downloading from {url}")
-        collection_names = resp.json()
-    finally:
-        resp.close()
-    return collection_names
-
-
-def configure_datpiff_collections():
-    state = utils.load_state("datpiff")
-    collection_list = state["artist_list"]
-
-    if len(collection_list) >= MAX_COLLECTIONS:
-        choices = ["Remove Artist", "Cancel"]
-    elif len(collection_list) == 0:
-        choices = ["Add Artist", "Cancel"]
-    else:
-        choices = ["Add Artist", "Remove Artist", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
-    utils.print_log(f"configure_collection: chose to {choice}")
-
-    if choice == "Cancel":
-        return
-
-    utils.print_log(f"current collection_list is {collection_list}")
-    if choice == "Add Artist":
-        keepGoing = True
-        reset_required = False
-        all_collections = _datpiff_collection_names()
-
-        choices = ["Artists >3 tapes", "All Artists"]
-        choice = utils.select_option("Year/Select", choices)
-        utils.print_log(f"configure_collection: chose to {choice}")
-        if choice == "All Artists":
-            colls_fn = _datpiff_collection_names
-        else:
-            colls_fn = None
-
-        while keepGoing:
-            coll_to_add = add_collection(all_collections, collection_list, colls_fn)
-            if coll_to_add != "_CANCEL":
-                collection_list.append(coll_to_add)
-                reset_required = True
-            if len(collection_list) >= MAX_COLLECTIONS:
-                keepGoing = False
-            else:
-                choices = ["Add Another", "Finished"]
-                choice2 = utils.select_option("Year/Select", choices)
-                if choice2 == "Finished":
-                    keepGoing = False
-
-            state["artist_list"] = collection_list
-            utils.save_state(state, "datpiff")
-        if reset_required:
-            utils.reset()
-
-    elif choice == "Remove Artist":
-        keepGoing = True
-        while keepGoing & (len(collection_list) > 0):
-            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
-            collection_list = [x for x in collection_list if not x == coll_to_remove]
-            choices = ["Remove Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-
-            state["artist_list"] = collection_list
-            # Remove the metadata for this collection
-            path_to_meta = f"/metadata/datpiff/{coll_to_remove}.json"
-            utils.remove_dir(path_to_meta) if utils.isdir(path_to_meta) else utils.remove_file(path_to_meta)
-            utils.save_state(state, "datpiff")
-
-    return
-
-
 def _collection_names():
     # Note: This function appears to only work right after a reboot.
     tm.write("Getting all\ncollection\nnames", font=pfont_small)
@@ -240,8 +151,6 @@ def _collection_names():
 
 def configure_collections():
     main_app = utils.get_main_app()
-    if main_app == "datpiff":
-        return configure_datpiff_collections()
     choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
@@ -395,7 +304,7 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "datpiff", "78rpm"]
+    app_choices = ["no change", "livemusic", "78rpm"]  # "datpiff" removed
     main_app = utils.get_main_app()
     new_main_app = utils.select_option(f"Choose App\nNow:{main_app}", app_choices)
     if new_main_app != "no change":
@@ -501,16 +410,15 @@ def run_livemusic():
         try:
             if utils.is_dev_box():
                 main_app = utils.get_main_app()
+
+            if main_app == "datpiff":
+                main_app = "livemusic"
+
             if main_app == "livemusic":
                 import livemusic
 
                 utils.mark_partition()  # If we make it this far, the firmware is good.
                 livemusic.run()
-            elif main_app == "datpiff":
-                import datpiff
-
-                utils.mark_partition()
-                datpiff.run()
             elif main_app == "78rpm":
                 import rpm78
 
