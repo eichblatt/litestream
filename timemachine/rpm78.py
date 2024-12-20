@@ -77,7 +77,7 @@ def select_date_range(date_range, N_to_select=60):
         bottom_bbox.x0,
         bottom_bbox.y0,
         pfont_small,
-        tm.purple_color,
+        tm.PURPLE,
         clear=0,
         show_end=-2,
     )
@@ -119,7 +119,7 @@ def get_urls_for_ids(tape_ids):
     artists = []
     tm.clear_bbox(bottom_bbox)
     tm.clear_bbox(playpause_bbox)
-    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.purple_color, clear=0, show_end=1)
+    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
@@ -197,7 +197,7 @@ def main_loop(player, state):
     if date_range[1] > date_range[0]:
         date_range_msg += f"-{date_range[1]%100:02d}"
     tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font, clear=True)
-    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.yellow_color, font=pfont_small, clear=False)
+    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med, clear=False)
     poll_count = 0
     while True:
@@ -304,7 +304,7 @@ def main_loop(player, state):
             pts = player.track_status()
             if pts["current_track"] == 0:
                 tm.clear_bbox(bottom_bbox)
-                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.purple_color, clear=0)
+                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 dates = tape_dates[:5]
                 player.set_playlist(tracklist, urls)
@@ -523,6 +523,6 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1

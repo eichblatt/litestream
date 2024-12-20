@@ -24,12 +24,16 @@ from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 
 
+# --------------------------------------- configuration
 try:
     os.mkdir("/config")
 except:
     pass
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
+_SCREEN_BAUDRATE = 40_000_000
+SCREEN_STATE = 1
+BOARD_ON = 1
 
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -41,11 +45,9 @@ pFFwd = Pin(1, Pin.IN, Pin.PULL_UP)
 pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
 pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
 pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
-
 pLED = Pin(48, Pin.OUT)
 
 # Initialise the three rotaries. First value is CL, second is DT
-
 m = d = y = None  # knobs
 year_pins = (40, 42)
 month_pins = (39, 18)
@@ -69,8 +71,9 @@ def get_int_from_file(path, default_val, max_val):
     return val
 
 
-screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=10)
-SCREEN_STATE = 1
+# -------------------------------------------- set up screen
+
+screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=0, max_val=10)
 if screen_type < 2:
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 128
@@ -106,14 +109,73 @@ else:
     pass
 
 
-def color_rgb(r, g, b):
-    if SCREEN_DRIVER == "st7789":
-        return st7789.color565(r, g, b)
-    elif SCREEN_DRIVER == "ili9488":
-        return bytes([r, g, b])
-    raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
+screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
 
+# Configure display driver
+def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
+    reset = Pin(4, Pin.OUT)
+    cs = Pin(10, Pin.OUT)
+    dc = Pin(6, Pin.OUT)
+    backlight = Pin(5, Pin.OUT)
+
+    if driver == "st7789":
+        return st7789.ST7789(
+            screen_spi,
+            SCREEN_HEIGHT,
+            SCREEN_WIDTH,
+            reset=reset,
+            cs=cs,
+            dc=dc,
+            backlight=backlight,
+            color_order=st7789.RGB,
+            inversion=False,
+            rotation=rotation,
+            options=options,
+            buffer_size=buffer_size,
+        )
+    elif driver == "ili9488":
+        print(f"initializing driver {driver}")
+        display = ili9488.Display(screen_spi, dc=dc, cs=cs, rst=reset, backlight=backlight)
+        backlight.on()
+        return display
+
+
+tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+psychedelic_screen = False
+tft.init()
+if screen_type == 3:
+    tft.madctl(0xE8)
+
+screen_on_time = time.ticks_ms()
+
+
+def init_screen():
+    screen_spi.init(baudrate=_SCREEN_BAUDRATE)
+
+
+def screen_state(state=None):
+    global SCREEN_STATE
+    if state is None:
+        pass
+    elif state == 0:
+        tft.off()
+        SCREEN_STATE = 0
+    elif state > 0:
+        tft.on()
+        SCREEN_STATE = 1
+    return SCREEN_STATE
+
+
+def screen_off():
+    return screen_state(0)
+
+
+def screen_on():
+    return screen_state(1)
+
+
+# ------------------------------------------------- knobs
 def get_knob_sense():
     return get_int_from_file(KNOB_SENSE_PATH, 0, 7)
 
@@ -160,17 +222,8 @@ def setup_knobs(knob_sense):
 knob_sense = get_knob_sense()
 setup_knobs(knob_sense)
 
-PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
-PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]
-# StopPoly = [(0, 0), (0, 15), (15, 15), (15, 0)]
-RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
-FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
-_SCREEN_BAUDRATE = 40_000_000
-
-screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
-
-
+# ------------------------------------------------ areas
 class Bbox:
     """Bounding Box -- Initialize with corners, x0, y0, x1, y1."""
 
@@ -212,24 +265,37 @@ keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 0.172 * SCREEN_HEIGHT)
 title_bbox = Bbox(0, 0.18 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.48 * SCREEN_HEIGHT)
 selected_artist_bbox = Bbox(0, 0.86 * SCREEN_HEIGHT, 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
 
-yellow_color = color_rgb(255, 255, 20)
-stage_date_color = yellow_color
+PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
+PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]
+# StopPoly = [(0, 0), (0, 15), (15, 15), (15, 0)]
+RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
+FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
+
+
+# ------------------------------------------------ colors
+def color_rgb(r, g, b):
+    if SCREEN_DRIVER == "st7789":
+        return st7789.color565(r, g, b)
+    elif SCREEN_DRIVER == "ili9488":
+        return bytes([r, g, b])
+    raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
+
+
 tracklist_color = color_rgb(0, 158, 255)
 # play_color = color_rgb(20, 255, 60)
 play_color = color_rgb(255, 0, 15)
 pause_color = color_rgb(255, 0, 15)
 nshows_color = tracklist_color
-purple_color = color_rgb(255, 72, 255)
 selected_date_color = color_rgb(255, 255, 150)
 RED = color_rgb(255, 0, 0)
 WHITE = color_rgb(255, 255, 255)
 BLACK = color_rgb(0, 0, 0)
+YELLOW = color_rgb(255, 255, 20)
+PURPLE = color_rgb(255, 72, 255)
+stage_date_color = YELLOW
 
 
-def init_screen():
-    screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-
-
+# ------------------------------------------------ clear areas
 def clear_bbox(bbox):
     init_screen()
     tft.fill_rect(bbox.x0, bbox.y0, bbox.width, bbox.height, BLACK)
@@ -249,78 +315,15 @@ def clear_area(x, y, width, height):
     tft.fill_rect(x, y, width, height, BLACK)
 
 
-def screen_state(state=None):
-    global SCREEN_STATE
-    if state is None:
-        pass
-    elif state == 0:
-        tft.off()
-        SCREEN_STATE = 0
-    elif state > 0:
-        tft.on()
-        SCREEN_STATE = 1
-    return SCREEN_STATE
-
-
-def screen_off():
-    return screen_state(0)
-
-
-def screen_on():
-    return screen_state(1)
-
-
-# Configure display driver
-def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
-    reset = Pin(4, Pin.OUT)
-    cs = Pin(10, Pin.OUT)
-    dc = Pin(6, Pin.OUT)
-    backlight = Pin(5, Pin.OUT)
-
-    if driver == "st7789":
-        return st7789.ST7789(
-            screen_spi,
-            SCREEN_HEIGHT,
-            SCREEN_WIDTH,
-            reset=reset,
-            cs=cs,
-            dc=dc,
-            backlight=backlight,
-            color_order=st7789.RGB,
-            inversion=False,
-            rotation=rotation,
-            options=options,
-            buffer_size=buffer_size,
-        )
-    elif driver == "ili9488":
-        print(f"initializing driver {driver}")
-        display = ili9488.Display(screen_spi, dc=dc, cs=cs, rst=reset, backlight=backlight)
-        backlight.on()
-        return display
-
-
-tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
-psychedelic_screen = False
-tft.init()
-if screen_type == 3:
-    tft.madctl(0xE8)
-
-
-screen_spi.init(baudrate=_SCREEN_BAUDRATE)
-# tft.fill(BLACK)
-screen_on_time = time.ticks_ms()
-board_on = 1
-
-
 def power(state=None):
     global screen_on_time
-    global board_on
+    global BOARD_ON
 
     if state is None:
-        return board_on
+        return BOARD_ON
     elif state in (0, 1):
         pLED.value(state)
-        board_on = state
+        BOARD_ON = state
         if state:
             # tft.on()
             screen_on()
@@ -333,6 +336,7 @@ def power(state=None):
     return state
 
 
+# ---------------------------------------- calibration
 def calibrate_knobs():
     print("Running knob calibration")
     knob_sense = get_knob_sense()
@@ -342,7 +346,7 @@ def calibrate_knobs():
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         write("Rotate")
-        write(f"{name}", 0, 25, color=yellow_color, clear=False)
+        write(f"{name}", 0, 25, color=YELLOW, clear=False)
         write("Knob Forward", 0, 50, clear=False)
         while prev_value == knob.value():
             time.sleep(0.05)
@@ -406,13 +410,14 @@ def calibrate_screen(force=False):
     return screen_type
 
 
+# ---------------------------------------- utilities
 def self_test():
     print("Running self_test")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
     button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Month", "Day", "Year"]
     for button, name in zip(buttons, button_names):
         write("Press")
-        write(f"{name}", 0, 25, color=yellow_color, clear=False)
+        write(f"{name}", 0, 25, color=YELLOW, clear=False)
         write("Button", 0, 50, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
@@ -440,6 +445,7 @@ def poll_for_which_button(button_dict, timeout=None, default=None):
     return default
 
 
+# ---------------------------------------- text functions
 def trim_string_middle(text, x_pos, font):
     pixel_width = tft.write_len(font, text)
     while (pixel_width + x_pos) > SCREEN_WIDTH:
@@ -489,6 +495,7 @@ def write(msg, x=0, y=0, font=pfont_med, color=WHITE, text_height=20, clear=True
     return msg
 
 
+# ---------------------------------------- decade counter
 class decade_counter:
     def __init__(self, knobs, max_val, decade_size=None):
         self.knobs = knobs

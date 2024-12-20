@@ -79,7 +79,7 @@ def select_option(message, choices):
 
             text = ">" + choices[step]
             xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
-            tm.write(text, xval, yval, tm.pfont_small, tm.purple_color, clear=False, show_end=True)
+            tm.write(text, xval, yval, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
                 xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
@@ -151,7 +151,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(tm.pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+                tm.tft.write(tm.pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.PURPLE)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -168,7 +168,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.purple_color
+                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.PURPLE
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -193,7 +193,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.purple_color)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.PURPLE)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
@@ -212,7 +212,7 @@ def select_chars(message, message2="", already=None):
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             tm.clear_bbox(selected_bbox)
-            tm.tft.write(tm.pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+            tm.tft.write(tm.pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.PURPLE)
         if singleLetter:
             if stopped:
                 selected = selected + STOP_CHAR
@@ -223,7 +223,7 @@ def select_chars(message, message2="", already=None):
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
     tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.purple_color)
+    tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
     time.sleep(0.3)
     return selected
 
@@ -718,9 +718,9 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         reset()
 
     if not hidden:
-        tm.write("Connecting..", color=tm.yellow_color)
+        tm.write("Connecting..", color=tm.YELLOW)
         text_height = tm.pfont_med.HEIGHT
-        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.purple_color, text_height, False, -3)
+        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, text_height, False, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)

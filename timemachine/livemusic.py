@@ -638,7 +638,7 @@ def show_collections(collection_list):
     tm.clear_screen()
     text_height = tm.pfont_small.HEIGHT + 2
     text_start = tm.pfont_med.HEIGHT + 1
-    tm.tft.write(tm.pfont_med, message, 0, 0, tm.yellow_color)
+    tm.tft.write(tm.pfont_med, message, 0, 0, tm.YELLOW)
     for i, coll in enumerate(collection_list[:5]):
         tm.tft.write(tm.pfont_small, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
     if ncoll > 5:
@@ -704,7 +704,7 @@ def ping_archive():
                 0,
                 4 * tm.pfont_small.HEIGHT,
                 tm.pfont_small,
-                tm.purple_color,
+                tm.PURPLE,
                 show_end=-2,
                 clear=False,
             )
@@ -755,7 +755,7 @@ def run():
     except OSError as e:
         msg = f"livemusic: {e}"
         if isinstance(e, OSError) and "ECONNABORTED" in msg:
-            tm.write("Error at the archive", 0, 0, color=tm.yellow_color, font=tm.pfont_med, clear=True, show_end=-2)
+            tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=tm.pfont_med, clear=True, show_end=-2)
             tm.write("Press Select to return", 0, 2 * tm.pfont_med.HEIGHT, font=tm.pfont_med, clear=False, show_end=-2)
             if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
                 run()
@@ -764,7 +764,7 @@ def run():
         save_error(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=tm.pfont_small)
-            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.yellow_color, font=tm.pfont_small, clear=False)
+            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=tm.pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
             utils.reset()

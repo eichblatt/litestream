@@ -70,7 +70,7 @@ def configure_wifi():
 
 def test_update():
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
-    yellow_color = tm.yellow_color
+    yellow_color = tm.YELLOW
     red_color = tm.RED
     pSelect_old = True
     pStop_old = True
@@ -255,7 +255,7 @@ def update_code():
     if not wifi.isconnected():
         print("Error -- not connected to wifi")
         return
-    yellow_color = tm.yellow_color
+    yellow_color = tm.YELLOW
     red_color = tm.RED
     tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
@@ -276,7 +276,7 @@ def update_code():
 def update_firmware():
     print("Updating firmware -- This will reboot")
 
-    yellow_color = tm.yellow_color
+    yellow_color = tm.YELLOW
     red_color = tm.RED
     tm.clear_screen()
     tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
@@ -374,7 +374,7 @@ def basic_main():
     hidden_setdate = False
     tm.calibrate_screen()
     tm.clear_screen()
-    yellow_color = tm.yellow_color
+    yellow_color = tm.YELLOW
     red_color = tm.RED
     tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
     tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)

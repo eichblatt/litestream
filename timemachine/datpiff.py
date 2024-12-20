@@ -304,8 +304,8 @@ def main_loop(player, state):
                 selected_title = selected_tape["title"]
                 keyed_artist = selected_artist
                 keyed_tape = selected_tape
-                display_keyed_title(selected_title, color=tm.yellow_color)
-                display_keyed_artist(selected_artist, color=tm.yellow_color)
+                display_keyed_title(selected_title, color=tm.YELLOW)
+                display_keyed_artist(selected_artist, color=tm.YELLOW)
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -327,8 +327,8 @@ def main_loop(player, state):
                     selected_tape = artist_tapes[dc.get_value()]
                     state = select_tape(selected_tape, player, state)
 
-                    display_keyed_title(selected_title, color=tm.yellow_color)
-                    display_keyed_artist(selected_artist, color=tm.yellow_color)
+                    display_keyed_title(selected_title, color=tm.YELLOW)
+                    display_keyed_artist(selected_artist, color=tm.YELLOW)
                     play_pause(player)
                 print("Select DOWN")
 
@@ -469,13 +469,13 @@ def display_tracks(*track_names):
     return msg
 
 
-def display_keyed_title(keyed_title, color=tm.purple_color):
+def display_keyed_title(keyed_title, color=tm.PURPLE):
     # print(f"in display_keyed_title {keyed_title}")
     tm.clear_bbox(tm.title_bbox)
     tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
 
 
-def display_keyed_artist(artist, color=tm.purple_color):
+def display_keyed_artist(artist, color=tm.PURPLE):
     # print(f"in display_keyed_artist {artist}")
     tm.clear_bbox(tm.keyed_artist_bbox)
     artist = artist[:1].upper() + artist[1:]
@@ -495,7 +495,7 @@ def show_artists(artist_list):
     message = f"Loading {ncoll} Collections"
     print(message)
     tm.clear_screen()
-    tm.tft.write(pfont_med, message, 0, 0, tm.yellow_color)
+    tm.tft.write(pfont_med, message, 0, 0, tm.YELLOW)
     colls_to_write = 5
 
     for min_col in range(0, 1 + ncoll - colls_to_write, 1):
@@ -625,6 +625,6 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1
