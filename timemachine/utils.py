@@ -823,12 +823,39 @@ def load_78rpm_state(state_path):
     return state
 
 
+def load_classical_state(state_path):
+    state = {}
+    if path_exists(state_path):
+        state = read_json(state_path)
+        artist_list = state.get("artist_list", ["GREATS"])
+        selected_tape = state.get("selected_tape", {})
+        access_token = state.get("access_token", "")
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+            "access_token": access_token,
+        }
+    else:
+        artist_list = ["GREATS"]
+        selected_tape = {}
+        access_token = ""
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+            "access_token": access_token,
+        }
+        write_json(state, state_path)
+    return state
+
+
 def load_state(app="livemusic"):
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
     if app == "livemusic":
         return load_livemusic_state(state_path)
     elif app == "78rpm":
         return load_78rpm_state(state_path)
+    elif app == "classical":
+        return load_classical_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
 

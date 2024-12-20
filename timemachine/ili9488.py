@@ -593,7 +593,7 @@ class Display(object):
         font = self.__get_font(font_module)
         width = 0
         for char in text:
-            width += font.width_dict[char] + 1
+            width += font.width_dict.get(char, 0) + 1
         return width
 
     def text(self, *args, **kwargs):

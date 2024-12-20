@@ -30,25 +30,6 @@ except:
     pass
 KNOB_SENSE_PATH = "/config/knob_sense"
 SCREEN_TYPE_PATH = "/config/screen_type"
-SCREEN_STATE = 1
-# SCREEN_DRIVER = "ili9488"
-SCREEN_DRIVER = "st7789"
-if SCREEN_DRIVER == "ili9488":
-    import ili9488
-
-    SCREEN_WIDTH = 480
-    SCREEN_HEIGHT = 320
-    import fonts.NotoSans_48 as pfont_med
-    import fonts.NotoSans_36 as pfont_small
-    import fonts.DejaVu_60 as large_font
-    import fonts.DejaVu_33 as date_font
-else:
-    SCREEN_WIDTH = 160
-    SCREEN_HEIGHT = 128
-    import fonts.NotoSans_24 as pfont_med
-    import fonts.NotoSans_18 as pfont_small
-    import fonts.DejaVu_33 as large_font
-    import fonts.date_font as date_font
 
 # Set up pins
 pPower = Pin(21, Pin.IN, Pin.PULL_UP)
@@ -86,6 +67,43 @@ def get_int_from_file(path, default_val, max_val):
         if fh is not None:
             fh.close()
     return val
+
+
+screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=10)
+SCREEN_STATE = 1
+if screen_type < 2:
+    SCREEN_DRIVER = "st7789"
+    SCREEN_HEIGHT = 128
+    SCREEN_WIDTH = 160
+    import fonts.NotoSans_24 as pfont_med
+    import fonts.NotoSans_18 as pfont_small
+    import fonts.DejaVu_33 as large_font
+    import fonts.date_font as date_font
+elif screen_type == 3:
+    SCREEN_DRIVER = "st7789"
+    SCREEN_HEIGHT = 240
+    SCREEN_WIDTH = 320
+    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_36 as pfont_small
+    import fonts.DejaVu_60 as large_font
+    import fonts.DejaVu_33 as date_font
+
+    # import fonts.NotoSans_24 as pfont_med
+    # import fonts.NotoSans_18 as pfont_small
+    # import fonts.DejaVu_33 as large_font
+    # import fonts.date_font as date_font
+elif screen_type == 10:
+    SCREEN_DRIVER = "ili9488"
+    import ili9488
+    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_36 as pfont_small
+    import fonts.DejaVu_60 as large_font
+    import fonts.DejaVu_33 as date_font
+
+    SCREEN_WIDTH = 480
+    SCREEN_HEIGHT = 320
+else:
+    pass
 
 
 def color_rgb(r, g, b):
@@ -148,7 +166,7 @@ PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0
 RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 
-_SCREEN_BAUDRATE = 10_000_000
+_SCREEN_BAUDRATE = 40_000_000
 
 screen_spi = SPI(1, baudrate=_SCREEN_BAUDRATE, sck=Pin(12), mosi=Pin(11))
 
@@ -253,7 +271,7 @@ def screen_on():
 
 
 # Configure display driver
-def conf_screen(rotation=0, buffer_size=0, options=0, driver="st7789"):
+def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
     reset = Pin(4, Pin.OUT)
     cs = Pin(10, Pin.OUT)
     dc = Pin(6, Pin.OUT)
@@ -281,9 +299,12 @@ def conf_screen(rotation=0, buffer_size=0, options=0, driver="st7789"):
         return display
 
 
-tft = conf_screen(1, buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
 psychedelic_screen = False
 tft.init()
+if screen_type == 3:
+    tft.madctl(0xE8)
+
 
 screen_spi.init(baudrate=_SCREEN_BAUDRATE)
 # tft.fill(BLACK)
@@ -343,12 +364,15 @@ def calibrate_knobs():
 
 def calibrate_screen(force=False):
     print("Running screen calibration")
-    screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=1)
+    screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=3)
     if (screen_type is not None) and not force:
         if screen_type == 0:
             tft.offset(0, 0)
         elif screen_type == 1:
             tft.offset(1, 2)
+        elif screen_type == 3:
+            tft.offset(0, 0)
+            tft.madctl(0xE8)
         return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.

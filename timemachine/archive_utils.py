@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import gc
 import json
 import math
 import random
@@ -207,3 +208,28 @@ def get_tape_metadata(identifier):
             resp.close()
 
     return j
+
+
+def get_request(url, outpath="/tmp.json"):
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        print(f"Failed to load from {url}")
+        return {}
+    if resp.chunked:
+        print(f"saving json to {outpath}")
+        resp.save(outpath)
+        resp.close()
+        gc.collect()
+        metadata = json.load(open(outpath, "r"))
+    elif len(resp.text) > 1_000_000:
+        print("saving json to /tmp.json")
+        with open("/tmp.json", "w") as f:
+            f.write(resp.text)
+        resp.close()
+        gc.collect()
+        metadata = utils.read_json("/tmp.json")
+        utils.remove_file("/tmp.json")
+    else:
+        metadata = resp.json()
+
+    return metadata
