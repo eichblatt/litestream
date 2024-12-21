@@ -135,8 +135,8 @@ def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
 tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
 psychedelic_screen = False
 tft.init()
-if screen_type == 3:
-    tft.madctl(0xE8)
+
+tft.madctl(0x60 if screen_type < 2 else 0xE8)
 
 screen_on_time = time.ticks_ms()
 
@@ -361,14 +361,8 @@ def calibrate_screen(force=False):
     print("Running screen calibration")
     screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=3)
     if (screen_type is not None) and not force:
-        if screen_type < 2:
-            tft.madctl(0x00)
-            tft.offset(0, 0) if screen_type == 0 else tft.offset(1, 2)
-        elif screen_type in (2, 3):
-            tft.madctl(0xE8)
-            tft.offset(0, 0) if (screen_type % 2 == 0) else tft.offset(1, 2)
-        elif screen_type == 10:
-            tft.offset(0, 0)
+        tft.madctl(0x60 if screen_type < 2 else 0xE8)
+        tft.offset(0, 0) if (screen_type % 2 == 0) else tft.offset(1, 2)
         return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
@@ -379,15 +373,21 @@ def calibrate_screen(force=False):
     # Can you see all 4 sides?
     msg = write("Press SELECT if all 4 sides visible", 1, 5, font=pfont_small, clear=False, show_end=-3)
     nlines = len(msg.split("\n"))
-    write("else press STOP", 1, nlines * pfont_small.HEIGHT, font=pfont_small, clear=False)
+    write("else press STOP", 1, nlines * pfont_small.HEIGHT + 5, font=pfont_small, clear=False)
 
-    button = poll_for_which_button({"select": pSelect, "stop": pStop}, timeout=45, default="select")
+    button = poll_for_which_button({"select": pSelect, "stop": pStop, "ffwd": pFFwd}, timeout=45, default="select")
     if button == "stop":
         screen_type = screen_type | 0x01
         tft.offset(1, 2)
-    else:
+    elif button == "select":
         screen_type = screen_type & 0xE
         tft.offset(0, 0)
+    elif button == "ffwd":  # change from big to small or vice versa
+        screen_type = screen_type ^ 0x02
+    else:
+        print(f"Unknown action when {button} pressed. Continuing")
+        pass
+    print(f"Screen Type is after {screen_type}")
 
     try:
         fh = open(SCREEN_TYPE_PATH, "w")

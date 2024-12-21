@@ -353,6 +353,7 @@ def reconfigure():
         utils.reset()
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
+        utils.reset()
     elif choice == "Exit":
         return choice
     elif choice == "Dev Mode":
