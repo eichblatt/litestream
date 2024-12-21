@@ -86,10 +86,8 @@ def test_update():
         return False
 
     tm.clear_screen()
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
-    tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
-    tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)
-    tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, yellow_color, clear=False)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
@@ -105,18 +103,18 @@ def test_update():
             return
 
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
     if update_code:
-        tm.tft.write(pfont_med, "Updating ... ", 0, 30, yellow_color)
+        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, yellow_color, clear=False)
     else:
-        tm.tft.write(pfont_med, "Not Updating", 0, 60, red_color)
+        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     return update_code
 
 
 def _collection_names():
     # Note: This function appears to only work right after a reboot.
-    tm.write("Getting all\ncollection\nnames", font=pfont_small)
+    tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
@@ -226,7 +224,7 @@ def add_collection(all_collections, collection_list, colls_fn=None):
     while n_matching > 25:
         m2 = f"{n_matching} Matching\n(STOP to end)"
         print(m2)
-        selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        selected_chars = utils.select_chars("Spell desired Artist", message2=m2, already=selected_chars)
         if selected_chars.endswith(utils.STOP_CHAR):
             subset_match = False
             print(f"raw selected {selected_chars}")
@@ -258,8 +256,8 @@ def update_code():
     yellow_color = tm.YELLOW
     red_color = tm.RED
     tm.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
-    tm.tft.write(pfont_med, " code", 0, 70, red_color)
+    tm.write("Updating", 0, 40, tm.pfont_med, yellow_color)
+    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
@@ -279,8 +277,8 @@ def update_firmware():
     yellow_color = tm.YELLOW
     red_color = tm.RED
     tm.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
-    tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
+    tm.write("Updating", 0, 50, tm.pfont_med, yellow_color)
+    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
@@ -373,18 +371,22 @@ def basic_main():
     start_time = time.ticks_ms()
     hidden_setdate = False
     tm.calibrate_screen()
-    tm.clear_screen()
     yellow_color = tm.YELLOW
     red_color = tm.RED
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
-    tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
-    tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
+    ypos = 0
+    tm.write("Welcome", 0, ypos, tm.pfont_large, red_color)
+    ypos += tm.pfont_large.HEIGHT
+    tm.write("Time ", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
+    tm.write("Machine", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.tft.write(pfont_med, f"{software_version} {dev_flag}", 0, 80, yellow_color)
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.tft.write(pfont_small, f"{uversion}", 0, 105, tm.WHITE)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
@@ -399,7 +401,6 @@ def basic_main():
     dt = utils.set_datetime(hidden=hidden_setdate)
     if dt is not None:
         print(f"Date set to {dt}")
-        # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     tm.clear_screen()
     return wifi
 

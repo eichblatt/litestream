@@ -74,20 +74,28 @@ def get_int_from_file(path, default_val, max_val):
 # -------------------------------------------- set up screen
 
 screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=0, max_val=10)
+# screen_types:
+# 0 - SMALL st7789 128x160 offset 0
+# 1 - SMALL st7789 128x160 offset 1
+# 2 - MED   st7789 240x320 offset 0
+# 3 - MED   st7789 240x320 offset 1
+# 10 - LARGE ili9488 320x480 offset 0
 if screen_type < 2:
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 128
     SCREEN_WIDTH = 160
-    import fonts.NotoSans_24 as pfont_med
     import fonts.NotoSans_18 as pfont_small
+    import fonts.NotoSans_24 as pfont_med
+    import fonts.NotoSans_32 as pfont_large
     import fonts.DejaVu_33 as large_font
     import fonts.date_font as date_font
-elif screen_type == 3:
+elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 240
     SCREEN_WIDTH = 320
-    import fonts.NotoSans_48 as pfont_med
     import fonts.NotoSans_36 as pfont_small
+    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
 
@@ -97,14 +105,14 @@ elif screen_type == 3:
     # import fonts.date_font as date_font
 elif screen_type == 10:
     SCREEN_DRIVER = "ili9488"
+    SCREEN_HEIGHT = 320
+    SCREEN_WIDTH = 480
     import ili9488
-    import fonts.NotoSans_48 as pfont_med
     import fonts.NotoSans_36 as pfont_small
+    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
-
-    SCREEN_WIDTH = 480
-    SCREEN_HEIGHT = 320
 else:
     pass
 
@@ -259,7 +267,7 @@ nshows_bbox = Bbox(0.95 * SCREEN_WIDTH, SCREEN_HEIGHT // 4, SCREEN_WIDTH, 3 * (S
 venue_bbox = Bbox(0, SCREEN_HEIGHT // 4, SCREEN_WIDTH, (SCREEN_HEIGHT // 4) + SCREEN_HEIGHT * 0.15)
 artist_bbox = Bbox(0, 0.4 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.55 * SCREEN_HEIGHT)
 tracklist_bbox = Bbox(0, 0.55 * SCREEN_HEIGHT, SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8))
-selected_date_bbox = Bbox(0.095 * SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8), 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
+selected_date_bbox = Bbox(0.095 * SCREEN_WIDTH, SCREEN_HEIGHT - date_font.HEIGHT, 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
 playpause_bbox = Bbox(0.91 * SCREEN_WIDTH, 0.88 * SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT)
 keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 0.172 * SCREEN_HEIGHT)
 title_bbox = Bbox(0, 0.18 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.48 * SCREEN_HEIGHT)
@@ -342,19 +350,20 @@ def calibrate_knobs():
     knob_sense = get_knob_sense()
     print(f"knob_sense before is {knob_sense}")
     change = 0
+    text_height = pfont_med.HEIGHT
     for knob, name, bit in zip([m, d, y], ["Month", "Day", "Year"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         write("Rotate")
-        write(f"{name}", 0, 25, color=YELLOW, clear=False)
-        write("Knob Forward", 0, 50, clear=False)
+        write(f"{name}", 0, text_height, color=YELLOW, clear=False)
+        write("Knob Forward", 0, 2 * text_height, clear=False)
         while prev_value == knob.value():
             time.sleep(0.05)
         change = (change | int(knob.value() < prev_value) << bit) & 0x7
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
     setup_knobs(knob_sense)
-    write("Knobs\nCalibrated")
+    write("Knobs Calibrated", show_end=-2)
     try:
         kf = open(KNOB_SENSE_PATH, "w")
         kf.write(f"{knob_sense}")
@@ -370,13 +379,14 @@ def calibrate_screen(force=False):
     print("Running screen calibration")
     screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=3)
     if (screen_type is not None) and not force:
-        if screen_type == 0:
-            tft.offset(0, 0)
-        elif screen_type == 1:
-            tft.offset(1, 2)
-        elif screen_type == 3:
-            tft.offset(0, 0)
+        if screen_type < 2:
+            tft.madctl(0x00)
+            tft.offset(0, 0) if screen_type == 0 else tft.offset(1, 2)
+        elif screen_type in (2, 3):
             tft.madctl(0xE8)
+            tft.offset(0, 0) if (screen_type % 2 == 0) else tft.offset(1, 2)
+        elif screen_type == 10:
+            tft.offset(0, 0)
         return screen_type
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
@@ -385,16 +395,16 @@ def calibrate_screen(force=False):
     tft.offset(0, 0)
     tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE)
     # Can you see all 4 sides?
-    write("Press SELECT if", 1, 5, font=pfont_small, clear=False)
-    write("all 4 sides visible", 1, 25, font=pfont_small, clear=False)
-    write("else press STOP", 1, 60, font=pfont_small, clear=False)
+    msg = write("Press SELECT if all 4 sides visible", 1, 5, font=pfont_small, clear=False, show_end=-3)
+    nlines = len(msg.split("\n"))
+    write("else press STOP", 1, nlines * pfont_small.HEIGHT, font=pfont_small, clear=False)
 
     button = poll_for_which_button({"select": pSelect, "stop": pStop}, timeout=45, default="select")
     if button == "stop":
-        screen_type = 1
+        screen_type = screen_type | 0x01
         tft.offset(1, 2)
     else:
-        screen_type = 0
+        screen_type = screen_type & 0xE
         tft.offset(0, 0)
 
     try:
@@ -417,8 +427,8 @@ def self_test():
     button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Month", "Day", "Year"]
     for button, name in zip(buttons, button_names):
         write("Press")
-        write(f"{name}", 0, 25, color=YELLOW, clear=False)
-        write("Button", 0, 50, clear=False)
+        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False)
+        write("Button", 0, 2 * pfont_med.HEIGHT, clear=False)
         poll_for_button(button)
     write("Button Test\nPassed")
     time.sleep(0.2)
@@ -482,7 +492,13 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=WHITE, text_height=20, clear=True, show_end=0, indent=0):
+def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, indent=0):
+    # write the msg starting at x,y in font with color. Clear entire screen if clear==True.
+    # show_end: 0 - display as much as possible in 1 line.
+    # show_end: +n - break the text up into as many as n lines.
+    # show_end: -n - break the text up on *word boundaries* in as many as n lines.
+
+    text_height = font.HEIGHT
     if clear:
         clear_screen()
     if abs(show_end) > 1:

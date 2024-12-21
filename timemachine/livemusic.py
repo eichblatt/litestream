@@ -424,7 +424,7 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - power_press_time) > 1_250:
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
-                tm.write("Configure Time Machine", 0, 0, tm.pfont_med, tm.WHITE, 30, clear=True, show_end=-3)
+                tm.write("Configure Time Machine", 0, 0, tm.pfont_med, tm.WHITE, clear=True, show_end=-3)
                 player.reset_player(reset_head=False)
                 tm.power(1)
                 return
@@ -580,7 +580,7 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, tm.pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, tm.pfont_small, tm.tracklist_color, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg

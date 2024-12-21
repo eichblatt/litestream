@@ -56,14 +56,15 @@ def select_option(message, choices):
     tm.d._range_mode = tm.d.RANGE_WRAP
 
     step = step_old = 0
-    text_height = 17
+    text_height = tm.pfont_small.HEIGHT  # was 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
-    message_height = len(message.split("\n"))
-    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, 160, 128)
-    tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color)
+    message = message.replace("\n", " ")
+    message = tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color, show_end=-3)
+    message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
+    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -94,7 +95,6 @@ def select_option(message, choices):
 
 def select_chars(message, message2="", already=None):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"
-    message = message.split("\n")
     pSelect_old = pStop_old = True
     tm.y._min_val = 0
     tm.y._max_val = len(charset)  # tm.y._max_val + 100
@@ -104,14 +104,14 @@ def select_chars(message, message2="", already=None):
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
     step = step_old = 0
-    text_height = 17
+    text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
-    tm.clear_screen()
-    y_origin = len(message) * text_height
+    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, clear=True, show_end=-2)
+    y_origin = len(message.split("\n")) * text_height
 
-    select_bbox = tm.Bbox(0, y_origin, 160, y_origin + text_height)
-    selected_bbox = tm.Bbox(0, y_origin + text_height, 160, y_origin + 2 * text_height)
-    message2_bbox = tm.Bbox(0, y_origin + 2 * text_height, 160, 128)
+    select_bbox = tm.Bbox(0, y_origin, tm.SCREEN_WIDTH, y_origin + text_height)
+    selected_bbox = tm.Bbox(0, y_origin + text_height, tm.SCREEN_WIDTH, y_origin + 2 * text_height)
+    message2_bbox = tm.Bbox(0, y_origin + 2 * text_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value, tm.y._value)):
         value = (tens - start_vals[0]) * 10 + (ones - start_vals[1])
@@ -121,9 +121,6 @@ def select_chars(message, message2="", already=None):
             tm.d._value = start_vals[0]
             tm.y._value = start_vals[1]
         return value
-
-    for i, msg in enumerate(message):
-        tm.write(f"{msg}", 0, i * text_height, tm.pfont_small, tm.stage_date_color, clear=False)
 
     print(f"Message2 is {message2}")
     if len(message2) > 0:
@@ -151,7 +148,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(tm.pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.PURPLE)
+                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=1)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -222,8 +219,12 @@ def select_chars(message, message2="", already=None):
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
-    tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
+    # tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
+    # tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
+    tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
+    tm.write(
+        selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
+    )
     time.sleep(0.3)
     return selected
 
@@ -663,7 +664,7 @@ def get_wifi_cred(wifi):
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
-        choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+        choice = select_chars(f"Input WiFi Name (Day,Year), Select", "Stop to End")
     elif choice == "Rescan WiFi":
         print("Chose to rescan wifi")
         return get_wifi_cred(wifi)
@@ -679,7 +680,8 @@ def get_wifi_cred(wifi):
                 del wch[choice]
                 write_json(wch, WIFI_CRED_HIST_PATH)
 
-    passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
+    # passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
+    passkey = select_chars(f"Input Passkey for {choice} (Day,Year), Select.", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
 
@@ -720,7 +722,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
     if not hidden:
         tm.write("Connecting..", color=tm.YELLOW)
         text_height = tm.pfont_med.HEIGHT
-        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, text_height, False, -3)
+        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, False, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)

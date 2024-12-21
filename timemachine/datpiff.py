@@ -454,7 +454,7 @@ def display_tracks(*track_names):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
-    text_height = 17
+    text_height = pfont_small.HEIGHT
     while lines_written < max_lines:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
@@ -463,7 +463,7 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = tm.tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
