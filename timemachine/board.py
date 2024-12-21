@@ -73,13 +73,12 @@ def get_int_from_file(path, default_val, max_val):
 
 # -------------------------------------------- set up screen
 
-screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=0, max_val=10)
+screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=0, max_val=3)
 # screen_types:
 # 0 - SMALL st7789 128x160 offset 0
 # 1 - SMALL st7789 128x160 offset 1
 # 2 - MED   st7789 240x320 offset 0
 # 3 - MED   st7789 240x320 offset 1
-# 10 - LARGE ili9488 320x480 offset 0
 if screen_type < 2:
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 128
@@ -103,16 +102,6 @@ elif screen_type in (2, 3):
     # import fonts.NotoSans_18 as pfont_small
     # import fonts.DejaVu_33 as large_font
     # import fonts.date_font as date_font
-elif screen_type == 10:
-    SCREEN_DRIVER = "ili9488"
-    SCREEN_HEIGHT = 320
-    SCREEN_WIDTH = 480
-    import ili9488
-    import fonts.NotoSans_36 as pfont_small
-    import fonts.NotoSans_48 as pfont_med
-    import fonts.NotoSans_48 as pfont_large
-    import fonts.DejaVu_60 as large_font
-    import fonts.DejaVu_33 as date_font
 else:
     pass
 
@@ -127,26 +116,20 @@ def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
     dc = Pin(6, Pin.OUT)
     backlight = Pin(5, Pin.OUT)
 
-    if driver == "st7789":
-        return st7789.ST7789(
-            screen_spi,
-            SCREEN_HEIGHT,
-            SCREEN_WIDTH,
-            reset=reset,
-            cs=cs,
-            dc=dc,
-            backlight=backlight,
-            color_order=st7789.RGB,
-            inversion=False,
-            rotation=rotation,
-            options=options,
-            buffer_size=buffer_size,
-        )
-    elif driver == "ili9488":
-        print(f"initializing driver {driver}")
-        display = ili9488.Display(screen_spi, dc=dc, cs=cs, rst=reset, backlight=backlight)
-        backlight.on()
-        return display
+    return st7789.ST7789(
+        screen_spi,
+        SCREEN_HEIGHT,
+        SCREEN_WIDTH,
+        reset=reset,
+        cs=cs,
+        dc=dc,
+        backlight=backlight,
+        color_order=st7789.RGB,
+        inversion=False,
+        rotation=rotation,
+        options=options,
+        buffer_size=buffer_size,
+    )
 
 
 tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
@@ -284,9 +267,8 @@ FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
 def color_rgb(r, g, b):
     if SCREEN_DRIVER == "st7789":
         return st7789.color565(r, g, b)
-    elif SCREEN_DRIVER == "ili9488":
-        return bytes([r, g, b])
-    raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
+    else:
+        raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
 
 
 tracklist_color = color_rgb(0, 158, 255)
