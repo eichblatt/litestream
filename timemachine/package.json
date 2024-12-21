@@ -21,10 +21,6 @@
             "github:eichblatt/litestream/timemachine/utils.py"
         ],
         [
-            "ili9488.py",
-            "github:eichblatt/litestream/timemachine/ili9488.py"
-        ],
-        [
             "archive_utils.py",
             "github:eichblatt/litestream/timemachine/archive_utils.py"
         ],
