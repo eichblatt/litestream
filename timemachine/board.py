@@ -247,6 +247,7 @@ class Bbox:
 
 stage_date_bbox = Bbox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 4)
 nshows_bbox = Bbox(0.95 * SCREEN_WIDTH, SCREEN_HEIGHT // 4, SCREEN_WIDTH, 3 * (SCREEN_HEIGHT // 8))
+
 venue_bbox = Bbox(0, SCREEN_HEIGHT // 4, SCREEN_WIDTH, (SCREEN_HEIGHT // 4) + SCREEN_HEIGHT * 0.15)
 artist_bbox = Bbox(0, 0.4 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.55 * SCREEN_HEIGHT)
 tracklist_bbox = Bbox(0, 0.55 * SCREEN_HEIGHT, SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8))
