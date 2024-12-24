@@ -46,7 +46,12 @@ AUTO_PLAY = True
 ARTIST_KEY_TIME = time.ticks_ms()
 TAPE_KEY_TIME = time.ticks_ms()
 
-new_tracklist_bbox = tm.tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
+tracklist_bbox = tm.Bbox(0, 0.55 * tm.SCREEN_HEIGHT, tm.SCREEN_WIDTH, 7 * (tm.SCREEN_HEIGHT // 8))
+new_tracklist_bbox = tracklist_bbox.shift(tm.Bbox(0, 8, 0, 8))
+playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, 0.88 * tm.SCREEN_HEIGHT, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+keyed_artist_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, 0.172 * tm.SCREEN_HEIGHT)
+title_bbox = tm.Bbox(0, 0.18 * tm.SCREEN_HEIGHT, tm.SCREEN_WIDTH, 0.48 * tm.SCREEN_HEIGHT)
+selected_artist_bbox = tm.Bbox(0, 0.86 * tm.SCREEN_HEIGHT, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 dc = tm.decade_counter((tm.d, tm.y), 100, 10)
 tapeid_range_dict = {}
 
@@ -175,8 +180,8 @@ def load_tape_ids(artists):
 
 
 def select_tape(tape, player, state):
-    tm.clear_bbox(tm.playpause_bbox)
-    tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.RED)
+    tm.clear_bbox(playpause_bbox)
+    tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.stop()
     tracklist, urls, albums, artists = get_tape_metadata(tape["identifier"])
 
@@ -189,14 +194,14 @@ def select_tape(tape, player, state):
 
 
 def play_pause(player):
-    tm.clear_bbox(tm.playpause_bbox)
+    tm.clear_bbox(playpause_bbox)
     if player.is_playing():
         player.pause()
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.WHITE)
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.WHITE)
     elif len(player.playlist) > 0:
         player.play()
         tm.power(1)
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
     return
 
 
@@ -251,7 +256,7 @@ def main_loop(player, state):
                 if tm.power():
                     tm.screen_on()
                     if player.stop():
-                        tm.clear_bbox(tm.playpause_bbox)
+                        tm.clear_bbox(playpause_bbox)
                 print("Stop UP")
 
         player.audio_pump()
@@ -427,13 +432,13 @@ def main_loop(player, state):
 
 def update_display(player):
     # display_tracks(*player.track_names())
-    tm.clear_bbox(tm.playpause_bbox)
+    tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
         pass
     elif player.is_playing():
-        tm.tft.fill_polygon(tm.PlayPoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.play_color)
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
     elif player.is_paused():
-        tm.tft.fill_polygon(tm.PausePoly, tm.playpause_bbox.x0, tm.playpause_bbox.y0, tm.pause_color)
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
 
 
 def display_tracks(*track_names):
@@ -471,23 +476,23 @@ def display_tracks(*track_names):
 
 def display_keyed_title(keyed_title, color=tm.PURPLE):
     # print(f"in display_keyed_title {keyed_title}")
-    tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
+    tm.clear_bbox(title_bbox)
+    tm.write(keyed_title, title_bbox.x0, title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
 
 
 def display_keyed_artist(artist, color=tm.PURPLE):
     # print(f"in display_keyed_artist {artist}")
-    tm.clear_bbox(tm.keyed_artist_bbox)
+    tm.clear_bbox(keyed_artist_bbox)
     artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
         artist = (9 - len(artist) // 2) * " " + artist
-    tm.write(artist, tm.keyed_artist_bbox.x0, tm.keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False, show_end=1)
+    tm.write(artist, keyed_artist_bbox.x0, keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False, show_end=1)
 
 
 def display_selected_artist(artist):
     # print(f"in display_selected_artist {artist}")
-    tm.clear_bbox(tm.selected_artist_bbox)
-    tm.write(artist, tm.selected_artist_bbox.x0, tm.selected_artist_bbox.y0, font=pfont_small, clear=False, show_end=1)
+    tm.clear_bbox(selected_artist_bbox)
+    tm.write(artist, selected_artist_bbox.x0, selected_artist_bbox.y0, font=pfont_small, clear=False, show_end=1)
 
 
 def show_artists(artist_list):

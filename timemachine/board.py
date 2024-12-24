@@ -248,14 +248,6 @@ class Bbox:
 stage_date_bbox = Bbox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT // 4)
 nshows_bbox = Bbox(0.95 * SCREEN_WIDTH, SCREEN_HEIGHT // 4, SCREEN_WIDTH, 3 * (SCREEN_HEIGHT // 8))
 
-venue_bbox = Bbox(0, SCREEN_HEIGHT // 4, SCREEN_WIDTH, (SCREEN_HEIGHT // 4) + SCREEN_HEIGHT * 0.15)
-artist_bbox = Bbox(0, 0.4 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.55 * SCREEN_HEIGHT)
-tracklist_bbox = Bbox(0, 0.55 * SCREEN_HEIGHT, SCREEN_WIDTH, 7 * (SCREEN_HEIGHT // 8))
-selected_date_bbox = Bbox(0.095 * SCREEN_WIDTH, SCREEN_HEIGHT - date_font.HEIGHT, 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
-playpause_bbox = Bbox(0.91 * SCREEN_WIDTH, 0.88 * SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT)
-keyed_artist_bbox = Bbox(0, 0, SCREEN_WIDTH, 0.172 * SCREEN_HEIGHT)
-title_bbox = Bbox(0, 0.18 * SCREEN_HEIGHT, SCREEN_WIDTH, 0.48 * SCREEN_HEIGHT)
-selected_artist_bbox = Bbox(0, 0.86 * SCREEN_HEIGHT, 0.91 * SCREEN_WIDTH, SCREEN_HEIGHT)
 
 PlayPoly = [(0, 0), (0, 15), (15, 8), (0, 0)]
 PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0)]
