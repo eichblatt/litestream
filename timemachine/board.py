@@ -92,7 +92,7 @@ elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 240
     SCREEN_WIDTH = 320
-    import fonts.NotoSans_36 as pfont_small
+    import fonts.NotoSans_24 as pfont_small
     import fonts.NotoSans_48 as pfont_med
     import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
