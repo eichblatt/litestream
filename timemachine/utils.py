@@ -469,6 +469,23 @@ def mark_partition():
     current_partition.mark_app_valid_cancel_rollback()
 
 
+def remove_common_start(strings, word_level=True):
+    # Strip out characters at the beginning of each string in the list.
+    # eg. ['Track 1: Your Song', 'Track 2: Song for You'] -> ['1: Your Song', '2: Song for You']
+    if len(strings) < 2:
+        return strings
+    if word_level:
+        strings = [string.split(" ") for string in strings]
+    minlen = min([len(x) for x in strings])
+    for i in range(minlen):
+        if len({string[i] for string in strings}) > 1:
+            break
+    if word_level:
+        return [" ".join(string[i:]) for string in strings]
+    else:
+        return [string[i:] for string in strings]
+
+
 def capitalize(string):
     if len(string) == 0:
         return string

@@ -217,6 +217,8 @@ def get_request(url, outpath="/tmp.json"):
         return {}
     if resp.chunked:
         print(f"saving json to {outpath}")
+        parent_dir = "/".join(outpath.split("/")[:-1])
+        utils.mkdirs(parent_dir)
         resp.save(outpath)
         resp.close()
         gc.collect()
