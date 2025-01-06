@@ -22,8 +22,6 @@ import os
 import sys
 import time
 
-import st7789
-import fonts.date_font as date_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
@@ -71,9 +69,9 @@ def configure_wifi():
 
 
 def test_update():
-    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
+    yellow_color = tm.YELLOW
+    red_color = tm.RED
     pSelect_old = True
     pStop_old = True
     update_code = False
@@ -88,10 +86,8 @@ def test_update():
         return False
 
     tm.clear_screen()
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
-    tm.tft.write(pfont_med, "Press ", 0, 30, yellow_color)
-    tm.tft.write(pfont_med, "Select", 0, 60, yellow_color)
-    tm.tft.write(pfont_med, "Button", 0, 90, yellow_color)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, yellow_color, clear=False)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
@@ -106,108 +102,19 @@ def test_update():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-    tm.tft.fill_rect(0, 0, 160, 128, st7789.BLACK)
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
+    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
     if update_code:
-        tm.tft.write(pfont_med, "Updating ... ", 0, 30, yellow_color)
+        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, yellow_color, clear=False)
     else:
-        tm.tft.write(pfont_med, "Not Updating", 0, 60, red_color)
+        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     return update_code
 
 
-def _datpiff_collection_names(first_char=""):
-    if len(first_char) > 1:
-        return []
-    if first_char == "":
-        filename = "top10.json"
-    elif first_char in "#abcdefghijklmnopqrstuvwxyz":
-        filename = f"bottom_{first_char}.json"
-    else:
-        filename = "bottom_#.json"
-
-    url = f"https://storage.googleapis.com/spertilo-data/datpiff/{filename}"
-    try:
-        url = "https://storage.googleapis.com/spertilo-data/datpiff/top10.json"
-        resp = requests.get(url)
-        if resp.status_code != 200:
-            raise Exception(f"error downloading from {url}")
-        collection_names = resp.json()
-    finally:
-        resp.close()
-    return collection_names
-
-
-def configure_datpiff_collections():
-    state = utils.load_state("datpiff")
-    collection_list = state["artist_list"]
-
-    if len(collection_list) >= MAX_COLLECTIONS:
-        choices = ["Remove Artist", "Cancel"]
-    elif len(collection_list) == 0:
-        choices = ["Add Artist", "Cancel"]
-    else:
-        choices = ["Add Artist", "Remove Artist", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
-    utils.print_log(f"configure_collection: chose to {choice}")
-
-    if choice == "Cancel":
-        return
-
-    utils.print_log(f"current collection_list is {collection_list}")
-    if choice == "Add Artist":
-        keepGoing = True
-        reset_required = False
-        all_collections = _datpiff_collection_names()
-
-        choices = ["Artists >3 tapes", "All Artists"]
-        choice = utils.select_option("Year/Select", choices)
-        utils.print_log(f"configure_collection: chose to {choice}")
-        if choice == "All Artists":
-            colls_fn = _datpiff_collection_names
-        else:
-            colls_fn = None
-
-        while keepGoing:
-            coll_to_add = add_collection(all_collections, collection_list, colls_fn)
-            if coll_to_add != "_CANCEL":
-                collection_list.append(coll_to_add)
-                reset_required = True
-            if len(collection_list) >= MAX_COLLECTIONS:
-                keepGoing = False
-            else:
-                choices = ["Add Another", "Finished"]
-                choice2 = utils.select_option("Year/Select", choices)
-                if choice2 == "Finished":
-                    keepGoing = False
-
-            state["artist_list"] = collection_list
-            utils.save_state(state, "datpiff")
-        if reset_required:
-            utils.reset()
-
-    elif choice == "Remove Artist":
-        keepGoing = True
-        while keepGoing & (len(collection_list) > 0):
-            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
-            collection_list = [x for x in collection_list if not x == coll_to_remove]
-            choices = ["Remove Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-
-            state["artist_list"] = collection_list
-            # Remove the metadata for this collection
-            path_to_meta = f"/metadata/datpiff/{coll_to_remove}.json"
-            utils.remove_dir(path_to_meta) if utils.isdir(path_to_meta) else utils.remove_file(path_to_meta)
-            utils.save_state(state, "datpiff")
-
-    return
-
-
 def _collection_names():
     # Note: This function appears to only work right after a reboot.
-    tm.write("Getting all\ncollection\nnames", font=pfont_small)
+    tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
     all_collection_names_dict = {}
     api_request = f"{API}/all_collection_names/"
     cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
@@ -242,8 +149,6 @@ def _collection_names():
 
 def configure_collections():
     main_app = utils.get_main_app()
-    if main_app == "datpiff":
-        return configure_datpiff_collections()
     choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
     choice = utils.select_option("Year/Select", choices)
     print(f"configure_collection: chose to {choice}")
@@ -319,7 +224,7 @@ def add_collection(all_collections, collection_list, colls_fn=None):
     while n_matching > 25:
         m2 = f"{n_matching} Matching\n(STOP to end)"
         print(m2)
-        selected_chars = utils.select_chars("Spell desired\nArtist", message2=m2, already=selected_chars)
+        selected_chars = utils.select_chars("Spell desired Artist", message2=m2, already=selected_chars)
         if selected_chars.endswith(utils.STOP_CHAR):
             subset_match = False
             print(f"raw selected {selected_chars}")
@@ -348,11 +253,11 @@ def update_code():
     if not wifi.isconnected():
         print("Error -- not connected to wifi")
         return
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    yellow_color = tm.YELLOW
+    red_color = tm.RED
     tm.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 40, yellow_color)
-    tm.tft.write(pfont_med, " code", 0, 70, red_color)
+    tm.write("Updating", 0, 40, tm.pfont_med, yellow_color)
+    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
@@ -369,11 +274,11 @@ def update_code():
 def update_firmware():
     print("Updating firmware -- This will reboot")
 
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
+    yellow_color = tm.YELLOW
+    red_color = tm.RED
     tm.clear_screen()
-    tm.tft.write(pfont_med, "Updating", 0, 50, yellow_color)
-    tm.tft.write(pfont_med, " Firmware", 0, 80, red_color)
+    tm.write("Updating", 0, 50, tm.pfont_med, yellow_color)
+    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
 
     current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
@@ -397,7 +302,7 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "datpiff", "78rpm"]
+    app_choices = ["no change", "livemusic", "78rpm"]  # "datpiff" removed
     main_app = utils.get_main_app()
     new_main_app = utils.select_option(f"Choose App\nNow:{main_app}", app_choices)
     if new_main_app != "no change":
@@ -409,7 +314,7 @@ def reconfigure():
     tm.tft.on()
     tm.clear_screen()
     print("Reconfiguring")
-    tm.tft.fill_rect(0, 90, 160, 30, st7789.BLACK)
+    tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
     config_choices = [
         "Artists",
@@ -448,6 +353,7 @@ def reconfigure():
         utils.reset()
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
+        utils.reset()
     elif choice == "Exit":
         return choice
     elif choice == "Dev Mode":
@@ -466,18 +372,22 @@ def basic_main():
     start_time = time.ticks_ms()
     hidden_setdate = False
     tm.calibrate_screen()
-    tm.clear_screen()
-    yellow_color = st7789.color565(255, 255, 0)
-    red_color = st7789.color565(255, 0, 0)
-    tm.tft.write(pfont_large, "Welcome..", 0, 0, red_color)
-    tm.tft.write(pfont_med, "Time ", 0, 30, yellow_color)
-    tm.tft.write(pfont_med, "Machine", 0, 55, yellow_color)
+    yellow_color = tm.YELLOW
+    red_color = tm.RED
+    ypos = 0
+    tm.write("Welcome", 0, ypos, tm.pfont_large, red_color)
+    ypos += tm.pfont_large.HEIGHT
+    tm.write("Time ", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
+    tm.write("Machine", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.tft.write(pfont_med, f"{software_version} {dev_flag}", 0, 80, yellow_color)
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.tft.write(pfont_small, f"{uversion}", 0, 105, st7789.WHITE)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
@@ -492,7 +402,6 @@ def basic_main():
     dt = utils.set_datetime(hidden=hidden_setdate)
     if dt is not None:
         print(f"Date set to {dt}")
-        # tm.tft.write(pfont_med, f"{dt[0]}-{dt[1]:02d}-{dt[2]:02d}", 0, 100, yellow_color)
     tm.clear_screen()
     return wifi
 
@@ -503,16 +412,15 @@ def run_livemusic():
         try:
             if utils.is_dev_box():
                 main_app = utils.get_main_app()
+
+            if main_app == "datpiff":
+                main_app = "livemusic"
+
             if main_app == "livemusic":
                 import livemusic
 
                 utils.mark_partition()  # If we make it this far, the firmware is good.
                 livemusic.run()
-            elif main_app == "datpiff":
-                import datpiff
-
-                utils.mark_partition()
-                datpiff.run()
             elif main_app == "78rpm":
                 import rpm78
 

@@ -16,6 +16,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+"""
+# For dev boxes:
+import board as tm
+
+bootup = tm.poll_for_button(tm.pSelect,timeout=5)
+
+if bootup:
+    import BOOT
+
+"""
 
 import machine
 import os
