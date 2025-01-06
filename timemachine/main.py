@@ -70,8 +70,6 @@ def configure_wifi():
 
 def test_update():
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
-    yellow_color = tm.YELLOW
-    red_color = tm.RED
     pSelect_old = True
     pStop_old = True
     update_code = False
@@ -86,8 +84,8 @@ def test_update():
         return False
 
     tm.clear_screen()
-    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
-    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, yellow_color, clear=False)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3, clear=False)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
@@ -103,11 +101,11 @@ def test_update():
             return
 
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
-    tm.write("Welcome..", 0, 0, tm.pfont_large, red_color)
+    tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
-        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, yellow_color, clear=False)
+        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, clear=False)
     else:
-        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, red_color, clear=False)
+        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED, clear=False)
 
     return update_code
 
@@ -253,11 +251,9 @@ def update_code():
     if not wifi.isconnected():
         print("Error -- not connected to wifi")
         return
-    yellow_color = tm.YELLOW
-    red_color = tm.RED
     tm.clear_screen()
-    tm.write("Updating", 0, 40, tm.pfont_med, yellow_color)
-    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
+    tm.write("Updating", 0, 40, tm.pfont_med, tm.YELLOW)
+    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
@@ -274,11 +270,9 @@ def update_code():
 def update_firmware():
     print("Updating firmware -- This will reboot")
 
-    yellow_color = tm.YELLOW
-    red_color = tm.RED
     tm.clear_screen()
-    tm.write("Updating", 0, 50, tm.pfont_med, yellow_color)
-    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, red_color, clear=False)
+    tm.write("Updating", 0, 50, tm.pfont_med, tm.YELLOW)
+    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
 
     current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
@@ -372,18 +366,16 @@ def basic_main():
     start_time = time.ticks_ms()
     hidden_setdate = False
     tm.calibrate_screen()
-    yellow_color = tm.YELLOW
-    red_color = tm.RED
     ypos = 0
-    tm.write("Welcome", 0, ypos, tm.pfont_large, red_color)
+    tm.write("Welcome", 0, ypos, tm.pfont_large, tm.RED)
     ypos += tm.pfont_large.HEIGHT
-    tm.write("Time ", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
     ypos += tm.pfont_med.HEIGHT
-    tm.write("Machine", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
     ypos += tm.pfont_med.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, yellow_color, clear=False)
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
     ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
