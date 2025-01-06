@@ -37,7 +37,6 @@ MAIN_APP_PATH = "/config/.main_app"
 STOP_CHAR = "$StoP$"
 
 choices_color = tm.WHITE
-pfont_small = tm.pfont_small
 
 
 # Utils using TM hardware
@@ -56,15 +55,17 @@ def select_option(message, choices):
     tm.y._range_mode = tm.y.RANGE_WRAP
     tm.d._range_mode = tm.d.RANGE_WRAP
 
+    tm.label_soft_knobs("", "", "Next/Prev")
     step = step_old = 0
-    text_height = 17
+    text_height = tm.pfont_small.HEIGHT  # was 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
-    message_height = len(message.split("\n"))
-    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, 160, 128)
-    tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color)
+    message = message.replace("\n", " ")
+    message = tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color, show_end=-3)
+    message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
+    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
         if (step != step_old) or first_time:
@@ -76,15 +77,15 @@ def select_option(message, choices):
 
             for i, s in enumerate(range(max(0, step - 2), step)):
                 xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
-                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
 
             text = ">" + choices[step]
             xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
-            tm.write(text, xval, yval, pfont_small, tm.purple_color, clear=False, show_end=True)
+            tm.write(text, xval, yval, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
 
             for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
                 xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
-                tm.write(choices[s], xval, yval, pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -95,7 +96,6 @@ def select_option(message, choices):
 
 def select_chars(message, message2="", already=None):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"
-    message = message.split("\n")
     pSelect_old = pStop_old = True
     tm.y._min_val = 0
     tm.y._max_val = len(charset)  # tm.y._max_val + 100
@@ -104,15 +104,16 @@ def select_chars(message, message2="", already=None):
     tm.y._value = int((tm.y._min_val + tm.y._max_val) / 2)
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
+    tm.label_soft_knobs("", "Jump 10", "Next/Prev")
     step = step_old = 0
-    text_height = 17
+    text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
-    tm.clear_screen()
-    y_origin = len(message) * text_height
+    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, clear=True, show_end=-2)
+    y_origin = len(message.split("\n")) * text_height
 
-    select_bbox = tm.Bbox(0, y_origin, 160, y_origin + text_height)
-    selected_bbox = tm.Bbox(0, y_origin + text_height, 160, y_origin + 2 * text_height)
-    message2_bbox = tm.Bbox(0, y_origin + 2 * text_height, 160, 128)
+    select_bbox = tm.Bbox(0, y_origin, tm.SCREEN_WIDTH, y_origin + text_height)
+    selected_bbox = tm.Bbox(0, y_origin + text_height, tm.SCREEN_WIDTH, y_origin + 2 * text_height)
+    message2_bbox = tm.Bbox(0, y_origin + 2 * text_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 
     def decade_value(tens, ones, bounds, start_vals=(tm.d._value, tm.y._value)):
         value = (tens - start_vals[0]) * 10 + (ones - start_vals[1])
@@ -123,13 +124,10 @@ def select_chars(message, message2="", already=None):
             tm.y._value = start_vals[1]
         return value
 
-    for i, msg in enumerate(message):
-        tm.write(f"{msg}", 0, i * text_height, pfont_small, tm.stage_date_color, clear=False)
-
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, pfont_small, tm.stage_date_color, clear=False)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, clear=False)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -152,7 +150,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.tft.write(pfont_small, selected[-11:], selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=1)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -169,7 +167,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.purple_color
+                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.PURPLE
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -177,7 +175,7 @@ def select_chars(message, message2="", already=None):
                     text = text.replace(x, ".")  # Should be "\u25A1", but I don't think we have the font for this yet.
 
                 # Write the characters before the cursor
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
 
                 # Write the character AT the cursor
                 text = charset[-1 + min(step, len(charset))]
@@ -194,13 +192,13 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.purple_color)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.PURPLE)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
                 for x in charset[94:]:
                     text = text.replace(x, ".")
-                tm.tft.write(pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
+                tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.tracklist_color)
 
                 # print(f"step is {step}. Text is {text}")
             time.sleep(0.2)
@@ -213,7 +211,7 @@ def select_chars(message, message2="", already=None):
                 # print(f"step is now {step}. Choice: {choice}")
                 selected = selected + choice
             tm.clear_bbox(selected_bbox)
-            tm.tft.write(pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.purple_color)
+            tm.tft.write(tm.pfont_small, selected, selected_bbox.x0, selected_bbox.y0, tm.PURPLE)
         if singleLetter:
             if stopped:
                 selected = selected + STOP_CHAR
@@ -223,8 +221,13 @@ def select_chars(message, message2="", already=None):
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
-    tm.tft.write(pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    tm.tft.write(pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.purple_color)
+    tm.label_soft_knobs("-", "-", "-")
+    # tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
+    # tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
+    tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
+    tm.write(
+        selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
+    )
     time.sleep(0.3)
     return selected
 
@@ -469,6 +472,23 @@ def mark_partition():
     current_partition.mark_app_valid_cancel_rollback()
 
 
+def remove_common_start(strings, word_level=True):
+    # Strip out characters at the beginning of each string in the list.
+    # eg. ['Track 1: Your Song', 'Track 2: Song for You'] -> ['1: Your Song', '2: Song for You']
+    if len(strings) < 2:
+        return strings
+    if word_level:
+        strings = [string.split(" ") for string in strings]
+    minlen = min([len(x) for x in strings])
+    for i in range(minlen):
+        if len({string[i] for string in strings}) > 1:
+            break
+    if word_level:
+        return [" ".join(string[i:]) for string in strings]
+    else:
+        return [string[i:] for string in strings]
+
+
 def capitalize(string):
     if len(string) == 0:
         return string
@@ -539,7 +559,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "datpiff", "78rpm"]
+KNOWN_APPS = ["livemusic", "78rpm"]  # "datpiff" removed
 
 
 def set_main_app(main_app):
@@ -664,7 +684,7 @@ def get_wifi_cred(wifi):
     print(f"get_wifi_cred. Choices are {choices}")
     choice = select_option("Select Wifi", choices)
     if choice == "Hidden WiFi":
-        choice = select_chars(f"Input WiFi Name\n(Day,Year), Select\n ", "Stop to End")
+        choice = select_chars(f"Input WiFi Name (Day,Year), Select", "Stop to End")
     elif choice == "Rescan WiFi":
         print("Chose to rescan wifi")
         return get_wifi_cred(wifi)
@@ -680,7 +700,8 @@ def get_wifi_cred(wifi):
                 del wch[choice]
                 write_json(wch, WIFI_CRED_HIST_PATH)
 
-    passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
+    # passkey = select_chars(f"Input Passkey for\n{choice}\n(Day,Year), Select\n ", "Stop to End")
+    passkey = select_chars(f"Input Passkey for {choice} (Day,Year), Select.", "Stop to End")
     return {"name": choice, "passkey": passkey}
 
 
@@ -719,15 +740,16 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         reset()
 
     if not hidden:
-        tm.write("Connecting..", color=tm.yellow_color)
-        tm.write("Powered by archive.org and phish.in", 0, 23, tm.pfont_med, tm.purple_color, 23, clear=False, show_end=-3)
+        tm.write("Connecting..", color=tm.YELLOW)
+        text_height = tm.pfont_med.HEIGHT
+        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, False, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        tm.write(f"{uversion}", y=110, color=tm.WHITE, font=pfont_small, clear=False)
+        tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", y=93, color=tm.WHITE, font=pfont_small, clear=False)
+        tm.write(f"{software_version} {dev_flag}", y=text_height * 5, color=tm.WHITE, font=tm.pfont_small, clear=False)
 
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
@@ -758,7 +780,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=pfont_small)
+        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=tm.pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)
@@ -806,31 +828,6 @@ def load_livemusic_state(state_path):
     return state
 
 
-def load_datpiff_state(state_path):
-    state = {}
-    if path_exists(state_path):
-        state = read_json(state_path)
-        artist_list = state.get("artist_list", ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"])
-        selected_tape = state.get("selected_tape", {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"})
-        artist_ind_range = state.get("artist_ind_range", {})
-        state = {
-            "artist_list": artist_list,
-            "selected_tape": selected_tape,
-            "artist_ind_range": artist_ind_range,
-        }
-    else:
-        artist_list = ["2pac", "50 cent", "chief keef", "drake", "eminem", "jay-z", "lil wayne"]
-        selected_tape = {"artist": "eminem", "title": "2", "identifier": "datpiff-mixtape-m1b32d4c"}
-        artist_ind_range = {}
-        state = {
-            "artist_list": artist_list,
-            "selected_tape": selected_tape,
-            "artist_ind_range": artist_ind_range,
-        }
-        write_json(state, state_path)
-    return state
-
-
 def load_78rpm_state(state_path):
     state = {}
     if path_exists(state_path):
@@ -848,14 +845,39 @@ def load_78rpm_state(state_path):
     return state
 
 
+def load_classical_state(state_path):
+    state = {}
+    if path_exists(state_path):
+        state = read_json(state_path)
+        artist_list = state.get("artist_list", ["GREATS"])
+        selected_tape = state.get("selected_tape", {})
+        access_token = state.get("access_token", "")
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+            "access_token": access_token,
+        }
+    else:
+        artist_list = ["GREATS"]
+        selected_tape = {}
+        access_token = ""
+        state = {
+            "artist_list": artist_list,
+            "selected_tape": selected_tape,
+            "access_token": access_token,
+        }
+        write_json(state, state_path)
+    return state
+
+
 def load_state(app="livemusic"):
     state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
     if app == "livemusic":
         return load_livemusic_state(state_path)
-    elif app == "datpiff":
-        return load_datpiff_state(state_path)
     elif app == "78rpm":
         return load_78rpm_state(state_path)
+    elif app == "classical":
+        return load_classical_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
 

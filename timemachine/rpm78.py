@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# Display driver: https://github.com/russhughes/st7789_mpy
 import gc
 import re
 import sys
@@ -24,7 +23,6 @@ import time
 from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
-import fonts.date_font as date_font
 import fonts.DejaVu_33 as large_font
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
@@ -79,7 +77,7 @@ def select_date_range(date_range, N_to_select=60):
         bottom_bbox.x0,
         bottom_bbox.y0,
         pfont_small,
-        tm.purple_color,
+        tm.PURPLE,
         clear=0,
         show_end=-2,
     )
@@ -121,7 +119,7 @@ def get_urls_for_ids(tape_ids):
     artists = []
     tm.clear_bbox(bottom_bbox)
     tm.clear_bbox(playpause_bbox)
-    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.purple_color, clear=0, show_end=1)
+    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
@@ -199,7 +197,7 @@ def main_loop(player, state):
     if date_range[1] > date_range[0]:
         date_range_msg += f"-{date_range[1]%100:02d}"
     tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font, clear=True)
-    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.yellow_color, font=pfont_small, clear=False)
+    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med, clear=False)
     poll_count = 0
     while True:
@@ -306,7 +304,7 @@ def main_loop(player, state):
             pts = player.track_status()
             if pts["current_track"] == 0:
                 tm.clear_bbox(bottom_bbox)
-                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.purple_color, clear=0)
+                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 dates = tape_dates[:5]
                 player.set_playlist(tracklist, urls)
@@ -454,7 +452,7 @@ def update_staged_date_range(staged_date_range, player):
 def display_artist(artist, date=""):
     artist = utils.capitalize(artist.lower()).strip()
     artist = "Unknown" if len(artist) == 0 else artist
-    text_height = 15
+    text_height = tm.date_font.HEIGHT  # Was 15
     max_lines = 3
     artist_msg = tm.add_line_breaks(artist, 0, pfont_small, -max_lines, indent=1)
     n_lines = len(artist_msg.split("\n"))
@@ -466,8 +464,8 @@ def display_artist(artist, date=""):
     tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
 
     bottom_y0 = y0 + (text_height * max_lines) + 2
-    date_msg = tm.write(f"{date}", 20, bottom_y0, date_font, tm.selected_date_color, text_height, 0)
-    msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, text_height, 0, -max_lines, indent=1)
+    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color, 0)
+    msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, 0, -max_lines, indent=1)
     print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg
 
@@ -484,7 +482,7 @@ def display_tracks(*track_names):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
-    text_height = 17
+    text_height = pfont_small.HEIGHT  # was 17
     while (lines_written < max_lines) and i < max_tracknames:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
@@ -493,7 +491,7 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = bottom_bbox.y0 + 2 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, text_height, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, 0, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
@@ -525,6 +523,6 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.yellow_color, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1
