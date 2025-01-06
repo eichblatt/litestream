@@ -55,6 +55,7 @@ def select_option(message, choices):
     tm.y._range_mode = tm.y.RANGE_WRAP
     tm.d._range_mode = tm.d.RANGE_WRAP
 
+    tm.label_soft_knobs("", "", "Next/Prev")
     step = step_old = 0
     text_height = tm.pfont_small.HEIGHT  # was 17
     choice = ""
@@ -103,6 +104,7 @@ def select_chars(message, message2="", already=None):
     tm.y._value = int((tm.y._min_val + tm.y._max_val) / 2)
     tm.d._value = int((tm.d._min_val + tm.d._max_val) / 2)
 
+    tm.label_soft_knobs("", "Jump 10", "Next/Prev")
     step = step_old = 0
     text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
@@ -219,6 +221,7 @@ def select_chars(message, message2="", already=None):
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
     tm.clear_screen()
+    tm.label_soft_knobs("-", "-", "-")
     # tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
     # tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
     tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
@@ -227,23 +230,6 @@ def select_chars(message, message2="", already=None):
     )
     time.sleep(0.3)
     return selected
-
-
-def label_soft_knobs(left, middle, right):
-    print("labelling soft knobs")
-    left = f"  {left}  "
-    middle = f"  {middle}  "
-    right = f"  {right}  "
-    font = tm.pfont_tiny
-    bg = tm.YELLOW
-    fg = tm.BLACK
-    widths = [tm.tft.write_len(font, x) for x in [left, middle, right]]
-    if sum(widths) > tm.SCREEN_WIDTH:
-        raise NotImplementedError("Strings are too wide, Bailing")
-    tm.write(left, 0, tm.SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False)
-    tm.write(middle, int(0.5 * tm.SCREEN_WIDTH - 0.5 * widths[1]), tm.SCREEN_VPARTS[0], font, fg, False, background=bg)
-    tm.write(right, tm.SCREEN_WIDTH - widths[2], tm.SCREEN_VPARTS[0], font, fg, False, background=bg)
-    return
 
 
 # OS Utils

@@ -218,6 +218,26 @@ knob_sense = get_knob_sense()
 setup_knobs(knob_sense)
 
 
+def label_soft_knobs(left, center, right):
+    if len(SCREEN_VPARTS) < 2:
+        return
+    print("labelling soft knobs")
+    left = f"  {left}  "
+    center = f"  {center}  "
+    right = f"  {right}  "
+    font = pfont_tiny
+    bg = YELLOW
+    fg = BLACK
+    widths = [tft.write_len(font, x) for x in [left, center, right]]
+    if sum(widths) > SCREEN_WIDTH:
+        raise NotImplementedError("Strings are too wide, Bailing")
+    clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
+    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False)
+    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, False, background=bg)
+    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, False, background=bg)
+    return
+
+
 # ------------------------------------------------ areas
 class Bbox:
     """Bounding Box -- Initialize with corners, x0, y0, x1, y1."""
@@ -330,7 +350,7 @@ def calibrate_knobs():
     print(f"knob_sense before is {knob_sense}")
     change = 0
     text_height = pfont_med.HEIGHT
-    for knob, name, bit in zip([m, d, y], ["Month", "Day", "Year"], (0, 1, 2)):
+    for knob, name, bit in zip([m, d, y], ["Left", "Center", "Right"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         write("Rotate")
@@ -356,6 +376,7 @@ def calibrate_knobs():
 
 def calibrate_screen(force=False):
     print("Running screen calibration")
+    label_soft_knobs("-", "-", "-")
     screen_type = get_int_from_file(SCREEN_TYPE_PATH, default_val=None, max_val=3)
     if (screen_type is not None) and not force:
         tft.madctl(0x60 if screen_type < 2 else 0xE8)
@@ -402,8 +423,9 @@ def calibrate_screen(force=False):
 # ---------------------------------------- utilities
 def self_test():
     print("Running self_test")
+    label_soft_knobs("Left", "Center", "Right")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
-    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Month", "Day", "Year"]
+    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left", "Center", "Right"]
     for button, name in zip(buttons, button_names):
         write("Press")
         write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False)
