@@ -83,6 +83,7 @@ if screen_type < 2:
     SCREEN_DRIVER = "st7789"
     SCREEN_HEIGHT = 128
     SCREEN_WIDTH = 160
+    SCREEN_VPARTS = (SCREEN_HEIGHT,)
     import fonts.NotoSans_18 as pfont_small
     import fonts.NotoSans_24 as pfont_med
     import fonts.NotoSans_32 as pfont_large
@@ -90,13 +91,16 @@ if screen_type < 2:
     import fonts.date_font as date_font
 elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
-    SCREEN_HEIGHT = 240
-    SCREEN_WIDTH = 320
+    import fonts.NotoSans_18 as pfont_tiny
     import fonts.NotoSans_24 as pfont_small
     import fonts.NotoSans_48 as pfont_med
     import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
+
+    SCREEN_HEIGHT = 240 - pfont_tiny.HEIGHT
+    SCREEN_WIDTH = 320
+    SCREEN_VPARTS = (SCREEN_HEIGHT, pfont_tiny.HEIGHT)
 
     # import fonts.NotoSans_24 as pfont_med
     # import fonts.NotoSans_18 as pfont_small
@@ -118,7 +122,7 @@ def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
 
     return st7789.ST7789(
         screen_spi,
-        SCREEN_HEIGHT,
+        sum(SCREEN_VPARTS),
         SCREEN_WIDTH,
         reset=reset,
         cs=cs,
@@ -467,13 +471,12 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, indent=0):
+def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, indent=0, background=0):
     # write the msg starting at x,y in font with color. Clear entire screen if clear==True.
     # show_end: 0 - display as much as possible in 1 line.
     # show_end: +n - break the text up into as many as n lines.
     # show_end: -n - break the text up on *word boundaries* in as many as n lines.
 
-    text_height = font.HEIGHT
     if clear:
         clear_screen()
     if abs(show_end) > 1:
@@ -482,7 +485,7 @@ def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, in
     for i, line in enumerate(text):
         if show_end == 1:
             line = trim_string_middle(line, x, font)
-        tft.write(font, line, x, y + (i * text_height), color)
+        tft.write(font, line, x, y + (i * font.HEIGHT), color, background)
     return msg
 
 

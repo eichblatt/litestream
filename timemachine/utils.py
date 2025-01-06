@@ -229,6 +229,23 @@ def select_chars(message, message2="", already=None):
     return selected
 
 
+def label_soft_knobs(left, middle, right):
+    print("labelling soft knobs")
+    left = f"  {left}  "
+    middle = f"  {middle}  "
+    right = f"  {right}  "
+    font = tm.pfont_tiny
+    bg = tm.YELLOW
+    fg = tm.BLACK
+    widths = [tm.tft.write_len(font, x) for x in [left, middle, right]]
+    if sum(widths) > tm.SCREEN_WIDTH:
+        raise NotImplementedError("Strings are too wide, Bailing")
+    tm.write(left, 0, tm.SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False)
+    tm.write(middle, int(0.5 * tm.SCREEN_WIDTH - 0.5 * widths[1]), tm.SCREEN_VPARTS[0], font, fg, False, background=bg)
+    tm.write(right, tm.SCREEN_WIDTH - widths[2], tm.SCREEN_VPARTS[0], font, fg, False, background=bg)
+    return
+
+
 # OS Utils
 ################################################################################################################# OS-related utils
 #

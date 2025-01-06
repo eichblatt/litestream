@@ -269,6 +269,11 @@ def main_loop(player, coll_dict, state):
     valid_dates = sorted(list(valid_dates))
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
+    utils.label_soft_knobs("Month", "Day", "Year")
+    # tm.write(" Month ", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
+    # tm.write(" Day   ", int(tm.SCREEN_WIDTH * 0.4), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
+    # tm.write(" Year  ", int(tm.SCREEN_WIDTH * 0.8), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
+    # tm.write("Month             Day               Year", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
     poll_count = 0
     while True:
         nshows = 0
