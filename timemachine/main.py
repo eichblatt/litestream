@@ -85,7 +85,7 @@ def test_update():
 
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
-    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_large, tm.YELLOW, show_end=-3, clear=False)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3, clear=False)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
