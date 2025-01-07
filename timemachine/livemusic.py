@@ -59,7 +59,7 @@ artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_font.HEIGHT)
 ycursor = tm.SCREEN_HEIGHT - date_font.HEIGHT
-selected_date_bbox = tm.Bbox(0.095 * tm.SCREEN_WIDTH, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 
 
@@ -188,7 +188,8 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     update_venue(selected_vcs)
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}.")
-    tm.write(selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0, date_font, clear=False)
+    x0 = (tm.SCREEN_WIDTH - tm.tft.write_len(date_font, "01-01-2000")) // 2
+    tm.write(selected_date_str, x0, selected_date_bbox.y0, date_font, clear=False)
     return selected_vcs, state
 
 
