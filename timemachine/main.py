@@ -252,6 +252,7 @@ def update_code():
         print("Error -- not connected to wifi")
         return
     tm.clear_screen()
+    tm.label_soft_knobs("-", "-", "-")
     tm.write("Updating", 0, 40, tm.pfont_med, tm.YELLOW)
     tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
 
