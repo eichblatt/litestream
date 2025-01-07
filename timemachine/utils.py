@@ -845,7 +845,7 @@ def load_78rpm_state(state_path):
     return state
 
 
-def load_classical_state(state_path):
+def load_classical_genres_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
@@ -876,8 +876,8 @@ def load_state(app="livemusic"):
         return load_livemusic_state(state_path)
     elif app == "78rpm":
         return load_78rpm_state(state_path)
-    elif app == "classical":
-        return load_classical_state(state_path)
+    elif app == "classical_genres":
+        return load_classical_genres_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app}")
 
