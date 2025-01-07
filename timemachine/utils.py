@@ -654,14 +654,19 @@ def get_tape_id(app="livemusic"):
     return load_state(app)["selected_tape_id"]
 
 
-def get_collection_list():
-    return load_state()["collection_list"]
+def get_collection_list(app="livemusic"):
+    state = load_state(app)
+    coll_list = state.get("collection_list", state.get("artist_list", []))
+    return coll_list
 
 
-def set_collection_list(collection_list):
-    state = load_state()
-    state["collection_list"] = collection_list
-    save_state(state)
+def set_collection_list(collection_list, app="livemusic"):
+    state = load_state(app)
+    if "artist_list" in state.keys():
+        state["artist_list"] = collection_list
+    else:
+        state["collection_list"] = collection_list
+    save_state(state, app)
 
 
 # wifi

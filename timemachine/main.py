@@ -31,12 +31,9 @@ from rotary_irq_esp import RotaryIRQ
 import mip
 import network
 
+import archive_utils
 import board as tm
 import utils
-
-API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
-CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-MAX_COLLECTIONS = 35
 
 
 def factory_reset():
@@ -58,7 +55,7 @@ def factory_reset():
 def configure_wifi():
     print("Configuring Wifi")
     choices = ["Remove Wifi", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
+    choice = utils.select_option("Select", choices)
     print(f"configure_wifi: chose {choice}")
     if choice == "Remove Wifi":
         utils.remove_wifi_cred()
@@ -110,68 +107,37 @@ def test_update():
     return update_code
 
 
-def _collection_names():
-    # Note: This function appears to only work right after a reboot.
-    tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
-    all_collection_names_dict = {}
-    api_request = f"{API}/all_collection_names/"
-    cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
-    all_collection_names_dict = {"Phishin Archive": ["Phish"]}
-    resp = None
-    status = 0
-    itries = 0
-    try:
-        while (status != 200) and (itries < 3):
-            if itries > 0:
-                time.sleep(2)
-            itries = itries + 1
-            gc.collect()
-            resp = requests.get(cloud_url)
-            utils.print_log(f"Trying to download collections names from {cloud_url}")
-            status = resp.status_code
-            if status == 200:
-                utils.print_log("Collection Names successfully downloaded")
-                colls = resp.json()["items"]
-                all_collection_names_dict["Internet Archive"] = colls
-    #        else:
-    #            print(f"API request is {api_request}")
-    #            resp = requests.get(api_request).json()
-    #            all_collection_names_dict = resp["collection_names"]
-    except Exception as e:
-        utils.print_log(f"Exception when loading collnames {e}")
-    finally:
-        if resp is not None:
-            resp.close()
-    return all_collection_names_dict
-
-
 def configure_collections():
     main_app = utils.get_main_app()
     choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
+    if main_app in ["classical_genres"]:
+        choices = ["Add Artist", "Remove Artist", "Greats Only", "Cancel"]
+
+    choice = utils.select_option("Select Option", choices)
     print(f"configure_collection: chose to {choice}")
 
     if choice == "Cancel":
         return
 
-    collection_list = utils.get_collection_list()
+    collection_list = utils.get_collection_list(main_app)
 
     print(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
         keepGoing = True
         reset_required = False
         all_collections = []
-        all_collections_dict = _collection_names()
+        tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
+        all_collections_dict = archive_utils.collection_names(main_app)
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
 
         while keepGoing:
-            coll_to_add = add_collection(all_collections, utils.get_collection_list())
+            coll_to_add = add_collection(all_collections, utils.get_collection_list(main_app))
             if coll_to_add != "_CANCEL":
                 collection_list.append(coll_to_add)
                 reset_required = True
             choices = ["Add Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
+            choice2 = utils.select_option("Select", choices)
             if choice2 == "Finished":
                 keepGoing = False
 
@@ -182,10 +148,10 @@ def configure_collections():
     elif choice == "Remove Artist":
         keepGoing = True
         while keepGoing & (len(collection_list) > 0):
-            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
+            coll_to_remove = utils.select_option("Select", collection_list + ["_CANCEL"])
             collection_list = [x for x in collection_list if not x == coll_to_remove]
             choices = ["Remove Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
+            choice2 = utils.select_option("Select", choices)
             if choice2 == "Finished":
                 keepGoing = False
             utils.set_collection_list(collection_list)
@@ -198,7 +164,7 @@ def configure_collections():
         utils.reset()
     elif choice == "Other":
         other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
-        other_choice = utils.select_option("Year/Select", other_choices)
+        other_choice = utils.select_option("Select", other_choices)
         if other_choice == "Gizzard Only":
             utils.set_collection_list(["KingGizzardAndTheLizardWizard"])
             utils.reset()

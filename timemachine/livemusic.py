@@ -39,10 +39,9 @@ import fonts.NotoSans_24 as pfont_med
 import fonts.date_font as date_font
 
 
-# API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-# API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
+# API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
