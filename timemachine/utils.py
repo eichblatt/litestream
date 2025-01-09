@@ -68,6 +68,7 @@ def select_option(message, choices):
     select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
+        y0 = select_bbox.y0
         if (step != step_old) or first_time:
             i = j = 0
             first_time = False
@@ -76,16 +77,18 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
-                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, clear=False, show_end=True)
+                y0 += text_height
 
             text = ">" + choices[step]
-            xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
-            tm.write(text, xval, yval, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
+            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
+            y0 += text_height
 
-            for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
-                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
+            for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
+                if y0 > (tm.SCREEN_HEIGHT - text_height):
+                    continue
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, clear=False, show_end=True)
+                y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -559,26 +562,33 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical_genres"]  # "datpiff" removed
 
 
-def set_main_app(main_app):
+def set_main_app(main_app_name):
     try:
-        if not main_app in KNOWN_APPS:
-            main_app = "livemusic"
-        main_app = write_json(main_app, MAIN_APP_PATH)
+        if not main_app_name in KNOWN_APPS:
+            main_app_name = "livemusic"
+        main_app_name = write_json(main_app_name, MAIN_APP_PATH)
     except Exception as e:
         pass
+    main_app = get_main_app()
     return main_app
 
 
 def get_main_app():
-    main_app = "livemusic"
+    main_app_name = "livemusic"
     try:
         if path_exists(MAIN_APP_PATH):
-            main_app = read_json(MAIN_APP_PATH)
-        if not main_app in KNOWN_APPS:
-            main_app = "livemusic"
+            main_app_name = read_json(MAIN_APP_PATH)
+        if not main_app_name in KNOWN_APPS:
+            main_app_name = "livemusic"
+        if main_app_name == "livemusic":
+            import livemusic as main_app
+        elif main_app_name == "78rpm":
+            import rpm78 as main_app
+        elif main_app_name == "classical_genres":
+            import classical_genres as main_app
     except Exception as e:
         pass
     return main_app
@@ -650,23 +660,23 @@ def update_firmware():
     return 0
 
 
-def get_tape_id(app="livemusic"):
-    return load_state(app)["selected_tape_id"]
+def get_tape_id(app_name="livemusic"):
+    return load_state(app_name)["selected_tape_id"]
 
 
-def get_collection_list(app="livemusic"):
+def get_collection_list(app):
     state = load_state(app)
     coll_list = state.get("collection_list", state.get("artist_list", []))
     return coll_list
 
 
-def set_collection_list(collection_list, app="livemusic"):
-    state = load_state(app)
+def set_collection_list(collection_list, app_name):
+    state = load_state(app_name)
     if "artist_list" in state.keys():
         state["artist_list"] = collection_list
     else:
         state["collection_list"] = collection_list
-    save_state(state, app)
+    save_state(state, app_name)
 
 
 # wifi
@@ -745,17 +755,18 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         reset()
 
     if not hidden:
-        tm.write("Connecting..", color=tm.YELLOW)
-        text_height = tm.pfont_med.HEIGHT
-        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, False, -3)
+        tm.write("Connecting..", font=tm.pfont_small, color=tm.YELLOW)
+        y0 = tm.pfont_small.HEIGHT
+        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, False, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)
+        y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
+        tm.write(f"{uversion}", 0, y0, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
+        y0 = y0 + tm.pfont_small.HEIGHT
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", y=text_height * 5, color=tm.WHITE, font=tm.pfont_small, clear=False)
-
+        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:
@@ -797,8 +808,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 #
 
 
-def save_state(state, app="livemusic"):
-    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+def save_state(state, app_name="livemusic"):
+    state_path = STATE_PATH.format(app_string=f"_{app_name}" if app_name != "livemusic" else "")
     print(f"writing {state} to {state_path}")
     write_json(state, state_path)
     return
@@ -875,16 +886,19 @@ def load_classical_genres_state(state_path):
     return state
 
 
-def load_state(app="livemusic"):
-    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
-    if app == "livemusic":
+def load_state(app=None):
+    if app is None:
+        import livemusic as app
+    app_name = app if isinstance(app, str) else app.__name__
+    state_path = STATE_PATH.format(app_string=f"_{app_name}" if app_name != "livemusic" else "")
+    if app_name == "livemusic":
         return load_livemusic_state(state_path)
-    elif app == "78rpm":
+    elif app_name == "78rpm":
         return load_78rpm_state(state_path)
-    elif app == "classical_genres":
+    elif app_name == "classical_genres":
         return load_classical_genres_state(state_path)
     else:
-        raise NotImplementedError("Unknown app {app}")
+        raise NotImplementedError("Unknown app {app_name}")
 
 
 if not isdir("/config"):

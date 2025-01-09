@@ -241,18 +241,7 @@ def get_request(url, outpath="/tmp.json"):
     return metadata
 
 
-def collection_names(app="livemusic"):
-    if app in ["livemusic", "78rpm"]:
-        return collection_names_livemusic()
-    elif app in ["classical_genres"]:
-        return collection_names_classical()
-
-
-def collection_names_classical():
-    raise NotImplementedError("In progress")
-
-
-def collection_names_livemusic():
+def collection_names():
     # Note: This function appears to only work right after a reboot.
     all_collection_names_dict = {}
     api_request = f"{CLOUD_API}/all_collection_names/"

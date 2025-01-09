@@ -698,6 +698,11 @@ def refresh_meta_needed():
         return False
 
 
+def get_collection_names_dict():
+    all_collections_dict = archive_utils.collection_names()
+    return all_collections_dict
+
+
 def get_coll_dict(collection_list):
     global COLLS_LOADED_TIME
     coll_dict = OrderedDict({})

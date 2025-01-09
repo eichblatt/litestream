@@ -109,8 +109,9 @@ def test_update():
 
 def configure_collections():
     main_app = utils.get_main_app()
+    main_app_name = main_app.__name__
     choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
-    if main_app in ["classical_genres"]:
+    if main_app_name in ["classical_genres"]:
         choices = ["Add Artist", "Remove Artist", "Greats Only", "Cancel"]
 
     choice = utils.select_option("Select Option", choices)
@@ -127,7 +128,7 @@ def configure_collections():
         reset_required = False
         all_collections = []
         tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
-        all_collections_dict = archive_utils.collection_names(main_app)
+        all_collections_dict = main_app.get_collection_names_dict()
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
 
@@ -141,7 +142,7 @@ def configure_collections():
             if choice2 == "Finished":
                 keepGoing = False
 
-            utils.set_collection_list(collection_list)
+            utils.set_collection_list(collection_list, main_app_name)
         if reset_required:
             utils.reset()
 
@@ -154,25 +155,25 @@ def configure_collections():
             choice2 = utils.select_option("Select", choices)
             if choice2 == "Finished":
                 keepGoing = False
-            utils.set_collection_list(collection_list)
+            utils.set_collection_list(collection_list, main_app_name)
 
     elif choice == "Phish Only":
-        utils.set_collection_list(["Phish"])
+        utils.set_collection_list(["Phish"], main_app_name)
         utils.reset()
     elif choice == "Dead Only":
-        utils.set_collection_list(["GratefulDead"])
+        utils.set_collection_list(["GratefulDead"], main_app_name)
         utils.reset()
     elif choice == "Other":
         other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
         other_choice = utils.select_option("Select", other_choices)
         if other_choice == "Gizzard Only":
-            utils.set_collection_list(["KingGizzardAndTheLizardWizard"])
+            utils.set_collection_list(["KingGizzardAndTheLizardWizard"], main_app_name)
             utils.reset()
         if other_choice == "Goose Only":
-            utils.set_collection_list(["GooseBand"])
+            utils.set_collection_list(["GooseBand"], main_app_name)
             utils.reset()
         elif other_choice == "Dead + Phish":
-            utils.set_collection_list(["GratefulDead", "Phish"])
+            utils.set_collection_list(["GratefulDead", "Phish"], main_app_name)
             utils.reset()
         else:
             pass
@@ -263,11 +264,11 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "78rpm"]  # "datpiff" removed
+    app_choices = ["no change", "livemusic", "78rpm", "classical_genres"]  # "datpiff" removed
     main_app = utils.get_main_app()
-    new_main_app = utils.select_option(f"Choose App\nNow:{main_app}", app_choices)
-    if new_main_app != "no change":
-        main_app = utils.set_main_app(new_main_app)
+    new_main_app_name = utils.select_option(f"Choose App\nNow:{main_app.__name__}", app_choices)
+    if new_main_app_name != "no change":
+        main_app = utils.set_main_app(new_main_app_name)
     return main_app
 
 
@@ -346,7 +347,7 @@ def basic_main():
     ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
@@ -366,27 +367,15 @@ def basic_main():
 
 
 def run_livemusic():
-    main_app = "livemusic"
     while True:
         try:
             if utils.is_dev_box():
                 main_app = utils.get_main_app()
-
-            if main_app == "datpiff":
-                main_app = "livemusic"
-
-            if main_app == "livemusic":
-                import livemusic
-
-                utils.mark_partition()  # If we make it this far, the firmware is good.
-                livemusic.run()
-            elif main_app == "78rpm":
-                import rpm78
-
-                utils.mark_partition()
-                rpm78.run()
             else:
-                raise NotImplementedError(f"Unknown app {main_app}")
+                import livemusic as main_app
+
+            utils.mark_partition()  # If we make it this far, the firmware is good.
+            main_app.run()
         except Exception as e:
             print(f"Exception in main. {e} -- reconfiguring")
         finally:
