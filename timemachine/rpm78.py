@@ -41,6 +41,7 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
+CONFIG_CHOICES = []
 
 stage_date_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, 27)
 playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 27)

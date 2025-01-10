@@ -46,6 +46,8 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 COLLS_LOADED_TIME = None
+CONFIG_CHOICES = ["Artists"]
+
 
 # --------------------------------------------------------------- Bboxes
 ycursor = 0
@@ -60,6 +62,69 @@ tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_fo
 ycursor = tm.SCREEN_HEIGHT - date_font.HEIGHT
 selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+
+
+def get_collection_list():
+    state = utils.load_state()
+    coll_list = state.get("collection_list", ["GratefulDead"])
+    return coll_list
+
+
+def set_collection_list(collection_list):
+    state = utils.load_state()
+    state["collection_list"] = collection_list
+    utils.save_state(state)
+
+
+def configure(choice):
+    assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
+
+    if choice == "Artists":
+        return configure_artists()
+    return
+
+
+def configure_artists():
+    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
+    choice = utils.select_option("Select Option", choices)
+    print(f"configure_collection: chose to {choice}")
+    if choice == "Cancel":
+        return
+
+    all_collections = []
+    collection_list = get_collection_list()
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Artist":
+        all_collections_dict = get_collection_names_dict()
+        for archive in all_collections_dict.keys():
+            all_collections = all_collections + all_collections_dict[archive]
+        utils.add_list_element("Artist", all_collections, get_collection_list, set_collection_list)
+
+    elif choice == "Remove Artist":
+        utils.remove_list_element(get_collection_list, set_collection_list)
+
+    elif choice == "Phish Only":
+        set_collection_list(["Phish"])
+        utils.reset()
+    elif choice == "Dead Only":
+        set_collection_list(["GratefulDead"])
+        utils.reset()
+    elif choice == "Other":
+        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
+        other_choice = utils.select_option("Select", other_choices)
+        if other_choice == "Gizzard Only":
+            set_collection_list(["KingGizzardAndTheLizardWizard"])
+            utils.reset()
+        if other_choice == "Goose Only":
+            set_collection_list(["GooseBand"])
+            utils.reset()
+        elif other_choice == "Dead + Phish":
+            set_collection_list(["GratefulDead", "Phish"])
+            utils.reset()
+        else:
+            pass
+    return
 
 
 def set_date(date):

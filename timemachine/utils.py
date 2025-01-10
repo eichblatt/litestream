@@ -223,16 +223,80 @@ def select_chars(message, message2="", already=None):
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
-    tm.clear_screen()
+    if not already:
+        tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
-    # tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    # tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
-    tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
-    tm.write(
-        selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
-    )
-    time.sleep(0.3)
+    # tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
+    # tm.write(
+    #    selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
+    # )
+    time.sleep(0.2)
     return selected
+
+
+def search_list(message, full_set, current_set, colls_fn=None):
+    matching = [x for x in full_set if not x in current_set]
+    n_matching = len(matching)
+
+    selected_chars = ""
+    subset_match = True
+    while n_matching > 25:
+        m2 = f"{n_matching} Matching\n(STOP to end)"
+        print(m2)
+        selected_chars = select_chars(f"Spell {message}", message2=m2, already=selected_chars)
+        if selected_chars.endswith(STOP_CHAR):
+            subset_match = False
+            print(f"raw selected {selected_chars}")
+            selected_chars = selected_chars.replace(STOP_CHAR, "")
+        selected_chars = selected_chars.lower().replace(" ", "")
+        print(f"selected {selected_chars}")
+        if colls_fn is not None:
+            matching = distinct(matching + colls_fn(selected_chars))
+        if subset_match:
+            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
+        else:
+            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
+        n_matching = len(matching)
+
+    print(f"Matching is {matching}")
+    choice = "_CANCEL"
+    if n_matching > 0:
+        choice = select_option("Choose artist to add", matching + ["_CANCEL"])
+
+    return choice
+
+
+def add_list_element(message, full_set, callback_get, callback_set):
+    keepGoing = True
+    reset_required = False
+
+    while keepGoing:
+        collection_list = callback_get()
+        coll_to_add = search_list(message, full_set, collection_list)
+        if coll_to_add != "_CANCEL":
+            collection_list.append(coll_to_add)
+            reset_required = True
+        choices = ["Add Another", "Finished"]
+        choice2 = select_option("Select", choices)
+        if choice2 == "Finished":
+            keepGoing = False
+
+        callback_set(collection_list)
+    if reset_required:
+        reset()
+
+
+def remove_list_element(callback_get, callback_set):
+    keepGoing = True
+    collection_list = callback_get()
+    while keepGoing & (len(collection_list) > 1):
+        coll_to_remove = select_option("Select", collection_list + ["_CANCEL"])
+        collection_list = [x for x in collection_list if not x == coll_to_remove]
+        choices = ["Remove Another", "Finished"]
+        choice2 = select_option("Select", choices)
+        if choice2 == "Finished":
+            keepGoing = False
+        callback_set(collection_list)
 
 
 # OS Utils

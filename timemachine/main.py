@@ -107,111 +107,6 @@ def test_update():
     return update_code
 
 
-def configure_collections():
-    main_app = utils.get_main_app()
-    main_app_name = main_app.__name__
-    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
-    if main_app_name in ["classical_genres"]:
-        choices = ["Add Artist", "Remove Artist", "Greats Only", "Cancel"]
-
-    choice = utils.select_option("Select Option", choices)
-    print(f"configure_collection: chose to {choice}")
-
-    if choice == "Cancel":
-        return
-
-    collection_list = utils.get_collection_list(main_app)
-
-    print(f"current collection_list is {collection_list}")
-    if choice == "Add Artist":
-        keepGoing = True
-        reset_required = False
-        all_collections = []
-        tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
-        all_collections_dict = main_app.get_collection_names_dict()
-        for archive in all_collections_dict.keys():
-            all_collections = all_collections + all_collections_dict[archive]
-
-        while keepGoing:
-            coll_to_add = add_collection(all_collections, utils.get_collection_list(main_app))
-            if coll_to_add != "_CANCEL":
-                collection_list.append(coll_to_add)
-                reset_required = True
-            choices = ["Add Another", "Finished"]
-            choice2 = utils.select_option("Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-
-            utils.set_collection_list(collection_list, main_app_name)
-        if reset_required:
-            utils.reset()
-
-    elif choice == "Remove Artist":
-        keepGoing = True
-        while keepGoing & (len(collection_list) > 1):
-            coll_to_remove = utils.select_option("Select", collection_list + ["_CANCEL"])
-            collection_list = [x for x in collection_list if not x == coll_to_remove]
-            choices = ["Remove Another", "Finished"]
-            choice2 = utils.select_option("Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-            utils.set_collection_list(collection_list, main_app_name)
-
-    elif choice == "Phish Only":
-        utils.set_collection_list(["Phish"], main_app_name)
-        utils.reset()
-    elif choice == "Dead Only":
-        utils.set_collection_list(["GratefulDead"], main_app_name)
-        utils.reset()
-    elif choice == "Other":
-        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
-        other_choice = utils.select_option("Select", other_choices)
-        if other_choice == "Gizzard Only":
-            utils.set_collection_list(["KingGizzardAndTheLizardWizard"], main_app_name)
-            utils.reset()
-        if other_choice == "Goose Only":
-            utils.set_collection_list(["GooseBand"], main_app_name)
-            utils.reset()
-        elif other_choice == "Dead + Phish":
-            utils.set_collection_list(["GratefulDead", "Phish"], main_app_name)
-            utils.reset()
-        else:
-            pass
-    return
-
-
-def add_collection(all_collections, collection_list, colls_fn=None):
-    matching = [x for x in all_collections if not x in collection_list]
-    n_matching = len(matching)
-
-    selected_chars = ""
-    subset_match = True
-    while n_matching > 25:
-        m2 = f"{n_matching} Matching\n(STOP to end)"
-        print(m2)
-        selected_chars = utils.select_chars("Spell desired Artist", message2=m2, already=selected_chars)
-        if selected_chars.endswith(utils.STOP_CHAR):
-            subset_match = False
-            print(f"raw selected {selected_chars}")
-            selected_chars = selected_chars.replace(utils.STOP_CHAR, "")
-        selected_chars = selected_chars.lower().replace(" ", "")
-        print(f"selected {selected_chars}")
-        if colls_fn is not None:
-            matching = utils.distinct(matching + colls_fn(selected_chars))
-        if subset_match:
-            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
-        else:
-            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
-        n_matching = len(matching)
-
-    print(f"Matching is {matching}")
-    choice = "_CANCEL"
-    if n_matching > 0:
-        choice = utils.select_option("Choose artist to add", matching + ["_CANCEL"])
-
-    return choice
-
-
 def update_code():
     print("Updating code")
     wifi = utils.connect_wifi()
@@ -278,8 +173,9 @@ def reconfigure():
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
-    config_choices = [
-        "Artists",
+    app = utils.get_main_app()
+    config_choices = app.CONFIG_CHOICES
+    config_choices += [
         "Update Code",
         "Exit",
         "Update Firmware",
@@ -295,8 +191,8 @@ def reconfigure():
         config_choices.append("Choose App")
     choice = utils.select_option("Config Menu", config_choices)
 
-    if choice == "Artists":
-        configure_collections()
+    if choice in app.CONFIG_CHOICES:
+        app.configure(choice)
     elif choice == "Wifi":
         wifi = configure_wifi()
     elif choice == "Calibrate Knobs":
