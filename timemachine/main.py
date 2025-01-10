@@ -148,7 +148,7 @@ def configure_collections():
 
     elif choice == "Remove Artist":
         keepGoing = True
-        while keepGoing & (len(collection_list) > 0):
+        while keepGoing & (len(collection_list) > 1):
             coll_to_remove = utils.select_option("Select", collection_list + ["_CANCEL"])
             collection_list = [x for x in collection_list if not x == coll_to_remove]
             choices = ["Remove Another", "Finished"]
