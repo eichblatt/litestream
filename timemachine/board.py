@@ -382,6 +382,7 @@ def calibrate_screen(force=False):
         tft.madctl(0x60 if screen_type < 2 else 0xE8)
         tft.offset(0, 0) if (screen_type % 2 == 0) else tft.offset(1, 2)
         return screen_type
+    screen_type = 0 if (SCREEN_WIDTH == 160) else 2  # in case of factory reset, we MUST have a screen type.
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
     tft.on()

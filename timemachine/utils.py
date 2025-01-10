@@ -500,6 +500,33 @@ def capitalize(string):
     return " ".join(Words)
 
 
+def remove_accents(string):
+    if len(string) == 0:
+        return string
+    all_accents = "".join([chr(x) for x in [225, 228, 231, 232, 233, 237, 242, 243, 255, 269, 345, 353]])
+    # all_accents = "áäçèéíòóÿčřš"
+    replacements = "aaceeiooycrs"
+    pattern = re.compile("|".join(all_accents))
+    string = pattern.sub(lambda match: dict(zip(all_accents, replacements))[match.group(0)], string)
+    return string
+
+
+def isnumeric(string):
+    pattern = r"^-?\d+(?:\.\d+)?$"
+    return re.match(pattern, string)
+
+
+def isinteger(candidate):
+    if isinstance(candidate, int):
+        return True
+    if isinstance(candidate, float) and int(candidate) == candidate:
+        return True
+    if isinstance(candidate, str):
+        pattern = r"^-?\d+?$"
+        return re.match(pattern, candidate)
+    return False
+
+
 def clear_log(outpath="/log_out.py"):
     remove_file(outpath)
 
@@ -665,8 +692,11 @@ def get_tape_id(app_name="livemusic"):
 
 
 def get_collection_list(app):
-    state = load_state(app)
-    coll_list = state.get("collection_list", state.get("artist_list", []))
+    try:
+        return app.get_collection_list()
+    except:
+        state = load_state(app)
+        coll_list = state.get("collection_list", state.get("artist_list", []))
     return coll_list
 
 
@@ -819,7 +849,7 @@ def load_livemusic_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        collection_list = state.get("collection_list", "GratefulDead")
+        collection_list = state.get("collection_list", ["GratefulDead"])
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         selected_tape_id = state.get("selected_tape_id", "unknown")
