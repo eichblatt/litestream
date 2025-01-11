@@ -235,7 +235,8 @@ def select_chars(message, message2="", already=None):
 
 
 def search_list(message, full_set, current_set, colls_fn=None):
-    matching = [x for x in full_set if not x in current_set]
+    current_set = [remove_accents(y) for y in current_set]
+    matching = [x for x in full_set if not remove_accents(x) in current_set]
     n_matching = len(matching)
 
     selected_chars = ""
@@ -253,9 +254,9 @@ def search_list(message, full_set, current_set, colls_fn=None):
         if colls_fn is not None:
             matching = distinct(matching + colls_fn(selected_chars))
         if subset_match:
-            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
+            matching = [x for x in matching if selected_chars in (remove_accents(x.lower()).replace(" ", "") + "$")]
         else:
-            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
+            matching = [x for x in matching if selected_chars == (remove_accents(x.lower()).replace(" ", ""))]
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
@@ -563,14 +564,23 @@ def capitalize(string):
     return " ".join(Words)
 
 
+ACCENT_REGEXI = [None, None]
+ACCENTS = "".join(
+    [chr(x) for x in [201, 225, 228, 231, 232, 233, 235, 237, 242, 243, 246, 252, 255, 269, 345, 353, 366, 367, 8242]]
+)
+# ACCENTS = 'ÉáäçèéëíòóöüÿčřšŮů′'
+ACCENT_DICT = dict(zip(ACCENTS, "EaaceeeiooouycrsUu'"))
+
+
 def remove_accents(string):
+    global ACCENT_REGEXI
     if len(string) == 0:
         return string
-    all_accents = "".join([chr(x) for x in [225, 228, 231, 232, 233, 237, 242, 243, 255, 269, 345, 353]])
-    # all_accents = "áäçèéíòóÿčřš"
-    replacements = "aaceeiooycrs"
-    pattern = re.compile("|".join(all_accents))
-    string = pattern.sub(lambda match: dict(zip(all_accents, replacements))[match.group(0)], string)
+    if ACCENT_REGEXI[0] is None:
+        ACCENT_REGEXI[0] = re.compile("|".join(ACCENTS[:17]))
+        ACCENT_REGEXI[1] = re.compile("|".join(ACCENTS[17:]))
+    string = ACCENT_REGEXI[0].sub(lambda match: ACCENT_DICT[match.group(0)], string)
+    string = ACCENT_REGEXI[1].sub(lambda match: ACCENT_DICT[match.group(0)], string)
     return string
 
 
