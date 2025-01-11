@@ -266,37 +266,36 @@ def search_list(message, full_set, current_set, colls_fn=None):
     return choice
 
 
-def add_list_element(message, full_set, callback_get, callback_set):
+def add_list_element(message, full_set, callback_get, callback_add):
     keepGoing = True
     reset_required = False
 
     while keepGoing:
-        collection_list = callback_get()
-        coll_to_add = search_list(message, full_set, collection_list)
-        if coll_to_add != "_CANCEL":
-            collection_list.append(coll_to_add)
+        lis = callback_get()
+        elem_to_add = search_list(message, full_set, lis)
+        if elem_to_add != "_CANCEL":
+            callback_add(elem_to_add)
             reset_required = True
         choices = ["Add Another", "Finished"]
         choice2 = select_option("Select", choices)
         if choice2 == "Finished":
             keepGoing = False
 
-        callback_set(collection_list)
     if reset_required:
         reset()
 
 
-def remove_list_element(callback_get, callback_set):
+def remove_list_element(callback_get, callback_remove):
     keepGoing = True
-    collection_list = callback_get()
-    while keepGoing & (len(collection_list) > 1):
-        coll_to_remove = select_option("Select", collection_list + ["_CANCEL"])
-        collection_list = [x for x in collection_list if not x == coll_to_remove]
+    lis = callback_get()
+    while keepGoing & (len(lis) > 1):
+        elem_to_remove = select_option("Select", lis + ["_CANCEL"])
+        lis = [x for x in lis if not x == elem_to_remove]
         choices = ["Remove Another", "Finished"]
         choice2 = select_option("Select", choices)
         if choice2 == "Finished":
             keepGoing = False
-        callback_set(collection_list)
+        callback_remove(elem_to_remove)
 
 
 # OS Utils
@@ -755,23 +754,25 @@ def get_tape_id(app_name="livemusic"):
     return load_state(app_name)["selected_tape_id"]
 
 
+"""
+These should be deleted, have been moved.
 def get_collection_list(app):
     try:
         return app.get_collection_list()
     except:
         state = load_state(app)
-        coll_list = state.get("collection_list", state.get("artist_list", []))
+        coll_list = state.get("collection_list", state.get("composer_list", []))
     return coll_list
 
 
 def set_collection_list(collection_list, app_name):
     state = load_state(app_name)
-    if "artist_list" in state.keys():
-        state["artist_list"] = collection_list
+    if "composer_list" in state.keys():
+        state["composer_list"] = collection_list
     else:
         state["collection_list"] = collection_list
     save_state(state, app_name)
-
+"""
 
 # wifi
 ####################################################################################################################### wifi
@@ -959,20 +960,20 @@ def load_classical_genres_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        artist_list = state.get("artist_list", ["GREATS"])
+        composer_list = state.get("composer_list", ["GREATS"])
         selected_tape = state.get("selected_tape", {})
         access_token = state.get("access_token", "")
         state = {
-            "artist_list": artist_list,
+            "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
         }
     else:
-        artist_list = ["GREATS"]
+        composer_list = ["GREATS"]
         selected_tape = {}
         access_token = ""
         state = {
-            "artist_list": artist_list,
+            "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
         }

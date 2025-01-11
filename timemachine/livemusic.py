@@ -70,6 +70,25 @@ def get_collection_list():
     return coll_list
 
 
+def append_to_collection_list(new_collection):
+    state = utils.load_state()
+    current_list = state.get("collection_list", ["GratefulDead"])
+    full_list = current_list + [new_collection]
+    state["collection_list"] = full_list
+    utils.save_state(state)
+
+
+def delete_from_collection_list(old_collection):
+    state = utils.load_state()
+    full_list = state.get("collection_list", ["GratefulDead"])
+    full_list = [elem for elem in full_list if elem != old_collection]
+    state["collection_list"] = full_list
+    if len(full_list) > 0:
+        utils.save_state(state)
+    else:
+        print("WARN tried to set collection list to empty. Bailing")
+
+
 def set_collection_list(collection_list):
     state = utils.load_state()
     state["collection_list"] = collection_list
@@ -99,10 +118,10 @@ def configure_artists():
         all_collections_dict = get_collection_names_dict()
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
-        utils.add_list_element("Artist", all_collections, get_collection_list, set_collection_list)
+        utils.add_list_element("Artist", all_collections, get_collection_list, append_to_collection_list)
 
     elif choice == "Remove Artist":
-        utils.remove_list_element(get_collection_list, set_collection_list)
+        utils.remove_list_element(get_collection_list, delete_from_collection_list)
 
     elif choice == "Phish Only":
         set_collection_list(["Phish"])
