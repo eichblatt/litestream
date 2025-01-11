@@ -8,8 +8,7 @@
 
 ### Making fonts with accents
 
-: (myenv)  ~/st7789_mpy ; python3 utils/font2bitmap.py -c 32-127,225,228,231,232,233,237,242,243,255,269,345,353 fonts/truetype/NotoSans-Regular.ttf 18 > NotoSans_18.py
-
+: (myenv)  ~/st7789_mpy ; python3 utils/font2bitmap.py -c 32-127,201,225,228,231,232,233,235,237,242,243,246,252,255,269,345,353,366,367,8242 fonts/truetype/NotoSans-Regular.ttf 18 > NotoSans_18.py
 Note: This is the complete list of characters in the names of Classical composers. We may need more characters at some point.
 
 ### Making the datefont
