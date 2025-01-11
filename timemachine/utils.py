@@ -668,6 +668,7 @@ def set_main_app(main_app_name):
 
 def get_main_app():
     main_app_name = "livemusic"
+    main_app = None
     try:
         if path_exists(MAIN_APP_PATH):
             main_app_name = read_json(MAIN_APP_PATH)
@@ -679,8 +680,14 @@ def get_main_app():
             import rpm78 as main_app
         elif main_app_name == "classical_genres":
             import classical_genres as main_app
+    except ImportError as e:
+        print(e)
+        import livemusic as main_app
     except Exception as e:
         pass
+    finally:
+        if main_app is None:
+            import livemusic as main_app
     return main_app
 
 
