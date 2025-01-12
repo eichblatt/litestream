@@ -662,7 +662,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm", "classical_genres"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical_std"]  # "datpiff" removed
 
 
 def set_main_app(main_app_name):
@@ -688,8 +688,8 @@ def get_main_app():
             import livemusic as main_app
         elif main_app_name == "78rpm":
             import rpm78 as main_app
-        elif main_app_name == "classical_genres":
-            import classical_genres as main_app
+        elif main_app_name == "classical_std":
+            import classical_std as main_app
     except ImportError as e:
         print(e)
         import livemusic as main_app
@@ -973,7 +973,7 @@ def load_78rpm_state(state_path):
     return state
 
 
-def load_classical_genres_state(state_path):
+def load_classical_std_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
@@ -1007,8 +1007,8 @@ def load_state(app=None):
         return load_livemusic_state(state_path)
     elif app_name == "78rpm":
         return load_78rpm_state(state_path)
-    elif app_name == "classical_genres":
-        return load_classical_genres_state(state_path)
+    elif app_name == "classical_std":
+        return load_classical_std_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app_name}")
 
