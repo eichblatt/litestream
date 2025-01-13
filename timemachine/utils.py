@@ -867,7 +867,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         tm.clear_screen()
         tm.write("Connecting..", font=tm.pfont_small, color=tm.YELLOW)
         y0 = tm.pfont_small.HEIGHT
-        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, False, -3)
+        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT

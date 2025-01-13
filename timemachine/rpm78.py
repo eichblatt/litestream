@@ -467,7 +467,7 @@ def display_artist(artist, date=""):
     tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
 
     bottom_y0 = y0 + (text_height * max_lines) + 2
-    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color, 0)
+    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color)
     msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, 0, -max_lines, indent=1)
     print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg

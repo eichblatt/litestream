@@ -631,7 +631,7 @@ def main_loop(player, coll_dict, state):
                 except KeyError:
                     tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(artist_bbox)
-                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color, False)
+                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -646,13 +646,13 @@ def short_tape_id(tape_id, max_chars=16):
 
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(venue_bbox)
-    tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, False)
+    tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
     tm.clear_bbox(nshows_bbox)
     if nshows > 1:
-        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color, False)
+        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(artist_bbox)
-        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color, False)
+        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
 
 
 def update_display(player):
@@ -688,7 +688,7 @@ def display_tracks(*track_names):
         y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, False, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
