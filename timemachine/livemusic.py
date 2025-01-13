@@ -272,7 +272,7 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}.")
     x0 = (tm.SCREEN_WIDTH - tm.tft.write_len(date_font, "01-01-2000")) // 2
-    tm.write(selected_date_str, x0, selected_date_bbox.y0, date_font, clear=False)
+    tm.write(selected_date_str, x0, selected_date_bbox.y0, date_font)
     return selected_vcs, state
 
 
@@ -455,7 +455,7 @@ def main_loop(player, coll_dict, state):
                         tape_id = short_tape_id(utils.get_tape_id())
                         print(f"tape_id is {utils.get_tape_id()}, or {tape_id}")
                         tm.clear_bbox(venue_bbox)
-                        tm.write(f"{tape_id}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+                        tm.write(f"{tape_id}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
                         software_version = utils.get_software_version()
                         dev_flag = "dev" if utils.is_dev_box() else ""
                         tm.clear_bbox(artist_bbox)
@@ -465,7 +465,6 @@ def main_loop(player, coll_dict, state):
                             artist_bbox.y0,
                             pfont_small,
                             tm.stage_date_color,
-                            clear=False,
                             show_end=1,
                         )
                 elif (key_date in valid_dates) and tm.power():
@@ -502,7 +501,7 @@ def main_loop(player, coll_dict, state):
                 tm.clear_bbox(venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
-                tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+                tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -532,7 +531,7 @@ def main_loop(player, coll_dict, state):
                 print("Power UP -- back to reconfigure")
                 tm.label_soft_knobs("-", "-", "-")
                 tm.clear_screen()
-                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, clear=True, show_end=-3)
+                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, show_end=-3)
                 player.reset_player(reset_head=False)
                 tm.power(1)
                 return
@@ -544,7 +543,7 @@ def main_loop(player, coll_dict, state):
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
             # tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, tm.stage_date_color)
-            tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+            tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
             # tm.clear_bbox(artist_bbox)
             # tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
             print(player)
@@ -810,7 +809,6 @@ def ping_archive():
                 pfont_small,
                 tm.PURPLE,
                 show_end=-2,
-                clear=False,
             )
             button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
             if button == "power":
@@ -861,8 +859,8 @@ def run():
         msg = f"livemusic: {e}"
         if isinstance(e, OSError) and "ECONNABORTED" in msg:
             tm.clear_screen()
-            tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=pfont_med, clear=True, show_end=-2)
-            tm.write("Press Select to return", 0, 2 * pfont_med.HEIGHT, font=pfont_med, clear=False, show_end=-2)
+            tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=pfont_med, show_end=-2)
+            tm.write("Press Select to return", 0, 2 * pfont_med.HEIGHT, font=pfont_med, show_end=-2)
             if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
                 run()
     except Exception as e:
@@ -871,7 +869,7 @@ def run():
         if utils.is_dev_box():
             tm.clear_screen()
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
             utils.reset()

@@ -477,7 +477,7 @@ def display_tracks(*track_names):
 def display_keyed_title(keyed_title, color=tm.PURPLE):
     # print(f"in display_keyed_title {keyed_title}")
     tm.clear_bbox(title_bbox)
-    tm.write(keyed_title, title_bbox.x0, title_bbox.y0, color=color, font=pfont_small, clear=False, show_end=-2)
+    tm.write(keyed_title, title_bbox.x0, title_bbox.y0, color=color, font=pfont_small, show_end=-2)
 
 
 def display_keyed_artist(artist, color=tm.PURPLE):
@@ -486,13 +486,13 @@ def display_keyed_artist(artist, color=tm.PURPLE):
     artist = artist[:1].upper() + artist[1:]
     if len(artist) < 19:
         artist = (9 - len(artist) // 2) * " " + artist
-    tm.write(artist, keyed_artist_bbox.x0, keyed_artist_bbox.y0, color=color, font=pfont_small, clear=False, show_end=1)
+    tm.write(artist, keyed_artist_bbox.x0, keyed_artist_bbox.y0, color=color, font=pfont_small, show_end=1)
 
 
 def display_selected_artist(artist):
     # print(f"in display_selected_artist {artist}")
     tm.clear_bbox(selected_artist_bbox)
-    tm.write(artist, selected_artist_bbox.x0, selected_artist_bbox.y0, font=pfont_small, clear=False, show_end=1)
+    tm.write(artist, selected_artist_bbox.x0, selected_artist_bbox.y0, font=pfont_small, show_end=1)
 
 
 def show_artists(artist_list):
@@ -506,7 +506,7 @@ def show_artists(artist_list):
     for min_col in range(0, 1 + ncoll - colls_to_write, 1):
         tm.clear_area(0, 25, 160, 103)
         for i, coll in enumerate(artist_list[min_col : min_col + colls_to_write]):
-            tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=tm.WHITE, clear=False)
+            tm.write(f"{coll}", 0, 25 + 20 * i, font=pfont_small, color=tm.WHITE)
         time.sleep(0.5)
 
 
@@ -630,6 +630,6 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1

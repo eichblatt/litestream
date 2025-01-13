@@ -77,17 +77,17 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
                 y0 += text_height
 
             text = ">" + choices[step]
-            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
+            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, show_end=True)
             y0 += text_height
 
             for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
                 if y0 > (tm.SCREEN_HEIGHT - text_height):
                     continue
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
                 y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
@@ -112,7 +112,7 @@ def select_chars(message, message2="", already=None):
     text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
     tm.clear_screen()
-    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, clear=True, show_end=-2)
+    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, show_end=-2)
     y_origin = len(message.split("\n")) * text_height
 
     select_bbox = tm.Bbox(0, y_origin, tm.SCREEN_WIDTH, y_origin + text_height)
@@ -131,7 +131,7 @@ def select_chars(message, message2="", already=None):
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, clear=False)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -154,7 +154,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=1)
+                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, show_end=1)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -493,7 +493,7 @@ def read_file(path):
 def set_datetime(hidden=False):
     print("Setting datetime")
     if not hidden:
-        tm.write("Setting Date", y=45, clear=False)
+        tm.write("Setting Date", y=45)
     time_set = time.localtime()[0] >= 2024
     # for some reason, we have to try several times before it works.
     for i in range(10):
@@ -871,12 +871,12 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
-        tm.write(f"{uversion}", 0, y0, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
+        tm.write(f"{uversion}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
         y0 = y0 + tm.pfont_small.HEIGHT
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
+        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:
@@ -898,7 +898,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 
     if wifi.isconnected():
         if not hidden:
-            tm.write("Connected   ", y=0, color=tm.WHITE, clear=False)
+            tm.write("Connected   ", y=0, color=tm.WHITE)
 
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
@@ -906,7 +906,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=tm.pfont_small)
+        tm.write("Not Connected", y=93, color=tm.RED, font=tm.pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)

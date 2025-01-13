@@ -82,7 +82,7 @@ def test_update():
 
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
-    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3, clear=False)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
@@ -101,9 +101,9 @@ def test_update():
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
-        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, clear=False)
+        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
     else:
-        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED)
 
     return update_code
 
@@ -117,7 +117,7 @@ def update_code():
     tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
     tm.write("Updating", 0, 40, tm.pfont_med, tm.YELLOW)
-    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED)
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
@@ -136,7 +136,7 @@ def update_firmware():
 
     tm.clear_screen()
     tm.write("Updating", 0, 50, tm.pfont_med, tm.YELLOW)
-    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED)
 
     current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
@@ -236,17 +236,17 @@ def basic_main():
     tm.clear_screen()
     tm.write("Welcome", 0, ypos, tm.pfont_large, tm.RED)
     ypos += tm.pfont_large.HEIGHT
-    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
-    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False, show_end=1)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
