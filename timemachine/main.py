@@ -175,7 +175,7 @@ def reconfigure():
     tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
     app = utils.get_main_app()
-    exit_string = (f"Return to {app.__name__}",)
+    exit_string = f"Return to {app.__name__}"
     app_config_choices = app.CONFIG_CHOICES if "CONFIG_CHOICES" in dir(app) else []
     config_choices = app_config_choices + [
         "Update Code",
