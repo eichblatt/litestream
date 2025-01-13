@@ -98,6 +98,7 @@ def test_update():
             return
 
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
+    tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
         tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, clear=False)
@@ -174,10 +175,11 @@ def reconfigure():
     tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
     app = utils.get_main_app()
+    exit_string = (f"Return to {app.__name__}",)
     app_config_choices = app.CONFIG_CHOICES if "CONFIG_CHOICES" in dir(app) else []
     config_choices = app_config_choices + [
         "Update Code",
-        "Exit",
+        exit_string,
         "Update Firmware",
         "Wifi",
         "Reboot",
@@ -212,7 +214,7 @@ def reconfigure():
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
         utils.reset()
-    elif choice == "Exit":
+    elif choice == exit_string:
         return choice
     elif choice == "Dev Mode":
         dev_mode = choose_dev_mode()
@@ -231,6 +233,7 @@ def basic_main():
     hidden_setdate = False
     tm.calibrate_screen()
     ypos = 0
+    tm.clear_screen()
     tm.write("Welcome", 0, ypos, tm.pfont_large, tm.RED)
     ypos += tm.pfont_large.HEIGHT
     tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)

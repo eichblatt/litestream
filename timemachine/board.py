@@ -232,9 +232,11 @@ def label_soft_knobs(left, center, right):
     if sum(widths) > SCREEN_WIDTH:
         raise NotImplementedError("Strings are too wide, Bailing")
     clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
-    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False)
-    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, False, background=bg)
-    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, False, background=bg)
+    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False, bounds_check=False)
+    write(
+        center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, False, background=bg, bounds_check=False
+    )
+    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, False, background=bg, bounds_check=False)
     return
 
 
@@ -353,6 +355,7 @@ def calibrate_knobs():
     for knob, name, bit in zip([m, d, y], ["Left", "Center", "Right"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
+        clear_screen()
         write("Rotate")
         write(f"{name}", 0, text_height, color=YELLOW, clear=False)
         write("Knob Forward", 0, 2 * text_height, clear=False)
@@ -362,6 +365,7 @@ def calibrate_knobs():
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
     setup_knobs(knob_sense)
+    clear_screen()
     write("Knobs Calibrated", show_end=-2)
     try:
         kf = open(KNOB_SENSE_PATH, "w")
@@ -428,10 +432,12 @@ def self_test():
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
     button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left", "Center", "Right"]
     for button, name in zip(buttons, button_names):
+        clear_screen()
         write("Press")
         write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False)
         write("Button", 0, 2 * pfont_med.HEIGHT, clear=False)
         poll_for_button(button)
+    clear_screen()
     write("Button Test\nPassed")
     time.sleep(0.2)
     return
@@ -494,21 +500,23 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, indent=0, background=0):
+def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=False, show_end=0, indent=0, background=0, bounds_check=True):
     # write the msg starting at x,y in font with color. Clear entire screen if clear==True.
     # show_end: 0 - display as much as possible in 1 line.
     # show_end: +n - break the text up into as many as n lines.
     # show_end: -n - break the text up on *word boundaries* in as many as n lines.
 
-    if clear:
-        clear_screen()
     if abs(show_end) > 1:
         msg = add_line_breaks(msg, x, font, show_end, indent=indent)
     text = msg.split("\n")
-    for i, line in enumerate(text):
+    y0 = y
+    for line in text:
         if show_end == 1:
             line = trim_string_middle(line, x, font)
-        tft.write(font, line, x, y + (i * font.HEIGHT), color, background)
+        if bounds_check and ((x >= SCREEN_WIDTH) or (y0 >= SCREEN_HEIGHT - font.HEIGHT)):
+            continue
+        tft.write(font, line, x, y0, color, background)
+        y0 += font.HEIGHT
     return msg
 
 

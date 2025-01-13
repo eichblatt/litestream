@@ -354,10 +354,6 @@ def main_loop(player, coll_dict, state):
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     tm.label_soft_knobs("Month", "Day", "Year")
-    # tm.write(" Month ", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write(" Day   ", int(tm.SCREEN_WIDTH * 0.4), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write(" Year  ", int(tm.SCREEN_WIDTH * 0.8), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write("Month             Day               Year", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
     poll_count = 0
     while True:
         nshows = 0
@@ -535,6 +531,7 @@ def main_loop(player, coll_dict, state):
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.label_soft_knobs("-", "-", "-")
+                tm.clear_screen()
                 tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, clear=True, show_end=-3)
                 player.reset_player(reset_head=False)
                 tm.power(1)
@@ -692,21 +689,10 @@ def display_tracks(*track_names):
         y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, color, False, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
-
-
-"""
-def display_tracks(*tracks):
-    current_track_name = tracks[0]
-    next_track_name = tracks[1]
-    tm.clear_bbox(tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
-    return
-"""
 
 
 def add_vcs(coll):
@@ -815,6 +801,7 @@ def ping_archive():
         try:
             n = archive_utils.count_collection("GratefulDead", (1965, 1968))
         except archive_utils.ArchiveDownError:
+            tm.clear_screen()
             tm.write(f"Archive.org not responding. Check status on web. Retry {i_try}", 0, 0, pfont_small, show_end=-4)
             tm.write(
                 f"Press Power for config menu",
@@ -873,6 +860,7 @@ def run():
     except OSError as e:
         msg = f"livemusic: {e}"
         if isinstance(e, OSError) and "ECONNABORTED" in msg:
+            tm.clear_screen()
             tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=pfont_med, clear=True, show_end=-2)
             tm.write("Press Select to return", 0, 2 * pfont_med.HEIGHT, font=pfont_med, clear=False, show_end=-2)
             if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
@@ -881,6 +869,7 @@ def run():
         msg = f"livemusic: {e}"
         save_error(msg)
         if utils.is_dev_box():
+            tm.clear_screen()
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)

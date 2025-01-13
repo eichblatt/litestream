@@ -46,6 +46,7 @@ CONFIG_CHOICES = []
 stage_date_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, 27)
 playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 27)
 bottom_bbox = tm.Bbox(0, 29, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+venue_bbox = tm.Bbox(0, 32, tm.SCREEN_WIDTH, 32 + 19)
 tapeid_range_dict = {}
 
 
@@ -68,7 +69,7 @@ def select_date_range(date_range, N_to_select=60):
     print(f"Selecting tapes from {date_range}.")
 
     track_index = 0
-    tm.clear_bbox(tm.venue_bbox)
+    tm.clear_bbox(venue_bbox)
     tm.clear_bbox(bottom_bbox)
     msg = f"Loading {date_range[0]}"
     if date_range[1] > date_range[0]:
@@ -197,6 +198,7 @@ def main_loop(player, state):
     date_range_msg = f"{date_range[0]}"
     if date_range[1] > date_range[0]:
         date_range_msg += f"-{date_range[1]%100:02d}"
+    tm.clear_screen()
     tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font, clear=True)
     tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small, clear=False)
     tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med, clear=False)
@@ -216,7 +218,7 @@ def main_loop(player, state):
             else:
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
-                    tm.clear_bbox(tm.venue_bbox)
+                    tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(playpause_bbox)
                     tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                     date_range = set_date_range(staged_date_range, state)
@@ -285,7 +287,7 @@ def main_loop(player, state):
             if pSelect_old:
                 print("short press of select")
                 player.stop()
-                tm.clear_bbox(tm.venue_bbox)
+                tm.clear_bbox(venue_bbox)
                 tm.clear_bbox(playpause_bbox)
                 tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                 date_range = set_date_range(staged_date_range, state)
@@ -523,6 +525,7 @@ def run():
         with open("/exception.log", "w") as f:
             f.write(msg)
         if utils.is_dev_box():
+            tm.clear_screen()
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
             tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)

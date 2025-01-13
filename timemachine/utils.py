@@ -111,6 +111,7 @@ def select_chars(message, message2="", already=None):
     step = step_old = 0
     text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
+    tm.clear_screen()
     message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, clear=True, show_end=-2)
     y_origin = len(message.split("\n")) * text_height
 
@@ -226,10 +227,6 @@ def select_chars(message, message2="", already=None):
     if not already:
         tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
-    # tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
-    # tm.write(
-    #    selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
-    # )
     time.sleep(0.2)
     return selected
 
@@ -867,6 +864,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         reset()
 
     if not hidden:
+        tm.clear_screen()
         tm.write("Connecting..", font=tm.pfont_small, color=tm.YELLOW)
         y0 = tm.pfont_small.HEIGHT
         msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, False, -3)
