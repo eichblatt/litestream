@@ -233,10 +233,8 @@ def label_soft_knobs(left, center, right):
         raise NotImplementedError("Strings are too wide, Bailing")
     clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
     write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
-    write(
-        center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, False, background=bg, bounds_check=False
-    )
-    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, False, background=bg, bounds_check=False)
+    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
     return
 
 
