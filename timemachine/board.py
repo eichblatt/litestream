@@ -350,7 +350,7 @@ def calibrate_knobs():
     print(f"knob_sense before is {knob_sense}")
     change = 0
     text_height = pfont_med.HEIGHT
-    for knob, name, bit in zip([m, d, y], ["Left knob", "Center knob", "Right knob"], (0, 1, 2)):
+    for knob, name, bit in zip([m, d, y], ["Left", "Center", "Right"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         clear_screen()
@@ -428,12 +428,12 @@ def self_test():
     print("Running self_test")
     label_soft_knobs("Left", "Center", "Right")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
-    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left", "Center", "Right"]
+    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left knob", "Center knob", "Right knob"]
     for button, name in zip(buttons, button_names):
         clear_screen()
         write("Press")
-        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW)
-        write("Button", 0, 2 * pfont_med.HEIGHT)
+        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, show_end=-2)
+        # write("Button", 0, 2 * pfont_med.HEIGHT)
         poll_for_button(button)
     clear_screen()
     write("Button Test\nPassed")
