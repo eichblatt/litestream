@@ -426,11 +426,10 @@ def self_test():
     print("Running self_test")
     label_soft_knobs("Left", "Center", "Right")
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
-    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left", "Center", "Right"]
+    button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left knob", "Center knob", "Right knob"]
     for button, name in zip(buttons, button_names):
         write("Press")
-        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False)
-        write("Button", 0, 2 * pfont_med.HEIGHT, clear=False)
+        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False, indent=-2)
         poll_for_button(button)
     write("Button Test\nPassed")
     time.sleep(0.2)
