@@ -39,14 +39,15 @@ import fonts.NotoSans_24 as pfont_med
 import fonts.date_font as date_font
 
 
-# API = "https://msdocs-python-webapp-quickstart-sle.azurewebsites.net"
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-# API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
+# API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 COLLS_LOADED_TIME = None
+CONFIG_CHOICES = ["Artists"]
+
 
 # --------------------------------------------------------------- Bboxes
 ycursor = 0
@@ -59,8 +60,90 @@ artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_font.HEIGHT)
 ycursor = tm.SCREEN_HEIGHT - date_font.HEIGHT
-selected_date_bbox = tm.Bbox(0.095 * tm.SCREEN_WIDTH, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+
+
+def get_collection_list():
+    state = utils.load_state()
+    coll_list = state.get("collection_list", ["GratefulDead"])
+    return coll_list
+
+
+def append_to_collection_list(new_collection):
+    state = utils.load_state()
+    current_list = state.get("collection_list", ["GratefulDead"])
+    full_list = current_list + [new_collection]
+    state["collection_list"] = full_list
+    utils.save_state(state)
+
+
+def delete_from_collection_list(old_collection):
+    state = utils.load_state()
+    full_list = state.get("collection_list", ["GratefulDead"])
+    full_list = [elem for elem in full_list if elem != old_collection]
+    state["collection_list"] = full_list
+    if len(full_list) > 0:
+        utils.save_state(state)
+    else:
+        print("WARN tried to set collection list to empty. Bailing")
+
+
+def set_collection_list(collection_list):
+    state = utils.load_state()
+    state["collection_list"] = collection_list
+    utils.save_state(state)
+
+
+def configure(choice):
+    assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
+
+    if choice == "Artists":
+        return configure_artists()
+    return
+
+
+def configure_artists():
+    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
+    choice = utils.select_option("Select Option", choices)
+    print(f"configure_collection: chose to {choice}")
+    if choice == "Cancel":
+        return
+
+    all_collections = []
+    collection_list = get_collection_list()
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Artist":
+        all_collections_dict = get_collection_names_dict()
+        for archive in all_collections_dict.keys():
+            all_collections = all_collections + all_collections_dict[archive]
+        utils.add_list_element("Artist", all_collections, get_collection_list, append_to_collection_list)
+
+    elif choice == "Remove Artist":
+        utils.remove_list_element(get_collection_list, delete_from_collection_list)
+
+    elif choice == "Phish Only":
+        set_collection_list(["Phish"])
+        utils.reset()
+    elif choice == "Dead Only":
+        set_collection_list(["GratefulDead"])
+        utils.reset()
+    elif choice == "Other":
+        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
+        other_choice = utils.select_option("Select", other_choices)
+        if other_choice == "Gizzard Only":
+            set_collection_list(["KingGizzardAndTheLizardWizard"])
+            utils.reset()
+        if other_choice == "Goose Only":
+            set_collection_list(["GooseBand"])
+            utils.reset()
+        elif other_choice == "Dead + Phish":
+            set_collection_list(["GratefulDead", "Phish"])
+            utils.reset()
+        else:
+            pass
+    return
 
 
 def set_date(date):
@@ -188,7 +271,8 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     update_venue(selected_vcs)
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
     print(f"Selected date string {selected_date_str}.")
-    tm.write(selected_date_str, selected_date_bbox.x0, selected_date_bbox.y0, date_font, clear=False)
+    x0 = (tm.SCREEN_WIDTH - tm.tft.write_len(date_font, "01-01-2000")) // 2
+    tm.write(selected_date_str, x0, selected_date_bbox.y0, date_font)
     return selected_vcs, state
 
 
@@ -270,10 +354,6 @@ def main_loop(player, coll_dict, state):
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     tm.label_soft_knobs("Month", "Day", "Year")
-    # tm.write(" Month ", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write(" Day   ", int(tm.SCREEN_WIDTH * 0.4), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write(" Year  ", int(tm.SCREEN_WIDTH * 0.8), tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
-    # tm.write("Month             Day               Year", 0, tm.SCREEN_VPARTS[0], pfont_small, color=tm.BLACK, background=tm.YELLOW)
     poll_count = 0
     while True:
         nshows = 0
@@ -375,7 +455,7 @@ def main_loop(player, coll_dict, state):
                         tape_id = short_tape_id(utils.get_tape_id())
                         print(f"tape_id is {utils.get_tape_id()}, or {tape_id}")
                         tm.clear_bbox(venue_bbox)
-                        tm.write(f"{tape_id}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+                        tm.write(f"{tape_id}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
                         software_version = utils.get_software_version()
                         dev_flag = "dev" if utils.is_dev_box() else ""
                         tm.clear_bbox(artist_bbox)
@@ -385,7 +465,6 @@ def main_loop(player, coll_dict, state):
                             artist_bbox.y0,
                             pfont_small,
                             tm.stage_date_color,
-                            clear=False,
                             show_end=1,
                         )
                 elif (key_date in valid_dates) and tm.power():
@@ -422,7 +501,7 @@ def main_loop(player, coll_dict, state):
                 tm.clear_bbox(venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
-                tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+                tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -451,7 +530,8 @@ def main_loop(player, coll_dict, state):
                 power_press_time = time.ticks_ms()
                 print("Power UP -- back to reconfigure")
                 tm.label_soft_knobs("-", "-", "-")
-                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, clear=True, show_end=-3)
+                tm.clear_screen()
+                tm.write("Configure Time Machine", 0, 0, pfont_med, tm.WHITE, show_end=-3)
                 player.reset_player(reset_head=False)
                 tm.power(1)
                 return
@@ -463,7 +543,7 @@ def main_loop(player, coll_dict, state):
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
             # tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, tm.stage_date_color)
-            tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, clear=False)
+            tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
             # tm.clear_bbox(artist_bbox)
             # tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
             print(player)
@@ -551,7 +631,7 @@ def main_loop(player, coll_dict, state):
                 except KeyError:
                     tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(artist_bbox)
-                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color, False)
+                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -566,13 +646,13 @@ def short_tape_id(tape_id, max_chars=16):
 
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(venue_bbox)
-    tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color, False)
+    tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
     tm.clear_bbox(nshows_bbox)
     if nshows > 1:
-        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color, False)
+        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(artist_bbox)
-        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color, False)
+        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
 
 
 def update_display(player):
@@ -608,21 +688,10 @@ def display_tracks(*track_names):
         y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
-
-
-"""
-def display_tracks(*tracks):
-    current_track_name = tracks[0]
-    next_track_name = tracks[1]
-    tm.clear_bbox(tracklist_bbox)
-    tm.tft.write(pfont_small, f"{current_track_name}", tracklist_bbox.x0, tracklist_bbox.y0, tracklist_color)
-    tm.tft.write(pfont_small, f"{next_track_name}", tracklist_bbox.x0, tracklist_bbox.center()[1], tracklist_color)
-    return
-"""
 
 
 def add_vcs(coll):
@@ -698,6 +767,11 @@ def refresh_meta_needed():
         return False
 
 
+def get_collection_names_dict():
+    all_collections_dict = archive_utils.collection_names()
+    return all_collections_dict
+
+
 def get_coll_dict(collection_list):
     global COLLS_LOADED_TIME
     coll_dict = OrderedDict({})
@@ -726,6 +800,7 @@ def ping_archive():
         try:
             n = archive_utils.count_collection("GratefulDead", (1965, 1968))
         except archive_utils.ArchiveDownError:
+            tm.clear_screen()
             tm.write(f"Archive.org not responding. Check status on web. Retry {i_try}", 0, 0, pfont_small, show_end=-4)
             tm.write(
                 f"Press Power for config menu",
@@ -734,7 +809,6 @@ def ping_archive():
                 pfont_small,
                 tm.PURPLE,
                 show_end=-2,
-                clear=False,
             )
             button = tm.poll_for_which_button({"power": tm.pPower}, timeout=30, default="None")
             if button == "power":
@@ -784,16 +858,18 @@ def run():
     except OSError as e:
         msg = f"livemusic: {e}"
         if isinstance(e, OSError) and "ECONNABORTED" in msg:
-            tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=pfont_med, clear=True, show_end=-2)
-            tm.write("Press Select to return", 0, 2 * pfont_med.HEIGHT, font=pfont_med, clear=False, show_end=-2)
+            tm.clear_screen()
+            tm.write("Error at the archive", 0, 0, color=tm.YELLOW, font=pfont_med, show_end=-2)
+            tm.write("Press Select to return", 0, 2 * pfont_med.HEIGHT, font=pfont_med, show_end=-2)
             if tm.poll_for_button(tm.pSelect, timeout=12 * 3600):
                 run()
     except Exception as e:
         msg = f"livemusic: {e}"
         save_error(msg)
         if utils.is_dev_box():
+            tm.clear_screen()
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
             utils.reset()

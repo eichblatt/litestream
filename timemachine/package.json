@@ -53,6 +53,10 @@
             "github:eichblatt/litestream/timemachine/fonts/DejaVu_33.py"
         ],
         [
+            "fonts/DejaVu_60.py",
+            "github:eichblatt/litestream/timemachine/fonts/DejaVu_60.py"
+        ],
+        [
             "fonts/NotoSans_18.py",
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_18.py"
         ],
@@ -63,6 +67,10 @@
         [
             "fonts/NotoSans_32.py",
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
+        ],
+        [
+            "fonts/NotoSans_48.py",
+            "github:eichblatt/litestream/timemachine/fonts/NotoSans_48.py"
         ],
         [
             "mrequests/defaultdict.mpy",

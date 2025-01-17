@@ -41,10 +41,12 @@ API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to he
 # API = 'http://westmain:5000' # westmain
 AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
+CONFIG_CHOICES = []
 
 stage_date_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, 27)
 playpause_bbox = tm.Bbox(145, 0, tm.SCREEN_WIDTH, 27)
 bottom_bbox = tm.Bbox(0, 29, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+venue_bbox = tm.Bbox(0, 32, tm.SCREEN_WIDTH, 32 + 19)
 tapeid_range_dict = {}
 
 
@@ -67,7 +69,7 @@ def select_date_range(date_range, N_to_select=60):
     print(f"Selecting tapes from {date_range}.")
 
     track_index = 0
-    tm.clear_bbox(tm.venue_bbox)
+    tm.clear_bbox(venue_bbox)
     tm.clear_bbox(bottom_bbox)
     msg = f"Loading {date_range[0]}"
     if date_range[1] > date_range[0]:
@@ -119,7 +121,7 @@ def get_urls_for_ids(tape_ids):
     artists = []
     tm.clear_bbox(bottom_bbox)
     tm.clear_bbox(playpause_bbox)
-    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0, show_end=1)
+    tm.write("Choosing Songs", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, show_end=1)
     for identifier in tape_ids:
         print(f"Getting metadata for {identifier}")
         u, t, a = get_tape_metadata(identifier)
@@ -196,9 +198,10 @@ def main_loop(player, state):
     date_range_msg = f"{date_range[0]}"
     if date_range[1] > date_range[0]:
         date_range_msg += f"-{date_range[1]%100:02d}"
-    tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font, clear=True)
-    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small, clear=False)
-    tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med, clear=False)
+    tm.clear_screen()
+    tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font)
+    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small)
+    tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med)
     poll_count = 0
     while True:
         player.audio_pump()
@@ -215,7 +218,7 @@ def main_loop(player, state):
             else:
                 print("PlayPause UP")
                 if (player.is_stopped()) and (player.current_track is None):
-                    tm.clear_bbox(tm.venue_bbox)
+                    tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(playpause_bbox)
                     tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                     date_range = set_date_range(staged_date_range, state)
@@ -284,7 +287,7 @@ def main_loop(player, state):
             if pSelect_old:
                 print("short press of select")
                 player.stop()
-                tm.clear_bbox(tm.venue_bbox)
+                tm.clear_bbox(venue_bbox)
                 tm.clear_bbox(playpause_bbox)
                 tape_ids, tape_dates, track_index = select_date_range(staged_date_range, tracks_length)
                 date_range = set_date_range(staged_date_range, state)
@@ -304,7 +307,7 @@ def main_loop(player, state):
             pts = player.track_status()
             if pts["current_track"] == 0:
                 tm.clear_bbox(bottom_bbox)
-                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE, clear=0)
+                tm.write("Flipping Record", bottom_bbox.x0, bottom_bbox.y0, pfont_small, tm.PURPLE)
                 urls, tracklist, artists = get_urls_for_ids(tape_ids[:5])
                 dates = tape_dates[:5]
                 player.set_playlist(tracklist, urls)
@@ -444,7 +447,7 @@ def update_staged_date_range(staged_date_range, player):
     date_range_msg = f"{staged_date_range[0]}"
     #    if staged_date_range[1] > staged_date_range[0]:
     date_range_msg += f"-{staged_date_range[1]%100:02d}"
-    msg = tm.write(date_range_msg, 0, 0, large_font, tm.stage_date_color, clear=0)
+    msg = tm.write(date_range_msg, 0, 0, large_font, tm.stage_date_color)
     # display_tracks(*player.track_names())  # causes screen flicker. Could avoid by lowering tracks bbox.
     return msg
 
@@ -464,7 +467,7 @@ def display_artist(artist, date=""):
     tm.clear_bbox(tm.Bbox(0, y0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT))
 
     bottom_y0 = y0 + (text_height * max_lines) + 2
-    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color, 0)
+    date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color)
     msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, 0, -max_lines, indent=1)
     print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg
@@ -522,7 +525,8 @@ def run():
         with open("/exception.log", "w") as f:
             f.write(msg)
         if utils.is_dev_box():
+            tm.clear_screen()
             tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small, clear=False)
+            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1
