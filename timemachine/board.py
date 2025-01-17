@@ -350,7 +350,7 @@ def calibrate_knobs():
     print(f"knob_sense before is {knob_sense}")
     change = 0
     text_height = pfont_med.HEIGHT
-    for knob, name, bit in zip([m, d, y], ["Left", "Center", "Right"], (0, 1, 2)):
+    for knob, name, bit in zip([m, d, y], ["Left knob", "Center knob", "Right knob"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
         clear_screen()
