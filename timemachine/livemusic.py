@@ -115,6 +115,8 @@ def configure_artists():
 
     print(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
+        tm.clear_screen()
+        tm.write('Loading All Artist Names...',0,0,pfont_small,tm.YELLOW,show_end=-4)
         all_collections_dict = get_collection_names_dict()
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
