@@ -231,13 +231,15 @@ def select_chars(message, message2="", already=None):
     return selected
 
 
-def search_list(message, full_set, current_set, colls_fn=None):
+def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
     current_set = [remove_accents(y) for y in current_set]
     matching = [x for x in full_set if not remove_accents(x) in current_set]
+    if len(selected_chars) > 0:
+        matching = [x for x in matching if selected_chars in (remove_accents(x.lower()).replace(" ", "") + "$")]
     n_matching = len(matching)
 
-    selected_chars = ""
     subset_match = True
+    choice = "_CANCEL"
     while n_matching > 25:
         m2 = f"{n_matching} Matching\n(STOP to end)"
         print(m2)
@@ -257,10 +259,9 @@ def search_list(message, full_set, current_set, colls_fn=None):
         n_matching = len(matching)
 
     print(f"Matching is {matching}")
-    choice = "_CANCEL"
-    if n_matching > 0:
-        choice = select_option("Choose artist to add", matching + ["_CANCEL"])
-
+    choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+    if choice == "_BACK":
+        choice= search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
     return choice
 
 
