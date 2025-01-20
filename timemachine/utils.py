@@ -224,14 +224,19 @@ def select_chars(message, message2="", already=None):
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
-    if not already:
-        tm.clear_screen()
+    # if not already:
+    #     tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
-    time.sleep(0.2)
+    time.sleep(0.05)
     return selected
 
 
 def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
+    tm.clear_screen()
+    if len(selected_chars) > 0:
+        tm.write(f"Searching List for *{selected_chars}*",0,0,tm.pfont_small,tm.YELLOW, show_end=-3)
+    else:
+        tm.write(f"Searching List",0,0,tm.pfont_small,tm.YELLOW)
     current_set = [remove_accents(y) for y in current_set]
     matching = [x for x in full_set if not remove_accents(x) in current_set]
     if len(selected_chars) > 0:
@@ -258,9 +263,15 @@ def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""
             matching = [x for x in matching if selected_chars == (remove_accents(x.lower()).replace(" ", ""))]
         n_matching = len(matching)
 
-    print(f"Matching is {matching}")
-    choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+    if len(matching) == 0:
+        choice = select_option("No Matches Found",["_BACK", "_CANCEL"])
+    else:
+        print(f"Matching is {matching}")
+        choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+
     if choice == "_BACK":
+        tm.clear_screen()
+        tm.write("Returning...",0,0,tm.pfont_small,tm.YELLOW)
         choice= search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
     return choice
 
