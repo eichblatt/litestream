@@ -116,7 +116,7 @@ def configure_artists():
     print(f"current collection_list is {collection_list}")
     if choice == "Add Artist":
         tm.clear_screen()
-        tm.write('Loading All Artist Names...',0,0,pfont_small,tm.YELLOW,show_end=-4)
+        tm.write("Loading All Artist Names...", 0, 0, pfont_small, tm.YELLOW, show_end=-4)
         all_collections_dict = get_collection_names_dict()
         for archive in all_collections_dict.keys():
             all_collections = all_collections + all_collections_dict[archive]
@@ -870,8 +870,9 @@ def run():
         save_error(msg)
         if utils.is_dev_box():
             tm.clear_screen()
-            tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 0.8 * tm.SCREEN_HEIGHT, color=tm.YELLOW, font=pfont_small)
+            msg = tm.write(msg, font=pfont_small, show_end=5)
+            y0 = pfont_small.HEIGHT * len(msg.split("\n"))
+            tm.write("Select to exit", 0, y0, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
         else:
             utils.reset()

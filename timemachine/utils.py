@@ -234,9 +234,9 @@ def select_chars(message, message2="", already=None):
 def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
     tm.clear_screen()
     if len(selected_chars) > 0:
-        tm.write(f"Searching List for *{selected_chars}*",0,0,tm.pfont_small,tm.YELLOW, show_end=-3)
+        tm.write(f"Searching List for *{selected_chars}*", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-3)
     else:
-        tm.write(f"Searching List",0,0,tm.pfont_small,tm.YELLOW)
+        tm.write(f"Searching List", 0, 0, tm.pfont_small, tm.YELLOW)
     current_set = [remove_accents(y) for y in current_set]
     matching = [x for x in full_set if not remove_accents(x) in current_set]
     if len(selected_chars) > 0:
@@ -264,15 +264,15 @@ def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""
         n_matching = len(matching)
 
     if len(matching) == 0:
-        choice = select_option("No Matches Found",["_BACK", "_CANCEL"])
+        choice = select_option("No Matches Found", ["_BACK", "_CANCEL"])
     else:
         print(f"Matching is {matching}")
         choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
 
     if choice == "_BACK":
         tm.clear_screen()
-        tm.write("Returning...",0,0,tm.pfont_small,tm.YELLOW)
-        choice= search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
+        tm.write("Returning...", 0, 0, tm.pfont_small, tm.YELLOW)
+        choice = search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
     return choice
 
 
@@ -671,7 +671,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm", "classical_std"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical"]  # "datpiff" removed
 
 
 def set_main_app(main_app_name):
@@ -697,8 +697,8 @@ def get_main_app():
             import livemusic as main_app
         elif main_app_name == "78rpm":
             import rpm78 as main_app
-        elif main_app_name == "classical_std":
-            import classical_std as main_app
+        elif main_app_name == "classical":
+            import classical as main_app
     except ImportError as e:
         print(e)
         import livemusic as main_app
@@ -983,7 +983,7 @@ def load_78rpm_state(state_path):
     return state
 
 
-def load_classical_std_state(state_path):
+def load_classical_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
@@ -1017,8 +1017,8 @@ def load_state(app=None):
         return load_livemusic_state(state_path)
     elif app_name == "78rpm":
         return load_78rpm_state(state_path)
-    elif app_name == "classical_std":
-        return load_classical_std_state(state_path)
+    elif app_name == "classical":
+        return load_classical_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app_name}")
 
