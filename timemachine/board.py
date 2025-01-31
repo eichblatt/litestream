@@ -317,11 +317,6 @@ def clear_screen():
     clear_area(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
 
-def clear_area(x, y, width, height):
-    init_screen()
-    tft.fill_rect(x, y, width, height, BLACK)
-
-
 def power(state=None):
     global screen_on_time
     global BOARD_ON

@@ -160,7 +160,7 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "78rpm", "classical_std"]  # "datpiff" removed
+    app_choices = ["no change", "livemusic", "78rpm", "classical"]  # "datpiff" removed
     main_app = utils.get_main_app()
     new_main_app_name = utils.select_option(f"Choose App\nNow:{main_app.__name__}", app_choices)
     if new_main_app_name != "no change":
