@@ -308,6 +308,20 @@ def remove_list_element(callback_get, callback_remove):
         callback_remove(elem_to_remove)
 
 
+def create_qr_code(message, startpos=(20, 20), pixel_size=1):
+    from uQR.uQR import QRCode
+
+    qr = QRCode()
+    qr.add_data(message)
+    matrix = qr.get_matrix()
+    for i, row in enumerate(matrix):
+        for j, column in enumerate(row):
+            color = tm.BLACK if column else tm.WHITE
+            for x in range(pixel_size):
+                for y in range(pixel_size):
+                    tm.tft.pixel(startpos[0] + i * pixel_size + x, startpos[1] + j * pixel_size + y, color)
+
+
 # OS Utils
 ################################################################################################################# OS-related utils
 #
