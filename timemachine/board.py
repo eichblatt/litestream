@@ -433,7 +433,6 @@ def self_test():
         clear_screen()
         write("Press")
         write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW)
-        # write("Button", 0, 2 * pfont_med.HEIGHT)
         poll_for_button(button)
     clear_screen()
     write("Button Test\nPassed")
