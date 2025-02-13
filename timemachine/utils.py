@@ -224,14 +224,19 @@ def select_chars(message, message2="", already=None):
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
-    if not already:
-        tm.clear_screen()
+    # if not already:
+    #     tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
-    time.sleep(0.2)
+    time.sleep(0.05)
     return selected
 
 
 def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
+    tm.clear_screen()
+    if len(selected_chars) > 0:
+        tm.write(f"Searching List for *{selected_chars}*", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-3)
+    else:
+        tm.write(f"Searching List", 0, 0, tm.pfont_small, tm.YELLOW)
     current_set = [remove_accents(y) for y in current_set]
     matching = [x for x in full_set if not remove_accents(x) in current_set]
     if len(selected_chars) > 0:
@@ -258,10 +263,16 @@ def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""
             matching = [x for x in matching if selected_chars == (remove_accents(x.lower()).replace(" ", ""))]
         n_matching = len(matching)
 
-    print(f"Matching is {matching}")
-    choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+    if len(matching) == 0:
+        choice = select_option("No Matches Found", ["_BACK", "_CANCEL"])
+    else:
+        print(f"Matching is {matching}")
+        choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+
     if choice == "_BACK":
-        choice= search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
+        tm.clear_screen()
+        tm.write("Returning...", 0, 0, tm.pfont_small, tm.YELLOW)
+        choice = search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
     return choice
 
 
@@ -295,6 +306,34 @@ def remove_list_element(callback_get, callback_remove):
         if choice2 == "Finished":
             keepGoing = False
         callback_remove(elem_to_remove)
+
+
+def qr_code(message, startpos=(0, 0), pixel_size=2):
+    from uQR.uQR import QRCode
+
+    qr = QRCode()
+    qr.add_data(message)
+    matrix = qr.get_matrix()
+    size = len(matrix)
+    max_x = tm.SCREEN_WIDTH - (size * pixel_size)
+    max_y = tm.SCREEN_HEIGHT - (size * pixel_size)
+    if (pixel_size > 1) and (max_x < 0) or (max_y) < 0:
+        print(f"Shrinking pixel size to {pixel_size - 1}")
+        qr_code(message, startpos=(max(max_x, 0), max(max_y, 0)), pixel_size=pixel_size - 1)
+        return
+    if (startpos[0] > max_x) or (startpos[1] > max_y):
+        print(f"QR code too big for screen. Retry starting at {max_x}, {max_y}")
+        qr_code(message, startpos=(max_x, max_y), pixel_size=pixel_size)
+        return
+    if (max_x < 0) or (max_y < 0):
+        raise ValueError("QR code too big for screen")
+    for i, row in enumerate(matrix):
+        for j, column in enumerate(row):
+            color = tm.BLACK if column else tm.WHITE
+            for x in range(pixel_size):
+                for y in range(pixel_size):
+                    tm.tft.pixel(startpos[0] + i * pixel_size + x, startpos[1] + j * pixel_size + y, color)
+    return startpos[0] + i * pixel_size, startpos[1] + j * pixel_size
 
 
 # OS Utils
@@ -660,7 +699,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm", "classical_std"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical"]  # "datpiff" removed
 
 
 def set_main_app(main_app_name):
@@ -686,8 +725,8 @@ def get_main_app():
             import livemusic as main_app
         elif main_app_name == "78rpm":
             import rpm78 as main_app
-        elif main_app_name == "classical_std":
-            import classical_std as main_app
+        elif main_app_name == "classical":
+            import classical as main_app
     except ImportError as e:
         print(e)
         import livemusic as main_app
@@ -972,26 +1011,30 @@ def load_78rpm_state(state_path):
     return state
 
 
-def load_classical_std_state(state_path):
+def load_classical_state(state_path):  # Move to classical.py
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
         composer_list = state.get("composer_list", ["GREATS"])
         selected_tape = state.get("selected_tape", {})
         access_token = state.get("access_token", "")
+        repertoire = state.get("repertoire", "Standard")
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "repertoire": repertoire,
         }
     else:
         composer_list = ["GREATS"]
         selected_tape = {}
         access_token = ""
+        repertoire = "Standard"
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "repertoire": repertoire,
         }
         write_json(state, state_path)
     return state
@@ -1006,8 +1049,8 @@ def load_state(app=None):
         return load_livemusic_state(state_path)
     elif app_name == "78rpm":
         return load_78rpm_state(state_path)
-    elif app_name == "classical_std":
-        return load_classical_std_state(state_path)
+    elif app_name == "classical":
+        return load_classical_state(state_path)
     else:
         raise NotImplementedError("Unknown app {app_name}")
 

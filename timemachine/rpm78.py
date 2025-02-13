@@ -526,7 +526,8 @@ def run():
             f.write(msg)
         if utils.is_dev_box():
             tm.clear_screen()
-            tm.write("".join(msg[i : i + 16] + "\n" for i in range(0, len(msg), 16)), font=pfont_small)
-            tm.write("Select to exit", 0, 100, color=tm.YELLOW, font=pfont_small)
+            msg = tm.write(msg, font=pfont_small, show_end=-5)
+            y0 = pfont_small.HEIGHT * len(msg.split("\n"))
+            tm.write("Select to exit", 0, y0, color=tm.YELLOW, font=pfont_small)
             tm.poll_for_button(tm.pSelect, timeout=12 * 3600)
     return -1

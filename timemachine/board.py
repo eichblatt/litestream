@@ -93,7 +93,7 @@ elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
     import fonts.NotoSans_18 as pfont_tiny
     import fonts.NotoSans_24 as pfont_small
-    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_24 as pfont_med
     import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
@@ -136,7 +136,8 @@ def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
     )
 
 
-tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+# tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+tft = conf_screen(buffer_size=0, driver=SCREEN_DRIVER)
 psychedelic_screen = False
 tft.init()
 
@@ -313,13 +314,12 @@ def clear_area(x, y, width, height):
     tft.fill_rect(x, y, width, height, BLACK)
 
 
+def clear_to_bottom(x0, y0):
+    tft.fill_rect(x0, y0, SCREEN_WIDTH - x0, SCREEN_HEIGHT - y0, BLACK)
+
+
 def clear_screen():
     clear_area(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-
-
-def clear_area(x, y, width, height):
-    init_screen()
-    tft.fill_rect(x, y, width, height, BLACK)
 
 
 def power(state=None):

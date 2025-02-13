@@ -417,7 +417,7 @@ class AudioPlayer:
         urllist = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urllist]
         encorebreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence0.ogg"
         urllist = [x if not (x.endswith("silence0.ogg")) else encorebreak_url for x in urllist]
-        ### TEMPORARY ###
+        ### END TEMPORARY ###
         urllist = [x.replace(" ", "%20") for x in urllist]
         self.playlist = urllist
 

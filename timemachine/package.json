@@ -73,16 +73,8 @@
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_48.py"
         ],
         [
-            "mrequests/defaultdict.mpy",
-            "github:eichblatt/litestream/timemachine/mrequests/defaultdict.mpy"
-        ],
-        [
             "mrequests/mrequests.mpy",
             "github:eichblatt/litestream/timemachine/mrequests/mrequests.mpy"
-        ],
-        [
-            "mrequests/mrequests.py",
-            "github:eichblatt/litestream/timemachine/mrequests/mrequests.py"
         ],
         [
             "mrequests/urlencode.mpy",
@@ -95,6 +87,14 @@
         [
             "mrequests/urlunquote.mpy",
             "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
+        ],
+        [
+            "uQR/uQR.mpy",
+            "github:eichblatt/litestream/timemachine/uQR/uQR.py"
+        ],
+        [
+            "uQR/LICENSE",
+            "github:eichblatt/litestream/timemachine/uQR/LICENSE"
         ],
         [
             "ota32/ota.py",
