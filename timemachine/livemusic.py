@@ -33,12 +33,15 @@ import audioPlayer
 # Local fonts - So that the font size can be independent of the screen size, or not.
 # import fonts.DejaVu_33 as large_font
 large_font = tm.large_font
-venue_font = tm.pfont_small
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.date_font as date_font
 
+venue_font = pfont_small
 
+
+pfont_small.HEIGHT = 20
+pfont_med.HEIGHT = 24
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
@@ -52,14 +55,14 @@ CONFIG_CHOICES = ["Artists"]
 # --------------------------------------------------------------- Bboxes
 ycursor = 0
 stage_date_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, large_font.HEIGHT)
-ycursor += (7 * large_font.HEIGHT) // 8  # We never use the underhang on the staged date.
+ycursor += -2 + (7 * large_font.HEIGHT) // 8  # We never use the underhang on the staged date.
 nshows_bbox = tm.Bbox(0.95 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
-venue_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + venue_font.HEIGHT)
-ycursor += venue_font.HEIGHT
+venue_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
+ycursor += pfont_small.HEIGHT
 artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_font.HEIGHT)
-ycursor = tm.SCREEN_HEIGHT - date_font.HEIGHT
+ycursor = tm.SCREEN_HEIGHT - (date_font.HEIGHT + 1)
 selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 
@@ -272,8 +275,8 @@ def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=No
     audio_pump(player, Nmax=3)  # Try to keep buffer filled.
     update_venue(selected_vcs)
     selected_date_str = f"{int(selected_date[5:7]):2d}-{int(selected_date[8:10]):2d}-{selected_date[:4]}"
-    print(f"Selected date string {selected_date_str}.")
-    x0 = (tm.SCREEN_WIDTH - tm.tft.write_len(date_font, "01-01-2000")) // 2
+    x0 = max(0, -10 + (tm.SCREEN_WIDTH - tm.tft.write_len(date_font, "01-01-2000")) // 2)
+    print(f"Writing selected date string {selected_date_str} to {x0},{selected_date_bbox.y0}.")
     tm.write(selected_date_str, x0, selected_date_bbox.y0, date_font)
     return selected_vcs, state
 
@@ -673,6 +676,7 @@ def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     tm.clear_bbox(tracklist_bbox)
     max_lines = tracklist_bbox.height // pfont_small.HEIGHT
+    print(f"max_lines is {max_lines} tracklist_bbox:{tracklist_bbox}")
     # max_lines = 2
     lines_written = 0
     last_valid_str = 0
@@ -680,7 +684,7 @@ def display_tracks(*track_names):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
-    text_height = pfont_small.HEIGHT - 1
+    text_height = pfont_small.HEIGHT
     while lines_written < max_lines:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
