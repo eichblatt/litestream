@@ -234,16 +234,16 @@ def basic_main():
     tm.calibrate_screen()
     ypos = 0
     tm.clear_screen()
-    tm.write("Welcome", 0, ypos, tm.pfont_large, tm.RED)
-    ypos += tm.pfont_large.HEIGHT
-    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW)
+    tm.write("Welcome", 0, ypos, tm.pfont_med, tm.RED)
     ypos += tm.pfont_med.HEIGHT
-    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW)
-    ypos += tm.pfont_med.HEIGHT
+    tm.write("Time ", 0, ypos, tm.pfont_small, tm.YELLOW)
+    ypos += tm.pfont_small.HEIGHT
+    tm.write("Machine", 0, ypos, tm.pfont_small, tm.YELLOW)
+    ypos += tm.pfont_small.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW)
-    ypos += tm.pfont_med.HEIGHT
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_small, tm.YELLOW)
+    ypos += tm.pfont_small.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, show_end=1)
