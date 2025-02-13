@@ -68,6 +68,7 @@ def select_option(message, choices):
     select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
         step = (tm.y.value() - tm.y._min_val) % len(choices)
+        y0 = select_bbox.y0
         if (step != step_old) or first_time:
             i = j = 0
             first_time = False
@@ -76,16 +77,18 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * i
-                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                y0 += text_height
 
             text = ">" + choices[step]
-            xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + 1)
-            tm.write(text, xval, yval, tm.pfont_small, tm.PURPLE, clear=False, show_end=True)
+            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, show_end=True)
+            y0 += text_height
 
-            for j, s in enumerate(range(step + 1, min(step + 5, len(choices)))):
-                xval, yval = select_bbox.x0, select_bbox.y0 + text_height * (i + j + 2)
-                tm.write(choices[s], xval, yval, tm.pfont_small, choices_color, clear=False, show_end=True)
+            for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
+                if y0 > (tm.SCREEN_HEIGHT - text_height):
+                    continue
+                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
     choice = choices[step]
@@ -108,7 +111,8 @@ def select_chars(message, message2="", already=None):
     step = step_old = 0
     text_height = tm.pfont_small.HEIGHT  # was 17
     screen_width = 16
-    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, clear=True, show_end=-2)
+    tm.clear_screen()
+    message = tm.write(f"{message.replace('\n',' ')}", 0, 0, tm.pfont_small, tm.stage_date_color, show_end=-2)
     y_origin = len(message.split("\n")) * text_height
 
     select_bbox = tm.Bbox(0, y_origin, tm.SCREEN_WIDTH, y_origin + text_height)
@@ -127,7 +131,7 @@ def select_chars(message, message2="", already=None):
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, clear=False)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -150,7 +154,7 @@ def select_chars(message, message2="", already=None):
             if (len(selected) > 0) and (selected != prev_selected):
                 prev_selected = selected
                 tm.clear_bbox(selected_bbox)
-                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, clear=False, show_end=1)
+                tm.write(selected, selected_bbox.x0, selected_bbox.y0, tm.pfont_small, tm.PURPLE, show_end=1)
             if len(already) > 0:  # start with cursor on the most recent character.
                 if first_time:
                     d0, y0 = divmod(1 + charset.index(already[-1]), 10)
@@ -220,16 +224,116 @@ def select_chars(message, message2="", already=None):
 
     tm.y._max_val = tm.y._max_val - 100
     print(f"select_char Returning. selected is: {selected}")
-    tm.clear_screen()
+    # if not already:
+    #     tm.clear_screen()
     tm.label_soft_knobs("-", "-", "-")
-    # tm.tft.write(tm.pfont_small, "Selected:", 0, 0, tm.stage_date_color)
-    # tm.tft.write(tm.pfont_small, selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.PURPLE)
-    tm.write("Selected:", 0, 0, tm.pfont_small, tm.stage_date_color, clear=False)
-    tm.write(
-        selected.replace(STOP_CHAR, ""), selected_bbox.x0, text_height + 5, tm.pfont_small, tm.PURPLE, clear=False, show_end=1
-    )
-    time.sleep(0.3)
+    time.sleep(0.05)
     return selected
+
+
+def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
+    tm.clear_screen()
+    if len(selected_chars) > 0:
+        tm.write(f"Searching List for *{selected_chars}*", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-3)
+    else:
+        tm.write(f"Searching List", 0, 0, tm.pfont_small, tm.YELLOW)
+    current_set = [remove_accents(y) for y in current_set]
+    matching = [x for x in full_set if not remove_accents(x) in current_set]
+    if len(selected_chars) > 0:
+        matching = [x for x in matching if selected_chars in (remove_accents(x.lower()).replace(" ", "") + "$")]
+    n_matching = len(matching)
+
+    subset_match = True
+    choice = "_CANCEL"
+    while n_matching > 25:
+        m2 = f"{n_matching} Matching\n(STOP to end)"
+        print(m2)
+        selected_chars = select_chars(f"Spell {message}", message2=m2, already=selected_chars)
+        if selected_chars.endswith(STOP_CHAR):
+            subset_match = False
+            print(f"raw selected {selected_chars}")
+            selected_chars = selected_chars.replace(STOP_CHAR, "")
+        selected_chars = selected_chars.lower().replace(" ", "")
+        print(f"selected {selected_chars}")
+        if colls_fn is not None:
+            matching = distinct(matching + colls_fn(selected_chars))
+        if subset_match:
+            matching = [x for x in matching if selected_chars in (remove_accents(x.lower()).replace(" ", "") + "$")]
+        else:
+            matching = [x for x in matching if selected_chars == (remove_accents(x.lower()).replace(" ", ""))]
+        n_matching = len(matching)
+
+    if len(matching) == 0:
+        choice = select_option("No Matches Found", ["_BACK", "_CANCEL"])
+    else:
+        print(f"Matching is {matching}")
+        choice = select_option("Choose artist to add", matching + ["_BACK", "_CANCEL"])
+
+    if choice == "_BACK":
+        tm.clear_screen()
+        tm.write("Returning...", 0, 0, tm.pfont_small, tm.YELLOW)
+        choice = search_list(message, full_set, current_set, selected_chars=selected_chars[:-1])
+    return choice
+
+
+def add_list_element(message, full_set, callback_get, callback_add):
+    keepGoing = True
+    reset_required = False
+
+    while keepGoing:
+        lis = callback_get()
+        elem_to_add = search_list(message, full_set, lis)
+        if elem_to_add != "_CANCEL":
+            callback_add(elem_to_add)
+            reset_required = True
+        choices = ["Add Another", "Finished"]
+        choice2 = select_option("Select", choices)
+        if choice2 == "Finished":
+            keepGoing = False
+
+    if reset_required:
+        reset()
+
+
+def remove_list_element(callback_get, callback_remove):
+    keepGoing = True
+    lis = callback_get()
+    while keepGoing & (len(lis) > 1):
+        elem_to_remove = select_option("Select", lis + ["_CANCEL"])
+        lis = [x for x in lis if not x == elem_to_remove]
+        choices = ["Remove Another", "Finished"]
+        choice2 = select_option("Select", choices)
+        if choice2 == "Finished":
+            keepGoing = False
+        callback_remove(elem_to_remove)
+
+
+def qr_code(message, startpos=(0, 0), pixel_size=2):
+    from uQR.uQR import QRCode
+
+    qr = QRCode()
+    qr.add_data(message)
+    matrix = qr.get_matrix()
+    size = len(matrix)
+    max_x = tm.SCREEN_WIDTH - (size * pixel_size)
+    max_y = tm.SCREEN_HEIGHT - (size * pixel_size)
+    if (pixel_size > 1) and (max_x < 0) or (max_y) < 0:
+        print(f"Shrinking pixel size to {pixel_size - 1}")
+        qr_code(message, startpos=(max(max_x, 0), max(max_y, 0)), pixel_size=pixel_size - 1)
+        return
+    if (startpos[0] > max_x) or (startpos[1] > max_y):
+        print(f"QR code too big for screen. Retry starting at {max_x}, {max_y}")
+        qr_code(message, startpos=(max_x, max_y), pixel_size=pixel_size)
+        return
+    if (max_x < 0) or (max_y < 0):
+        raise ValueError("QR code too big for screen")
+    for i, row in enumerate(matrix):
+        for j, column in enumerate(row):
+            color = tm.BLACK if column else tm.WHITE
+            for x in range(pixel_size):
+                for y in range(pixel_size):
+                    tm.tft.pixel(startpos[0] + i * pixel_size + x, startpos[1] + j * pixel_size + y, color)
+    return startpos[0] + i * pixel_size, startpos[1] + j * pixel_size
 
 
 # OS Utils
@@ -429,7 +533,7 @@ def read_file(path):
 def set_datetime(hidden=False):
     print("Setting datetime")
     if not hidden:
-        tm.write("Setting Date", y=45, clear=False)
+        tm.write("Setting Date", y=45)
     time_set = time.localtime()[0] >= 2024
     # for some reason, we have to try several times before it works.
     for i in range(10):
@@ -497,6 +601,42 @@ def capitalize(string):
     return " ".join(Words)
 
 
+ACCENT_REGEXI = [None, None]
+ACCENTS = "".join(
+    [chr(x) for x in [201, 225, 228, 231, 232, 233, 235, 237, 242, 243, 246, 252, 255, 269, 345, 353, 366, 367, 8242]]
+)
+# ACCENTS = 'ÉáäçèéëíòóöüÿčřšŮů′'
+ACCENT_DICT = dict(zip(ACCENTS, "EaaceeeiooouycrsUu'"))
+
+
+def remove_accents(string):
+    global ACCENT_REGEXI
+    if len(string) == 0:
+        return string
+    if ACCENT_REGEXI[0] is None:
+        ACCENT_REGEXI[0] = re.compile("|".join(ACCENTS[:17]))
+        ACCENT_REGEXI[1] = re.compile("|".join(ACCENTS[17:]))
+    string = ACCENT_REGEXI[0].sub(lambda match: ACCENT_DICT[match.group(0)], string)
+    string = ACCENT_REGEXI[1].sub(lambda match: ACCENT_DICT[match.group(0)], string)
+    return string
+
+
+def isnumeric(string):
+    pattern = r"^-?\d+(?:\.\d+)?$"
+    return re.match(pattern, string)
+
+
+def isinteger(candidate):
+    if isinstance(candidate, int):
+        return True
+    if isinstance(candidate, float) and int(candidate) == candidate:
+        return True
+    if isinstance(candidate, str):
+        pattern = r"^-?\d+?$"
+        return re.match(pattern, candidate)
+    return False
+
+
 def clear_log(outpath="/log_out.py"):
     remove_file(outpath)
 
@@ -559,28 +699,42 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical"]  # "datpiff" removed
 
 
-def set_main_app(main_app):
+def set_main_app(main_app_name):
     try:
-        if not main_app in KNOWN_APPS:
-            main_app = "livemusic"
-        main_app = write_json(main_app, MAIN_APP_PATH)
+        if not main_app_name in KNOWN_APPS:
+            main_app_name = "livemusic"
+        main_app_name = write_json(main_app_name, MAIN_APP_PATH)
     except Exception as e:
         pass
+    main_app = get_main_app()
     return main_app
 
 
 def get_main_app():
-    main_app = "livemusic"
+    main_app_name = "livemusic"
+    main_app = None
     try:
         if path_exists(MAIN_APP_PATH):
-            main_app = read_json(MAIN_APP_PATH)
-        if not main_app in KNOWN_APPS:
-            main_app = "livemusic"
+            main_app_name = read_json(MAIN_APP_PATH)
+        if not main_app_name in KNOWN_APPS:
+            main_app_name = "livemusic"
+        if main_app_name == "livemusic":
+            import livemusic as main_app
+        elif main_app_name == "78rpm":
+            import rpm78 as main_app
+        elif main_app_name == "classical":
+            import classical as main_app
+    except ImportError as e:
+        print(e)
+        import livemusic as main_app
     except Exception as e:
         pass
+    finally:
+        if main_app is None:
+            import livemusic as main_app
     return main_app
 
 
@@ -650,19 +804,29 @@ def update_firmware():
     return 0
 
 
-def get_tape_id(app="livemusic"):
-    return load_state(app)["selected_tape_id"]
+def get_tape_id(app_name="livemusic"):
+    return load_state(app_name)["selected_tape_id"]
 
 
-def get_collection_list():
-    return load_state()["collection_list"]
+"""
+These should be deleted, have been moved.
+def get_collection_list(app):
+    try:
+        return app.get_collection_list()
+    except:
+        state = load_state(app)
+        coll_list = state.get("collection_list", state.get("composer_list", []))
+    return coll_list
 
 
-def set_collection_list(collection_list):
-    state = load_state()
-    state["collection_list"] = collection_list
-    save_state(state)
-
+def set_collection_list(collection_list, app_name):
+    state = load_state(app_name)
+    if "composer_list" in state.keys():
+        state["composer_list"] = collection_list
+    else:
+        state["collection_list"] = collection_list
+    save_state(state, app_name)
+"""
 
 # wifi
 ####################################################################################################################### wifi
@@ -740,17 +904,19 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         reset()
 
     if not hidden:
-        tm.write("Connecting..", color=tm.YELLOW)
-        text_height = tm.pfont_med.HEIGHT
-        tm.write("Powered by archive.org and phish.in", 0, text_height, tm.pfont_med, tm.PURPLE, False, -3)
+        tm.clear_screen()
+        tm.write("Connecting..", font=tm.pfont_small, color=tm.YELLOW)
+        y0 = tm.pfont_small.HEIGHT
+        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        tm.write(f"{uversion}", y=text_height * 4, color=tm.WHITE, font=tm.pfont_small, clear=False)
+        y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
+        tm.write(f"{uversion}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
+        y0 = y0 + tm.pfont_small.HEIGHT
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", y=text_height * 5, color=tm.WHITE, font=tm.pfont_small, clear=False)
-
+        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:
@@ -772,7 +938,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 
     if wifi.isconnected():
         if not hidden:
-            tm.write("Connected   ", y=0, color=tm.WHITE, clear=False)
+            tm.write("Connected   ", y=0, color=tm.WHITE)
 
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
@@ -780,7 +946,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         print(f"Wifi cred hist {wifi_cred_hist} written to {WIFI_CRED_HIST_PATH}")
         return wifi
     else:
-        tm.write("Not Connected", y=93, color=tm.RED, clear=False, font=tm.pfont_small)
+        tm.write("Not Connected", y=93, color=tm.RED, font=tm.pfont_small)
         if itry > 3:
             remove_wifi_cred()
         time.sleep(2)
@@ -792,8 +958,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 #
 
 
-def save_state(state, app="livemusic"):
-    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
+def save_state(state, app_name="livemusic"):
+    state_path = STATE_PATH.format(app_string=f"_{app_name}" if app_name != "livemusic" else "")
     print(f"writing {state} to {state_path}")
     write_json(state, state_path)
     return
@@ -803,7 +969,7 @@ def load_livemusic_state(state_path):
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        collection_list = state.get("collection_list", "GratefulDead")
+        collection_list = state.get("collection_list", ["GratefulDead"])
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         selected_tape_id = state.get("selected_tape_id", "unknown")
@@ -845,41 +1011,48 @@ def load_78rpm_state(state_path):
     return state
 
 
-def load_classical_state(state_path):
+def load_classical_state(state_path):  # Move to classical.py
     state = {}
     if path_exists(state_path):
         state = read_json(state_path)
-        artist_list = state.get("artist_list", ["GREATS"])
+        composer_list = state.get("composer_list", ["GREATS"])
         selected_tape = state.get("selected_tape", {})
         access_token = state.get("access_token", "")
+        repertoire = state.get("repertoire", "Standard")
         state = {
-            "artist_list": artist_list,
+            "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "repertoire": repertoire,
         }
     else:
-        artist_list = ["GREATS"]
+        composer_list = ["GREATS"]
         selected_tape = {}
         access_token = ""
+        repertoire = "Standard"
         state = {
-            "artist_list": artist_list,
+            "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "repertoire": repertoire,
         }
         write_json(state, state_path)
     return state
 
 
-def load_state(app="livemusic"):
-    state_path = STATE_PATH.format(app_string=f"_{app}" if app != "livemusic" else "")
-    if app == "livemusic":
+def load_state(app=None):
+    if app is None:
+        import livemusic as app
+    app_name = app if isinstance(app, str) else app.__name__
+    state_path = STATE_PATH.format(app_string=f"_{app_name}" if app_name != "livemusic" else "")
+    if app_name == "livemusic":
         return load_livemusic_state(state_path)
-    elif app == "78rpm":
+    elif app_name == "78rpm":
         return load_78rpm_state(state_path)
-    elif app == "classical":
+    elif app_name == "classical":
         return load_classical_state(state_path)
     else:
-        raise NotImplementedError("Unknown app {app}")
+        raise NotImplementedError("Unknown app {app_name}")
 
 
 if not isdir("/config"):

@@ -20,9 +20,13 @@ import gc
 import json
 import math
 import random
+import time
 import utils
 from mrequests import mrequests as requests
 
+CLOUD_API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
+CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
+MAX_COLLECTIONS = 35
 STOP_CHAR = "$StoP$"
 
 
@@ -235,3 +239,33 @@ def get_request(url, outpath="/tmp.json"):
         metadata = resp.json()
 
     return metadata
+
+
+def collection_names():
+    # Note: This function appears to only work right after a reboot.
+    all_collection_names_dict = {}
+    api_request = f"{CLOUD_API}/all_collection_names/"
+    cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
+    all_collection_names_dict = {"Phishin Archive": ["Phish"]}
+    resp = None
+    status = 0
+    itries = 0
+    try:
+        while (status != 200) and (itries < 3):
+            if itries > 0:
+                time.sleep(2)
+            itries = itries + 1
+            gc.collect()
+            resp = requests.get(cloud_url)
+            utils.print_log(f"Trying to download collections names from {cloud_url}")
+            status = resp.status_code
+            if status == 200:
+                utils.print_log("Collection Names successfully downloaded")
+                colls = resp.json()["items"]
+                all_collection_names_dict["Internet Archive"] = colls
+    except Exception as e:
+        utils.print_log(f"Exception when loading collnames {e}")
+    finally:
+        if resp is not None:
+            resp.close()
+    return all_collection_names_dict

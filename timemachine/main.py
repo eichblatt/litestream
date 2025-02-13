@@ -31,12 +31,9 @@ from rotary_irq_esp import RotaryIRQ
 import mip
 import network
 
+import archive_utils
 import board as tm
 import utils
-
-API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
-CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
-MAX_COLLECTIONS = 35
 
 
 def factory_reset():
@@ -58,7 +55,7 @@ def factory_reset():
 def configure_wifi():
     print("Configuring Wifi")
     choices = ["Remove Wifi", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
+    choice = utils.select_option("Select", choices)
     print(f"configure_wifi: chose {choice}")
     if choice == "Remove Wifi":
         utils.remove_wifi_cred()
@@ -85,7 +82,7 @@ def test_update():
 
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
-    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3, clear=False)
+    tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3)
 
     start_time = time.ticks_ms()
     while time.ticks_ms() < (start_time + 60_000):
@@ -101,148 +98,14 @@ def test_update():
             return
 
     tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
+    tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
-        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, clear=False)
+        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
     else:
-        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+        tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED)
 
     return update_code
-
-
-def _collection_names():
-    # Note: This function appears to only work right after a reboot.
-    tm.write("Getting all collection names", font=tm.pfont_small, show_end=-3)
-    all_collection_names_dict = {}
-    api_request = f"{API}/all_collection_names/"
-    cloud_url = f"{CLOUD_PATH}/sundry/etree_collection_names.json"
-    all_collection_names_dict = {"Phishin Archive": ["Phish"]}
-    resp = None
-    status = 0
-    itries = 0
-    try:
-        while (status != 200) and (itries < 3):
-            if itries > 0:
-                time.sleep(2)
-            itries = itries + 1
-            gc.collect()
-            resp = requests.get(cloud_url)
-            utils.print_log(f"Trying to download collections names from {cloud_url}")
-            status = resp.status_code
-            if status == 200:
-                utils.print_log("Collection Names successfully downloaded")
-                colls = resp.json()["items"]
-                all_collection_names_dict["Internet Archive"] = colls
-    #        else:
-    #            print(f"API request is {api_request}")
-    #            resp = requests.get(api_request).json()
-    #            all_collection_names_dict = resp["collection_names"]
-    except Exception as e:
-        utils.print_log(f"Exception when loading collnames {e}")
-    finally:
-        if resp is not None:
-            resp.close()
-    return all_collection_names_dict
-
-
-def configure_collections():
-    main_app = utils.get_main_app()
-    choices = ["Add Artist", "Remove Artist", "Phish Only", "Dead Only", "Other", "Cancel"]
-    choice = utils.select_option("Year/Select", choices)
-    print(f"configure_collection: chose to {choice}")
-
-    if choice == "Cancel":
-        return
-
-    collection_list = utils.get_collection_list()
-
-    print(f"current collection_list is {collection_list}")
-    if choice == "Add Artist":
-        keepGoing = True
-        reset_required = False
-        all_collections = []
-        all_collections_dict = _collection_names()
-        for archive in all_collections_dict.keys():
-            all_collections = all_collections + all_collections_dict[archive]
-
-        while keepGoing:
-            coll_to_add = add_collection(all_collections, utils.get_collection_list())
-            if coll_to_add != "_CANCEL":
-                collection_list.append(coll_to_add)
-                reset_required = True
-            choices = ["Add Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-
-            utils.set_collection_list(collection_list)
-        if reset_required:
-            utils.reset()
-
-    elif choice == "Remove Artist":
-        keepGoing = True
-        while keepGoing & (len(collection_list) > 0):
-            coll_to_remove = utils.select_option("Year/Select", collection_list + ["_CANCEL"])
-            collection_list = [x for x in collection_list if not x == coll_to_remove]
-            choices = ["Remove Another", "Finished"]
-            choice2 = utils.select_option("Year/Select", choices)
-            if choice2 == "Finished":
-                keepGoing = False
-            utils.set_collection_list(collection_list)
-
-    elif choice == "Phish Only":
-        utils.set_collection_list(["Phish"])
-        utils.reset()
-    elif choice == "Dead Only":
-        utils.set_collection_list(["GratefulDead"])
-        utils.reset()
-    elif choice == "Other":
-        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
-        other_choice = utils.select_option("Year/Select", other_choices)
-        if other_choice == "Gizzard Only":
-            utils.set_collection_list(["KingGizzardAndTheLizardWizard"])
-            utils.reset()
-        if other_choice == "Goose Only":
-            utils.set_collection_list(["GooseBand"])
-            utils.reset()
-        elif other_choice == "Dead + Phish":
-            utils.set_collection_list(["GratefulDead", "Phish"])
-            utils.reset()
-        else:
-            pass
-    return
-
-
-def add_collection(all_collections, collection_list, colls_fn=None):
-    matching = [x for x in all_collections if not x in collection_list]
-    n_matching = len(matching)
-
-    selected_chars = ""
-    subset_match = True
-    while n_matching > 25:
-        m2 = f"{n_matching} Matching\n(STOP to end)"
-        print(m2)
-        selected_chars = utils.select_chars("Spell desired Artist", message2=m2, already=selected_chars)
-        if selected_chars.endswith(utils.STOP_CHAR):
-            subset_match = False
-            print(f"raw selected {selected_chars}")
-            selected_chars = selected_chars.replace(utils.STOP_CHAR, "")
-        selected_chars = selected_chars.lower().replace(" ", "")
-        print(f"selected {selected_chars}")
-        if colls_fn is not None:
-            matching = utils.distinct(matching + colls_fn(selected_chars))
-        if subset_match:
-            matching = [x for x in matching if selected_chars in (x.lower().replace(" ", "") + "$")]
-        else:
-            matching = [x for x in matching if selected_chars == (x.lower().replace(" ", ""))]
-        n_matching = len(matching)
-
-    print(f"Matching is {matching}")
-    choice = "_CANCEL"
-    if n_matching > 0:
-        choice = utils.select_option("Choose artist to add", matching + ["_CANCEL"])
-
-    return choice
 
 
 def update_code():
@@ -252,8 +115,9 @@ def update_code():
         print("Error -- not connected to wifi")
         return
     tm.clear_screen()
+    tm.label_soft_knobs("-", "-", "-")
     tm.write("Updating", 0, 40, tm.pfont_med, tm.YELLOW)
-    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+    tm.write("code", 0, 40 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED)
 
     try:
         base_url = "github:eichblatt/litestream/timemachine/package.json"
@@ -272,7 +136,7 @@ def update_firmware():
 
     tm.clear_screen()
     tm.write("Updating", 0, 50, tm.pfont_med, tm.YELLOW)
-    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED, clear=False)
+    tm.write(" Firmware", 0, 50 + tm.pfont_med.HEIGHT, tm.pfont_med, tm.RED)
 
     current_partition = utils.get_current_partition_name()
     print(f"The current partition is {current_partition}")
@@ -296,11 +160,11 @@ def choose_dev_mode():
 
 
 def choose_main_app():
-    app_choices = ["no change", "livemusic", "78rpm"]  # "datpiff" removed
+    app_choices = ["no change", "livemusic", "78rpm", "classical"]  # "datpiff" removed
     main_app = utils.get_main_app()
-    new_main_app = utils.select_option(f"Choose App\nNow:{main_app}", app_choices)
-    if new_main_app != "no change":
-        main_app = utils.set_main_app(new_main_app)
+    new_main_app_name = utils.select_option(f"Choose App\nNow:{main_app.__name__}", app_choices)
+    if new_main_app_name != "no change":
+        main_app = utils.set_main_app(new_main_app_name)
     return main_app
 
 
@@ -310,10 +174,12 @@ def reconfigure():
     print("Reconfiguring")
     tm.tft.fill_rect(0, 90, 160, 30, tm.BLACK)
     # time.sleep(0.1)
-    config_choices = [
-        "Artists",
+    app = utils.get_main_app()
+    exit_string = f"Return to {app.__name__}"
+    app_config_choices = app.CONFIG_CHOICES if "CONFIG_CHOICES" in dir(app) else []
+    config_choices = app_config_choices + [
         "Update Code",
-        "Exit",
+        exit_string,
         "Update Firmware",
         "Wifi",
         "Reboot",
@@ -327,8 +193,8 @@ def reconfigure():
         config_choices.append("Choose App")
     choice = utils.select_option("Config Menu", config_choices)
 
-    if choice == "Artists":
-        configure_collections()
+    if choice in app_config_choices:
+        app.configure(choice)
     elif choice == "Wifi":
         wifi = configure_wifi()
     elif choice == "Calibrate Knobs":
@@ -348,7 +214,7 @@ def reconfigure():
     elif choice == "Calibrate Screen":
         tm.calibrate_screen(force=True)
         utils.reset()
-    elif choice == "Exit":
+    elif choice == exit_string:
         return choice
     elif choice == "Dev Mode":
         dev_mode = choose_dev_mode()
@@ -367,19 +233,20 @@ def basic_main():
     hidden_setdate = False
     tm.calibrate_screen()
     ypos = 0
+    tm.clear_screen()
     tm.write("Welcome", 0, ypos, tm.pfont_large, tm.RED)
     ypos += tm.pfont_large.HEIGHT
-    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write("Time ", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
-    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write("Machine", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
     software_version = utils.get_software_version()
     dev_flag = "dev" if utils.is_dev_box() else ""
-    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW, clear=False)
+    tm.write(f"{software_version} {dev_flag}", 0, ypos, tm.pfont_med, tm.YELLOW)
     ypos += tm.pfont_med.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, clear=False)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
@@ -399,27 +266,15 @@ def basic_main():
 
 
 def run_livemusic():
-    main_app = "livemusic"
     while True:
         try:
             if utils.is_dev_box():
                 main_app = utils.get_main_app()
-
-            if main_app == "datpiff":
-                main_app = "livemusic"
-
-            if main_app == "livemusic":
-                import livemusic
-
-                utils.mark_partition()  # If we make it this far, the firmware is good.
-                livemusic.run()
-            elif main_app == "78rpm":
-                import rpm78
-
-                utils.mark_partition()
-                rpm78.run()
             else:
-                raise NotImplementedError(f"Unknown app {main_app}")
+                import livemusic as main_app
+
+            utils.mark_partition()  # If we make it this far, the firmware is good.
+            main_app.run()
         except Exception as e:
             print(f"Exception in main. {e} -- reconfiguring")
         finally:

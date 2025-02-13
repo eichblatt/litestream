@@ -130,6 +130,7 @@ Disconnect the device from Jama, which will interfere with this process.
 
 ```{}
 : ~ ; export DEVICE=/dev/ttyACM0 # Note: Old board was /dev/ttyUSB0
+: ~ ; export IDF_ENV=idf5.2_py3.12_env 
 : ~ ; source $HOME/esp/esp-idf/export.sh 
 : ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/$IDF_ENV/bin/activate

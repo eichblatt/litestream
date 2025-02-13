@@ -93,7 +93,7 @@ elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
     import fonts.NotoSans_18 as pfont_tiny
     import fonts.NotoSans_24 as pfont_small
-    import fonts.NotoSans_48 as pfont_med
+    import fonts.NotoSans_24 as pfont_med
     import fonts.NotoSans_48 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
@@ -136,7 +136,8 @@ def conf_screen(rotation=1, buffer_size=0, options=0, driver="st7789"):
     )
 
 
-tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+# tft = conf_screen(buffer_size=64 * 64 * 2, driver=SCREEN_DRIVER)
+tft = conf_screen(buffer_size=0, driver=SCREEN_DRIVER)
 psychedelic_screen = False
 tft.init()
 
@@ -232,9 +233,9 @@ def label_soft_knobs(left, center, right):
     if sum(widths) > SCREEN_WIDTH:
         raise NotImplementedError("Strings are too wide, Bailing")
     clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
-    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, clear=False)
-    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, False, background=bg)
-    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, False, background=bg)
+    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
+    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
     return
 
 
@@ -313,13 +314,12 @@ def clear_area(x, y, width, height):
     tft.fill_rect(x, y, width, height, BLACK)
 
 
+def clear_to_bottom(x0, y0):
+    tft.fill_rect(x0, y0, SCREEN_WIDTH - x0, SCREEN_HEIGHT - y0, BLACK)
+
+
 def clear_screen():
     clear_area(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-
-
-def clear_area(x, y, width, height):
-    init_screen()
-    tft.fill_rect(x, y, width, height, BLACK)
 
 
 def power(state=None):
@@ -350,18 +350,20 @@ def calibrate_knobs():
     print(f"knob_sense before is {knob_sense}")
     change = 0
     text_height = pfont_med.HEIGHT
-    for knob, name, bit in zip([m, d, y], ["Left", "Center", "Right"], (0, 1, 2)):
+    for knob, name, bit in zip([m, d, y], ["Left knob", "Center knob", "Right knob"], (0, 1, 2)):
         knob._value = (knob._min_val + knob._max_val) // 2  # can move in either direction.
         prev_value = knob.value()
+        clear_screen()
         write("Rotate")
-        write(f"{name}", 0, text_height, color=YELLOW, clear=False)
-        write("Knob Forward", 0, 2 * text_height, clear=False)
+        write(f"{name}", 0, text_height, color=YELLOW)
+        write("Forward", 0, 2 * text_height)
         while prev_value == knob.value():
             time.sleep(0.05)
         change = (change | int(knob.value() < prev_value) << bit) & 0x7
     knob_sense = knob_sense ^ change
     print(f"knob sense change: {change}. Value after {knob_sense}")
     setup_knobs(knob_sense)
+    clear_screen()
     write("Knobs Calibrated", show_end=-2)
     try:
         kf = open(KNOB_SENSE_PATH, "w")
@@ -382,7 +384,7 @@ def calibrate_screen(force=False):
         tft.madctl(0x60 if screen_type < 2 else 0xE8)
         tft.offset(0, 0) if (screen_type % 2 == 0) else tft.offset(1, 2)
         return screen_type
-    screen_type = 0  # after factory reset we MUST have a screen type
+    screen_type = 0 if (SCREEN_WIDTH == 160) else 2  # in case of factory reset, we MUST have a screen type.
     print(f"screen_type before is {screen_type}")
     # Draw a rectangle on screen.
     tft.on()
@@ -390,9 +392,9 @@ def calibrate_screen(force=False):
     tft.offset(0, 0)
     tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE)
     # Can you see all 4 sides?
-    msg = write("Press SELECT if all 4 sides visible", 1, 5, font=pfont_small, clear=False, show_end=-3)
+    msg = write("Press SELECT if all 4 sides visible", 1, 5, font=pfont_small, show_end=-3)
     nlines = len(msg.split("\n"))
-    write("else press STOP", 1, nlines * pfont_small.HEIGHT + 5, font=pfont_small, clear=False)
+    write("else press STOP", 1, nlines * pfont_small.HEIGHT + 5, font=pfont_small)
 
     button = poll_for_which_button({"select": pSelect, "stop": pStop, "ffwd": pFFwd}, timeout=45, default="select")
     if button == "stop":
@@ -428,9 +430,11 @@ def self_test():
     buttons = [pSelect, pStop, pRewind, pFFwd, pPlayPause, pPower, pMSw, pDSw, pYSw]
     button_names = ["Select", "Stop", "Rewind", "FFwd", "PlayPause", "Power", "Left knob", "Center knob", "Right knob"]
     for button, name in zip(buttons, button_names):
+        clear_screen()
         write("Press")
-        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW, clear=False, indent=-2)
+        write(f"{name}", 0, pfont_med.HEIGHT, color=YELLOW)
         poll_for_button(button)
+    clear_screen()
     write("Button Test\nPassed")
     time.sleep(0.2)
     return
@@ -493,21 +497,23 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
         return out_lines
 
 
-def write(msg, x=0, y=0, font=pfont_med, color=WHITE, clear=True, show_end=0, indent=0, background=0):
-    # write the msg starting at x,y in font with color. Clear entire screen if clear==True.
+def write(msg, x=0, y=0, font=pfont_med, color=WHITE, show_end=0, indent=0, background=0, bounds_check=True):
+    # write the msg starting at x,y in font with color.
     # show_end: 0 - display as much as possible in 1 line.
     # show_end: +n - break the text up into as many as n lines.
     # show_end: -n - break the text up on *word boundaries* in as many as n lines.
 
-    if clear:
-        clear_screen()
     if abs(show_end) > 1:
         msg = add_line_breaks(msg, x, font, show_end, indent=indent)
     text = msg.split("\n")
-    for i, line in enumerate(text):
+    y0 = y
+    for line in text:
         if show_end == 1:
             line = trim_string_middle(line, x, font)
-        tft.write(font, line, x, y + (i * font.HEIGHT), color, background)
+        if bounds_check and ((x >= SCREEN_WIDTH) or (y0 >= SCREEN_HEIGHT - font.HEIGHT)):
+            continue
+        tft.write(font, line, x, y0, color, background)
+        y0 += font.HEIGHT
     return msg
 
 
