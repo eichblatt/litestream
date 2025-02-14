@@ -905,18 +905,18 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
 
     if not hidden:
         tm.clear_screen()
-        tm.write("Connecting..", font=tm.pfont_small, color=tm.YELLOW)
+        tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
         y0 = tm.pfont_small.HEIGHT
         msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, -3)
         version_strings = sys.version.split(" ")
         uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
         y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
-        tm.write(f"{uversion}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
+        tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
         y0 = y0 + tm.pfont_small.HEIGHT
         software_version = get_software_version()
         dev_flag = "dev" if is_dev_box() else ""
         print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_small, tm.WHITE, show_end=1)
+        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:

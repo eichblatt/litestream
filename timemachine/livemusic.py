@@ -60,7 +60,7 @@ venue_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
-tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_font.HEIGHT)
+tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - (date_font.HEIGHT + 1))
 ycursor = tm.SCREEN_HEIGHT - (date_font.HEIGHT + 1)
 selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
@@ -467,7 +467,7 @@ def main_loop(player, coll_dict, state):
                             f"{software_version} {dev_flag}",
                             artist_bbox.x0,
                             artist_bbox.y0,
-                            pfont_small,
+                            pfont_smallx,
                             tm.stage_date_color,
                             show_end=1,
                         )
@@ -661,7 +661,6 @@ def update_venue(vcs, nshows=1, collection=None):
 
 
 def update_display(player):
-    # display_tracks(*player.track_names())
     audio_pump(player, Nmax=3)  # Try to keep buffer filled.
     tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
@@ -675,8 +674,9 @@ def update_display(player):
 def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     tm.clear_bbox(tracklist_bbox)
-    max_lines = tracklist_bbox.height // pfont_small.HEIGHT
-    print(f"max_lines is {max_lines} tracklist_bbox:{tracklist_bbox}")
+    max_lines, rem = divmod(tracklist_bbox.height, pfont_small.HEIGHT)
+    tracklist_bbox.y0 += rem // 2
+    print(f"max_lines is {max_lines}. rem:{rem}. tracklist_bbox:{tracklist_bbox}")
     # max_lines = 2
     lines_written = 0
     last_valid_str = 0

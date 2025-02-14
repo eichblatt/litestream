@@ -69,6 +69,10 @@
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_24.py"
         ],
         [
+            "fonts/NotoSans_bold_24.py",
+            "github:eichblatt/litestream/timemachine/fonts/NotoSans_bold_24.py"
+        ],
+        [
             "fonts/NotoSans_32.py",
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
         ],

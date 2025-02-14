@@ -93,6 +93,7 @@ if screen_type < 2:
 elif screen_type in (2, 3):
     SCREEN_DRIVER = "st7789"
     import fonts.NotoSans_bold_18 as pfont_tiny
+    import fonts.NotoSans_24 as pfont_smallx
     import fonts.NotoSans_24 as pfont_small
     import fonts.NotoSans_24 as pfont_med
     import fonts.NotoSans_48 as pfont_large

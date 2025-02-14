@@ -245,7 +245,7 @@ def basic_main():
     ypos += tm.pfont_small.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, show_end=1)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_smallx, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
