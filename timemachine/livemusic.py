@@ -33,15 +33,14 @@ import audioPlayer
 # Local fonts - So that the font size can be independent of the screen size, or not.
 # import fonts.DejaVu_33 as large_font
 large_font = tm.large_font
-import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_18 as pfont_smallx
+import fonts.NotoSans_bold_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.date_font as date_font
 
 venue_font = pfont_small
 
 
-pfont_small.HEIGHT = 20
-pfont_med.HEIGHT = 24
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
@@ -56,12 +55,12 @@ CONFIG_CHOICES = ["Artists"]
 ycursor = 0
 stage_date_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, large_font.HEIGHT)
 ycursor += -2 + (7 * large_font.HEIGHT) // 8  # We never use the underhang on the staged date.
-nshows_bbox = tm.Bbox(0.95 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
+# nshows_bbox = tm.Bbox(0.9 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 venue_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
-tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - date_font.HEIGHT)
+tracklist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - (date_font.HEIGHT + 1))
 ycursor = tm.SCREEN_HEIGHT - (date_font.HEIGHT + 1)
 selected_date_bbox = tm.Bbox(0, ycursor, 0.91 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.91 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
@@ -468,7 +467,7 @@ def main_loop(player, coll_dict, state):
                             f"{software_version} {dev_flag}",
                             artist_bbox.x0,
                             artist_bbox.y0,
-                            pfont_small,
+                            pfont_smallx,
                             tm.stage_date_color,
                             show_end=1,
                         )
@@ -497,16 +496,18 @@ def main_loop(player, coll_dict, state):
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 if len(tape_ids) == 0:
                     continue
-                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
-                ntape = (ntape + 1) % len(tape_ids)
-                tm.clear_bbox(artist_bbox)
-                collection = tape_ids[ntape][0]
-                tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
-                # vcs = coll_dict[collection][key_date]
                 tm.clear_bbox(venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
                 tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
+
+                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
+                ntape = (ntape + 1) % len(tape_ids)
+                tm.clear_bbox(artist_bbox)
+                collection = tape_ids[ntape][0]
+                x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{collection}")) // 2, 0)
+                tm.write(f"{collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+                # vcs = coll_dict[collection][key_date]
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -547,10 +548,7 @@ def main_loop(player, coll_dict, state):
             tm.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
-            # tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, tm.stage_date_color)
             tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-            # tm.clear_bbox(artist_bbox)
-            # tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
             print(player)
             update_display(player)
 
@@ -636,7 +634,8 @@ def main_loop(player, coll_dict, state):
                 except KeyError:
                     tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(artist_bbox)
-                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+                    x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{current_collection}")) // 2, 0)
+                    tm.write(f"{current_collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -652,16 +651,16 @@ def short_tape_id(tape_id, max_chars=16):
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(venue_bbox)
     tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-    tm.clear_bbox(nshows_bbox)
     if nshows > 1:
-        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color)
+        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f" {nshows}")
+        tm.write(f" {nshows}", x0, venue_bbox.y0, pfont_small, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(artist_bbox)
-        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+        x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{collection}")) // 2, 0)
+        tm.write(f"{collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
 
 
 def update_display(player):
-    # display_tracks(*player.track_names())
     audio_pump(player, Nmax=3)  # Try to keep buffer filled.
     tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
@@ -675,27 +674,27 @@ def update_display(player):
 def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     tm.clear_bbox(tracklist_bbox)
-    max_lines = tracklist_bbox.height // pfont_small.HEIGHT
-    print(f"max_lines is {max_lines} tracklist_bbox:{tracklist_bbox}")
-    # max_lines = 2
-    lines_written = 0
+    max_lines, rem = divmod(tracklist_bbox.height, pfont_small.HEIGHT)
+    # tracklist_bbox.y0 += rem // 2
+    y0 = tracklist_bbox.y0 + (rem // 2)
+    print(f"max_lines is {max_lines}. rem:{rem}. tracklist_bbox:{tracklist_bbox}")
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
     text_height = pfont_small.HEIGHT
-    while lines_written < max_lines:
+    while y0 < tracklist_bbox.y1 - text_height:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
-        y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
-        lines_written += len(msg.split("\n"))
+        font = pfont_small if i == 0 else pfont_smallx
+        msg = tm.write(f"{name}", 0, y0, font, color, show_end, indent=2)
+        y0 += text_height * len(msg.split("\n"))
         i = i + 1
     return msg
 
@@ -742,10 +741,11 @@ def show_collections(collection_list):
     text_height = pfont_small.HEIGHT + 2
     text_start = pfont_med.HEIGHT + 1
     tm.tft.write(pfont_med, message, 0, 0, tm.YELLOW)
-    for i, coll in enumerate(collection_list[:5]):
-        tm.tft.write(pfont_small, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
-    if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, text_start + text_height * 5, tm.WHITE)
+    max_lines = (tm.SCREEN_HEIGHT - text_start) // text_height
+    for i, coll in enumerate(collection_list[:max_lines]):
+        tm.tft.write(pfont_smallx, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
+    if ncoll > max_lines:
+        tm.tft.write(pfont_smallx, f"...", 0, text_start + text_height * max_lines, tm.WHITE)
     time.sleep(0.1)
 
 
