@@ -496,16 +496,18 @@ def main_loop(player, coll_dict, state):
                     tape_ids = get_tape_ids(coll_dict, key_date)
                 if len(tape_ids) == 0:
                     continue
-                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
-                ntape = (ntape + 1) % len(tape_ids)
-                tm.clear_bbox(artist_bbox)
-                collection = tape_ids[ntape][0]
-                tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
-                # vcs = coll_dict[collection][key_date]
                 tm.clear_bbox(venue_bbox)
                 display_str = short_tape_id(tape_ids[ntape][1])
                 print(f"display string is {display_str}")
                 tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
+
+                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
+                ntape = (ntape + 1) % len(tape_ids)
+                tm.clear_bbox(artist_bbox)
+                collection = tape_ids[ntape][0]
+                x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{collection}")) // 2, 0)
+                tm.write(f"{collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+                # vcs = coll_dict[collection][key_date]
                 print(f"Select LONG_PRESS values is {tm.pSelect.value()}. ntape = {ntape}")
 
         if pPower_old != tm.pPower.value():
@@ -546,10 +548,7 @@ def main_loop(player, coll_dict, state):
             tm.clear_bbox(venue_bbox)
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
-            # tm.tft.write(pfont_small, f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, tm.stage_date_color)
             tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-            # tm.clear_bbox(artist_bbox)
-            # tm.tft.write(pfont_small, f"{collection}", artist_bbox.x0, artist_bbox.y0, tm.stage_date_color)
             print(player)
             update_display(player)
 
@@ -635,7 +634,8 @@ def main_loop(player, coll_dict, state):
                 except KeyError:
                     tm.clear_bbox(venue_bbox)
                     tm.clear_bbox(artist_bbox)
-                    tm.write(f"{current_collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+                    x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{current_collection}")) // 2, 0)
+                    tm.write(f"{current_collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
                     update_display(player)
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
@@ -651,13 +651,13 @@ def short_tape_id(tape_id, max_chars=16):
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(venue_bbox)
     tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-    # tm.clear_bbox(nshows_bbox)
     if nshows > 1:
         x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f" {nshows}")
         tm.write(f" {nshows}", x0, venue_bbox.y0, pfont_small, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(artist_bbox)
-        tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
+        x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{collection}")) // 2, 0)
+        tm.write(f"{collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
 
 
 def update_display(player):
@@ -675,28 +675,26 @@ def display_tracks(*track_names):
     print(f"in display_tracks {track_names}")
     tm.clear_bbox(tracklist_bbox)
     max_lines, rem = divmod(tracklist_bbox.height, pfont_small.HEIGHT)
-    tracklist_bbox.y0 += rem // 2
+    # tracklist_bbox.y0 += rem // 2
+    y0 = tracklist_bbox.y0 + (rem // 2)
     print(f"max_lines is {max_lines}. rem:{rem}. tracklist_bbox:{tracklist_bbox}")
-    # max_lines = 2
-    lines_written = 0
     last_valid_str = 0
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
     text_height = pfont_small.HEIGHT
-    while lines_written < max_lines:
+    while y0 < tracklist_bbox.y1 - text_height:
         name = track_names[i]
         name = name.strip("-> ")  # remove trailing spaces and >'s
         if i < last_valid_str and len(name) == 0:
             name = "Unknown"
         name = utils.capitalize(name.lower())
-        y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
         font = pfont_small if i == 0 else pfont_smallx
         msg = tm.write(f"{name}", 0, y0, font, color, show_end, indent=2)
-        lines_written += len(msg.split("\n"))
+        y0 += text_height * len(msg.split("\n"))
         i = i + 1
     return msg
 
