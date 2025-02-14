@@ -33,15 +33,14 @@ import audioPlayer
 # Local fonts - So that the font size can be independent of the screen size, or not.
 # import fonts.DejaVu_33 as large_font
 large_font = tm.large_font
-import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_18 as pfont_smallx
+import fonts.NotoSans_bold_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.date_font as date_font
 
 venue_font = pfont_small
 
 
-pfont_small.HEIGHT = 20
-pfont_med.HEIGHT = 24
 CLOUD_PATH = "https://storage.googleapis.com/spertilo-data"
 API = "https://gratefuldeadtimemachine.com"  # google cloud version mapped to here
 # API = "https://deadstream-api-3pqgajc26a-uc.a.run.app"  # google cloud version
@@ -56,7 +55,7 @@ CONFIG_CHOICES = ["Artists"]
 ycursor = 0
 stage_date_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, large_font.HEIGHT)
 ycursor += -2 + (7 * large_font.HEIGHT) // 8  # We never use the underhang on the staged date.
-nshows_bbox = tm.Bbox(0.95 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
+# nshows_bbox = tm.Bbox(0.9 * tm.SCREEN_WIDTH, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 venue_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
 ycursor += pfont_small.HEIGHT
 artist_bbox = tm.Bbox(0, ycursor, tm.SCREEN_WIDTH, ycursor + pfont_small.HEIGHT)
@@ -652,9 +651,10 @@ def short_tape_id(tape_id, max_chars=16):
 def update_venue(vcs, nshows=1, collection=None):
     tm.clear_bbox(venue_bbox)
     tm.write(f"{vcs}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-    tm.clear_bbox(nshows_bbox)
+    # tm.clear_bbox(nshows_bbox)
     if nshows > 1:
-        tm.write(f"{nshows}", nshows_bbox.x0, nshows_bbox.y0, pfont_small, tm.nshows_color)
+        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f" {nshows}")
+        tm.write(f" {nshows}", x0, venue_bbox.y0, pfont_small, tm.nshows_color)
     if collection is not None:
         tm.clear_bbox(artist_bbox)
         tm.write(f"{collection}", artist_bbox.x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
@@ -694,7 +694,8 @@ def display_tracks(*track_names):
         y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
+        font = pfont_small if i == 0 else pfont_smallx
+        msg = tm.write(f"{name}", 0, y0, font, color, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
@@ -742,10 +743,11 @@ def show_collections(collection_list):
     text_height = pfont_small.HEIGHT + 2
     text_start = pfont_med.HEIGHT + 1
     tm.tft.write(pfont_med, message, 0, 0, tm.YELLOW)
-    for i, coll in enumerate(collection_list[:5]):
-        tm.tft.write(pfont_small, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
-    if ncoll > 5:
-        tm.tft.write(pfont_small, f"...", 0, text_start + text_height * 5, tm.WHITE)
+    max_lines = (tm.SCREEN_HEIGHT - text_start) // text_height
+    for i, coll in enumerate(collection_list[:max_lines]):
+        tm.tft.write(pfont_smallx, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
+    if ncoll > max_lines:
+        tm.tft.write(pfont_smallx, f"...", 0, text_start + text_height * max_lines, tm.WHITE)
     time.sleep(0.1)
 
 

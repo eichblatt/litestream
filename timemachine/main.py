@@ -97,11 +97,10 @@ def test_update():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
-        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
+        tm.write("Updating ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
     else:
         tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED)
 
