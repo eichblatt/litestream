@@ -97,11 +97,10 @@ def test_update():
             print(f"{time.ticks_ms()} Stop button Pressed -- bailing!!")
             return
 
-    tm.tft.fill_rect(0, 0, 160, 128, tm.BLACK)
     tm.clear_screen()
     tm.write("Welcome..", 0, 0, tm.pfont_large, tm.RED)
     if update_code:
-        tm.write("Updating ... ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
+        tm.write("Updating ", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW)
     else:
         tm.write("Not Updating", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.RED)
 
@@ -246,7 +245,7 @@ def basic_main():
     ypos += tm.pfont_small.HEIGHT
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    tm.write(f"{uversion}", 0, ypos, tm.pfont_small, tm.WHITE, show_end=1)
+    tm.write(f"{uversion}", 0, ypos, tm.pfont_smallx, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
