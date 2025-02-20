@@ -160,8 +160,9 @@ If this is the first time, then follow instructions on how to [Download the firm
 ### Flash Everything
 
 ```{}
-: ~ ; export DEVICE=/dev/ttyUSB0 # Note: New serial board is /dev/ttyACM0
+: ~ ; export DEVICE=/dev/ttyACM0 # Note: old serial board is /dev/ttyUSB0
 : ~ ; source $HOME/esp/esp-idf/export.sh 
+: ~ ; IDF_ENV=idf5.2_py3.12_env
 : ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/$IDF_ENV/bin/activate
 : /home/steve/.espressif/python_env/idf5.2_py3.12_env ~/projects/litestream ; cd MicropythonFirmware/latest
