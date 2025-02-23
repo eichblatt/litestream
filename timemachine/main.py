@@ -274,6 +274,9 @@ def run_livemusic():
 
             utils.mark_partition()  # If we make it this far, the firmware is good.
             main_app.run()
+        except utils.FirmwareUpdateRequiredException as e:
+            print(f"Exception in main. {e} -- updating firmware")
+            update_firmware()
         except Exception as e:
             print(f"Exception in main. {e} -- reconfiguring")
         finally:

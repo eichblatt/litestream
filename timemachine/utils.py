@@ -1060,3 +1060,9 @@ def load_state(app=None):
 
 if not isdir("/config"):
     os.mkdir("/config")
+
+
+class FirmwareUpdateRequiredException(Exception):
+    def __init__(self, message="Firmware is out of date"):
+        self.message = message
+        super().__init__(self.message)

@@ -37,7 +37,14 @@ import classical_utils as clu
 import board as tm
 import utils
 
-import playerManager
+try:
+    import playerManager
+except ImportError as e:
+    if "Firmware" in str(e):
+        print("AAC_Decoder not available in this version of the firmware")
+        raise utils.FirmwareUpdateRequiredException("AAC_Decoder not available in this firmware")
+    else:
+        raise e
 
 DEBUG = True
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
