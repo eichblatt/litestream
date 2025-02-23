@@ -727,6 +727,8 @@ def get_main_app():
             import rpm78 as main_app
         elif main_app_name == "classical":
             import classical as main_app
+    except FirmwareUpdateRequiredException as e:
+        raise e
     except ImportError as e:
         print(e)
         import livemusic as main_app
