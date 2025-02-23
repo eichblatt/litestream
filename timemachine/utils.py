@@ -782,11 +782,14 @@ def update_firmware():
     from ota32 import open_url
     import gc
 
-    latest_release = "latest"
-    branch = "releases"
+    release_to_download = "latest"
+    if is_dev_box():
+        branch = "dev"
+    else:
+        branch = "releases"
     server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
-    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.sha"
-    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.bin"
+    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{release_to_download}/micropython.sha"
+    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{release_to_download}/micropython.bin"
 
     try:
         s = open_url(sha_url)
