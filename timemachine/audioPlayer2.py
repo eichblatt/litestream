@@ -29,6 +29,8 @@ try:
 except ImportError:
     import AACDecoder
 
+if not "AAC_Decoder" in dir(AudioDecoder):
+    raise (RuntimeError("Please Update Firmware to include AAC_Decoder"))
 # Use const() so that micropython inlines these and saves a lookup
 play_state_Stopped = const(0)
 play_state_Playing = const(1)
