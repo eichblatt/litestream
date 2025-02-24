@@ -1167,7 +1167,7 @@ class AudioPlayer:
                     self.PlayLength.append(self.current_track_bytes_decoded_out)
                     self.DecodeInfo.pop(0)
 
-                    if len(self.playlist) > 0:
+                    if self.InBuffer.any() > 0:  # if len(self.playlist) > 0:
                         self.decode_phase = decode_phase_trackstart
 
                     # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out

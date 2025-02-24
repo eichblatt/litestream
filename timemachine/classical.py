@@ -441,14 +441,14 @@ favored_names = {
 
 
 @micropython.native
-def score(perf):
+def score(perf, track_counts_mode=0):
     dur = 0
     trk = 0
     date = 0
     promotion = 0
     date = 19000101
     # dur = int(perf.get("dur", 0)) * 100
-    # trk = int(perf.get("trk", 0)) * 10
+    trk = 100 if perf.get("trk", 0) == track_counts_mode else 0
     try:
         perf_info = perf.get("performers", [{"type": "Unknown", "name": "Unknown"}])
         for performer_item in perf_info:
@@ -473,8 +473,10 @@ def get_performances(work):
 
     url = f"{CLASSICAL_API}?mode=library&action=perf&work_id={work_id}"
     performances = request_json(url)
-    print(f"getting performances, before sorting {time.ticks_ms()}")
-    performances = sorted(performances[:30], key=score, reverse=True) + performances[30:]
+    track_counts = [perf.get("trk", 0) for perf in performances[:30]]  # for symphonies prefer 4 tracks generally
+    track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
+    print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
+    performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
     print(f"getting performances, after sorting {time.ticks_ms()}")
     perf_dict[work_id] = performances
     return performances
