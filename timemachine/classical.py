@@ -428,34 +428,50 @@ def get_cat_works(composer_id, category, depth=0):
     return works
 
 
+#'{|}~áäçèéëíòóöüÿčřš′'
 favored_names = {
     "Perahia": 100,
     "Vladimir Horowitz": 100,
     "Glenn Gould": 100,
     "Arthur Rubinstein": 100,
-    "Cleveland": 100,
+    "Szell": 100,
+    "Karajan": 100,
+    "Solti": 60,
+    "Barenboim": 60,
+    "Abbado": 60,
+    "Bernstein": 60,
+    "Klemperer": 60,
+    "Furtwängler": 60,
+    "Böhm": 60,
+    "Kubelik": 60,
+    "Cleveland": 60,
     "London": 60,
     "Berlin": 60,
     "Prague": 60,
+    "New York": 50,
+    # "Muti": 60,
+    # "Maazel": 60,
+    # "Haitink": 60,
 }
 
 
 @micropython.native
 def score(perf, track_counts_mode=0):
     dur = 0
-    trk = 0
-    date = 0
     promotion = 0
     date = 19000101
+    n_tracks = perf.get("trk", 0)
+    track_count_penalty = 100 if n_tracks < track_counts_mode else 65  # too few tracks is worse than too many
+    trk = max(0, 1000 - track_count_penalty * abs(n_tracks - track_counts_mode))
     # dur = int(perf.get("dur", 0)) * 100
-    trk = 100 if perf.get("trk", 0) == track_counts_mode else 0
+    # print(f"scoring {perf.get('name', 'Unknown')}, trk is {trk}. n_tracks is {perf.get('trk',0)}")
     try:
         perf_info = perf.get("performers", [{"type": "Unknown", "name": "Unknown"}])
         for performer_item in perf_info:
             for favored_name, favored_value in favored_names.items():
                 if re.search(favored_name.lower(), performer_item.get("name", "").lower()):
                     promotion += favored_value
-        date = int(perf.get("release_date", "1900-01-01").replace("-", ""))
+        # date = int(perf.get("release_date", "1900-01-01").replace("-", ""))
     except ValueError:
         pass
     return dur + trk + date + promotion
@@ -477,7 +493,7 @@ def get_performances(work):
     track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
-    print(f"getting performances, after sorting {time.ticks_ms()}")
+    print(f"{time.ticks_ms()}. Top score {score(performances[0],track_counts_mode)}, {performances[0].get('trk',0)} tracks")
     perf_dict[work_id] = performances
     return performances
 
