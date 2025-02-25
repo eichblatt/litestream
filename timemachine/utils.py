@@ -341,6 +341,7 @@ def qr_code(message, startpos=(0, 0), pixel_size=2):
 #
 
 
+############################################################################################### file-related
 def isdir(path):
     try:
         return (os.stat(path)[0] & 0x4000) != 0
@@ -479,6 +480,9 @@ def mkdirs(path):
     os.mkdir(path)
 
 
+############################################################################################### json
+
+
 def write_json(obj, path):
     print(f"writing json to {path}")
     parent_dir = "/".join(path.split("/")[:-1])
@@ -555,6 +559,9 @@ def set_datetime(hidden=False):
         return None
 
 
+############################################################################################### partitions
+
+
 def set_boot_partition(part_name):
     from esp32 import Partition
 
@@ -574,6 +581,9 @@ def mark_partition():
 
     current_partition = Partition(Partition.RUNNING)
     current_partition.mark_app_valid_cancel_rollback()
+
+
+############################################################################################### string fns
 
 
 def remove_common_start(strings, word_level=True):
@@ -621,6 +631,10 @@ def remove_accents(string):
     return string
 
 
+def url_escape(s):
+    return "".join(c if c.isalpha() or c.isdigit() else "%%%02x" % ord(c) for c in s)
+
+
 def isnumeric(string):
     pattern = r"^-?\d+(?:\.\d+)?$"
     return re.match(pattern, string)
@@ -635,6 +649,9 @@ def isinteger(candidate):
         pattern = r"^-?\d+?$"
         return re.match(pattern, candidate)
     return False
+
+
+############################################################################################### logging
 
 
 def clear_log(outpath="/log_out.py"):
@@ -1062,6 +1079,9 @@ def load_state(app=None):
 
 if not isdir("/config"):
     os.mkdir("/config")
+
+
+############################################################################################# custom exceptions
 
 
 class FirmwareUpdateRequiredException(Exception):

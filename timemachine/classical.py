@@ -22,7 +22,6 @@ import os
 import re
 import time
 from collections import OrderedDict
-from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
 import fonts.date_font as date_font
@@ -1241,22 +1240,6 @@ def choose_performance(composer, keyed_work):
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
     tm.label_soft_knobs("Composer", "Genre", "Work")
     return retval
-
-
-def get_chunklist(self, url):
-    if url.endswith("m3u8"):
-        # determine the chunks
-        base_url = "/".join(url.split("/")[:-1])
-        chunklist_url = requests.get(url)
-        chunklist_url = f"{base_url}/{chunklist_url.text.splitlines()[-1]}"
-        chunks = [x for x in requests.get(chunklist_url).text.splitlines() if x.startswith("media_")]
-        self.chunklist = [f"{base_url}/{x}" for x in chunks]
-        self.nchunks = len(self.chunklist)
-        if self.DEBUG:
-            print(f"chunklist set to {chunks}")
-    else:
-        self.chunklist = [url]
-    return self.chunklist
 
 
 def select_performance(keyed_work, player, state, ntape=-1):

@@ -1,8 +1,10 @@
 import hashlib
-import requests
+
+# import requests
+from async_urequests import urequests as requests
+
 import time
 import audioPlayer2 as audioPlayer
-
 from machine import Timer
 
 
@@ -29,6 +31,7 @@ class PlayerManager:
         self.all_tracks_sent = False
         self.first_chunk_dict = {}
         self.ready_to_pump = True
+        self.pumptimer = Timer(1)
         self.DEBUG = debug
 
     def set_playlist(self, track_titles, urls):
@@ -52,10 +55,12 @@ class PlayerManager:
     def get_chunklist(self, url):
         if url.endswith("m3u8"):
             # determine the chunks
+            print(f"first url is {url}")
             self.chunked_urls = True
             base_url = "/".join(url.split("/")[:-1])
             chunklist_url = requests.get(url)
             chunklist_url = f"{base_url}/{chunklist_url.text.splitlines()[-1]}"
+            print(f"chunklist url is {chunklist_url}")
             lines = requests.get(chunklist_url).text.splitlines()
             chunks = [x for x in lines if x.startswith("media_")]
             chunklist = [f"{base_url}/{x}" for x in chunks]
@@ -170,6 +175,7 @@ class PlayerManager:
         if not self.ready_to_pump:
             return
         if self.n_tracks_pumped >= len(self.urls):
+            self.pumptimer.deinit()
             return
         url = self.urls[self.n_tracks_pumped]
         self.DEBUG and print(f"pump_chunks sending chunks for {url}")
@@ -204,5 +210,4 @@ class PlayerManager:
         return self.player.reset_player()
 
     def chunk_timer(self):
-        self.pumptimer = Timer(1)
         self.pumptimer.init(period=2000, mode=Timer.PERIODIC, callback=self.release_throttle)

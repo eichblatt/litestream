@@ -511,9 +511,12 @@ class AudioPlayer:
         else:
             status = " !?! "
 
-        retstring = f"{status} --"
+        retstring = f"{status} -- {self.playlist[:1]}" + (
+            f" ... {len(self.playlist) - 1} more" if len(self.playlist) > 1 else ""
+        )
 
         if self.PLAY_STATE != play_state_Stopped:
+            retstring += f"\n    -- "
             retstring += f" Read {self.current_track_bytes_read}"
             retstring += f" Parsed {self.current_track_bytes_parsed_in}"
             retstring += f" Decoded {self.current_track_bytes_decoder_in}"
@@ -1172,6 +1175,8 @@ class AudioPlayer:
 
                     # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                     else:
+                        if len(self.playlist) > 0:
+                            raise RuntimeError("Finished decoding the playlist -- but playlist is not empty")
                         self.DEBUG and print("Finished decoding playlist")
                         self.callbacks["messages"](f"decode_chunk: Finished decoding playlist")
                         self.DecodeLoopRunning = False
