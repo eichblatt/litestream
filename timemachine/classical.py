@@ -1053,7 +1053,7 @@ def display_selected_composer(composer, composer_genre=None, show_loading=False)
         tm.write(composer_genre.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
         y0 = y0 + pfont_med.HEIGHT
     if show_loading:
-        tm.write("loading...", 0, y0, color=tm.WHITE, font=pfont_small)
+        tm.write("loading from classicalarchives.com...", 0, y0, color=tm.WHITE, font=pfont_small, show_end=-3)
 
 
 def display_keyed_genres(composer, composer_genres, index, prev_index):

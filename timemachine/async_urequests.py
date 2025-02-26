@@ -264,7 +264,7 @@ async def _requests(
         gc.collect()
 
 
-async def get(url, timeout=10, **kwargs):
+async def get(url, timeout=100, **kwargs):
     try:
         return await asyncio.wait_for(_requests("GET", url, **kwargs), timeout=timeout)
     except asyncio.TimeoutError as e:

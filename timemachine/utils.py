@@ -534,6 +534,14 @@ def read_file(path):
     return contents
 
 
+def write_file(path, content):
+    try:
+        with open(path, "w") as fh:
+            fh.write(content)
+    except Exception as e:
+        print(f"Exception suppressed in write_file {e}. Path {path}")
+
+
 def set_datetime(hidden=False):
     print("Setting datetime")
     if not hidden:

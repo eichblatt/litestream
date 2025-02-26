@@ -20,7 +20,9 @@ import gc
 import re
 import time
 from collections import OrderedDict
-from mrequests import mrequests as requests
+
+# from mrequests import mrequests as requests
+from async_urequests import urequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
 

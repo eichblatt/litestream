@@ -3,8 +3,11 @@ import board as tm
 import time
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
+from async_urequests import urequests as requests
 
 METADATA_ROOT = "/metadata/classical"
+CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
+TOKEN_FILE = "/metadata/classical/token.txt"
 
 
 # ------------------------------------------------------------------------------------ authentication
@@ -39,6 +42,44 @@ def configure_account():
 
 
 def authenticate_user():
+    validated = False
+    tm.clear_screen()
+    tm.label_soft_knobs("", "jump 10", "next")
+    eml = utils.select_chars("User email")
+    eml = utils.url_escape(eml)
+    tm.clear_screen()
+    pwd = utils.select_chars("password")
+    pwd = utils.url_escape(pwd)
+    url = f"{CLASSICAL_API}?action=register_device&eml={eml}&pwd={pwd}&dev=timemachine"
+    try:
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            token = resp.json().get("access_token", "")
+            if len(token) > 0:
+                state = load_state()
+                state["access_token"] = token
+                save_state(state)
+                utils.write_file(TOKEN_FILE, token)
+                tm.clear_screen()
+                tm.write("Authentication Successful", 0, 0, pfont_small, show_end=-2)
+                time.sleep(2)
+                validated = True
+        else:
+            tm.clear_screen()
+            tm.write(f"Failed response {resp.status_code}", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+            time.sleep(2)
+            validated = False
+    except Exception as e:
+        print(f"Error in authenticate_user: {e}")
+        tm.clear_screen()
+        tm.write("Authentication Failed", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        validated = False
+    finally:
+        tm.label_soft_knobs("Composer", "Genre", "Work")
+    return validated
+
+
+def authenticate_user_qr():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "")
     # Send API call to server to obtain code.
@@ -74,7 +115,7 @@ def poll_for_token(auth_code, timeout=60 * 6, y0=0):
         tm.write(f"Stop to cancel", 0, y0 + pfont_med.HEIGHT, pfont_med, tm.YELLOW)
         # token = requests.get(f"https://prs.net/tm/validate/{auth_code}").text
         if elapsed_time > 10:
-            token = utils.read_file("/metadata/classical/token.txt")[0].strip()
+            token = utils.read_file(TOKEN_FILE)[0].strip()
         if tm.poll_for_button(tm.pStop, 1):
             print(f"Cancelled polling for token. Time elapsed: {time.time() - start_time}s")
             break

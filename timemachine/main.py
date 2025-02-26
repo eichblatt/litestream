@@ -26,7 +26,6 @@ import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 from machine import SPI, Pin
-from mrequests import mrequests as requests
 from rotary_irq_esp import RotaryIRQ
 import mip
 import network
