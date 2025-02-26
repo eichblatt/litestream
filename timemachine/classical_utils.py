@@ -3,7 +3,11 @@ import board as tm
 import time
 import fonts.NotoSans_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
-from async_urequests import urequests as requests
+
+try:
+    from async_urequests import urequests as requests
+except ImportError:
+    from mrequests import mrequests as requests
 
 METADATA_ROOT = "/metadata/classical"
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"

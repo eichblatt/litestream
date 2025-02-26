@@ -1,7 +1,11 @@
 import hashlib
 
 # import requests
-from async_urequests import urequests as requests
+try:
+    from async_urequests import urequests as requests
+except ImportError:
+    from mrequests import mrequests as requests
+
 
 import time
 import audioPlayer2 as audioPlayer
