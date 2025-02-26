@@ -19,6 +19,7 @@ class PlayerManager:
             self.callbacks["display"] = lambda *x: print(f"PlayerManager display: {x}")
 
         self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
+        self.first_chunk_dict = {}
         self.player.start_timer()
         self.chunklist = []
         self.flat_chunklist = []
@@ -33,8 +34,7 @@ class PlayerManager:
         self.chunked_urls = False
         self.playlist_completed = False
         self.all_tracks_sent = False
-        self.first_chunk_dict = {}
-        self.ready_to_pump = True
+        self.release_throttle(None)
         self.pumptimer = Timer(1)
         self.DEBUG = debug
 
@@ -42,6 +42,8 @@ class PlayerManager:
         self.tracklist = track_titles
         self.playlist_completed = False
         self.all_tracks_sent = False
+        self.release_throttle(None)
+        self.n_tracks_pumped = 0
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
         urls = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urls]
@@ -90,8 +92,11 @@ class PlayerManager:
 
     def messenger(self, message):
         last_word = message.split()[-1]
-        if (title := self.first_chunk_dict.get(last_word, None)) and "Start" in message:
-            message = message.replace(last_word, title)
+        try:
+            if (title := self.first_chunk_dict.get(last_word, None)) and "Start" in message:
+                message = message.replace(last_word, title)
+        except Exception as e:
+            print(f"Error in messenger: {e}")
         print(f"PlayerManager {message}")
         if title and "Start playing track" in message:
             self.increment_track()

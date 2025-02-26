@@ -374,81 +374,29 @@ class AudioPlayer:
         if "messages" not in self.callbacks.keys():
             self.callbacks["messages"] = lambda m: m
         self.DEBUG = debug
-        self.PLAY_STATE = play_state_Stopped
-        self.sock = None
-        self.volume = 0
-        self.song_transition = None
-
         self.AACDecoder = AudioDecoder.AAC_Decoder()
-
-        self.playlist = []
-        self.mute_pin = mute_pin
-
-        self.trackReader = None
-
-        # The index of the current track in the playlist that we are playing (actually this is which track we are currently decoding - playback lags by the size of the OutBuffer)
-        self.hash_being_read = self.hash_being_played = self.hash_being_decoded = None
-        self.decode_stack = []
-        self.play_stack = []
-
-        # Size of the chunks of decoded audio that we will send to I2S
-        self.ChunkSize = 70 * 1024
-        self.ChunkBuffer = bytearray(self.ChunkSize)
-        self.ChunkBufferMV = memoryview(self.ChunkBuffer)
+        self._init_vars()
+        self._init_buffers()
 
         # Create the IS2 output device. Make the rate a silly value so that it won't match when we check in play_chunk
         self.audio_out = I2S(
             0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=1, ibuf=self.ChunkSize
         )
-
-        # A buffer used to read data from the network
-        self.ReadBufferSize = 16 * 1024
-        ReadBufferBytes = bytearray(self.ReadBufferSize)
-        self.ReadBufferMV = memoryview(ReadBufferBytes)
-
-        # A buffer used to store decoded audio data before writing it to the OutBuffer
-        self.AudioBufferSize = 2048 * 2
-        AudioBufferBytes = bytearray(self.AudioBufferSize)
-        self.AudioBufferMV = memoryview(AudioBufferBytes)
-
-        # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
-        # Note that the RingIO buffer uses one byte internally to track the ring, so we add one to the size to account for this
-        self.InBufferSize = 160 * 1024
-        InBufferBytes = bytearray(self.InBufferSize + 1)
-        InBufferMV = memoryview(InBufferBytes)
-        self.InBuffer = micropython.RingIO(InBufferMV)
-
-        # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
-        self.OutBufferSize = 700 * 1024
-        OutBufferBytes = bytearray(self.OutBufferSize + 1)
-        OutBufferMV = memoryview(OutBufferBytes)
-        self.OutBuffer = micropython.RingIO(OutBufferMV)
-
-        ParserInBytes = bytearray(188)
-        self.ParserInMV = memoryview(ParserInBytes)
-
-        ParserOutBytes = bytearray(188)
-        self.ParserOutMV = memoryview(ParserOutBytes)
-
-        self.TSParser = TSPacketParser()  # log_func=print)
         self.reset_player()
 
-    def reset_player(self, reset_head=True):
-        self.DEBUG and print("Resetting Player")
-
-        self.PlayLoopRunning = False
-        self.ReadLoopRunning = False
-        self.DecodeLoopRunning = False
-        self.decode_phase = decode_phase_trackstart
-        self.read_phase = read_phase_start
-        self.I2SAvailable = True
-        self.ID3Tag_size = 0
+    def _init_vars(self):
         self.PLAY_STATE = play_state_Stopped
+        self.volume = 0
+        self.sock = None
+        self.song_transition = None
+        self.mute_pin = mute_pin
+        self.trackReader = None
 
-        if reset_head:
-            if self.ntracks() > 0:
-                # self.current_track = 0
-                self.callbacks["messages"](f"reset_player: current hash = {self.hash_being_read}")
+        # The index of the current track in the playlist that we are playing (actually this is which track we are currently decoding - playback lags by the size of the OutBuffer)
+        self.hash_being_read = self.hash_being_played = self.hash_being_decoded = None
+        self.playlist = []
+        self.decode_stack = []
+        self.play_stack = []
 
         # TrackInfo is a list of track lengths and their corresponding audio type (vorbis or MP3). This tells the decoder when to move onto the next track, and also which decoder to use.
         self.TrackInfo = []
@@ -482,6 +430,63 @@ class AudioPlayer:
         # The number of bytes played for the current track. Used to detect the end of track by the play loop by comparing against current_track_bytes_decoded_out
         self.current_track_bytes_played = 0
 
+        # Used for statistics during debugging
+        self.consecutive_zeros = 0
+
+    def _init_buffers(self):
+        # Size of the chunks of decoded audio that we will send to I2S
+        self.ChunkSize = 70 * 1024
+        self.ChunkBuffer = bytearray(self.ChunkSize)
+        self.ChunkBufferMV = memoryview(self.ChunkBuffer)
+
+        # A buffer used to read data from the network
+        self.ReadBufferSize = 16 * 1024
+        ReadBufferBytes = bytearray(self.ReadBufferSize)
+        self.ReadBufferMV = memoryview(ReadBufferBytes)
+
+        # A buffer used to store decoded audio data before writing it to the OutBuffer
+        self.AudioBufferSize = 2048 * 2
+        AudioBufferBytes = bytearray(self.AudioBufferSize)
+        self.AudioBufferMV = memoryview(AudioBufferBytes)
+
+        # An array to hold packets from the network. As an example, a 96000 bps bitrate is 12kB per second, so a ten second buffer should be about 120kB
+        # Note that the RingIO buffer uses one byte internally to track the ring, so we add one to the size to account for this
+        self.InBufferSize = 160 * 1024
+        InBufferBytes = bytearray(self.InBufferSize + 1)
+        InBufferMV = memoryview(InBufferBytes)
+        self.InBuffer = micropython.RingIO(InBufferMV)
+
+        # An array to hold decoded audio samples. 44,100kHz takes 176,400 bytes per second (16 bit samples, stereo). e.g. 1MB will hold 5.9 seconds, 700kB will hold 4 seconds
+        self.OutBufferSize = 700 * 1024
+        OutBufferBytes = bytearray(self.OutBufferSize + 1)
+        OutBufferMV = memoryview(OutBufferBytes)
+        self.OutBuffer = micropython.RingIO(OutBufferMV)
+
+        ParserInBytes = bytearray(188)
+        self.ParserInMV = memoryview(ParserInBytes)
+
+        ParserOutBytes = bytearray(188)
+        self.ParserOutMV = memoryview(ParserOutBytes)
+
+        self.TSParser = TSPacketParser()  # log_func=print)
+
+    def reset_player(self, reset_head=True):
+        self.DEBUG and print("Resetting Player")
+        # self.callbacks["messages"](f"reset_player")
+
+        self.PlayLoopRunning = False
+        self.ReadLoopRunning = False
+        self.DecodeLoopRunning = False
+        self.decode_phase = decode_phase_trackstart
+        self.read_phase = read_phase_start
+        self.I2SAvailable = True
+        self.ID3Tag_size = 0
+        self.PLAY_STATE = play_state_Stopped
+
+        if reset_head:
+            self._init_vars()
+            self._init_buffers()
+
         # Clear the buffers
         self.InBuffer.read()
         self.OutBuffer.read()
@@ -496,9 +501,6 @@ class AudioPlayer:
             self.sock.close()
             self.sock = None
 
-        # Used for statistics during debugging
-        self.consecutive_zeros = 0
-
         print(self)
 
     def __repr__(self):
@@ -511,8 +513,8 @@ class AudioPlayer:
         else:
             status = " !?! "
 
-        retstring = f"{status} -- {self.playlist[:1]}" + (
-            f" ... {len(self.playlist) - 1} more" if len(self.playlist) > 1 else ""
+        retstring = f"{status} -- {[l if i==0 else l[1] for i,l in enumerate(self.playlist[:10])]}" + (
+            f" ... {len(self.playlist) - 10} more" if len(self.playlist) > 10 else ""
         )
 
         if self.PLAY_STATE != play_state_Stopped:
