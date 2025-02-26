@@ -1258,7 +1258,7 @@ def select_performance(keyed_work, player, state, ntape=-1):
         p_id = get_performances(keyed_work)[ntape]["p_id"]
     print(f"performance id is {p_id}")
     tracklist_bbox.y0 = display_performance_info(keyed_work, p_id)
-    tm.write("loading tracks...", 0, tracklist_bbox.y0, pfont_small, tm.WHITE)
+    tm.write("loading tracks from classicalarchives.com...", 0, tracklist_bbox.y0, pfont_small, tm.WHITE, show_end=-3)
     state["selected_tape"]["work_id"] = keyed_work.id
     state["selected_tape"]["p_id"] = p_id
     # Display the performance information
