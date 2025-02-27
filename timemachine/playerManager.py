@@ -20,8 +20,8 @@ class PlayerManager:
         if "display" not in self.callbacks.keys():
             self.callbacks["display"] = lambda *x: print(f"PlayerManager display: {x}")
 
-        self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
         self.first_chunk_dict = {}
+        self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
         self.chunklist = []
         self.flat_chunklist = []
         self.chunk_bounds = []
