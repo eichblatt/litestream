@@ -410,14 +410,16 @@ def get_cat_works(composer_id, category, depth=0):
     if utils.path_exists(filepath):
         cache_expiry = 3600 * 24 * 7  # 7 days
         if (time.time() - os.stat(filepath)[7]) < cache_expiry:
-            url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
-                f"&category_id={category.id}" if category.id is not None else ""
-            )
-            j = request_json(url, filepath)
+            j = utils.read_json(filepath)
         else:
             utils.remove_file(filepath)
-    else:
-        j = utils.read_json(filepath)
+
+    if not utils.path_exists(filepath):
+        url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
+            f"&category_id={category.id}" if category.id is not None else ""
+        )
+        j = request_json(url, filepath)
+
     works = [Work(**(x | {"index": i})) for i, x in enumerate([x for x in j if x["type"] != "c"])]
     # if depth < 0:
     #    subcats = [Category(**(x | {"index": i})) for i, x in enumerate([x for x in j if x["type"] == "c"])]
