@@ -374,17 +374,55 @@ class AudioPlayer:
         if "messages" not in self.callbacks.keys():
             self.callbacks["messages"] = lambda m: m
         self.DEBUG = debug
-        self.AACDecoder = AudioDecoder.AAC_Decoder()
-        self._init_vars()
-        self._init_buffers()
-
-        # Create the IS2 output device. Make the rate a silly value so that it won't match when we check in play_chunk
-        self.audio_out = I2S(
-            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=1, ibuf=self.ChunkSize
-        )
+        # self.AACDecoder = AudioDecoder.AAC_Decoder()
         self.reset_player()
 
+    def reset_player(self, reset_head=True):
+        self.DEBUG and print("Resetting Player")
+        # self.callbacks["messages"](f"reset_player")
+
+        self.PlayLoopRunning = False
+        self.ReadLoopRunning = False
+        self.DecodeLoopRunning = False
+        self.decode_phase = decode_phase_trackstart
+        self.read_phase = read_phase_start
+        self.I2SAvailable = True
+        self.ID3Tag_size = 0
+        self.PLAY_STATE = play_state_Stopped
+
+        if reset_head:
+            self.callbacks["messages"](f"reset_head")
+            if hasattr(self, "pumptimer"):
+                self.pumptimer.deinit()
+                print("sleeping after deinit")
+                time.sleep(2)
+            if hasattr(self, "AACDecoder"):
+                del self.AACDecoder
+                gc.collect()
+            self.AACDecoder = AudioDecoder.AAC_Decoder()
+            self._init_vars()
+            self._init_buffers()
+            self._init_i2s_player()
+            self.start_timer()
+
+        # Clear the buffers
+        self.InBuffer.read()
+        self.OutBuffer.read()
+
+        # This frees up all the buffers that the decoders allocated, and resets their state
+        # self.MP3Decoder.MP3_Close()
+        # self.VorbisDecoder.Vorbis_Close()
+        self.AACDecoder.AAC_Close()
+
+        # If this is an SSL socket, this also closes the underlying "real" socket
+        if self.sock is not None:
+            self.sock.close()
+            self.sock = None
+
+        print(self)
+
     def _init_vars(self):
+
         self.PLAY_STATE = play_state_Stopped
         self.volume = 0
         self.sock = None
@@ -470,38 +508,22 @@ class AudioPlayer:
 
         self.TSParser = TSPacketParser()  # log_func=print)
 
-    def reset_player(self, reset_head=True):
-        self.DEBUG and print("Resetting Player")
-        # self.callbacks["messages"](f"reset_player")
+    def _init_i2s_player(self):
+        # Create the IS2 output device. Make the rate a silly value so that it won't match when we check in play_chunk
+        if hasattr(self, "audio_out"):
+            self.audio_out.deinit()
 
-        self.PlayLoopRunning = False
-        self.ReadLoopRunning = False
-        self.DecodeLoopRunning = False
-        self.decode_phase = decode_phase_trackstart
-        self.read_phase = read_phase_start
-        self.I2SAvailable = True
-        self.ID3Tag_size = 0
-        self.PLAY_STATE = play_state_Stopped
-
-        if reset_head:
-            self._init_vars()
-            self._init_buffers()
-
-        # Clear the buffers
-        self.InBuffer.read()
-        self.OutBuffer.read()
-
-        # This frees up all the buffers that the decoders allocated, and resets their state
-        # self.MP3Decoder.MP3_Close()
-        # self.VorbisDecoder.Vorbis_Close()
-        self.AACDecoder.AAC_Close()
-
-        # If this is an SSL socket, this also closes the underlying "real" socket
-        if self.sock is not None:
-            self.sock.close()
-            self.sock = None
-
-        print(self)
+        self.audio_out = I2S(
+            0,
+            sck=sck_pin,
+            ws=ws_pin,
+            sd=sd_pin,
+            mode=I2S.TX,
+            bits=16,
+            format=I2S.STEREO,
+            rate=1,
+            ibuf=self.ChunkSize,
+        )
 
     def __repr__(self):
         if self.PLAY_STATE == play_state_Playing:

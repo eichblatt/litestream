@@ -1,3 +1,4 @@
+import gc
 import hashlib
 
 # import requests
@@ -15,12 +16,12 @@ from machine import Timer
 class PlayerManager:
     def __init__(self, callbacks, debug=0):
         self.callbacks = callbacks
+        self.DEBUG = debug
         if "display" not in self.callbacks.keys():
             self.callbacks["display"] = lambda *x: print(f"PlayerManager display: {x}")
 
         self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
         self.first_chunk_dict = {}
-        self.player.start_timer()
         self.chunklist = []
         self.flat_chunklist = []
         self.chunk_bounds = []
@@ -152,7 +153,12 @@ class PlayerManager:
         return self.player.pause()
 
     def stop(self, reset_head=True):
-        return self.player.stop(reset_head)
+        if self.is_playing():
+            self.pumptimer.deinit()
+            self.ready_to_pump = False
+            print("No more chunks will be sent -- player reset")
+            self.player.stop(reset_head)
+        return
 
     def play(self):
         return self.player.play()

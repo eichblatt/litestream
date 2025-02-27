@@ -148,3 +148,4 @@ timemachine/wifi_cred.json.factory.py
 MicropythonFirmware/image.zip
 timemachine/ttt.py
 timemachine/boottest.py
+timemachine/async_example.py
