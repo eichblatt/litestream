@@ -113,8 +113,8 @@
             "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
         ],
         [
-            "async_ureqeuests.py",
-            "github:eichblatt/litestream/timemachine/async_ureqeuests.py"
+            "async_urequests.py",
+            "github:eichblatt/litestream/timemachine/async_urequests.py"
         ],
         [
             "uQR/uQR.py",

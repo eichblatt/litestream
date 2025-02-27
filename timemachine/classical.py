@@ -406,11 +406,16 @@ def get_cat_works(composer_id, category, depth=0):
     else:
         cat = cat[0]
     filepath = f"{METADATA_ROOT}/{composer_id}_{category.id}.works.json"
+    print(f"filepath is {filepath}")
     if not utils.path_exists(filepath):
-        url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
-            f"&category_id={category.id}" if category.id is not None else ""
-        )
-        j = request_json(url, filepath)
+        cache_expiry = 3600 * 24 * 7  # 7 days
+        if (time.time() - os.stat(filepath)[7]) < cache_expiry:
+            url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
+                f"&category_id={category.id}" if category.id is not None else ""
+            )
+            j = request_json(url, filepath)
+        else:
+            utils.remove_file(filepath)
     else:
         j = utils.read_json(filepath)
     works = [Work(**(x | {"index": i})) for i, x in enumerate([x for x in j if x["type"] != "c"])]
@@ -720,7 +725,6 @@ def main_loop(player, state):
             if (time.ticks_ms() - select_press_time) > 1_000:
                 player.pause()
                 print("                 Longpress of select")
-                select_press_time = time.ticks_ms() + 1_000
                 performance_index = choose_performance(selected_composer, keyed_work)  # take control of knobs
                 if performance_index is not None:
                     state["selected_tape"]["composer_id"] = selected_composer.id
@@ -740,6 +744,8 @@ def main_loop(player, state):
                     # behave as if we have twiddled a knob.
                     # tm.m._value = (tm.m.value() - 1) % len(composers)
                     set_knob_times(None)
+                time.sleep(2)
+                select_press_time = time.ticks_ms() + 1_000
                 pSelect_old = tm.pSelect.value()
                 print("Select RELEASED")
 
@@ -1200,7 +1206,7 @@ def choose_performance(composer, keyed_work):
     tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
     display_selected_composer(composer)
     y0 = display_title(keyed_work)
-    tm.write(" loading...", 0, y0, pfont_small)
+    tm.write(" loading performances from classicalarchives.com ...", 0, y0, pfont_small, show_end=-3)
 
     performances = get_performances(keyed_work)
     print(f"There are {len(performances)} performances of work {keyed_work}")
