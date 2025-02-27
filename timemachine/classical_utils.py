@@ -49,10 +49,10 @@ def authenticate_user():
     validated = False
     tm.clear_screen()
     tm.label_soft_knobs("", "jump 10", "next")
-    eml = utils.select_chars("User email")
+    eml = utils.select_chars("User email", "Credentials for classicalarchives.com. Press Stop to end")
     eml = utils.url_escape(eml)
     tm.clear_screen()
-    pwd = utils.select_chars("password")
+    pwd = utils.select_chars("password", "Credentials for classicalarchives.com. Press Stop to end")
     pwd = utils.url_escape(pwd)
     url = f"{CLASSICAL_API}?action=register_device&eml={eml}&pwd={pwd}&dev=timemachine"
     try:

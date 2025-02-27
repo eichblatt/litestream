@@ -131,7 +131,7 @@ def select_chars(message, message2="", already=None):
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, show_end=-3)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
