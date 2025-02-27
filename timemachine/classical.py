@@ -407,7 +407,7 @@ def get_cat_works(composer_id, category, depth=0):
         cat = cat[0]
     filepath = f"{METADATA_ROOT}/{composer_id}_{category.id}.works.json"
     print(f"filepath is {filepath}")
-    if not utils.path_exists(filepath):
+    if utils.path_exists(filepath):
         cache_expiry = 3600 * 24 * 7  # 7 days
         if (time.time() - os.stat(filepath)[7]) < cache_expiry:
             url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
