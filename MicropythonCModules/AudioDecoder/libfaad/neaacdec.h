@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #pragma once
-#include "Arduino2.h"
+#include "Arduino.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
