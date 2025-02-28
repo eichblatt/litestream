@@ -374,7 +374,12 @@ class AudioPlayer:
         if "messages" not in self.callbacks.keys():
             self.callbacks["messages"] = lambda m: m
         self.DEBUG = debug
-        # self.AACDecoder = AudioDecoder.AAC_Decoder()
+
+        self.AACDecoder = AudioDecoder.AAC_Decoder()
+
+        self._init_buffers()
+        self._init_i2s_player()
+
         self.reset_player()
 
     def reset_player(self, reset_head=True):
@@ -396,13 +401,13 @@ class AudioPlayer:
                 self.pumptimer.deinit()
                 print("sleeping after deinit")
                 time.sleep(2)
-            if hasattr(self, "AACDecoder"):
-                del self.AACDecoder
-                gc.collect()
-            self.AACDecoder = AudioDecoder.AAC_Decoder()
+            #if hasattr(self, "AACDecoder"):
+            #    del self.AACDecoder
+            #    gc.collect()
+            #self.AACDecoder = AudioDecoder.AAC_Decoder()
             self._init_vars()
-            self._init_buffers()
-            self._init_i2s_player()
+            #self._init_buffers()
+            #self._init_i2s_player()
             self.start_timer()
 
         # Clear the buffers
@@ -410,8 +415,7 @@ class AudioPlayer:
         self.OutBuffer.read()
 
         # This frees up all the buffers that the decoders allocated, and resets their state
-        # self.MP3Decoder.MP3_Close()
-        # self.VorbisDecoder.Vorbis_Close()
+        self.AACDecoder.flush()
         self.AACDecoder.AAC_Close()
 
         # If this is an SSL socket, this also closes the underlying "real" socket
@@ -419,10 +423,12 @@ class AudioPlayer:
             self.sock.close()
             self.sock = None
 
+        # Reset the parser
+        self.TSParser.reset()
+
         print(self)
 
     def _init_vars(self):
-
         self.PLAY_STATE = play_state_Stopped
         self.volume = 0
         self.sock = None
@@ -963,7 +969,6 @@ class AudioPlayer:
         if (
             self.InBuffer.any() == 0 and self.AACDecoder.write_used() == 0
         ):  # There could still be data in the decoder, so an empty inbuffer doesn't mean we have no data to decode => check both
-            # return self.OutBuffer.buffer_level()
             return self.OutBuffer.any()
 
         if self.decode_phase == decode_phase_trackstart:
@@ -1120,7 +1125,8 @@ class AudioPlayer:
                             self.current_track_bytes_parsed_in = 0
                             self.TSParser.reset()
                             break
-                        elif self.current_track_bytes_parsed_in > self.TrackInfo[0][0]:  # This should never happen
+                        # This should never happen. We can probably remove this check as it was put in for a bug where we read a whole short track in decode_chunk. Now fixed.
+                        elif self.current_track_bytes_parsed_in > self.TrackInfo[0][0]:  
                             print(f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.TrackInfo[0][0]}")
                             print(f"TrackInfo: {self.TrackInfo}")
                             print(f"DecodeInfo: {self.DecodeInfo}")
@@ -1194,7 +1200,9 @@ class AudioPlayer:
                     self.PlayLength.append(self.current_track_bytes_decoded_out)
                     self.DecodeInfo.pop(0)
 
-                    if self.InBuffer.any() > 0:  # if len(self.playlist) > 0:
+                    # if len(self.playlist) > 0: doesn't work here as the read loop may have read the whole playlist while we're still decoding n tracks behind it
+                    # This is a bit hacky though - revisit
+                    if self.InBuffer.any() > 0:
                         self.decode_phase = decode_phase_trackstart
 
                     # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
