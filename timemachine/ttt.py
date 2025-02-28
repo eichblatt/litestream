@@ -35,3 +35,23 @@ tft.rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, st7789.WHITE)
 tft.write(pfont_med, "testing", 0, 0, st7789.WHITE)
 
 tm.tft.write(tm.pfont_small, f"{selected_vcs[startchar:]}", tm.venue_bbox.x0, tm.venue_bbox.y0, tm.stage_date_color)
+
+import async_urequests as requests
+
+# from async_urequests import urequests as requests
+import time, network, asyncio
+
+wifi = network.WLAN(network.STA_IF)
+wifi.active(True)
+wifi.config(pm=network.WLAN.PM_NONE)
+if not wifi.isconnected():
+    wifi.connect("fiosteve-guest", "saragansteve3")
+
+url = "https://stream.classicalarchives.com/tm/_definst_/mp4:NweQoOqxFMILL9LkLgHmif3ejDGhhhIQidLki_3uDoryHSRqDsW2FXzVzA948EcRD9hKZHaj-mDf3eFiXweY1JZa8uxp-QuzyvjPgMWIlBVOWPZAiHXgl8HQ7haRfQQNtWVljGniCb9_IinU8mQCTeEOTipfhCxA1VgckKXsE9c/_moUpsoizIm0SPxBLvdNAw/playlist.m3u8"
+
+response = requests.get(url)
+# task = asyncio.create_task(response)
+# print(f"task {task}")
+loop = asyncio.get_event_loop()
+result = loop.run_until_complete(response)
+print(result.text)
