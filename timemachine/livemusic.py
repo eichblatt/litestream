@@ -598,14 +598,10 @@ def main_loop(player, coll_dict, state):
             tm.power(1)
             date_changed_time = time.ticks_ms()
             if (month_new in [4, 6, 9, 11]) and (day_new > 30):
-                day_new = 30
-            if (month_new == 2) and (day_new > 28):
-                if year_new % 4 == 0:
-                    day_new = min(29, day_new)
-                    if (year_new % 100 == 0) and (year_new % 400 != 0):
-                        day_new = min(28, day_new)
-                else:
-                    day_new = min(28, day_new)
+                day_new = 1 if (day_old != 1) else 30
+            max_feb = 29 if ((year_new % 4 == 0) and ((year_new % 100 != 0) or (year_new % 400 == 0))) else 28
+            if (month_new == 2) and (day_new > max_feb):
+                day_new = 1 if (day_old != 1) else max_feb
 
             date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
             key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
@@ -844,17 +840,24 @@ def save_error(e):
         f.write(msg)
 
 
+def initialize_knobs():
+    tm.m._min_val = 1
+    tm.m._max_val = 12
+    tm.d._min_val = 1
+    tm.d._max_val = 31
+    tm.m._range_mode = tm.m.RANGE_WRAP
+    tm.d._range_mode = tm.m.RANGE_WRAP
+    tm.y._range_mode = tm.m.RANGE_BOUNDED
+
+
 def run():
     """run the livemusic controls"""
     try:
         tm.label_soft_knobs("-", "-", "-")
         state = utils.load_state()
         show_collections(state["collection_list"])
+        initialize_knobs()
 
-        tm.m._min_val = 1
-        tm.m._max_val = 12
-        tm.d._min_val = 1
-        tm.d._max_val = 31
         coll_dict = get_coll_dict(state["collection_list"])
         print(f"Loaded collections {coll_dict.keys()}")
 

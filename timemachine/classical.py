@@ -1293,9 +1293,10 @@ def initialize_knobs():
     tm.y._min_val = 0
     tm.m._min_val = 0
     tm.d._min_val = 0
-    tm.y._range_mode = 1  # RotaryIRQ.RANGE_UNBOUNDED
-    tm.m._range_mode = 1  # was tm.m.RANGE_WRAP
-    tm.d._range_mode = 1  # RotaryIRQ.RANGE_UNBOUNDED
+    tm.y._range_mode = tm.y.RANGE_UNBOUNDED  # 1
+    # tm.y._range_mode = tm.y.RANGE_BOUNDED
+    tm.m._range_mode = tm.m.RANGE_UNBOUNDED  # 1  # was tm.m.RANGE_WRAP
+    tm.d._range_mode = tm.d.RANGE_UNBOUNDED  # 1  # RotaryIRQ.RANGE_UNBOUNDED
     tm.m._value = 0
     tm.d._value = 0
     tm.y._value = 0
