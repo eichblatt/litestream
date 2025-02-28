@@ -57,6 +57,8 @@ extern "C" {
 #define cPI2_8 (0x5a82799a)
 #define cPI1_8 (0x7641af3d)
 
+#define min(a,b) ((a)<(b)?(a):(b))
+
 enum : int8_t  {VORBIS_CONTINUE = 110,
                 VORBIS_PARSE_OGG_DONE = 100,
                 ERR_VORBIS_NONE = 0,
