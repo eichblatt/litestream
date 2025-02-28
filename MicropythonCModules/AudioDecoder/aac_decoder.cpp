@@ -5,7 +5,7 @@
  *  Updated on: 14.01.2025
 */
 
-#include "Arduino2.h"
+#include "Arduino.h"
 #include "aac_decoder.h"
 #include <stdbool.h>
 #include <stdint.h>
