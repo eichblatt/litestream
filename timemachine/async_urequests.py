@@ -210,7 +210,7 @@ async def _requests(
         # build in redirect support
         redir_cnt = 0
         redir_url = None
-        while redir_cnt < 2:
+        while redir_cnt < 3:
             reader = await _request_raw(method=method, url=url, headers=h, data=data, json=json)
             sline = await reader.readline()
             sline = sline.split(None, 2)

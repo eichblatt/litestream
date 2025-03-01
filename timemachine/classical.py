@@ -674,8 +674,6 @@ def main_loop(player, state):
                     worklist = worklist[1:]
                 print("Stop PRESSED")
 
-        player.audio_pump()
-
         if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
             print("Resuming playing")
             resume_playing = -1
@@ -920,7 +918,6 @@ def main_loop(player, state):
             if KNOB_TIME > last_update_time:
                 update_display(player, selected_composer, selected_work, p_id)
             last_update_time = time.ticks_ms()
-        player.audio_pump()
 
 
 def update_display(player, composer, work, p_id):

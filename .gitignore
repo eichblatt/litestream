@@ -146,7 +146,8 @@ docs/beta_testers.md
 tuning.wav
 timemachine/wifi_cred.json.factory.py
 MicropythonFirmware/image.zip
-timemachine/ttt.py
 timemachine/boottest.py
 async_example.py
 timemachine/playerManager2.py
+*ttt.py
+timemachine/playerManager_blocking.py

@@ -1,16 +1,25 @@
+import asyncio
 import gc
 import hashlib
 
 # import requests
+import async_urequests as requests
+
+"""
 try:
     from async_urequests import urequests as requests
 except ImportError:
     from mrequests import mrequests as requests
-
+"""
 
 import time
 import audioPlayer2 as audioPlayer
 from machine import Timer
+
+
+async def dummy(seconds):
+    await asyncio.sleep(seconds)
+    return
 
 
 class PlayerManager:
@@ -22,6 +31,10 @@ class PlayerManager:
             self.callbacks["display"] = lambda *x: print(f"PlayerManager display: {x}")
 
         self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
+        self.DEBUG = debug
+        self.init_vars()
+
+    def init_vars(self):
         self.chunklist = []
         self.flat_chunklist = []
         self.chunk_bounds = []
@@ -35,16 +48,15 @@ class PlayerManager:
         self.chunked_urls = False
         self.playlist_completed = False
         self.all_tracks_sent = False
-        self.release_throttle(None)
-        self.pumptimer = Timer(1)
-        self.DEBUG = debug
+        self.ready_to_pump = False
+        self.gen = None
 
     def set_playlist(self, track_titles, urls):
         self.tracklist = track_titles
         self.playlist_completed = False
         self.all_tracks_sent = False
-        self.release_throttle(None)
         self.n_tracks_pumped = 0
+        self.ready_to_pump = True
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
         urls = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urls]
@@ -53,31 +65,12 @@ class PlayerManager:
         urls = [x.replace(" ", "%20") for x in urls]
         self.urls = urls
         self.pump_chunks()
-        self.chunk_timer()
 
     def __repr__(self):
         return f"PlayerManager: {self.player}. " + f"track bounds:{self.chunk_bounds}"
 
-    @micropython.native
-    def get_chunklist(self, url):
-        if url.endswith("m3u8"):
-            # determine the chunks
-            print(f"first url is {url}")
-            self.chunked_urls = True
-            base_url = "/".join(url.split("/")[:-1])
-            chunklist_url = requests.get(url)
-            chunklist_url = f"{base_url}/{chunklist_url.text.splitlines()[-1]}"
-            print(f"chunklist url is {chunklist_url}")
-            lines = requests.get(chunklist_url).text.splitlines()
-            chunks = [x for x in lines if x.startswith("media_")]
-            chunklist = [f"{base_url}/{x}" for x in chunks]
-            self.DEBUG and print(f"chunklist set to {chunks}")
-        else:
-            chunklist = [url]
-        return chunklist
-
     def update_playlist(self, urllist, ntracks=1):
-        print(f"update_playlist sending {len(urllist)} URLs to player")
+        print(f"update_playlist: Track {self.n_tracks_sent}. sending {len(urllist)} more URLs to player.")
         self.playdict = {hashlib.md5(x.encode()).digest().hex(): x for x in urllist}
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
         self.n_tracks_sent += ntracks
@@ -98,7 +91,7 @@ class PlayerManager:
                 message = message.replace(last_word, title)
         except Exception as e:
             print(f"Error in messenger: {e}")
-        print(f"PlayerManager {message}")
+        # print(f"PlayerManager {message}")
         if title and "Start playing track" in message:
             self.increment_track()
             return
@@ -154,13 +147,15 @@ class PlayerManager:
 
     def stop(self, reset_head=True):
         if self.is_playing():
-            self.pumptimer.deinit()
             self.ready_to_pump = False
             print("No more chunks will be sent -- player reset")
             self.player.stop(reset_head)
+        self.init_vars()
         return
 
     def play(self):
+        if len(self.player.playlist) == 0:
+            return
         return self.player.play()
 
     def rewind(self):
@@ -182,32 +177,69 @@ class PlayerManager:
         else:
             self.player.ffwd()
 
-    def release_throttle(self, _):
-        self.ready_to_pump = True
-
-    @micropython.native
     def pump_chunks(self):
         if not self.ready_to_pump:
             return
         if self.n_tracks_pumped >= len(self.urls):
-            self.pumptimer.deinit()
             return
         url = self.urls[self.n_tracks_pumped]
-        self.DEBUG and print(f"pump_chunks sending chunks for {url}")
-        next_chunklist = self.get_chunklist(url)
-        self.chunklist.append(next_chunklist)
-        hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_pumped]}
-        self.first_chunk_dict.update(hashdict)
-        self.flat_chunklist.extend(next_chunklist)
+        next_chunklist = None
 
-        self.update_playlist(next_chunklist)
-        self.n_tracks_pumped += 1
-        self.DEBUG and print(f"hashdict now {self.first_chunk_dict}")
-        self.ready_to_pump = False
+        if self.n_tracks_pumped == 0:  # Block until first chunks are pumped
+            next_chunklist = asyncio.run(self.get_chunklist(url))
+        else:
+            if self.gen is None:
+                self.gen = self.poll_chunklist(url)
+            try:
+                next(self.gen)
+            except StopIteration as e:
+                next_chunklist = e.value
+                if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
+                    next_chunklist = next_chunklist.value
+                self.gen = None
+                self.DEBUG and print(f"pump_chunks: StopIteration seting next chunklist to a {type(next_chunklist)}")
+            self.ready_to_pump = True
+        if next_chunklist:
+            self.chunklist.append(next_chunklist)
+            hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_pumped]}
+            self.first_chunk_dict.update(hashdict)
+            self.flat_chunklist.extend(next_chunklist)
+
+            self.update_playlist(next_chunklist)
+            self.n_tracks_pumped += 1
+            self.DEBUG and print(f"hashdict now {self.first_chunk_dict}")
         return
+
+    def poll_chunklist(self, url):
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(self.get_chunklist(url))
+        while not task.done():
+            # time.sleep(0.01)  # not needed
+            loop.run_until_complete(dummy(1))  # give some time back to the main_loop
+            yield None
+        next_chunklist = task.data
+        loop.close()
+        return next_chunklist
+
+    async def get_chunklist(self, url):
+        if url.endswith("m3u8"):
+            # determine the chunks
+            print(f"first url is {url}")
+            self.chunked_urls = True
+            base_url = "/".join(url.split("/")[:-1])
+            chunklist_url = await requests.get(url)
+            chunklist_url = f"{base_url}/{chunklist_url.text.splitlines()[-1]}"
+            lines = await requests.get(chunklist_url)
+            lines = lines.text.splitlines()
+            chunks = [x for x in lines if x.startswith("media_")]
+            chunklist = [f"{base_url}/{x}" for x in chunks]
+        else:
+            chunklist = [url]
+        return chunklist
 
     def audio_pump(self):
         self.pump_chunks()
+        return
 
     def is_playing(self):
         return self.player.is_playing()
@@ -224,5 +256,28 @@ class PlayerManager:
     def reset_player(self):
         return self.player.reset_player()
 
-    def chunk_timer(self):
-        self.pumptimer.init(period=2000, mode=Timer.PERIODIC, callback=self.release_throttle)
+
+"""
+# this works
+loop = asyncio.get_event_loop()
+task = loop.create_task(sleep_and_return("Task 1", 3))
+
+
+def poll(task):
+    while not task.done():
+        # print("Polling for task completion...")
+        # time.sleep(0.1)  # not needed
+        loop.run_until_complete(dummy())
+        yield
+    return task.data
+
+
+while True:
+    try:
+        next(poll(task))
+    except StopIteration as e:
+        result = e.value
+        print(f"result is {result}")
+        break
+
+"""
