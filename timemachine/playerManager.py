@@ -26,13 +26,12 @@ class PlayerManager:
     def __init__(self, callbacks, debug=0):
         self.callbacks = callbacks
         self.DEBUG = debug
-        self.first_chunk_dict = {}
+        self.init_vars()
         if "display" not in self.callbacks.keys():
             self.callbacks["display"] = lambda *x: print(f"PlayerManager display: {x}")
 
         self.player = audioPlayer.AudioPlayer(callbacks={"messages": self.messenger}, debug=debug)
         self.DEBUG = debug
-        self.init_vars()
 
     def init_vars(self):
         self.chunklist = []
@@ -40,22 +39,20 @@ class PlayerManager:
         self.chunk_bounds = []
         self.urls = []  # high-level urls
         self.tracklist = []  # track titles
+        self.n_tracks_sent = 0
+        self.first_chunk_dict = {}
         self.track_playing = -1
         self.chunk_playing = 0
         self.chunk_reading = 0
-        self.n_tracks_sent = 0
-        self.n_tracks_pumped = 0
         self.chunked_urls = False
         self.playlist_completed = False
-        self.all_tracks_sent = False
         self.ready_to_pump = False
         self.gen = None
 
     def set_playlist(self, track_titles, urls):
         self.tracklist = track_titles
         self.playlist_completed = False
-        self.all_tracks_sent = False
-        self.n_tracks_pumped = 0
+        self.n_tracks_sent = 0
         self.ready_to_pump = True
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
@@ -69,8 +66,12 @@ class PlayerManager:
     def __repr__(self):
         return f"PlayerManager: {self.player}. " + f"track bounds:{self.chunk_bounds}"
 
-    def update_playlist(self, urllist, ntracks=1):
-        print(f"update_playlist: Track {self.n_tracks_sent}. sending {len(urllist)} more URLs to player.")
+    @property
+    def all_tracks_sent(self):
+        return self.n_tracks_sent >= len(self.urls)
+
+    def extend_playlist(self, urllist, ntracks=1):
+        print(f"extend_playlist: Track {self.n_tracks_sent}. sending {len(urllist)} more URLs to player.")
         self.playdict = {hashlib.md5(x.encode()).digest().hex(): x for x in urllist}
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
         self.n_tracks_sent += ntracks
@@ -116,7 +117,7 @@ class PlayerManager:
                 return
             remaining_chunks = self.chunklist[self.n_tracks_sent :]
             if len(remaining_chunks) > 0:
-                self.update_playlist(remaining_chunks[0])
+                self.extend_playlist(remaining_chunks[0])
                 self.play()
 
         if "Finished playing playlist" in message:
@@ -161,31 +162,31 @@ class PlayerManager:
     def rewind(self):
         return self.player.rewind()
 
+    def send_playlist(self, remaining_chunks):
+        self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in remaining_chunks]
+        return
+
     def ffwd(self):
-        if self.chunked_urls:
-            # Handle case where we are on the last track.
-            if self.chunked_urls:
-                resume_playing = self.is_playing()
-                destination = self.chunk_bounds[max(0, self.track_playing)]
-                self.stop()
-                print(f"ffwd: Moving to {destination}")
-                self.player.advance_track(destination)
-                self.chunk_reading = destination
-                self.chunk_playing = destination
-                if resume_playing:
-                    self.play()
-        else:
-            self.player.ffwd()
+        resume_playing = self.is_playing()
+        self.stop()
+        # Handle case where we are on the last track.
+        print(f"Track playing: {self.track_playing}, n_tracks: {self.n_tracks()}")
+        if self.track_playing == self.n_tracks() - 1:
+            return
+
+        destination = self.chunk_bounds[max(0, self.track_playing)]
+        remaining_chunks = self.flat_chunklist[destination:]
+        self.send_playlist(remaining_chunks)
 
     def pump_chunks(self):
         if not self.ready_to_pump:
             return
-        if self.n_tracks_pumped >= len(self.urls):
+        if self.all_tracks_sent:
             return
-        url = self.urls[self.n_tracks_pumped]
+        url = self.urls[self.n_tracks_sent]
         next_chunklist = None
 
-        if self.n_tracks_pumped == 0:  # Block until first chunks are pumped
+        if self.n_tracks_sent == 0:  # Block until first chunks are pumped
             next_chunklist = asyncio.run(self.get_chunklist(url))
         else:
             if self.gen is None:
@@ -196,17 +197,17 @@ class PlayerManager:
                 next_chunklist = e.value
                 if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                     next_chunklist = next_chunklist.value
-                self.gen = None
+                self.gen = None  # prepare for next task
                 self.DEBUG and print(f"pump_chunks: StopIteration seting next chunklist to a {type(next_chunklist)}")
             self.ready_to_pump = True
         if next_chunklist:
             self.chunklist.append(next_chunklist)
-            hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_pumped]}
+            hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_sent]}
             self.first_chunk_dict.update(hashdict)
             self.flat_chunklist.extend(next_chunklist)
 
-            self.update_playlist(next_chunklist)
-            self.n_tracks_pumped += 1
+            self.extend_playlist(next_chunklist)
+            self.n_tracks_sent += 1
             self.DEBUG and print(f"hashdict now {self.first_chunk_dict}")
         return
 
@@ -215,8 +216,8 @@ class PlayerManager:
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
             # time.sleep(0.01)  # not needed
-            loop.run_until_complete(dummy(1))  # give some time back to the main_loop
-            yield None
+            loop.run_until_complete(dummy(0))  # give some time back to the main_loop
+            yield
         next_chunklist = task.data
         loop.close()
         return next_chunklist
@@ -246,6 +247,9 @@ class PlayerManager:
 
     def is_stopped(self):
         return self.player.is_stopped()
+
+    def is_paused(self):
+        return self.player.is_paused()
 
     def set_volume(self, volume):
         return self.player.set_volume(volume)

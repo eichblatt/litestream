@@ -401,13 +401,7 @@ class AudioPlayer:
                 self.pumptimer.deinit()
                 print("sleeping after deinit")
                 time.sleep(2)
-            #if hasattr(self, "AACDecoder"):
-            #    del self.AACDecoder
-            #    gc.collect()
-            #self.AACDecoder = AudioDecoder.AAC_Decoder()
             self._init_vars()
-            #self._init_buffers()
-            #self._init_i2s_player()
             self.start_timer()
 
         # Clear the buffers
@@ -625,21 +619,6 @@ class AudioPlayer:
 
     def advance_track(self, increment=1):
         pass
-        """
-        if self.current_track is None:
-            return
-
-        if not 0 <= (self.current_track + increment) < self.ntracks():
-            if self.PLAY_STATE == play_state_Playing:
-                self.stop()
-            return
-
-        self.stop(reset_head=False)
-        self.current_track += increment
-        self.next_track = self.set_next_track()
-        self.callbacks["messages"](f"advance track: current_track = {self.hash_being_read}")
-        print(self)
-        """
 
     def is_paused(self):
         return self.PLAY_STATE == play_state_Paused
@@ -1126,7 +1105,7 @@ class AudioPlayer:
                             self.TSParser.reset()
                             break
                         # This should never happen. We can probably remove this check as it was put in for a bug where we read a whole short track in decode_chunk. Now fixed.
-                        elif self.current_track_bytes_parsed_in > self.TrackInfo[0][0]:  
+                        elif self.current_track_bytes_parsed_in > self.TrackInfo[0][0]:
                             print(f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.TrackInfo[0][0]}")
                             print(f"TrackInfo: {self.TrackInfo}")
                             print(f"DecodeInfo: {self.DecodeInfo}")

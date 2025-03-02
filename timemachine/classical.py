@@ -851,19 +851,7 @@ def main_loop(player, state):
             performance_index = 0
             force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (last_update_time > KNOB_TIME)
             set_knob_times(tm.m)
-            td = time.ticks_diff(KNOB_TIMES[KNOB_COUNT], KNOB_TIMES[(KNOB_COUNT + 1) % len(KNOB_TIMES)])
-            ncomposers = len(composers)
-            # If the knob is turned fast enough (5 times in 350 ms) then skip 15 composers. NOTE Need to tweak
-            if (td < 350) and ncomposers > 40:
-                toskip = (ncomposers // 3) * 1 if (month_new > month_old) else -1
-                tm.m._value = month_new = (month_new + toskip) % ncomposers
-                month_old = (month_old + toskip) % ncomposers
-                print(f"td: {td}. KNOB_TIMES {KNOB_TIMES}. Knob_count:{KNOB_COUNT}. Month new: {month_new}, old {month_old}")
-                time.sleep(0.2)  # To prevent this effect from doubling up.
-                force_update = True
-
             keyed_composer = composers[month_new]
-            # month_change_time = time.ticks_ms()
             display_keyed_composers(composers, month_new, month_old, force_update)
             print(f"keyed composer {keyed_composer}")
             works = None
