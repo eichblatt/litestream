@@ -196,7 +196,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.WHITE)
+                cursor += tm.tft.write(tm.pfont_small, f" {text} ", select_bbox.x0 + cursor, select_bbox.y0, tm.WHITE)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
