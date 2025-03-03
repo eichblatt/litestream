@@ -204,7 +204,7 @@ class PlayerManager:
         self.DEBUG and print(f"pump_chunks: Track {self.n_tracks_sent}. sending url {url} player.")
         if self.n_tracks_sent == 0:  # Block until first chunks are pumped
             next_chunklist = asyncio.run(self.get_chunklist(url))
-            print(f"pump_chunks: first chunklist is {next_chunklist}")
+            self.DEBUG and print(f"pump_chunks: first chunklist is {next_chunklist}")
         else:
             if self.gen is None:
                 self.gen = self.poll_chunklist(url)
@@ -218,9 +218,8 @@ class PlayerManager:
         if next_chunklist:
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
-                print("Converting chunklist to a list")
+                self.DEBUG and print("Converting chunklist to a list")
             self.chunklist.append(next_chunklist)
-            print(f"pump_chunks: Track {self.n_tracks_sent}. sending {len(next_chunklist)} URLs to player.")
             hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_sent]}
             self.first_chunk_dict.update(hashdict)
             self.flat_chunklist.extend(next_chunklist)
