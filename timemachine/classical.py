@@ -798,13 +798,13 @@ def main_loop(player, state):
                 print("Power PRESSED -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 1_250:
-                power_press_time = time.ticks_ms()
+            if (time.ticks_ms() - power_press_time) > 1_000:
                 print("Power UP -- back to reconfigure")
+                power_press_time = time.ticks_ms()
                 tm.label_soft_knobs("-", "-", "-")
-                player.reset_player()
                 tm.clear_screen()
                 tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
+                player.reset_player()
                 tm.power(1)
                 return
 
@@ -941,7 +941,7 @@ def cleanup_track_names(track_names):
 
 
 def display_performance_info(work_id, p_id):
-    # NOTE This function is not yet complete. It should display the performers of the work.
+    # NOTE This function is not yet complete.
     global tracklist_bbox
     if p_id is None:
         return tracklist_bbox.y0

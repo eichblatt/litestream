@@ -554,6 +554,9 @@ def main_loop(player, coll_dict, state):
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
             tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
+            tstr = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)[:-2]
+            tstr = [f"{tstr[0]}"] + [f"{x:02d}" for x in tstr[1:]]
+            print(f"{tstr[0]}.{tstr[1]}.{tstr[2]} {tstr[3]}:{tstr[4]}:{tstr[5]} -- ", end="")  # Central time
             print(player)
             update_display(player)
 

@@ -400,7 +400,7 @@ class AudioPlayer:
             if hasattr(self, "pumptimer"):
                 self.pumptimer.deinit()
                 print("sleeping after deinit")
-                time.sleep(2)
+                time.sleep(0.5)
             self._init_vars()
             self.start_timer()
 
