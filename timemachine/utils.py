@@ -171,7 +171,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.PURPLE
+                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step == 0 else tm.tracklist_color
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -196,7 +196,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.PURPLE)
+                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.WHITE)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
