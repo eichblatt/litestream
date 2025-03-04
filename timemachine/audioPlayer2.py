@@ -385,7 +385,6 @@ class AudioPlayer:
     def reset_player(self, reset_head=True):
         self.DEBUG and print("Resetting Player")
         # self.callbacks["messages"](f"reset_player")
-
         self.PlayLoopRunning = False
         self.ReadLoopRunning = False
         self.DecodeLoopRunning = False
@@ -399,14 +398,18 @@ class AudioPlayer:
             self.callbacks["messages"](f"reset_head")
             if hasattr(self, "pumptimer"):
                 self.pumptimer.deinit()
-                print("sleeping after deinit")
-                time.sleep(0.5)
+                # time.sleep(0.1)
             self._init_vars()
             self.start_timer()
 
         # Clear the buffers
+        print(f"reset_player before clear InBuffer: {time.ticks_ms()}")
+        print(f"{self.InBuffer.any()} bytes in InBuffer")
         self.InBuffer.read()
+        print(f"reset_player before clear OutBuffer: {time.ticks_ms()}")
+        print(f"{self.OutBuffer.any()} bytes in OutBuffer")
         self.OutBuffer.read()
+        print(f"reset_player after clear buffers: {time.ticks_ms()}")
 
         # This frees up all the buffers that the decoders allocated, and resets their state
         self.AACDecoder.flush()

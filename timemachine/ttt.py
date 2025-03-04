@@ -68,9 +68,16 @@ player.set_playlist(tracklist, urllist)
 
 player.play()
 
+for i in range(10):
+    player.pump_chunks()
+
+"""
 while True:
     try:
-        player.audio_pump()
+        if not player.pump_chunks():
+            break
     except Exception as e:
         print("Decoder error", e)
         sys.exit()
+
+"""

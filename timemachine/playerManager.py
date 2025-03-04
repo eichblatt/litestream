@@ -41,8 +41,6 @@ class PlayerManager:
         self.n_tracks_sent = 0
         self.first_chunk_dict = {}
         self.track_playing = -1
-        self.chunk_playing = 0
-        self.chunk_reading = 0
         self.chunked_urls = False
         self.playlist_completed = False
         self.ready_to_pump = False
@@ -98,20 +96,12 @@ class PlayerManager:
             self.increment_track()
             return
 
-        """
         if "Finished playing track" in message:
-            if self.chunked_urls:
-                self.chunk_playing += 1
-                if self.chunk_playing in self.chunk_bounds:
-                    self.increment_track()
-                return
-            self.increment_track()
-        """
+            return
 
         if "Finished reading track" in message:
             if not self.chunked_urls:
                 return
-            self.chunk_reading += 1
 
         if "Finished reading all tracks" in message:
             if not self.chunked_urls:
@@ -123,7 +113,6 @@ class PlayerManager:
 
         if "Finished playing playlist" in message:
             self.playlist_completed = True
-            self.chunk_playing = 0
             self.track_playing = -1
             self.stop(reset_head=True)
             try:
@@ -152,7 +141,9 @@ class PlayerManager:
         self.ready_to_pump = False
         print("No more chunks will be sent -- player reset")
         self.player.stop(reset_head)
-        self.init_vars()
+        # self.init_vars()
+        self.track_playing = -1
+        self.playlist_completed = False
         return
 
     def play(self):
@@ -178,12 +169,14 @@ class PlayerManager:
             return
         if not self.all_tracks_sent:  # We are still pumping chunks.
             raise NotImplementedError("Cannot fast forward while pumping chunks.")
+        next_track = self.track_playing + 1
         self.stop()
-        self.track_playing += 1
+        self.track_playing = next_track
         chunks_to_send = []
         for chunk in self.chunklist[self.track_playing :]:
             chunks_to_send.extend(chunk)
         self.send_playlist(chunks_to_send)
+        self.n_tracks_sent = len(self.urls)
         if resume_playing:
             print("player was playing, and will resume")
             self.play()
@@ -204,6 +197,7 @@ class PlayerManager:
         self.DEBUG and print(f"pump_chunks: Track {self.n_tracks_sent}. sending url {url} player.")
         if self.n_tracks_sent == 0:  # Block until first chunks are pumped
             next_chunklist = asyncio.run(self.get_chunklist(url))
+            self.n_tracks_sent = 1
             self.DEBUG and print(f"pump_chunks: first chunklist is {next_chunklist}")
         else:
             if self.gen is None:
