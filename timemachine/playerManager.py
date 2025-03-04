@@ -276,29 +276,3 @@ class PlayerManager:
 
     def reset_player(self):
         return self.player.reset_player()
-
-
-"""
-# this works
-loop = asyncio.get_event_loop()
-task = loop.create_task(sleep_and_return("Task 1", 3))
-
-
-def poll(task):
-    while not task.done():
-        # print("Polling for task completion...")
-        # time.sleep(0.1)  # not needed
-        loop.run_until_complete(dummy())
-        yield
-    return task.data
-
-
-while True:
-    try:
-        next(poll(task))
-    except StopIteration as e:
-        result = e.value
-        print(f"result is {result}")
-        break
-
-"""
