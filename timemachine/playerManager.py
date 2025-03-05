@@ -35,13 +35,11 @@ class PlayerManager:
 
     def init_vars(self):
         self.chunklist = []
-        self.flat_chunklist = []
         self.urls = []  # high-level urls
         self.tracklist = []  # track titles
         self.n_tracks_sent = 0
         self.first_chunk_dict = {}
-        self.track_playing = -1
-        self.player_track_playing = -1
+        self.track_index = 0
         self.chunked_urls = False
         self.playlist_completed = False
         self.ready_to_pump = False
@@ -54,10 +52,9 @@ class PlayerManager:
         self.playlist_completed = False
         self.n_tracks_sent = 0
         self.chunklist = []
-        self.flat_chunklist = []
         self.first_chunk_dict = {}
-        self.track_playing = -1
-        self.player_track_playing = -1
+        self.track_index = 0
+        self.track_offset = 0
         self.ready_to_pump = True
         self.chunk_generator = None
 
@@ -70,7 +67,8 @@ class PlayerManager:
         self.pump_chunks()
 
     def __repr__(self):
-        return f"PlayerManager: {self.player}. "
+        clstr = f"Player Manager: chunk lengths {[len(x) for x in self.chunklist]}"
+        return clstr + f" {self.player}. "
 
     @property
     def all_tracks_sent(self):
@@ -78,29 +76,39 @@ class PlayerManager:
 
     def extend_playlist(self, urllist, ntracks=1):
         print(f"extend_playlist: Track {self.n_tracks_sent}. sending {len(urllist)} more URLs to player.")
-        self.playdict = {hashlib.md5(x.encode()).digest().hex(): x for x in urllist}
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
         self.n_tracks_sent += ntracks
 
-    def increment_track(self):
-        self.track_playing += 1
-        tracklist = self.tracklist[self.track_playing :] + self.credits + [""] * 10
+    def increment_track(self, track_num=None):
+        if track_num and track_num == self.track_index:
+            return self.track_index
+        if self.track_index >= self.n_tracks:
+            return None
+        self.track_index = self.track_index + 1 if track_num is None else track_num
+        tracklist = self.remaining_track_names()
         try:
-            print(f"playerManager display: {tracklist}")
+            self.DEBUG and print(f"playerManager display: {tracklist}")
             self.callbacks["display"](*tracklist)
         except Exception as e:
             print(f"Error in display callback: {e}")
+        finally:
+            self.DEBUG and print(f"increment_track: returning track {self.track_index} of {self.n_tracks}")
+            return self.track_index
 
     def messenger(self, message):
         last_word = message.split()[-1]
+        track_num = self.first_chunk_dict.get(last_word, -1)
+        title = None
         try:
-            if (title := self.first_chunk_dict.get(last_word, None)) and "Start" in message:
+            if (track_num >= 0) and "Start" in message:
+                title = self.tracklist[track_num]
                 message = message.replace(last_word, title)
         except Exception as e:
             print(f"Error in messenger: {e}")
+
         # print(f"PlayerManager {message}")
         if title and "Start playing track" in message:
-            self.increment_track()
+            self.increment_track(track_num)
             return
 
         if "Finished playing track" in message:
@@ -119,8 +127,6 @@ class PlayerManager:
                 self.play()
 
         if "Finished playing playlist" in message:
-            self.playlist_completed = True
-            self.track_playing = -1
             self.stop(reset_head=True)
             try:
                 self.callbacks["display"](*self.tracklist)
@@ -132,10 +138,8 @@ class PlayerManager:
     def n_tracks(self):
         return len(self.tracklist)
 
-    def track_names(self):
-        track_names = self.tracklist[max(0, self.track_playing) :]
-        if len(track_names) < 10:
-            track_names = track_names + (10 - len(track_names)) * [""]
+    def remaining_track_names(self):
+        track_names = self.tracklist[max(0, self.track_index) :] + self.credits + [""] * 10
         return track_names
 
     def is_playing(self):
@@ -148,9 +152,6 @@ class PlayerManager:
         self.ready_to_pump = False
         print("No more chunks will be sent -- player reset")
         self.player.stop(reset_head)
-        # self.init_vars()
-        self.track_playing = -1
-        self.playlist_completed = False
         return
 
     def play(self):
@@ -160,29 +161,22 @@ class PlayerManager:
         return self.player.play()
 
     def rewind(self):
-        return self.player.rewind()
+        raise NotImplementedError("Cannot rewind yet.")
+        return
 
     def ffwd(self):
         resume_playing = self.is_playing()
-        # Handle case where we are on the last track.
-        next_track = self.track_playing + 1
-        print(f"ffwd: Track playing: {self.track_playing}, n_tracks: {self.n_tracks}")
-        if next_track > self.n_tracks:
-            return
         if not self.all_tracks_sent:  # We are still pumping chunks.
             raise NotImplementedError("Cannot fast forward while pumping chunks.")
+        if self.increment_track() is None:
+            return  # return if we are on the last track.
         self.stop()
-        self.track_playing = 0  # Start playing the NEW playlist at the beginning!!
         chunks_to_send = []
-        print(f"ffwd: next_track: {next_track}, n_tracks_sent: {self.n_tracks_sent}")
-        for chunk in self.chunklist[next_track:]:
+        for chunk in self.chunklist[self.track_index :]:
             chunks_to_send.extend(chunk)
         self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
-        self.n_tracks_sent = len(self.urls)
         if resume_playing:
             self.play()
-        print(self.player)
-        print(self.player.playlist)
         return
 
     def pump_chunks(self):
@@ -192,11 +186,11 @@ class PlayerManager:
             return
         url = self.urls[self.n_tracks_sent]
         next_chunklist = None
-        self.DEBUG and print(f"pump_chunks: Track {self.n_tracks_sent}. sending url {url} player.")
         if self.n_tracks_sent == 0:  # Block until first chunks are pumped
             next_chunklist = asyncio.run(self.get_chunklist(url))
-            self.n_tracks_sent = 1
-            self.DEBUG and print(f"pump_chunks: first chunklist is {next_chunklist}")
+            self.DEBUG and print(
+                f"pump_chunks: first chunklist is {next_chunklist[:2]}..{next_chunklist[-2:]} type {type(next_chunklist)}"
+            )
         else:
             if self.chunk_generator is None:
                 self.chunk_generator = self.poll_chunklist(url)
@@ -212,9 +206,8 @@ class PlayerManager:
                 next_chunklist = next_chunklist.value
                 self.DEBUG and print("Converting chunklist to a list")
             self.chunklist.append(next_chunklist)
-            hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.tracklist[self.n_tracks_sent]}
+            hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): self.n_tracks_sent}
             self.first_chunk_dict.update(hashdict)
-            self.flat_chunklist.extend(next_chunklist)
 
             self.extend_playlist(next_chunklist)
             self.DEBUG and print(f"hashdict now {self.first_chunk_dict}")
@@ -224,7 +217,6 @@ class PlayerManager:
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
-            # time.sleep(0.01)  # not needed
             loop.run_until_complete(dummy(0))  # give some time back to the main_loop
             yield
         next_chunklist = task.data
@@ -234,7 +226,7 @@ class PlayerManager:
     async def get_chunklist(self, url):
         if url.endswith("m3u8"):
             # determine the chunks
-            print(f"first url is {url}")
+            self.DEBUG and print(f"first url is {url}")
             self.chunked_urls = True
             base_url = "/".join(url.split("/")[:-1])
             chunklist_url = await requests.get(url)

@@ -917,7 +917,7 @@ def update_display(player, composer, work, p_id):
         display_selected_composer(composer)
         tracklist_bbox.y0 = display_title(work)
         tracklist_bbox.y0 = display_performance_info(work.id, p_id)
-        display_tracks(*player.track_names())
+        display_tracks(*player.remaining_track_names())
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
     elif player.is_paused():
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
@@ -967,7 +967,6 @@ def display_tracks(*track_names):
     if len(track_names) == 0:
         return
     tm.clear_to_bottom(0, tracklist_bbox.y0)
-    print(f"tracklist_bbox is {tracklist_bbox}")
     lines_written = 0
     last_valid_str = 0
 
