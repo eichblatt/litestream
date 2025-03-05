@@ -405,14 +405,14 @@ class AudioPlayer:
         # Clear the buffers
         print(f"reset_player before clear InBuffer: {time.ticks_ms()}")
         print(f"{self.InBuffer.any()} bytes in InBuffer")
-        self.InBuffer.read()
+        self.InBuffer.close()
         print(f"reset_player before clear OutBuffer: {time.ticks_ms()}")
         print(f"{self.OutBuffer.any()} bytes in OutBuffer")
-        self.OutBuffer.read()
+        self.OutBuffer.close()
         print(f"reset_player after clear buffers: {time.ticks_ms()}")
 
         # This frees up all the buffers that the decoders allocated, and resets their state
-        self.AACDecoder.flush()
+        self.AACDecoder.close()
         self.AACDecoder.AAC_Close()
 
         # If this is an SSL socket, this also closes the underlying "real" socket
