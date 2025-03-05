@@ -75,14 +75,14 @@ class PlayerManager:
         return self.n_tracks_sent >= len(self.urls)
 
     def extend_playlist(self, urllist, ntracks=1):
-        print(f"extend_playlist: Track {self.n_tracks_sent}. sending {len(urllist)} more URLs to player.")
+        print(f"extend_playlist: Track {self.n_tracks_sent + 1}. sending {len(urllist)} more URLs to player.")
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
         self.n_tracks_sent += ntracks
 
     def increment_track(self, track_num=None):
         if track_num and track_num == self.track_index:
             return self.track_index
-        if self.track_index >= self.n_tracks:
+        if (self.track_index + 1) >= self.n_tracks:
             return None
         self.track_index = self.track_index + 1 if track_num is None else track_num
         tracklist = self.remaining_track_names()
@@ -169,6 +169,7 @@ class PlayerManager:
         if not self.all_tracks_sent:  # We are still pumping chunks.
             raise NotImplementedError("Cannot fast forward while pumping chunks.")
         if self.increment_track() is None:
+            print("Cannot fast forward, already on last track.")
             return  # return if we are on the last track.
         self.stop()
         chunks_to_send = []
