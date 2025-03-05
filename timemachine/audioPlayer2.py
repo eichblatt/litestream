@@ -412,7 +412,10 @@ class AudioPlayer:
         print(f"reset_player after clear buffers: {time.ticks_ms()}")
 
         # This frees up all the buffers that the decoders allocated, and resets their state
-        self.AACDecoder.close()
+        try:
+            self.AACDecoder.close()
+        except AttributeError as e:
+            raise AttributeError("Firmware is out of date")
         self.AACDecoder.AAC_Close()
 
         # If this is an SSL socket, this also closes the underlying "real" socket

@@ -1303,6 +1303,8 @@ def run():
         main_loop(player, state)
 
     except Exception as e:
+        if "Firmware" in str(e):
+            raise utils.FirmwareUpdateRequiredException("AAC_Decoder not available in this firmware")
         msg = f"Classical: {e}"
         print(msg)
         with open("/exception.log", "w") as f:
