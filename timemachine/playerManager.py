@@ -41,10 +41,11 @@ class PlayerManager:
         self.n_tracks_sent = 0
         self.first_chunk_dict = {}
         self.track_playing = -1
+        self.player_track_playing = -1
         self.chunked_urls = False
         self.playlist_completed = False
         self.ready_to_pump = False
-        self.gen = None
+        self.chunk_generator = None
         self.credits = []
 
     def set_playlist(self, track_titles, urls, credits=[]):
@@ -52,7 +53,13 @@ class PlayerManager:
         self.credits = credits
         self.playlist_completed = False
         self.n_tracks_sent = 0
+        self.chunklist = []
+        self.flat_chunklist = []
+        self.first_chunk_dict = {}
+        self.track_playing = -1
+        self.player_track_playing = -1
         self.ready_to_pump = True
+        self.chunk_generator = None
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
         urls = [x if not (x.endswith("silence600.ogg")) else setbreak_url for x in urls]
@@ -155,33 +162,24 @@ class PlayerManager:
     def rewind(self):
         return self.player.rewind()
 
-    def send_playlist(self, remaining_chunks):
-        self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in remaining_chunks]
-        # self.n_tracks_sent = len(self.urls)
-        print(self.player)
-        return
-
     def ffwd(self):
         resume_playing = self.is_playing()
         # Handle case where we are on the last track.
-        print(f"Track playing: {self.track_playing}, n_tracks: {self.n_tracks}")
-        if self.track_playing == self.n_tracks - 1:
+        next_track = self.track_playing + 1
+        print(f"ffwd: Track playing: {self.track_playing}, n_tracks: {self.n_tracks}")
+        if next_track > self.n_tracks:
             return
         if not self.all_tracks_sent:  # We are still pumping chunks.
             raise NotImplementedError("Cannot fast forward while pumping chunks.")
-        next_track = self.track_playing + 1
         self.stop()
-        self.track_playing = next_track
+        self.track_playing = 0  # Start playing the NEW playlist at the beginning!!
         chunks_to_send = []
-        for chunk in self.chunklist[self.track_playing :]:
+        print(f"ffwd: next_track: {next_track}, n_tracks_sent: {self.n_tracks_sent}")
+        for chunk in self.chunklist[next_track:]:
             chunks_to_send.extend(chunk)
-        self.send_playlist(chunks_to_send)
+        self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
         self.n_tracks_sent = len(self.urls)
         if resume_playing:
-            print("player was playing, and will resume")
-            self.play()
-        else:
-            print("player was not playing, but now has a shorter playlist")
             self.play()
         print(self.player)
         print(self.player.playlist)
@@ -200,13 +198,13 @@ class PlayerManager:
             self.n_tracks_sent = 1
             self.DEBUG and print(f"pump_chunks: first chunklist is {next_chunklist}")
         else:
-            if self.gen is None:
-                self.gen = self.poll_chunklist(url)
+            if self.chunk_generator is None:
+                self.chunk_generator = self.poll_chunklist(url)
             try:
-                next(self.gen)
+                next(self.chunk_generator)
             except StopIteration as e:
                 next_chunklist = e.value
-                self.gen = None  # prepare for next task
+                self.chunk_generator = None  # prepare for next task
                 self.DEBUG and print(f"pump_chunks: StopIteration next chunklist is a {type(next_chunklist)}")
             self.ready_to_pump = True
         if next_chunklist:

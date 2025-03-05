@@ -242,15 +242,16 @@ def get_tape_ids(coll_dict, key_date):
     return sorted_tape_ids
 
 
-def get_next_tih(date, valid_dates, valid_tihs=[]):
+def get_next_tih(date, valid_dates):
+    valid_tihs = []
     dt = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)  # Central time
     tih_pattern = f"{dt[1]:02d}-{dt[2]:02d}"
     print(f"getting next today in history. time is {dt}. pattern is {tih_pattern}")
-    if len(valid_tihs) == 0:
-        for d in valid_dates:
-            if d[5:] == tih_pattern:
-                valid_tihs.append(d)
+    for d in valid_dates:
+        if d[5:] == tih_pattern:
+            valid_tihs.append(d)
     if len(valid_tihs) == 0:  # There are no today in history shows.
+        print(f"There are no Today In History shows for {tih_pattern}")
         return date
     if date >= valid_tihs[-1]:
         return valid_tihs[0]
