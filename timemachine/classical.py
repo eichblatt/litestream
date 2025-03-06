@@ -701,6 +701,7 @@ def main_loop(player, state):
                         worklist = get_works(selected_composer.id)
                     print(f"worklist is {worklist}")
                     keyed_work = worklist[0]
+                    worklist = worklist[1:]
                 elif KNOB_TIME == WORK_KEY_TIME:
                     print(f"Work last keyed {keyed_work}")
                 else:
