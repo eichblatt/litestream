@@ -131,7 +131,7 @@ def select_chars(message, message2="", already=None):
     print(f"Message2 is {message2}")
     if len(message2) > 0:
         tm.clear_bbox(message2_bbox)
-        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color)
+        tm.write(f"{message2}", 0, message2_bbox.y0, tm.pfont_small, tm.stage_date_color, show_end=-3)
 
     singleLetter = already is not None
     already = already if singleLetter else ""
@@ -171,7 +171,7 @@ def select_chars(message, message2="", already=None):
 
                 # Write the Delete character
                 cursor += tm.tft.write(
-                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step != 0 else tm.PURPLE
+                    tm.pfont_small, "DEL", select_bbox.x0, select_bbox.y0, tm.WHITE if step == 0 else tm.tracklist_color
                 )
 
                 text = charset[max(0, step - 5) : -1 + step]
@@ -196,7 +196,7 @@ def select_chars(message, message2="", already=None):
                 elif text == "\x0c":
                     text = "\\f"
 
-                cursor += tm.tft.write(tm.pfont_small, text, select_bbox.x0 + cursor, select_bbox.y0, tm.PURPLE)
+                cursor += tm.tft.write(tm.pfont_small, f" {text} ", select_bbox.x0 + cursor, select_bbox.y0, tm.WHITE)
 
                 # Write the characters after the cursor
                 text = charset[step : min(-1 + step + screen_width, len(charset))]
@@ -341,6 +341,7 @@ def qr_code(message, startpos=(0, 0), pixel_size=2):
 #
 
 
+############################################################################################### file-related
 def isdir(path):
     try:
         return (os.stat(path)[0] & 0x4000) != 0
@@ -479,6 +480,9 @@ def mkdirs(path):
     os.mkdir(path)
 
 
+############################################################################################### json
+
+
 def write_json(obj, path):
     print(f"writing json to {path}")
     parent_dir = "/".join(path.split("/")[:-1])
@@ -530,6 +534,14 @@ def read_file(path):
     return contents
 
 
+def write_file(path, content):
+    try:
+        with open(path, "w") as fh:
+            fh.write(content)
+    except Exception as e:
+        print(f"Exception suppressed in write_file {e}. Path {path}")
+
+
 def set_datetime(hidden=False):
     print("Setting datetime")
     if not hidden:
@@ -555,6 +567,9 @@ def set_datetime(hidden=False):
         return None
 
 
+############################################################################################### partitions
+
+
 def set_boot_partition(part_name):
     from esp32 import Partition
 
@@ -574,6 +589,9 @@ def mark_partition():
 
     current_partition = Partition(Partition.RUNNING)
     current_partition.mark_app_valid_cancel_rollback()
+
+
+############################################################################################### string fns
 
 
 def remove_common_start(strings, word_level=True):
@@ -621,6 +639,10 @@ def remove_accents(string):
     return string
 
 
+def url_escape(s):
+    return "".join(c if c.isalpha() or c.isdigit() else "%%%02x" % ord(c) for c in s)
+
+
 def isnumeric(string):
     pattern = r"^-?\d+(?:\.\d+)?$"
     return re.match(pattern, string)
@@ -635,6 +657,9 @@ def isinteger(candidate):
         pattern = r"^-?\d+?$"
         return re.match(pattern, candidate)
     return False
+
+
+############################################################################################### logging
 
 
 def clear_log(outpath="/log_out.py"):
@@ -727,6 +752,8 @@ def get_main_app():
             import rpm78 as main_app
         elif main_app_name == "classical":
             import classical as main_app
+    except FirmwareUpdateRequiredException as e:
+        raise e
     except ImportError as e:
         print(e)
         import livemusic as main_app
@@ -782,11 +809,14 @@ def update_firmware():
     from ota32 import open_url
     import gc
 
-    latest_release = "latest"
-    branch = "releases"
+    release_to_download = "latest"
+    if is_dev_box():
+        branch = "dev"
+    else:
+        branch = "releases"
     server_path = "https://raw.githubusercontent.com/eichblatt/litestream"
-    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.sha"
-    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{latest_release}/micropython.bin"
+    sha_url = f"{server_path}/{branch}/MicropythonFirmware/{release_to_download}/micropython.sha"
+    micropython_url = f"{server_path}/{branch}/MicropythonFirmware/{release_to_download}/micropython.bin"
 
     try:
         s = open_url(sha_url)
@@ -1057,3 +1087,12 @@ def load_state(app=None):
 
 if not isdir("/config"):
     os.mkdir("/config")
+
+
+############################################################################################# custom exceptions
+
+
+class FirmwareUpdateRequiredException(Exception):
+    def __init__(self, message="Firmware is out of date"):
+        self.message = message
+        super().__init__(self.message)

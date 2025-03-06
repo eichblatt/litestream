@@ -469,7 +469,7 @@ def trim_string_middle(text, x_pos, font):
         middle_char = len(text) // 2
         text = text[: middle_char - 1] + "~" + text[middle_char + 1 :]
         pixel_width = tft.write_len(font, text)
-    return text
+    return text + 3 * " "  # Add spaces so that right side of screen is erased
 
 
 def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
@@ -512,7 +512,8 @@ def write(msg, x=0, y=0, font=pfont_med, color=WHITE, show_end=0, indent=0, back
     for line in text:
         if show_end == 1:
             line = trim_string_middle(line, x, font)
-        if bounds_check and ((x >= SCREEN_WIDTH) or (y0 >= SCREEN_HEIGHT - font.HEIGHT)):
+        if bounds_check and ((x > SCREEN_WIDTH) or (y0 > SCREEN_HEIGHT - font.HEIGHT)):
+            print(f"write: x {x} or y {y0} out of bounds. Not writing {msg}")
             continue
         tft.write(font, line, x, y0, color, background)
         y0 += font.HEIGHT

@@ -20,7 +20,11 @@ import gc
 import re
 import sys
 import time
-from mrequests import mrequests as requests
+
+try:
+    from async_urequests import urequests as requests
+except ImportError:
+    from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
 import fonts.DejaVu_33 as large_font

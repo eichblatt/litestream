@@ -14,6 +14,7 @@
     - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
     - [Flash Everything](#flash-everything)
     - [Rolling Back to a Previous Version of the Firmware](#rolling-back-to-a-previous-version-of-the-firmware)
+    - [Browser-based](#browser-based)
 
 ## Install ESP-IDF
 
@@ -160,8 +161,9 @@ If this is the first time, then follow instructions on how to [Download the firm
 ### Flash Everything
 
 ```{}
-: ~ ; export DEVICE=/dev/ttyUSB0 # Note: New serial board is /dev/ttyACM0
+: ~ ; export DEVICE=/dev/ttyACM0 # Note: old serial board is /dev/ttyUSB0
 : ~ ; source $HOME/esp/esp-idf/export.sh 
+: ~ ; IDF_ENV=idf5.2_py3.12_env
 : ~ ; cd $HOME/projects/litestream
 : ~/projects/litestream ; source /home/steve/.espressif/python_env/$IDF_ENV/bin/activate
 : /home/steve/.espressif/python_env/idf5.2_py3.12_env ~/projects/litestream ; cd MicropythonFirmware/latest
@@ -174,3 +176,7 @@ There a few things you need to know when rolling back firmware.
 
 - When writing a different version of the firmware, use the `--erase-all` option in the `esptool.py` command. Otherwise, the filesystem will not be erased, and it will be invalid.
 - The file fsbackup.bin is specific to the version of the firmware. You cannot copy it to a different firmware version
+
+### Browser-based
+
+https://espressif.github.io/esptool-js/

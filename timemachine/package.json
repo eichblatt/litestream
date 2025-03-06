@@ -9,6 +9,10 @@
             "github:eichblatt/litestream/timemachine/audioPlayer.py"
         ],
         [
+            "audioPlayer2.py",
+            "github:eichblatt/litestream/timemachine/audioPlayer2.py"
+        ],
+        [
             "board.py",
             "github:eichblatt/litestream/timemachine/board.py"
         ],
@@ -31,6 +35,18 @@
         [
             "livemusic.py",
             "github:eichblatt/litestream/timemachine/livemusic.py"
+        ],
+        [
+            "classical.py",
+            "github:eichblatt/litestream/timemachine/classical.py"
+        ],
+        [
+            "classical_utils.py",
+            "github:eichblatt/litestream/timemachine/classical_utils.py"
+        ],
+        [
+            "playerManager.py",
+            "github:eichblatt/litestream/timemachine/playerManager.py"
         ],
         [
             "rpm78.py",
@@ -97,7 +113,11 @@
             "github:eichblatt/litestream/timemachine/mrequests/urlunquote.mpy"
         ],
         [
-            "uQR/uQR.mpy",
+            "async_urequests.py",
+            "github:eichblatt/litestream/timemachine/async_urequests.py"
+        ],
+        [
+            "uQR/uQR.py",
             "github:eichblatt/litestream/timemachine/uQR/uQR.py"
         ],
         [
