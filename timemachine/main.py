@@ -84,7 +84,7 @@ def test_update():
     tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3)
 
     start_time = time.ticks_ms()
-    while time.ticks_ms() < (start_time + 5 * 60_000):
+    while time.ticks_ms() < (start_time + 20 * 60_000):
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             update_code = True
