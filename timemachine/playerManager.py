@@ -171,6 +171,8 @@ class PlayerManager:
             raise NotImplementedError("Cannot fast forward while pumping chunks.")
         if self.increment_track() is None:
             print("Cannot fast forward, already on last track.")
+            self.playlist_completed = True
+            self.stop()
             return  # return if we are on the last track.
         self.stop()
         chunks_to_send = []

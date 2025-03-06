@@ -640,7 +640,7 @@ def main_loop(player, state):
         if player.playlist_completed and (len(worklist) > 0):
             print(f"Player is finished, continuing the present worklist")
             keyed_work = worklist[0]
-            worklist = worklist[1:]
+            worklist.pop(0)
             clu.update_worklist_dict({worklist_key: worklist_index + 1})
             selected_work, track_titles = play_keyed_work(keyed_work, player, state)
 
@@ -673,7 +673,7 @@ def main_loop(player, state):
                     tm.screen_on()
                     if player.stop():
                         tm.clear_bbox(playpause_bbox)
-                    worklist = worklist[1:]
+                    worklist.pop(0)
                 print("Stop PRESSED")
 
         if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
@@ -707,7 +707,7 @@ def main_loop(player, state):
                     if worklist_key:
                         clu.update_worklist_dict({worklist_key: worklist_index})
                     keyed_work = worklist[worklist_index]
-                    worklist = worklist[worklist_index + 1 :]
+                    worklist = worklist[worklist_index + 1 :] + worklist[:worklist_index]  # wrap around
                 elif KNOB_TIME == WORK_KEY_TIME:
                     print(f"Work last keyed {keyed_work}")
                 else:
@@ -777,7 +777,8 @@ def main_loop(player, state):
                 print("FFwd RELEASED")
             else:
                 print("FFwd PRESSED")
-                if player.is_playing() or (resume_playing > 0):
+                wasplaying = player.is_playing()
+                if wasplaying or (resume_playing > 0):
                     resume_playing = time.ticks_ms() + resume_playing_delay
                 if tm.power():
                     if tm.screen_state():
