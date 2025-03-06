@@ -703,7 +703,7 @@ def main_loop(player, state):
                     else:
                         worklist = get_works(selected_composer.id)
                     print(f"worklist is {worklist}")
-                    worklist_index = clu.worklist_dict().get(worklist_key, 0)
+                    worklist_index = clu.worklist_dict().get(worklist_key, 0) % max(1, len(worklist))
                     if worklist_key:
                         clu.update_worklist_dict({worklist_key: worklist_index})
                     keyed_work = worklist[worklist_index]
