@@ -51,6 +51,10 @@ The fix is:
     c) Change the log line below from %i to %u: "log_e("sampleRate is not valid sr=%u", sampleRate); 
 
 
+4) Define the min() function
+Add this definition to vorbis_decoder.h:
+#define min(a,b) ((a)<(b)?(a):(b))
+
 ===============================
 = Changes for the MP3 Decoder =
 ===============================

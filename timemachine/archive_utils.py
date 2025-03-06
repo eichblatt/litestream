@@ -219,7 +219,7 @@ def get_request(url, outpath="/tmp.json"):
     if resp.status_code != 200:
         print(f"Failed to load from {url}")
         return {}
-    if resp.chunked:
+    if resp.chunked or outpath != "/tmp.json":
         print(f"saving json to {outpath}")
         parent_dir = "/".join(outpath.split("/")[:-1])
         utils.mkdirs(parent_dir)

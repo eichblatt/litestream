@@ -20,7 +20,11 @@ import gc
 import re
 import time
 from collections import OrderedDict
-from mrequests import mrequests as requests
+
+try:
+    from async_urequests import urequests as requests
+except ImportError:
+    from mrequests import mrequests as requests
 
 # import micropython # Use micropython.mem_info() to see memory available.
 
@@ -238,14 +242,16 @@ def get_tape_ids(coll_dict, key_date):
     return sorted_tape_ids
 
 
-def get_next_tih(date, valid_dates, valid_tihs=[]):
+def get_next_tih(date, valid_dates):
+    valid_tihs = []
     dt = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)  # Central time
     tih_pattern = f"{dt[1]:02d}-{dt[2]:02d}"
-    if len(valid_tihs) == 0:
-        for d in valid_dates:
-            if d[5:] == tih_pattern:
-                valid_tihs.append(d)
+    print(f"getting next today in history. time is {dt}. pattern is {tih_pattern}")
+    for d in valid_dates:
+        if d[5:] == tih_pattern:
+            valid_tihs.append(d)
     if len(valid_tihs) == 0:  # There are no today in history shows.
+        print(f"There are no Today In History shows for {tih_pattern}")
         return date
     if date >= valid_tihs[-1]:
         return valid_tihs[0]
@@ -549,6 +555,9 @@ def main_loop(player, coll_dict, state):
             startchar = min(15 * vcs_line, len(selected_vcs) - 16)
             audio_pump(player, Nmax=3)  # Try to keep buffer filled.
             tm.write(f"{selected_vcs[startchar:]}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
+            tstr = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)[:-2]
+            tstr = [f"{tstr[0]}"] + [f"{x:02d}" for x in tstr[1:]]
+            print(f"{tstr[0]}.{tstr[1]}.{tstr[2]} {tstr[3]}:{tstr[4]}:{tstr[5]} -- ", end="")  # Central time
             print(player)
             update_display(player)
 
@@ -593,14 +602,10 @@ def main_loop(player, coll_dict, state):
             tm.power(1)
             date_changed_time = time.ticks_ms()
             if (month_new in [4, 6, 9, 11]) and (day_new > 30):
-                day_new = 30
-            if (month_new == 2) and (day_new > 28):
-                if year_new % 4 == 0:
-                    day_new = min(29, day_new)
-                    if (year_new % 100 == 0) and (year_new % 400 != 0):
-                        day_new = min(28, day_new)
-                else:
-                    day_new = min(28, day_new)
+                day_new = 1 if (day_old != 1) else 30
+            max_feb = 29 if ((year_new % 4 == 0) and ((year_new % 100 != 0) or (year_new % 400 == 0))) else 28
+            if (month_new == 2) and (day_new > max_feb):
+                day_new = 1 if (day_old != 1) else max_feb
 
             date_new = f"{month_new:2d}-{day_new:2d}-{year_new%100:02d}"
             key_date = f"{year_new}-{month_new:02d}-{day_new:02d}"
@@ -839,17 +844,24 @@ def save_error(e):
         f.write(msg)
 
 
+def initialize_knobs():
+    tm.m._min_val = 1
+    tm.m._max_val = 12
+    tm.d._min_val = 1
+    tm.d._max_val = 31
+    tm.m._range_mode = tm.m.RANGE_WRAP
+    tm.d._range_mode = tm.m.RANGE_WRAP
+    tm.y._range_mode = tm.m.RANGE_BOUNDED
+
+
 def run():
     """run the livemusic controls"""
     try:
         tm.label_soft_knobs("-", "-", "-")
         state = utils.load_state()
         show_collections(state["collection_list"])
+        initialize_knobs()
 
-        tm.m._min_val = 1
-        tm.m._max_val = 12
-        tm.d._min_val = 1
-        tm.d._max_val = 31
         coll_dict = get_coll_dict(state["collection_list"])
         print(f"Loaded collections {coll_dict.keys()}")
 
