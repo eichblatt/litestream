@@ -128,6 +128,7 @@ class PlayerManager:
 
         if "Finished playing playlist" in message:
             self.stop(reset_head=True)
+            self.playlist_completed = True
             try:
                 self.callbacks["display"](*self.tracklist)
             except Exception as e:
