@@ -1348,7 +1348,7 @@ class AudioPlayer:
         return 5000
 
     def do_pump(self, _):
-        self.pumptimer.deinit()
+        #self.pumptimer.deinit()
 
         buffer_level_in = self.InBuffer.any()
         buffer_level_out = self.OutBuffer.any()
@@ -1370,8 +1370,8 @@ class AudioPlayer:
 
         buffer_level_in = self.InBuffer.any()
 
-        self.pumptimer.init(period=10, mode=Timer.PERIODIC, callback=self.do_pump)
+        self.pumptimer.init(period=10, mode=Timer.ONE_SHOT, callback=self.do_pump)
 
     def start_timer(self):
         self.pumptimer = Timer(0)
-        self.pumptimer.init(period=10, mode=Timer.PERIODIC, callback=self.do_pump)
+        self.pumptimer.init(period=10, mode=Timer.ONE_SHOT, callback=self.do_pump)
