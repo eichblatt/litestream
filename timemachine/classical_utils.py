@@ -159,9 +159,20 @@ def worklist_dict():
     return worklist_dict
 
 
-def update_worklist_dict(worklist_dict_change):
+def increment_worklist_dict(key):
+    if key is None:
+        return
+    val = worklist_dict().get(key, 0) + 1
+    set_worklist_dict(key, val)
+
+
+def set_worklist_dict(key, val):
+    # Not strictly required, but useful to keep the val within bounds of the length of the worklist.
+    if key is None:
+        return
     wl_dict = worklist_dict()
-    wl_dict.update(worklist_dict_change)
+    wl_dict_change = {key: val}
+    wl_dict.update(wl_dict_change)
     utils.write_json(wl_dict, f"{METADATA_ROOT}/worklists.json")
 
 

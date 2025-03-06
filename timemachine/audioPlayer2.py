@@ -605,14 +605,6 @@ class AudioPlayer:
             self.callbacks["messages"](f"Pausing URL {self.hash_being_read}")
             self.PLAY_STATE = play_state_Paused
 
-    def rewind(self):
-        self.DEBUG and print("in rewind")
-        self.advance_track(-1)
-
-    def ffwd(self):
-        self.DEBUG and print("in ffwd")
-        self.advance_track()
-
     def stop(self, reset_head=True):
         self.mute_audio()
         self.reset_player(reset_head)
@@ -1348,7 +1340,7 @@ class AudioPlayer:
         return 5000
 
     def do_pump(self, _):
-        #self.pumptimer.deinit()
+        # self.pumptimer.deinit()
 
         buffer_level_in = self.InBuffer.any()
         buffer_level_out = self.OutBuffer.any()

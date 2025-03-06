@@ -641,7 +641,7 @@ def main_loop(player, state):
             print(f"Player is finished, continuing the present worklist")
             keyed_work = worklist[0]
             worklist.pop(0)
-            clu.update_worklist_dict({worklist_key: worklist_index + 1})
+            clu.increment_worklist_dict(worklist_key)
             selected_work, track_titles = play_keyed_work(keyed_work, player, state)
 
         if pPlayPause_old != tm.pPlayPause.value():
@@ -704,8 +704,7 @@ def main_loop(player, state):
                         worklist = get_works(selected_composer.id)
                     print(f"worklist is {worklist}")
                     worklist_index = clu.worklist_dict().get(worklist_key, 0) % max(1, len(worklist))
-                    if worklist_key:
-                        clu.update_worklist_dict({worklist_key: worklist_index})
+                    clu.set_worklist_dict(worklist_key, worklist_index)  # To keep the index within bounds of len(worklist).
                     keyed_work = worklist[worklist_index]
                     worklist = worklist[worklist_index + 1 :] + worklist[:worklist_index]  # wrap around
                 elif KNOB_TIME == WORK_KEY_TIME:
