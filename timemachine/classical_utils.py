@@ -150,6 +150,21 @@ def logout_user():
     save_state(state)
 
 
+# ------------------------------------------------------------------------------------ worklists
+def worklist_dict():
+    path = f"{METADATA_ROOT}/worklists.json"
+    if not utils.path_exists(path):
+        return {}
+    worklist_dict = utils.read_json(path)
+    return worklist_dict
+
+
+def update_worklist_dict(worklist_dict_change):
+    wl_dict = worklist_dict()
+    wl_dict.update(worklist_dict_change)
+    utils.write_json(wl_dict, f"{METADATA_ROOT}/worklists.json")
+
+
 # ------------------------------------------------------------------------------------ repertoire
 def configure_repertoire():
     state = load_state()

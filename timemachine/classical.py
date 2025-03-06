@@ -622,8 +622,9 @@ def main_loop(player, state):
     resume_playing_delay = 500
     # player.set_volume(8)
     # month_change_time = 1e12
-    nprints_old = 0
     performance_index = 0
+    worklist_key = None
+    worklist_index = 0
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -640,6 +641,7 @@ def main_loop(player, state):
             print(f"Player is finished, continuing the present worklist")
             keyed_work = worklist[0]
             worklist = worklist[1:]
+            clu.update_worklist_dict({worklist_key: worklist_index + 1})
             selected_work, track_titles = play_keyed_work(keyed_work, player, state)
 
         if pPlayPause_old != tm.pPlayPause.value():
@@ -692,16 +694,20 @@ def main_loop(player, state):
                     # worklist = get_random_works(selected_composer)
                 elif KNOB_TIME == GENRE_KEY_TIME:
                     print(f"Genre last keyed {keyed_genre}")
-                    # selected_genre = keyed_genre
                     ## create playlist of all works in the genre
                     selected_genre = keyed_genre
+                    worklist_key = None
                     if state["repertoire"] == "Full":
                         worklist = get_cat_works(selected_composer.id, selected_genre)
+                        worklist_key = f"{selected_composer.id}_{selected_genre.id}"
                     else:
                         worklist = get_works(selected_composer.id)
                     print(f"worklist is {worklist}")
-                    keyed_work = worklist[0]
-                    worklist = worklist[1:]
+                    worklist_index = clu.worklist_dict().get(worklist_key, 0)
+                    if worklist_key:
+                        clu.update_worklist_dict({worklist_key: worklist_index})
+                    keyed_work = worklist[worklist_index]
+                    worklist = worklist[worklist_index + 1 :]
                 elif KNOB_TIME == WORK_KEY_TIME:
                     print(f"Work last keyed {keyed_work}")
                 else:
