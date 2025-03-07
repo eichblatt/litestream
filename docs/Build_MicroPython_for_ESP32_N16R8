@@ -51,21 +51,45 @@ cp ~/micropython-rotary/rotary.py ~/micropython/ports/esp32/modules
 cp ~/micropython-rotary/rotary_irq_esp.py ~/micropython/ports/esp32/modules
 
 
-Fix the knob-twiddling bug
-==========================
+Fix the knob-twiddling bug by putting I2S callbacks on their own queue
+======================================================================
 nano ~/micropython/ports/esp32/mpconfigport.h
 Add the following:
 #define MICROPY_SCHEDULER_STATIC_NODES (1)
 
 nano ~/micropython/ports/esp32/machine_i2s.c
 Add an "mp_sched_node_t I2S_node;" member to machine_i2s_obj_t
+
 Add a new function:
 static void call_I2S_callback(mp_sched_node_t *node) {
     machine_i2s_obj_t *self = (machine_i2s_obj_t*)((uintptr_t)node - offsetof(machine_i2s_obj_t, I2S_node));
     mp_call_function_1(self->callback_for_non_blocking, MP_OBJ_FROM_PTR(self));
 }
-In the FreeRTOS background task, replace the call to mp_sched_schedule with one to mp_sched_schedule_node:
+
+In task_for_non_blocking_mode(), replace the call to mp_sched_schedule with one to mp_sched_schedule_node:
+//mp_sched_schedule(descriptor.callback, MP_OBJ_FROM_PTR(self));
 mp_sched_schedule_node(&self->I2S_node, call_I2S_callback);
+
+
+Allow the one-shot timer to work even when queues are full
+==========================================================
+nano ~/micropython/ports/esp32/mpconfigport.h
+Add the following:
+#define MICROPY_SCHEDULER_STATIC_NODES (1)
+
+nano ~/micropython/ports/esp32/machine_timer.h
+Add an "mp_sched_node_t timer_node;" member to _machine_timer_obj_t
+
+nano ~/micropython/ports/esp32/machine_timer.c
+Add a new function:
+static void call_timer_callback(mp_sched_node_t *node) {
+    machine_timer_obj_t *self = (machine_timer_obj_t*)((uintptr_t)node - offsetof(machine_timer_obj_t, timer_node));
+    mp_call_function_1(self->callback, MP_OBJ_FROM_PTR(self));
+}
+
+In machine_timer_isr(), replace the call to mp_sched_schedule with one to mp_sched_schedule_node:
+//mp_sched_schedule(self->callback, self);
+mp_sched_schedule_node(&self->timer_node, call_timer_callback);
 
 
 Allow the AudioDecoder C module to use tracked memory allocation
