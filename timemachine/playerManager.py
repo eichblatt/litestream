@@ -222,7 +222,7 @@ class PlayerManager:
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
-            loop.run_until_complete(dummy(0))  # give some time back to the main_loop
+            loop.run_until_complete(dummy(10))  # give some time back to the main_loop
             yield
         next_chunklist = task.data
         loop.close()

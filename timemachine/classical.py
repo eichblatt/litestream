@@ -982,7 +982,7 @@ def display_performance_info(work_id, p_id):
 
 
 def display_tracks(*track_names):
-    print(f"in display_tracks. Track names are {track_names}")
+    print(f"in display_tracks. Track names are {track_names[:3]}...")
     if len(track_names) == 0:
         return
     tm.clear_to_bottom(0, tracklist_bbox.y0)
@@ -1291,7 +1291,7 @@ def select_performance(keyed_work, player, state, ntape=-1):
     # Display the performance information
 
     tracklist = get_tracklist(p_id)
-    print(f"tracklist is {[(x['subtitle'],x['url']) for x in tracklist]}")
+    # print(f"tracklist is {[(x['subtitle'],x['url']) for x in tracklist]}")
     urllist = [x["url"] for x in tracklist]
     urllist = [re.sub(r"/a/", "/tm/", x) for x in urllist]  # Let's get it working w/ 5s chunks first
     titles = cleanup_track_names([x["subtitle"] for x in tracklist])
