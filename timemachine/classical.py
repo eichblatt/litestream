@@ -924,6 +924,8 @@ def main_loop(player, state):
 
 def update_display(player, composer, work, p_id):
     global tracklist_bbox
+
+    print(f"Updating display for {composer}, {work}, {p_id}")
     tm.clear_bbox(playpause_bbox)
     if player.is_stopped():
         pass
@@ -945,9 +947,13 @@ def display_title(work):
 
 
 def cleanup_track_names(track_names):
+    # Define a regular expression pattern to match unwanted prefixes
+    pattern = re.compile(r"^(No\.?\s*|Track\s*|#)\d+\s*[-:.,]*\s*")
+
     track_names = utils.remove_common_start(track_names)
     track_names = [s.lstrip(" .,0123456789") for s in track_names]
     track_names = utils.remove_common_start(track_names)
+    track_names = [pattern.sub("", s) for s in track_names]
     for i, name in enumerate(track_names):
         if len(name) == 0:
             track_names[i] = f"Track {i+1}"
@@ -955,8 +961,7 @@ def cleanup_track_names(track_names):
 
 
 def collect_performance_info(work_id, p_id):
-    if p_id is None:
-        return tracklist_bbox.y0
+    # print(f"in collect_performance_info {work_id}, {p_id}")
     performances = get_performances(work_id)
     this_perf = None
     for perf in performances:
@@ -964,7 +969,7 @@ def collect_performance_info(work_id, p_id):
             this_perf = perf
             break
     if this_perf is None:
-        return tracklist_bbox.y0
+        return None
     perf_info = this_perf.get("performers", {"type": "Unknown", "name": "Unknown"})
     print(f"Performance info is {perf_info}")
     return perf_info
@@ -972,8 +977,13 @@ def collect_performance_info(work_id, p_id):
 
 def display_performance_info(work_id, p_id):
     global tracklist_bbox
+    # print(f"in display_performance_info {work_id}, {p_id}")
+    if p_id is None:
+        return tracklist_bbox.y0
     y0 = tracklist_bbox.y0
     perf_info = collect_performance_info(work_id, p_id)
+    if perf_info is None:
+        return tracklist_bbox.y0
     for prj in perf_info[:2]:
         msg = tm.write(f"{prj["name"]}", 0, y0, color=tm.PURPLE, font=pfont_small, show_end=1)
         y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
