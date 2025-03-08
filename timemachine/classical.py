@@ -1237,9 +1237,9 @@ def choose_performance(composer, keyed_work):
     tm.d._value = 0
     tm.y._value = 0
     pStop_old = tm.pStop.value()
-    pSelect_old = tm.pSelect.value()
     pPlayPause_old = tm.pPlayPause.value()
     prev_index = -1
+    start_time = time.ticks_ms()
 
     while True:
         index = tm.m.value() * 100 + tm.d.value() * 10 + tm.y.value()
@@ -1256,8 +1256,9 @@ def choose_performance(composer, keyed_work):
                 retval = None
                 break
 
-        if (pSelect_old != tm.pSelect.value()) or (pPlayPause_old != tm.pPlayPause.value()):
-            pSelect_old = tm.pSelect.value()
+        if time.ticks_diff(time.ticks_ms(), start_time) < 2_000:  # crude de-bouncing.
+            continue
+        if (not tm.pSelect.value()) or (pPlayPause_old != tm.pPlayPause.value()):
             pPlayPause_old = tm.pPlayPause.value()
             retval = index % len(performances)
             break
@@ -1290,7 +1291,12 @@ def select_performance(keyed_work, player, state, ntape=-1):
         p_id = perf["p_id"]
     if perf:
         pr, label, n_tracks, duration, rel_date = get_performance_info(perf)
-        credits = ["..credits..", f"Label: {label}", f"Released: {rel_date}", f"Duration: {duration}. {n_tracks} trks"]
+        additional_performers = [f'{prj["type"]}: {prj["name"]}' for prj in pr[2:]]
+        credits = (
+            ["..credits.."]
+            + additional_performers
+            + [f"Label: {label}", f"Released: {rel_date}", f"Duration: {duration}. {n_tracks} trks"]
+        )
     else:
         credits = []
     print(f"performance id is {p_id}")
