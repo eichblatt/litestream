@@ -924,6 +924,7 @@ class AudioPlayer:
                 # The user probably paused too long and the underlying socket got closed
                 # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
                 print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
+                self.callbacks["messages"](f"read_chunk: long pause {self.hash_being_decoded}")
 
                 # Start reading the current track again, but at the offset where we were up to
                 self.start_track(self.current_track_bytes_read)

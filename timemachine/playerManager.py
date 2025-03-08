@@ -135,6 +135,18 @@ class PlayerManager:
                 print(f"Error in display callback: {e}")
             return
 
+        if "long pause" in message:
+            self.stop()
+            chunks_to_send = []
+            for chunk in self.chunklist[self.track_index :]:  # This should be granular to the chunk level, instead of track.
+                if hashlib.md5(chunk.encode()).digest().hex() == last_word:
+                    print("Found the chunk to resume from.")
+                    chunks_to_send = []
+                chunks_to_send.extend(chunk)
+            self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
+            self.play()
+            return
+
     @property
     def n_tracks(self):
         return len(self.tracklist)
