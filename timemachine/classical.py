@@ -954,9 +954,7 @@ def cleanup_track_names(track_names):
     return track_names
 
 
-def display_performance_info(work_id, p_id):
-    # NOTE This function is not yet complete.
-    global tracklist_bbox
+def collect_performance_info(work_id, p_id):
     if p_id is None:
         return tracklist_bbox.y0
     performances = get_performances(work_id)
@@ -968,7 +966,14 @@ def display_performance_info(work_id, p_id):
     if this_perf is None:
         return tracklist_bbox.y0
     perf_info = this_perf.get("performers", {"type": "Unknown", "name": "Unknown"})
+    print(f"Performance info is {perf_info}")
+    return perf_info
+
+
+def display_performance_info(work_id, p_id):
+    global tracklist_bbox
     y0 = tracklist_bbox.y0
+    perf_info = collect_performance_info(work_id, p_id)
     for prj in perf_info[:2]:
         msg = tm.write(f"{prj["name"]}", 0, y0, color=tm.PURPLE, font=pfont_small, show_end=1)
         y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
@@ -983,6 +988,7 @@ def display_tracks(*track_names):
     tm.clear_to_bottom(0, tracklist_bbox.y0)
     lines_written = 0
     last_valid_str = 0
+    in_credits = False
 
     for i in range(len(track_names)):
         if len(track_names[i]) > 0:
@@ -996,10 +1002,13 @@ def display_tracks(*track_names):
         name = name.strip("-> ")  # remove trailing spaces and >'s
         if i <= last_valid_str and len(name) == 0:
             name = "Unknown"
+        if name == "..credits..":
+            name = " - -" * 20
+            in_credits = True
         name = utils.capitalize(name.lower())
         y0 = tracklist_bbox.y0 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        color = tm.WHITE if i == 0 else tm.tracklist_color
+        color = tm.WHITE if i == 0 else tm.tracklist_color if not in_credits else tm.PURPLE
         msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
@@ -1123,6 +1132,16 @@ def display_keyed_composers(composers, index, prev_index, force_update=False):
     return
 
 
+def get_performance_info(perf):
+    pr = perf.get("performers", {"type": "Unknown", "name": "Unknown"})
+    label = perf.get("label", "Unknown")
+    n_tracks = perf.get("trk", 0)
+    dur = int(perf.get("dur", 0))
+    duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
+    date = perf.get("release_date", "1900-01-01")
+    return pr, label, n_tracks, duration, date
+
+
 def display_performance_choices(composer, work, performances, index):
     # Screen Layout:
     # Composer (medium font)
@@ -1138,16 +1157,9 @@ def display_performance_choices(composer, work, performances, index):
     i = 0
     while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
         indx = (index + i) % len(performances)
-        p = performances[indx]
-        pr = p.get("performers", {"type": "Unknown", "name": "Unknown"})
-        label = p.get("label", "Unknown")
+        pr, label, n_tracks, duration, date = get_performance_info(performances[indx])
         ind = f"{indx+1}/{len(performances)}"
-        n_tracks = p.get("trk", 0)
-        dur = int(p.get("dur", 0))
-        duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
-        date = p.get("release_date", "1900-01-01")
         color = tm.WHITE if i == 0 else tm.tracklist_color
-        show_end = -2 if i == 0 else 1
         tm.write(ind, 0, y0, color=color, font=pfont_small, show_end=1)
         x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{duration} {n_tracks}trk")
         tm.write(f"{duration} {n_tracks}trk", x0, y0, color=color, font=pfont_small, show_end=1)
@@ -1257,12 +1269,20 @@ def select_performance(keyed_work, player, state, ntape=-1):
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.pause()  # was stop()
+    perf = None
     if ntape == -1:
         p_id = keyed_work.perf_id
         if p_id == 0:  # i.e, repertoire in Full, we don't get a p_id with the work.
-            p_id = get_performances(keyed_work)[0]["p_id"]
+            perf = get_performances(keyed_work)[0]
+            p_id = perf["p_id"]
     else:
-        p_id = get_performances(keyed_work)[ntape]["p_id"]
+        perf = get_performances(keyed_work)[ntape]
+        p_id = perf["p_id"]
+    if perf:
+        pr, label, n_tracks, duration, rel_date = get_performance_info(perf)
+        credits = ["..credits..", f"Label: {label}", f"Released: {rel_date}", f"Duration: {duration}. {n_tracks} trks"]
+    else:
+        credits = []
     print(f"performance id is {p_id}")
     tracklist_bbox.y0 = display_performance_info(keyed_work, p_id)
     tm.write("loading tracks...", 0, tracklist_bbox.y0, pfont_small, tm.WHITE, show_end=-3)
@@ -1275,7 +1295,7 @@ def select_performance(keyed_work, player, state, ntape=-1):
     urllist = [x["url"] for x in tracklist]
     urllist = [re.sub(r"/a/", "/tm/", x) for x in urllist]  # Let's get it working w/ 5s chunks first
     titles = cleanup_track_names([x["subtitle"] for x in tracklist])
-    player.set_playlist(titles, urllist)
+    player.set_playlist(titles, urllist, credits)
     return tracklist, p_id, state
 
 

@@ -168,7 +168,8 @@ class PlayerManager:
     def ffwd(self):
         resume_playing = self.is_playing()
         if not self.all_tracks_sent:  # We are still pumping chunks.
-            raise NotImplementedError("Cannot fast forward while pumping chunks.")
+            print("Cannot fast forward while pumping chunks.")
+            return
         if self.increment_track() is None:
             print("Cannot fast forward, already on last track.")
             self.playlist_completed = True
