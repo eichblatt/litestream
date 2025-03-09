@@ -667,7 +667,7 @@ def main_loop(player, state):
                 play_pause(player)
                 last_update_time = time.ticks_ms()
 
-        if not tm.pPlayPause.value():  # long press Select
+        if not tm.pPlayPause.value():  # long press PlayPause
             if (time.ticks_ms() - play_pause_press_time) > 1_000:
                 print("                 Longpress of playpause")
                 tm.clear_screen()
@@ -676,10 +676,9 @@ def main_loop(player, state):
                 player.pause()
                 clu.manage_playlist()
                 set_knob_times(None)
-                time.sleep(2)
                 play_pause_press_time = time.ticks_ms() + 1_000
-                pPlayPause_old = tm.pPlayPause.value()
                 print("PlayPause RELEASED")
+                pPlayPause_old = 0
 
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()

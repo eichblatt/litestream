@@ -238,6 +238,7 @@ def manage_playlist():
         create_playlist()
     initialize_knobs()
     tm.label_soft_knobs("Composer", "Genre", "Work")
+    time.sleep(3)  # to prevent accidental double-click of select.
 
 
 def create_playlist():
