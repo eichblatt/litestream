@@ -31,7 +31,7 @@ import fonts.NotoSans_bold_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
 import fonts.NotoSans_32 as pfont_large
 
-import archive_utils
+# import archive_utils
 import classical_utils as clu
 import board as tm
 import utils
@@ -532,6 +532,7 @@ def set_knob_times(knob):
 
 load_state = clu.load_state
 save_state = clu.save_state
+request_json = clu.request_json
 
 
 def configure(choice):
@@ -625,7 +626,6 @@ def main_loop(player, state):
     performance_index = 0
     worklist_key = None
     worklist_index = 0
-    select_recently_pressed = False
 
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
@@ -647,8 +647,13 @@ def main_loop(player, state):
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
-            if pPlayPause_old:
-                print("PlayPause RELEASED")
+            if not pPlayPause_old:
+                play_pause_press_time = time.ticks_ms()
+                print("PlayPause PRESSED")
+            else:
+                print("short press of PlayPause -- RELEASED")
+                if (time.ticks_ms() - play_pause_press_time) > 1_000:
+                    continue  # go to top of loop -- This was a long press, so do nothing.
                 if player.is_stopped():
                     state["selected_tape"]["composer_id"] = selected_composer.id
                     state["selected_tape"]["genre_id"] = selected_genre.id
@@ -661,9 +666,20 @@ def main_loop(player, state):
                     display_tracks(*track_titles)
                 play_pause(player)
                 last_update_time = time.ticks_ms()
-            else:
-                play_pause_press_time = time.ticks_ms()
-                print("PlayPause PRESSED")
+
+        if not tm.pPlayPause.value():  # long press Select
+            if (time.ticks_ms() - play_pause_press_time) > 1_000:
+                print("                 Longpress of playpause")
+                tm.clear_screen()
+                tm.label_soft_knobs("", "", "")
+                tm.write("Manage Playlist", 0, 0, pfont_med, tm.WHITE, show_end=-2)
+                player.pause()
+                clu.manage_playlist()
+                set_knob_times(None)
+                time.sleep(2)
+                play_pause_press_time = time.ticks_ms() + 1_000
+                pPlayPause_old = tm.pPlayPause.value()
+                print("PlayPause RELEASED")
 
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()
@@ -682,46 +698,13 @@ def main_loop(player, state):
             resume_playing = -1
             player.play()
 
-        if not tm.pSelect.value():  # long press Select
-            # pSelect_old = tm.pSelect.value()
-            if select_recently_pressed and (time.ticks_ms() - select_press_time) > 1_000:
-                select_recently_pressed = False
-                player.pause()
-                print("                 Longpress of select")
-                performance_index = choose_performance(selected_composer, keyed_work)  # take control of knobs
-                if performance_index is not None:
-                    state["selected_tape"]["composer_id"] = selected_composer.id
-                    state["selected_tape"]["genre_id"] = selected_genre.id
-                    tracklist, p_id, state = select_performance(keyed_work, player, state, performance_index)
-                    save_state(state)
-                    selected_work = keyed_work
-                    # selected_work, track_titles = play_keyed_work(keyed_work, player, state)
-                    tracklist_bbox.y0 = display_title(selected_work)
-                    tracklist_bbox.y0 = display_performance_info(selected_work, p_id)
-                    track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
-                    print(f"Track titles are {track_titles}")
-                    display_tracks(*track_titles)
-                    play_pause(player)
-                    last_update_time = time.ticks_ms()
-                else:
-                    # behave as if we have twiddled a knob.
-                    # tm.m._value = (tm.m.value() - 1) % len(composers)
-                    set_knob_times(None)
-                time.sleep(2)
-                select_press_time = time.ticks_ms() + 1_000
-                pSelect_old = tm.pSelect.value()
-                print("Select RELEASED")
-                continue
-
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if not pSelect_old:
                 select_press_time = time.ticks_ms()
-                select_recently_pressed = True
                 print("Select PRESSED")
             else:
                 print("short press of select -- released")
-                select_recently_pressed = False
                 if (time.ticks_ms() - select_press_time) > 1_000:
                     continue  # go to top of loop -- This was a long press, so do nothing.
                 player.stop()
@@ -760,6 +743,35 @@ def main_loop(player, state):
                 state["selected_tape"]["genre_id"] = selected_genre.id
                 selected_work, track_titles = play_keyed_work(keyed_work, player, state)
                 last_update_time = time.ticks_ms()
+                print("Select RELEASED")
+
+        if not tm.pSelect.value():  # long press Select
+            # pSelect_old = tm.pSelect.value()
+            if (time.ticks_ms() - select_press_time) > 1_000:
+                player.pause()
+                print("                 Longpress of select")
+                performance_index = choose_performance(selected_composer, keyed_work)  # take control of knobs
+                if performance_index is not None:
+                    state["selected_tape"]["composer_id"] = selected_composer.id
+                    state["selected_tape"]["genre_id"] = selected_genre.id
+                    tracklist, p_id, state = select_performance(keyed_work, player, state, performance_index)
+                    save_state(state)
+                    selected_work = keyed_work
+                    # selected_work, track_titles = play_keyed_work(keyed_work, player, state)
+                    tracklist_bbox.y0 = display_title(selected_work)
+                    tracklist_bbox.y0 = display_performance_info(selected_work, p_id)
+                    track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
+                    print(f"Track titles are {track_titles}")
+                    display_tracks(*track_titles)
+                    play_pause(player)
+                    last_update_time = time.ticks_ms()
+                else:
+                    # behave as if we have twiddled a knob.
+                    # tm.m._value = (tm.m.value() - 1) % len(composers)
+                    set_knob_times(None)
+                time.sleep(2)
+                select_press_time = time.ticks_ms() + 1_000
+                pSelect_old = tm.pSelect.value()
                 print("Select RELEASED")
 
         if pRewind_old != tm.pRewind.value():
@@ -1208,16 +1220,6 @@ def show_composers(composer_list):
     time.sleep(0.5)
 
 
-def request_json(url, outpath="/tmp.json"):
-    url0 = url
-    state = load_state()
-    if len(state["access_token"]) > 0 and not "access_token" in url0:
-        url = f"{url0}&access_token={state['access_token']}"
-    print(f"requesting {url}") if DEBUG else None
-    json_resp = archive_utils.get_request(url, outpath=outpath)
-    return json_resp
-
-
 def choose_performance(composer, keyed_work):
     # Hijack the knobs for navigation purposes
     # Show a set of performance options on the screen.
@@ -1323,21 +1325,6 @@ def get_key_index(composers, composer_id):
     return -1
 
 
-def initialize_knobs():
-    tm.y._min_val = 0
-    tm.m._min_val = 0
-    tm.d._min_val = 0
-    tm.y._range_mode = tm.y.RANGE_UNBOUNDED  # 1
-    # tm.y._range_mode = tm.y.RANGE_BOUNDED
-    tm.m._range_mode = tm.m.RANGE_UNBOUNDED  # 1  # was tm.m.RANGE_WRAP
-    tm.d._range_mode = tm.d.RANGE_UNBOUNDED  # 1  # RotaryIRQ.RANGE_UNBOUNDED
-    tm.m._value = 0
-    tm.d._value = 0
-    tm.y._value = 0
-    # tm.y._range_mode = tm.y.RANGE_WRAP
-    # tm.d._range_mode = tm.d.RANGE_WRAP
-
-
 def run():
     """run the livemusic controls"""
     try:
@@ -1346,7 +1333,7 @@ def run():
         print(f"state is {state}")  # Temporary
         composer_list = state["composer_list"]
         show_composers(composer_list)
-        initialize_knobs()
+        clu.initialize_knobs()
 
         player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
         main_loop(player, state)

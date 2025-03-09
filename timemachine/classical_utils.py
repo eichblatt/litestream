@@ -1,3 +1,4 @@
+import archive_utils
 import utils
 import board as tm
 import time
@@ -12,6 +13,18 @@ except ImportError:
 METADATA_ROOT = "/metadata/classical"
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
 TOKEN_FILE = "/metadata/classical/token.txt"
+
+
+# ------------------------------------------------------------------------------------ API requests
+def request_json(url, outpath="/tmp.json", debug=False):
+    url0 = url
+    state = load_state()
+    if len(state["access_token"]) > 0 and not "access_token" in url0:
+        url = f"{url0}&access_token={state['access_token']}"
+    if debug:
+        print(f"request_json: url: {url}")
+    json_resp = archive_utils.get_request(url, outpath=outpath)
+    return json_resp
 
 
 # ------------------------------------------------------------------------------------ authentication
@@ -194,6 +207,68 @@ def configure_repertoire():
 # ------------------------------------------------------------------------------------ cache management
 def clear_cache(pattern="*"):
     utils.remove_files(f"{METADATA_ROOT}/{pattern}")
+
+
+# ------------------------------------------------------------------------------------ knobs
+def initialize_knobs():
+    tm.y._min_val = 0
+    tm.m._min_val = 0
+    tm.d._min_val = 0
+    tm.y._range_mode = tm.y.RANGE_UNBOUNDED  # 1
+    # tm.y._range_mode = tm.y.RANGE_BOUNDED
+    tm.m._range_mode = tm.m.RANGE_UNBOUNDED  # 1  # was tm.m.RANGE_WRAP
+    tm.d._range_mode = tm.d.RANGE_UNBOUNDED  # 1  # RotaryIRQ.RANGE_UNBOUNDED
+    tm.m._value = 0
+    tm.d._value = 0
+    tm.y._value = 0
+    # tm.y._range_mode = tm.y.RANGE_WRAP
+    # tm.d._range_mode = tm.d.RANGE_WRAP
+
+
+# ------------------------------------------------------------------------------------ playlist management
+def manage_playlist():
+    tm.clear_screen()
+    tm.label_soft_knobs("", "", "next")
+    my_playlists = request_json(f"{CLASSICAL_API}?mode=playlists&action=my")
+    print(f"manage_playlist: my_playlists: {my_playlists}")
+    choices = my_playlists + ["Create Playlist", "Cancel"]
+    choice = utils.select_option("Playlist Manager", choices)
+    print(f"manage_playlist: chose {choice}")
+    if choice == "Create Playlist":
+        create_playlist()
+    initialize_knobs()
+    tm.label_soft_knobs("Composer", "Genre", "Work")
+
+
+def create_playlist():
+    tm.clear_screen()
+    tm.label_soft_knobs("", "", "next")
+    name = utils.select_chars("Playlist Name", "Enter name for new playlist")
+    if len(name) == 0:
+        return
+    url = f"{CLASSICAL_API}?mode=edit_playlist&action=create_playlist&title={name}"
+    resp = request_json(url)
+    if resp.get("result", "error") == "OK":
+        playlist_id = resp.get("public_playlist_id", -1)
+        tm.clear_screen()
+        tm.write("Playlist Created", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        add_to_playlist(playlist_id)
+        time.sleep(2)
+    else:
+        tm.clear_screen()
+        tm.write("Playlist Creation Failed", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        time.sleep(2)
+    tm.label_soft_knobs("Composer", "Genre", "Work")
+    return
+
+
+def add_to_playlist(playlist_id):
+    tm.clear_screen()
+    tm.label_soft_knobs("Composer", "Genre", "Work")
+    # Re-factor the main_loop to call a function, select_performance_from_all, that selects a performance,
+    # and then call the select_performance_from_all function here.
+    print("add_to_playlist: Not Yet Implemented")
+    return
 
 
 # ------------------------------------------------------------------------------------ state management
