@@ -336,6 +336,16 @@ def qr_code(message, startpos=(0, 0), pixel_size=2):
     return startpos[0] + i * pixel_size, startpos[1] + j * pixel_size
 
 
+def capture_knob_values():
+    return tm.y.value(), tm.m.value(), tm.d.value()
+
+
+def restore_knob_values(y, m, d):
+    tm.y._value = y
+    tm.m._value = m
+    tm.d._value = d
+
+
 # OS Utils
 ################################################################################################################# OS-related utils
 #

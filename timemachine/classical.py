@@ -574,7 +574,7 @@ def play_keyed_work(keyed_work, player, state):
     # Display the tracklist
     track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
     print(f"Track titles are {track_titles}")
-    display_tracks(*track_titles)
+    display_tracks(*track_titles)  # This doesn't show the credits.
     play_pause(player)
     return selected_work, track_titles
 
@@ -971,31 +971,27 @@ def cleanup_track_names(track_names):
     return track_names
 
 
-def collect_performance_info(work_id, p_id):
-    # print(f"in collect_performance_info {work_id}, {p_id}")
+def get_this_performance(work_id, p_id):
     performances = get_performances(work_id)
     this_perf = None
     for perf in performances:
         if perf["p_id"] == p_id:
             this_perf = perf
             break
-    if this_perf is None:
-        return None
-    perf_info = this_perf.get("performers", {"type": "Unknown", "name": "Unknown"})
-    print(f"Performance info is {perf_info}")
-    return perf_info
+    return this_perf
 
 
 def display_performance_info(work_id, p_id):
+    # Display performance information for the selected work above the tracklist
     global tracklist_bbox
-    # print(f"in display_performance_info {work_id}, {p_id}")
     if p_id is None:
         return tracklist_bbox.y0
     y0 = tracklist_bbox.y0
-    perf_info = collect_performance_info(work_id, p_id)
-    if perf_info is None:
+    this_perf = get_this_performance(work_id, p_id)
+    if this_perf is None:
         return tracklist_bbox.y0
-    for prj in perf_info[:2]:
+    print(f"Performance is {this_perf}")
+    for prj in this_perf.get("performers", {"type": "Unknown", "name": "Unknown"}):
         msg = tm.write(f"{prj["name"]}", 0, y0, color=tm.PURPLE, font=pfont_small, show_end=1)
         y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
     tracklist_bbox.y0 = y0
@@ -1290,6 +1286,8 @@ def select_performance(keyed_work, player, state, ntape=-1):
     else:
         perf = get_performances(keyed_work)[ntape]
         p_id = perf["p_id"]
+    perf = get_this_performance(keyed_work.id, p_id)
+    print(f"select_performance: Performance is {perf}")
     if perf:
         pr, label, n_tracks, duration, rel_date = get_performance_info(perf)
         additional_performers = [f'{prj["type"]}: {prj["name"]}' for prj in pr[2:]]

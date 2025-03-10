@@ -138,11 +138,12 @@ class PlayerManager:
         if "long pause" in message:
             self.stop()
             chunks_to_send = []
-            for chunk in self.chunklist[self.track_index :]:  # This should be granular to the chunk level, instead of track.
-                if hashlib.md5(chunk.encode()).digest().hex() == last_word:
-                    print("Found the chunk to resume from.")
-                    chunks_to_send = []
-                chunks_to_send.extend(chunk)
+            for track_chunks in self.chunklist[self.track_index :]:
+                for chunk in track_chunks:
+                    if hashlib.md5(chunk.encode()).digest().hex() == last_word:
+                        print("Found the chunk to resume from.")
+                        chunks_to_send = []
+                    chunks_to_send.append(chunk)
             self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
             self.play()
             return

@@ -229,6 +229,7 @@ def initialize_knobs():
 def manage_playlist():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "next")
+    knob_vals = utils.capture_knob_values()
     my_playlists = request_json(f"{CLASSICAL_API}?mode=playlists&action=my")
     print(f"manage_playlist: my_playlists: {my_playlists}")
     choices = my_playlists + ["Create Playlist", "Cancel"]
@@ -238,7 +239,8 @@ def manage_playlist():
         create_playlist()
     initialize_knobs()
     tm.label_soft_knobs("Composer", "Genre", "Work")
-    time.sleep(3)  # to prevent accidental double-click of select.
+    utils.restore_knob_values(*knob_vals)
+    tm.d._value = tm.d.value() + 1  # to trigger the screen to show the categories
 
 
 def create_playlist():
