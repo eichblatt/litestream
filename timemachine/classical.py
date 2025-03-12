@@ -499,6 +499,12 @@ def get_performances(work):
     track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
+    if work.id in clu.FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
+        for i, p in enumerate(performances):
+            if p["p_id"] in clu.FAVORITE_PERFORMANCES:
+                performances.insert(0, performances.pop(i))
+                break
+
     print(f"{time.ticks_ms()}. Top score {score(performances[0],track_counts_mode)}, {performances[0].get('trk',0)} tracks")
     perf_dict[work_id] = performances
     return performances
@@ -576,7 +582,7 @@ def play_keyed_work(keyed_work, player, state):
     print(f"Track titles are {track_titles}")
     display_tracks(*track_titles)  # This doesn't show the credits.
     play_pause(player)
-    return selected_work, track_titles
+    return selected_work, track_titles, p_id
 
 
 def main_loop(player, state):
@@ -614,7 +620,7 @@ def main_loop(player, state):
     works = None
     keyed_work = None
     selected_work = keyed_work
-    p_id = None
+    selected_performance = None
     select_press_time = 0
     power_press_time = 0
     play_pause_press_time = 0
@@ -626,7 +632,7 @@ def main_loop(player, state):
     performance_index = 0
     worklist_key = None
     worklist_index = 0
-
+    clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     poll_count = 0
@@ -643,7 +649,7 @@ def main_loop(player, state):
             keyed_work = worklist[0]
             worklist = worklist[1:]  # safer than popping, in case of empty list.
             clu.increment_worklist_dict(worklist_key)
-            selected_work, track_titles = play_keyed_work(keyed_work, player, state)
+            selected_work, track_titles, selected_performance = play_keyed_work(keyed_work, player, state)
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
@@ -657,7 +663,7 @@ def main_loop(player, state):
                 if player.is_stopped():
                     state["selected_tape"]["composer_id"] = selected_composer.id
                     state["selected_tape"]["genre_id"] = selected_genre.id
-                    tracklist, p_id, state = select_performance(keyed_work, player, state)
+                    tracklist, selected_performance, state = select_performance(keyed_work, player, state)
                     save_state(state)
                     selected_work = keyed_work
                     tracklist_bbox.y0 = display_title(selected_work)
@@ -670,12 +676,7 @@ def main_loop(player, state):
         if not tm.pPlayPause.value():  # long press PlayPause
             if (time.ticks_ms() - play_pause_press_time) > 1_000:
                 print("                 Longpress of playpause")
-                tm.clear_screen()
-                tm.label_soft_knobs("", "", "")
-                tm.write("Manage Playlist", 0, 0, pfont_med, tm.WHITE, show_end=-2)
-                player.pause()
-                clu.manage_playlist()
-                set_knob_times(None)
+                clu.toggle_favorites(selected_performance)
                 play_pause_press_time = time.ticks_ms() + 1_000
                 print("PlayPause RELEASED")
                 pPlayPause_old = 0
@@ -740,7 +741,7 @@ def main_loop(player, state):
 
                 state["selected_tape"]["composer_id"] = selected_composer.id
                 state["selected_tape"]["genre_id"] = selected_genre.id
-                selected_work, track_titles = play_keyed_work(keyed_work, player, state)
+                selected_work, track_titles, selected_performance = play_keyed_work(keyed_work, player, state)
                 last_update_time = time.ticks_ms()
                 print("Select RELEASED")
 
@@ -753,12 +754,11 @@ def main_loop(player, state):
                 if performance_index is not None:
                     state["selected_tape"]["composer_id"] = selected_composer.id
                     state["selected_tape"]["genre_id"] = selected_genre.id
-                    tracklist, p_id, state = select_performance(keyed_work, player, state, performance_index)
+                    tracklist, selected_performance, state = select_performance(keyed_work, player, state, performance_index)
                     save_state(state)
                     selected_work = keyed_work
-                    # selected_work, track_titles = play_keyed_work(keyed_work, player, state)
                     tracklist_bbox.y0 = display_title(selected_work)
-                    tracklist_bbox.y0 = display_performance_info(selected_work, p_id)
+                    tracklist_bbox.y0 = display_performance_info(selected_work, selected_performance)
                     track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
                     print(f"Track titles are {track_titles}")
                     display_tracks(*track_titles)
@@ -929,7 +929,7 @@ def main_loop(player, state):
         if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, last_update_time)) > 12_000:
             print(player)
             if KNOB_TIME > last_update_time:
-                update_display(player, selected_composer, selected_work, p_id)
+                update_display(player, selected_composer, selected_work, selected_performance)
             last_update_time = time.ticks_ms()
 
 

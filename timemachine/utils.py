@@ -577,6 +577,16 @@ def set_datetime(hidden=False):
         return None
 
 
+def get_date():
+    return get_datetime().split(" ")[0]
+
+
+def get_datetime():
+    dt = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)  # Central time
+    dtstr = [f"{dt[0]}"] + [f"{x:02d}" for x in dt[1:]]
+    return f"{dtstr[0]}.{dtstr[1]}.{dtstr[2]} {dtstr[3]}:{dtstr[4]}:{dtstr[5]}"
+
+
 ############################################################################################### partitions
 
 
