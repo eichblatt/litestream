@@ -653,13 +653,13 @@ def main_loop(player, state):
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
+            if (time.ticks_ms() - play_pause_press_time) > 1_000:
+                continue  # go to top of loop -- This was a long press, so do nothing.
             if not pPlayPause_old:
                 play_pause_press_time = time.ticks_ms()
                 print("PlayPause PRESSED")
             else:
                 print("short press of PlayPause -- RELEASED")
-                if (time.ticks_ms() - play_pause_press_time) > 1_000:
-                    continue  # go to top of loop -- This was a long press, so do nothing.
                 if player.is_stopped():
                     state["selected_tape"]["composer_id"] = selected_composer.id
                     state["selected_tape"]["genre_id"] = selected_genre.id
@@ -678,8 +678,8 @@ def main_loop(player, state):
                 print("                 Longpress of playpause")
                 clu.toggle_favorites(selected_performance)
                 play_pause_press_time = time.ticks_ms() + 1_000
+                pPlayPause_old = tm.pPlayPause.value()
                 print("PlayPause RELEASED")
-                pPlayPause_old = 0
 
         if pStop_old != tm.pStop.value():
             pStop_old = tm.pStop.value()
@@ -954,6 +954,8 @@ def display_title(work):
     tm.clear_bbox(work_bbox)
     title = work.name
     msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, tm.YELLOW, show_end=-3, indent=2)
+    if work.id in clu.FAVORITE_WORKS:
+        tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, tm.RED)
     return work_bbox.y0 + len(msg.split("\n")) * pfont_small.HEIGHT
 
 
@@ -1074,6 +1076,8 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
             if prev_work:
                 tm.clear_area(selection_bbox.x0, y0 + i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
             text = tm.write(text, 0, y0 + i * pfont_small.HEIGHT, color=text_color, font=pfont_small, show_end=1)
+        if works[array_index].id in clu.FAVORITE_WORKS:
+            tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, y0 + i * pfont_small.HEIGHT, tm.RED)
     return works[index]
 
 
