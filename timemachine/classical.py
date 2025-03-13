@@ -35,6 +35,8 @@ import fonts.NotoSans_32 as pfont_large
 import classical_utils as clu
 import board as tm
 import utils
+from classical_utils import Composer, Genre, Work, Category
+from classical_utils import get_performances
 
 try:
     import playerManager
@@ -52,7 +54,6 @@ METADATA_ROOT = clu.METADATA_ROOT
 works_dict = {}
 genres = []
 genre_dict = {}
-perf_dict = {}
 cat_dict = {}
 
 AUTO_PLAY = True
@@ -72,66 +73,6 @@ selection_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 work_bbox = tm.Bbox(0, pfont_med.HEIGHT, tm.SCREEN_WIDTH, pfont_med.HEIGHT + 3 * pfont_small.HEIGHT)
 tracklist_bbox = tm.Bbox(0, pfont_med.HEIGHT + 3 * pfont_small.HEIGHT, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
 playpause_bbox = tm.Bbox(0.93 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - pfont_small.HEIGHT, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
-
-
-class Composer:
-    def __init__(self, data):
-        self.id = data["id"]
-        self.name = f"{data['ln']}, {data['fn']}"
-        self._data = data
-
-    def __repr__(self):  # dump the dict so that we can write to/read from json.
-        return json.dumps(self.__dict__)
-
-    def __str__(self):
-        return f"{self.id} - {self.name}"
-
-
-class Genre:
-    # init with **kwargs so that we can instantiate from json. E.g. Genre(**utils.read_json(path))
-    def __init__(self, **kwargs):  # name, id, works=[], index=0):
-        self.name = kwargs["name"]
-        self.id = kwargs["id"]
-        self.index = kwargs.get("index", 0)
-        self.nworks = 1  # at least!
-
-    def __repr__(self):  # dump the dict so that we can write to/read from json.
-        return json.dumps(self.__dict__)
-
-    def __str__(self):
-        return f"({self.index}) {self.id} - {self.name} "
-
-
-class Category:
-    # init with **kwargs so that we can instantiate from json. E.g. Category(**utils.read_json(path))
-    def __init__(self, **kwargs):  # name, id, works=[], index=0):
-        self.name = kwargs["name"]
-        self.id = kwargs["id"]
-        self.nworks = kwargs.get("nworks", -1)
-        self.index = kwargs.get("index", 0)
-        # self.works = [Work(**x) for x in kwargs.get("works", [])]
-
-    def __repr__(self):  # dump the dict so that we can write to/read from json.
-        return json.dumps(self.__dict__)
-
-    def __str__(self):
-        return f"({self.index}) {self.id} - {self.name} "  # + (f"[{len(self.works)}]" if len(self.works) > 0 else "[]")
-
-
-class Work:
-    def __init__(self, **kwargs):  # name, id, index=0):
-        self.name = kwargs["name"]
-        self.id = kwargs["id"]
-        self.index = kwargs.get("index", 0)
-        self.genre = kwargs.get("genre", 0)
-        self.period = kwargs.get("period", 0)
-        self.perf_id = kwargs.get("perf_id", 0)
-
-    def __repr__(self):
-        return json.dumps(self.__dict__)
-
-    def __str__(self):
-        return f"({self.index}) {self.id} - {self.name}. Genre:{self.genre}"
 
 
 def get_composer_by_id(composers, composer_id):
@@ -434,82 +375,6 @@ def get_cat_works(composer_id, category, depth=0):
     return works
 
 
-#'{|}~áäçèéëíòóöüÿčřš′'
-favored_names = {
-    "Perahia": 100,
-    "Vladimir Horowitz": 100,
-    "Glenn Gould": 100,
-    "Arthur Rubinstein": 100,
-    "Szell": 100,
-    "Karajan": 100,
-    "Solti": 60,
-    "Barenboim": 60,
-    "Abbado": 60,
-    "Bernstein": 60,
-    "Klemperer": 60,
-    "Furtwängler": 60,
-    "Böhm": 60,
-    "Kubelik": 60,
-    "Cleveland": 60,
-    "London": 60,
-    "Berlin": 60,
-    "Prague": 60,
-    "New York": 50,
-    # "Muti": 60,
-    # "Maazel": 60,
-    # "Haitink": 60,
-}
-
-
-@micropython.native
-def score(perf, track_counts_mode=0):
-    dur = 0
-    promotion = 0
-    date = 19000101
-    n_tracks = perf.get("trk", 0)
-    track_count_penalty = 100 if n_tracks < track_counts_mode else 65  # too few tracks is worse than too many
-    trk = max(0, 1000 - track_count_penalty * abs(n_tracks - track_counts_mode))
-    # dur = int(perf.get("dur", 0)) * 100
-    # print(f"scoring {perf.get('name', 'Unknown')}, trk is {trk}. n_tracks is {perf.get('trk',0)}")
-    try:
-        perf_info = perf.get("performers", [{"type": "Unknown", "name": "Unknown"}])
-        for performer_item in perf_info:
-            for favored_name, favored_value in favored_names.items():
-                if re.search(favored_name.lower(), performer_item.get("name", "").lower()):
-                    promotion += favored_value
-        # date = int(perf.get("release_date", "1900-01-01").replace("-", ""))
-    except ValueError:
-        pass
-    return dur + trk + date + promotion
-
-
-def get_performances(work):
-    global perf_dict
-    if isinstance(work, Work):
-        work_id = work.id
-    elif isinstance(work, int):
-        work_id = work
-
-    if work_id in perf_dict.keys():
-        return perf_dict[work_id]
-
-    url = f"{CLASSICAL_API}?mode=library&action=perf&work_id={work_id}"
-    performances = request_json(url)
-    track_counts = [perf.get("trk", 0) for perf in performances[:30]]  # for symphonies prefer 4 tracks generally
-    track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
-    print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
-    performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
-    if work.id in clu.FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
-        for i, p in enumerate(performances):
-            if p["p_id"] in clu.FAVORITE_PERFORMANCES:
-                performances.insert(0, performances.pop(i))
-                break
-
-    print(f"{time.ticks_ms()}. Top score {score(performances[0],track_counts_mode)}, {performances[0].get('trk',0)} tracks")
-    perf_dict[work_id] = performances
-    return performances
-
-
 def get_tracklist(performance_id: int):
     protocol = 5  # 5: HLS without AES. 4: HLS with encryption. 7: M4A file (no access).
     url = f"{CLASSICAL_API}?action=get_stream&performance_id={performance_id}&sp={protocol}&verbose=1"
@@ -676,7 +541,7 @@ def main_loop(player, state):
         if not tm.pPlayPause.value():  # long press PlayPause
             if (time.ticks_ms() - play_pause_press_time) > 1_000:
                 print("                 Longpress of playpause")
-                clu.toggle_favorites(selected_performance)
+                # clu.toggle_favorites(selected_performance)
                 play_pause_press_time = time.ticks_ms() + 1_000
                 pPlayPause_old = tm.pPlayPause.value()
                 print("PlayPause RELEASED")
@@ -847,6 +712,16 @@ def main_loop(player, state):
                     if was_playing:
                         print("Restarting player after authenticating")
                         player.play()
+                else:
+                    print(f"selected_performance is {selected_performance}, keyed_work is {keyed_work}")
+                    favored = clu.toggle_favorites(selected_performance if selected_performance is not None else keyed_work)
+                    if favored:
+                        print(f"Added {selected_performance} to favorites")
+                        # Draw the heart wherever on the screen it belongs
+                    else:
+                        print(f"Removed {selected_performance} from favorites")
+                        # Remove the heart from the screen.
+
             else:
                 print("Right PRESSED")
 
