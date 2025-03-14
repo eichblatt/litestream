@@ -800,7 +800,7 @@ def main_loop(player, state):
 
         # if time.ticks_diff(time.ticks_ms(), month_change_time) > 60:
         #    month_change_time = 1e12
-
+        # print("bottom of main loop")
         if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, last_update_time)) > 12_000:
             print(player)
             if KNOB_TIME > last_update_time:

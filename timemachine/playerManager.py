@@ -17,7 +17,7 @@ import audioPlayer2 as audioPlayer
 from machine import Timer
 
 
-async def dummy(seconds):
+async def dummy(seconds=0):
     await asyncio.sleep(seconds)
     return
 
@@ -235,7 +235,8 @@ class PlayerManager:
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
-            loop.run_until_complete(dummy(5))  # give some time back to the main_loop
+            loop.run_until_complete(dummy())  # start the task
+            # print("polling chunklist")
             yield
         next_chunklist = task.data
         loop.close()
@@ -253,6 +254,7 @@ class PlayerManager:
             lines = lines.text.splitlines()
             chunks = [x for x in lines if x.startswith("media_")]
             chunklist = [f"{base_url}/{x}" for x in chunks]
+            await asyncio.sleep(5)  # give some time back to the main_loop
         else:
             chunklist = [url]
         return chunklist
