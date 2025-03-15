@@ -518,11 +518,11 @@ def main_loop(player, state):
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
-            if (time.ticks_ms() - play_pause_press_time) > 1_000:
-                continue  # go to top of loop -- This was a long press, so do nothing.
             if not pPlayPause_old:
                 play_pause_press_time = time.ticks_ms()
                 print("PlayPause PRESSED")
+                if (time.ticks_ms() - play_pause_press_time) > 1_000:
+                    continue  # go to top of loop -- This was a long press, so do nothing.
             else:
                 print("short press of PlayPause -- RELEASED")
                 if player.is_stopped():

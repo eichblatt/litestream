@@ -42,7 +42,7 @@ class PlayerManager:
         self.track_index = 0
         self.chunked_urls = False
         self.playlist_completed = False
-        self.ready_to_pump = False
+        # self.ready_to_pump = False
         self.chunk_generator = None
         self.credits = []
 
@@ -55,7 +55,7 @@ class PlayerManager:
         self.first_chunk_dict = {}
         self.track_index = 0
         self.track_offset = 0
-        self.ready_to_pump = True
+        # self.ready_to_pump = True
         self.chunk_generator = None
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
@@ -166,8 +166,8 @@ class PlayerManager:
         return self.player.pause()
 
     def stop(self, reset_head=True):
-        self.ready_to_pump = False
-        print("No more chunks will be sent -- player reset")
+        # self.ready_to_pump = False
+        # print("No more chunks will be sent -- player reset")
         self.player.stop(reset_head)
         return
 
@@ -190,11 +190,12 @@ class PlayerManager:
             self.stop()
             return  # return if we are on the last track.
         elif increment_status == "waiting for chunks":
-            print(f"Cannot fast forward, waiting for chunks. ready:{self.ready_to_pump}, all sent:{self.all_tracks_sent}")
+            # print(f"Cannot fast forward, waiting for chunks. ready:{self.ready_to_pump}, all sent:{self.all_tracks_sent}")
+            print(f"Cannot fast forward, waiting for chunks. all sent:{self.all_tracks_sent}")
             return
         self.stop()
-        if not self.all_tracks_sent:
-            self.ready_to_pump = True
+        # if not self.all_tracks_sent:
+        #   self.ready_to_pump = True
         chunks_to_send = []
         for chunk in self.chunklist[self.track_index :]:
             chunks_to_send.extend(chunk)
@@ -204,8 +205,8 @@ class PlayerManager:
         return
 
     def pump_chunks(self):
-        if not self.ready_to_pump:
-            return
+        # if not self.ready_to_pump:
+        #    return
         if self.all_tracks_sent:
             return
         url = self.urls[self.n_tracks_sent]
@@ -224,7 +225,7 @@ class PlayerManager:
                 next_chunklist = e.value
                 self.chunk_generator = None  # prepare for next task
                 self.DEBUG and print(f"pump_chunks: StopIteration next chunklist is a {type(next_chunklist)}")
-            self.ready_to_pump = True
+            # self.ready_to_pump = True
         if next_chunklist:
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
