@@ -768,14 +768,17 @@ def main_loop(player, state):
                     favorites = clu.get_playlist_items("tm_favorites")
                     selection = select_from_favorites(favorites)
                     if selection is not None:
-                        state["selected_tape"]["composer_id"] = int(selection["c_id"])
-                        state["selected_tape"]["genre_id"] = 1
+                        keyed_composer = get_composer_by_id(composers, int(selection["c_id"]))
+                        selected_composer = keyed_composer
+                        state["selected_tape"]["composer_id"] = selected_composer.id
+                        state["selected_tape"]["genre_id"] = 1  # Not sure what to do here
                         keyed_work = Work(name=selection["w_title"], id=int(selection["w_id"]))
                         tracklist, selected_performance, state = select_performance(
                             keyed_work, player, state, p_id=selection["kv"]
                         )
-                        save_state(state)
                         selected_work = keyed_work
+                        save_state(state)
+                        display_selected_composer(selected_composer, show_loading=True)
                         tracklist_bbox.y0 = display_title(selected_work)
                         tracklist_bbox.y0 = display_performance_info(selected_work, selected_performance)
                         track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
@@ -784,15 +787,18 @@ def main_loop(player, state):
                         play_pause(player)
                         last_update_time = time.ticks_ms()
                         set_knob_times(None)
-                    continue
-                display_selected_composer(selected_composer, show_loading=True)
-                if state["repertoire"] == "Full":
-                    composer_genres = get_cats(selected_composer.id)
-                    print(f"cat_genres is {composer_genres}")
+                    else:
+                        selected_composer = composers[1]  # Avoid favorites as a composer
+                        keyed_composer = composers[1]
                 else:
-                    composer_genres = get_genres(selected_composer.id)
-            keyed_genre = display_keyed_genres(selected_composer, composer_genres, day_new, day_old)
-            print(f"keyed genre is {keyed_genre}")
+                    display_selected_composer(selected_composer, show_loading=True)
+                    if state["repertoire"] == "Full":
+                        composer_genres = get_cats(selected_composer.id)
+                        print(f"cat_genres is {composer_genres}")
+                    else:
+                        composer_genres = get_genres(selected_composer.id)
+                    keyed_genre = display_keyed_genres(selected_composer, composer_genres, day_new, day_old)
+                    print(f"keyed genre is {keyed_genre}")
             day_old = day_new
             set_knob_times(tm.d)
 

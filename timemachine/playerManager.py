@@ -67,7 +67,7 @@ class PlayerManager:
         self.pump_chunks()
 
     def __repr__(self):
-        clstr = f"Player Manager: chunk lengths {[len(x) for x in self.chunklist]}"
+        clstr = f"Player Manager: {len(self.tracklist)} tracks. Chunk lengths {[len(x) for x in self.chunklist]} so far"
         return clstr + f" {self.player}. "
 
     @property
@@ -75,7 +75,7 @@ class PlayerManager:
         return self.n_tracks_sent >= len(self.urls)
 
     def extend_playlist(self, urllist, ntracks=1):
-        print(f"extend_playlist: Track {self.n_tracks_sent + 1}. sending {len(urllist)} more URLs to player.")
+        print(f"extend_playlist: Track {self.n_tracks_sent + 1}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
         self.n_tracks_sent += ntracks
 
