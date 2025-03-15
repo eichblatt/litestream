@@ -17,8 +17,8 @@ import audioPlayer2 as audioPlayer
 from machine import Timer
 
 
-async def dummy(seconds=0):
-    await asyncio.sleep(seconds)
+async def dummy():
+    await asyncio.sleep(0)
     return
 
 
@@ -83,7 +83,10 @@ class PlayerManager:
         if track_num and track_num == self.track_index:
             return self.track_index
         if (self.track_index + 1) >= self.n_tracks:
-            return None
+            return "EOT"
+        if (self.track_index + 1) >= self.n_tracks_sent:
+            return "waiting for chunks"
+
         self.track_index = self.track_index + 1 if track_num is None else track_num
         tracklist = self.remaining_track_names()
         try:
@@ -180,14 +183,21 @@ class PlayerManager:
 
     def ffwd(self):
         resume_playing = self.is_playing()
+
+        """
         if not self.all_tracks_sent:  # We are still pumping chunks.
             print("Cannot fast forward while pumping chunks.")
             return
-        if self.increment_track() is None:
+        """
+        increment_status = self.increment_track()
+        if increment_status == "EOT":
             print("Cannot fast forward, already on last track.")
             self.playlist_completed = True
             self.stop()
             return  # return if we are on the last track.
+        elif increment_status == "waiting for chunks":
+            print("Cannot fast forward, waiting for chunks.")
+            return
         self.stop()
         chunks_to_send = []
         for chunk in self.chunklist[self.track_index :]:
@@ -235,7 +245,7 @@ class PlayerManager:
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
-            loop.run_until_complete(dummy())  # start the task
+            loop.run_until_complete(dummy())  # start the task, not sure why dummy is required
             # print("polling chunklist")
             yield
         next_chunklist = task.data
@@ -254,7 +264,9 @@ class PlayerManager:
             lines = lines.text.splitlines()
             chunks = [x for x in lines if x.startswith("media_")]
             chunklist = [f"{base_url}/{x}" for x in chunks]
-            await asyncio.sleep(5)  # give some time back to the main_loop
+            if self.is_playing():
+                if len(self.player.playlist) >= 5:  # if less than 5 chunks in the playlist, don't wait.
+                    await asyncio.sleep(10)  # give some time back to the main_loop
         else:
             chunklist = [url]
         return chunklist
