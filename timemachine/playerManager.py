@@ -183,12 +183,6 @@ class PlayerManager:
 
     def ffwd(self):
         resume_playing = self.is_playing()
-
-        """
-        if not self.all_tracks_sent:  # We are still pumping chunks.
-            print("Cannot fast forward while pumping chunks.")
-            return
-        """
         increment_status = self.increment_track()
         if increment_status == "EOT":
             print("Cannot fast forward, already on last track.")
@@ -196,9 +190,11 @@ class PlayerManager:
             self.stop()
             return  # return if we are on the last track.
         elif increment_status == "waiting for chunks":
-            print("Cannot fast forward, waiting for chunks.")
+            print(f"Cannot fast forward, waiting for chunks. ready:{self.ready_to_pump}, all sent:{self.all_tracks_sent}")
             return
         self.stop()
+        if not self.all_tracks_sent:
+            self.ready_to_pump = True
         chunks_to_send = []
         for chunk in self.chunklist[self.track_index :]:
             chunks_to_send.extend(chunk)
