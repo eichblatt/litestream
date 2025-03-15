@@ -92,7 +92,7 @@ class Work:
         return json.dumps(self.__dict__)
 
     def __str__(self):
-        return f"({self.index}) {self.id} - {self.name}. Genre:{self.genre}"
+        return f"({self.index}) {self.id} - {self.name}."
 
 
 # ------------------------------------------------------------------------------------ performances
@@ -162,7 +162,7 @@ def get_performances(work):
     track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
-    if work.id in FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
+    if work_id in FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
         for i, p in enumerate(performances):
             if p["p_id"] in FAVORITE_PERFORMANCES:
                 performances.insert(0, performances.pop(i))
@@ -464,6 +464,7 @@ def get_playlist_items(playlist_name):
     playlist_id = get_public_playlist_id(playlist_name)
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=list_playlist_items&public_playlist_id={playlist_id}"
     items = request_json(url)
+    items = [x for x in items if x.get("kt", "") in ["p"]]  # , "w"]]
     return items
 
 

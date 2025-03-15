@@ -254,10 +254,10 @@ def get_creators(composer_list):  # A non-library mode call to get a list of com
     return ALL_COMPOSERS
 
 
-def get_genres(composer_id=None):
+def get_genres(composer_id=0):
     global genres
     global genre_dict
-    if composer_id is None:
+    if composer_id == 0:
         if len(genres) > 0:
             return genres
         url = f"{CLASSICAL_API}?action=genres"
@@ -273,7 +273,7 @@ def get_genres(composer_id=None):
         g = utils.read_json(outpath)["genres"]
     else:
         g = request_json(url, outpath)["genres"]
-    if composer_id is not None:
+    if composer_id != 0:
         genre_dict[composer_id] = [Genre(id=x[0], name=x[1], index=i) for i, x in enumerate(g)]
         return genre_dict[composer_id]
     else:
@@ -315,7 +315,8 @@ def get_cats_helper(composer_id, category_id=None, already=[]):
 def get_cats(composer_id):
     global cat_dict
     # If this takes up too much memory, we can reduce the dict to just the index, id, and name. (ie. remove works)
-
+    if composer_id == 0:
+        raise ValueError("Cannot get categories for composer id 0")
     filepath = f"{METADATA_ROOT}/{composer_id}_cats.json"
     if len(cat_dict.get(composer_id, {})) == 0:
         if utils.path_exists(filepath):
@@ -459,11 +460,14 @@ def main_loop(player, state):
     pYSw_old = pMSw_old = pDSw_old = 1
     tm.label_soft_knobs("Composer", "Genre", "Work")
 
+    clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     composer_list = state.get("composer_list", ["GREATS"])
     composers = sorted(get_composers(composer_list), key=lambda x: x.name)
+    if len(clu.FAVORITE_WORKS) > 0:
+        composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
     tape = state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
-    keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[0].id))
+    keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[1].id))
     tm.m._value = get_key_index(composers, keyed_composer.id)
     selected_composer = keyed_composer
     worklist = []
@@ -497,7 +501,6 @@ def main_loop(player, state):
     performance_index = 0
     worklist_key = None
     worklist_index = 0
-    clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     poll_count = 0
@@ -576,9 +579,9 @@ def main_loop(player, state):
                 worklist = []
                 if KNOB_TIME == COMPOSER_KEY_TIME:
                     print(f"Composer last keyed {keyed_composer}")
-                    # selected_composer = keyed_composer
-                    ## Draw random playlist from composer's works
-                    # worklist = get_random_works(selected_composer)
+                    selected_composer = keyed_composer
+                    ## Play Composer Radio
+                    # Not yet implemented
                 elif KNOB_TIME == GENRE_KEY_TIME:
                     print(f"Genre last keyed {keyed_genre}")
                     ## create playlist of all works in the genre
@@ -761,6 +764,27 @@ def main_loop(player, state):
             performance_index = 0
             if selected_composer != keyed_composer:
                 selected_composer = keyed_composer  # we have selected the composer by changing the category
+                if selected_composer.id == 0:
+                    favorites = clu.get_playlist_items("tm_favorites")
+                    selection = select_from_favorites(favorites)
+                    if selection is not None:
+                        state["selected_tape"]["composer_id"] = int(selection["c_id"])
+                        state["selected_tape"]["genre_id"] = 1
+                        keyed_work = Work(name=selection["w_title"], id=int(selection["w_id"]))
+                        tracklist, selected_performance, state = select_performance(
+                            keyed_work, player, state, p_id=selection["kv"]
+                        )
+                        save_state(state)
+                        selected_work = keyed_work
+                        tracklist_bbox.y0 = display_title(selected_work)
+                        tracklist_bbox.y0 = display_performance_info(selected_work, selected_performance)
+                        track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
+                        print(f"Track titles are {track_titles}")
+                        display_tracks(*track_titles)
+                        play_pause(player)
+                        last_update_time = time.ticks_ms()
+                        set_knob_times(None)
+                    continue
                 display_selected_composer(selected_composer, show_loading=True)
                 if state["repertoire"] == "Full":
                     composer_genres = get_cats(selected_composer.id)
@@ -1007,11 +1031,10 @@ def display_keyed_genres(composer, composer_genres, index, prev_index):
 def display_keyed_composers(composers, index, prev_index, force_update=False):
     n_comp = len(composers)
     nlines = min(n_comp, tm.SCREEN_HEIGHT // pfont_small.HEIGHT)
-    margin = 0
     index = index % n_comp
     prev_index = prev_index % n_comp
-    start_index = (nlines * (index // nlines)) - margin
-    prev_start_index = (nlines * (prev_index // nlines)) - margin
+    start_index = nlines * (index // nlines)
+    prev_start_index = nlines * (prev_index // nlines)
     draw_all = force_update or start_index != prev_start_index
     if draw_all:
         tm.clear_bbox(selection_bbox)
@@ -1094,6 +1117,87 @@ def show_composers(composer_list):
     time.sleep(0.5)
 
 
+def select_from_favorites(favorites):
+    # Hijack the knobs for navigation purposes
+    # Show a set of favorites on the screen.
+    # Scroll through options based on the knobs.
+    # Poll for select, play, or stop buttons, to select a particular performance.
+    tm.clear_screen()
+    tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
+    tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
+    y0 = pfont_med.HEIGHT
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
+    tm.m._value = 0
+    tm.d._value = 0
+    tm.y._value = 0
+    pStop_old = tm.pStop.value()
+    pPlayPause_old = tm.pPlayPause.value()
+    prev_index = -1
+    start_time = time.ticks_ms()
+    retval = None
+
+    while True:
+        index = tm.m.value() * 100 + tm.d.value() * 10 + tm.y.value()
+        if index != prev_index:
+            set_knob_times(None)  # force screen refresh
+            display_favorite_choices(index, favorites)
+            prev_index = index
+        if pStop_old != tm.pStop.value():
+            pStop_old = tm.pStop.value()
+            if pStop_old:
+                print("Stop DOWN")
+            else:
+                print("Stop UP")
+                retval = None
+                break
+
+        if time.ticks_diff(time.ticks_ms(), start_time) < 2_000:  # crude de-bouncing.
+            continue
+        if (not tm.pSelect.value()) or (pPlayPause_old != tm.pPlayPause.value()):
+            pPlayPause_old = tm.pPlayPause.value()
+            retval = favorites[index % len(favorites)]
+            break
+
+        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
+            print("Returning to composers/genres/works after 120 sec of inactivity")
+            retval = None
+            break
+    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
+    tm.label_soft_knobs("Composer", "Genre", "Work")
+    return retval
+
+
+def display_favorite_choices(index, favorites):
+    # Screen Layout:
+    # "Favorites" (med font)
+    # Composer (small font, 1 line)
+    # Work Title (small font, up to 2 lines)
+    # performer info (small font; up to 2 lines)
+    #  ...
+    # instructions to exit (small font)
+    y0 = pfont_med.HEIGHT
+    tm.clear_to_bottom(0, y0)
+    i = 0
+    print(f"Displaying favorites from index {index}. Favorites = {favorites}")
+    while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
+        indx = (index + i) % len(favorites)
+        ind = f"{indx+1}/{len(favorites)}"
+        item = favorites[indx]
+        print(f"Favorite item is {item}")
+        color = tm.WHITE if i == 0 else tm.tracklist_color
+        tm.write(ind, 0, y0, color=color, font=pfont_small)
+        x0 = tm.tft.write_len(pfont_small, ind)
+        tm.write(f"{item['c_ln']},{item['c_fn']}", x0 + 3, y0, color=color, font=pfont_small)
+        y0 = y0 + pfont_small.HEIGHT
+        msg = tm.write(item["w_title"], 0, y0, color=color, font=pfont_small, show_end=-3)
+        y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+        for prj in item["performers"][:2]:
+            msg = tm.write(f"{prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
+            y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+        i = i + 1
+    return i
+
+
 def choose_performance(composer, keyed_work):
     # Hijack the knobs for navigation purposes
     # Show a set of performance options on the screen.
@@ -1148,7 +1252,7 @@ def choose_performance(composer, keyed_work):
     return retval
 
 
-def select_performance(keyed_work, player, state, ntape=-1):
+def select_performance(keyed_work, player, state, ntape=None, p_id=None):
     print(f"selecting performance of keyed_work {keyed_work}")
     tracklist_bbox.y0 = display_title(keyed_work)
     tm.clear_to_bottom(0, tracklist_bbox.y0)
@@ -1156,13 +1260,12 @@ def select_performance(keyed_work, player, state, ntape=-1):
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.pause()  # was stop()
-    perf = None
-    if ntape == -1:
+    if ntape is None:
         p_id = keyed_work.perf_id
         if p_id == 0:  # i.e, repertoire in Full, we don't get a p_id with the work.
             perf = get_performances(keyed_work)[0]
             p_id = perf["p_id"]
-    else:
+    elif p_id is None:  # p_id and ntape are both None
         perf = get_performances(keyed_work)[ntape]
         p_id = perf["p_id"]
     perf = get_this_performance(keyed_work.id, p_id)
