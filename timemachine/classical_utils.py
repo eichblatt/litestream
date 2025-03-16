@@ -95,6 +95,180 @@ class Work:
         return f"({self.index}) {self.id} - {self.name}."
 
 
+def get_composers(composer_list, match_field="lnu", beyond_notable=False):
+    # NOTE This uses the library, which makes it very slow. It would be nice if we could limit this
+    # to the 110 creators, instead of dealing with 17,000 extra composers
+    if isinstance(composer_list, (str, int)):
+        composer_list = [composer_list]
+    url = f"{CLASSICAL_API}?mode=library&action=comp"
+    full_outpath = f"{METADATA_ROOT}/composers_all.json"
+    outpath = full_outpath if beyond_notable else f"{METADATA_ROOT}/composers.json"
+    composers = []
+    if utils.path_exists(outpath):
+        ALL_COMPOSERS = utils.read_json(outpath)
+    else:
+        if utils.path_exists(full_outpath):
+            ALL_COMPOSERS = utils.read_json(full_outpath)
+        else:
+            ALL_COMPOSERS = request_json(url, outpath=full_outpath)
+        if not beyond_notable:
+            ALL_COMPOSERS = [x for x in ALL_COMPOSERS if x["nc"]]
+            utils.write_json(ALL_COMPOSERS, outpath)
+
+    for composer in composer_list:
+        if composer == "GREATS":
+            composers += [x for x in ALL_COMPOSERS if x["gc"]]
+        elif composer == "NOTABLES":
+            composers += [x for x in ALL_COMPOSERS if x["nc"]]
+        elif composer == "ALL":
+            composers = ALL_COMPOSERS
+        else:
+            if utils.isinteger(composer):
+                if composer > 0:
+                    composers += [x for x in ALL_COMPOSERS if x["id"] == int(composer)]
+                else:
+                    composers = [x for x in composers if x["id"] != abs(int(composer))]
+            else:
+                if match_field == "name":
+                    composers += [x for x in ALL_COMPOSERS if Composer(x).name == composer]
+                else:
+                    composers += [x for x in ALL_COMPOSERS if x[match_field] == composer]
+    # Add this name to the cache of composers, so we can avoid reading full file when queried again
+    if match_field == "name" and beyond_notable:
+        print(f"Adding {composers} to {outpath}")
+        outpath = f"{METADATA_ROOT}/composers.json"
+        ALL_COMPOSERS = utils.read_json(outpath)
+        ALL_COMPOSERS += composers
+        utils.write_json(ALL_COMPOSERS, outpath)
+
+    composers = [Composer(x) for x in [x for x in composers if len(x["lnu"]) > 0]]
+    return composers
+
+
+def get_composer_by_id(composers, composer_id):
+    print(f"getting composer {composer_id}")
+    composer_key_index = get_key_index(composers, composer_id)
+    return composers[max(0, composer_key_index)]
+
+
+def get_key_index(composers, composer_id):
+    # Return the index in the list of composers matching the composer_id
+    for i, c in enumerate(composers):
+        if c.id == composer_id:
+            return i
+    return -1
+
+# ------------------------------------------------------------------------------------ configure composers
+# NOTE This should move to classical_utils, but it depends on get_composers, which is harder to move.
+def configure_composers():
+    choices = ["Add Composer", "Remove Composer", "Greats Only", "Remove All Greats", "Beyond Notables", "Cancel"]
+    choice = utils.select_option("Select Option", choices)
+    print(f"configure_collection: chose to {choice}")
+    if choice == "Cancel":
+        return
+    print(f"current collection_list is {get_composer_list_names()}")
+    if choice == "Add Composer":
+        tm.clear_screen()
+        tm.write("Loading Notable Composers ... ", 0, 0, pfont_med, show_end=-4)
+        all_composer_names = [c.name for c in get_composers("ALL", beyond_notable=False)]
+        utils.add_list_element("Composer (notable)", all_composer_names, get_composer_list_names, modify_composer_list)
+
+    elif choice == "Remove Composer":
+        utils.remove_list_element(get_composer_list_names, lambda x: modify_composer_list(x, remove=True))
+
+    elif choice == "Greats Only":
+        state = load_state()
+        state["composer_list"] = ["GREATS"]
+        save_state(state)
+        utils.reset()
+
+    elif choice == "Remove All Greats":
+        state = load_state()
+        composer_list = state.get("composer_list", ["GREATS"])
+        composer_list = [x for x in composer_list if x != "GREATS"]
+        if len(composer_list) > 0:
+            state["composer_list"] = composer_list
+            save_state(state)
+            utils.reset()
+        else:
+            tm.clear_screen()
+            tm.write("At least one composer required", 0, 0, pfont_small, tm.WHITE, show_end=-4)
+            time.sleep(3)
+
+    elif choice == "Beyond Notables":  # Add composers who are not Notable -- NOT REALLY WORKING because no genres.
+        tm.clear_screen()
+        tm.write("Loading ALL Composers ... ", 0, 0, pfont_med, show_end=-4)
+        all_composer_names = [c.name for c in get_composers("ALL", beyond_notable=True)]
+        utils.add_list_element(
+            "Composer (any)",
+            all_composer_names,
+            get_composer_list_names,
+            lambda x: modify_composer_list(x, beyond_notable=True),
+        )
+
+
+def get_composer_list_names():
+    composer_list = get_composers(expand_composer_list(get_composer_list()))
+    return [c.name for c in composer_list]
+
+
+def modify_composer_list(new_composer_name, remove=False, beyond_notable=False):
+    state = load_state()
+    composer_list = state.get("composer_list", ["GREATS"])
+    new_composer = get_composers(new_composer_name, match_field="name", beyond_notable=beyond_notable)[0]
+    if remove:
+        try:
+            composer_list.remove(new_composer.id)
+        except ValueError:
+            composer_list.append(-new_composer.id)
+    else:
+        composer_list = [x for x in composer_list if isinstance(x, str) or abs(x) != new_composer.id] + [new_composer.id]
+    state["composer_list"] = composer_list
+    save_state(state)
+
+
+def get_composer_list():
+    # The composer_list is stored in state as a list of items, which may be "GREATS", <int> or -<int>.
+    # If the item is a negative integer, then that composer id should be removed from the list, if it is present after expanding "GREATS"
+    #
+    # Return: list of composers as read in the state file
+
+    state = load_state()
+    composer_list = state.get("composer_list", ["GREATS"])
+    if "GREATS" in composer_list:  # remove any "extra" greats
+        greats_ids = [x.id for x in get_composers("GREATS")]
+        composer_list = [x for x in composer_list if isinstance(x, str) or not x in greats_ids]
+    for composer in composer_list:
+        if isinstance(composer, str):
+            continue
+        if (composer < 0) and (-composer in composer_list):
+            # remove both negative and positive values in the list, if both present
+            composer_list = [x for x in composer_list if isinstance(x, str) or abs(x) != abs(composer)]
+    state["composer_list"] = composer_list
+    save_state(state)
+    return composer_list
+
+
+def expand_composer_list(composer_list):
+    # return the list on composer_ids that are in the current composer_list. ie. GREATS -> list of ids
+    if "GREATS" in composer_list:
+        composer_list.remove("GREATS")
+        greats = get_composers("GREATS")
+        greats_list = [g.id for g in greats]
+        composer_id_list = composer_list + greats_list
+        composer_id_list = utils.distinct(composer_id_list)
+    else:
+        composer_id_list = composer_list
+    # coll_list should be all integers or strings of integers at this point
+    for composer_id in composer_id_list.copy():  # NOTE: because I am removing elements, I must loop over a copy
+        if composer_id < 0:
+            composer_id_list.remove(composer_id)
+            if abs(composer_id) in composer_id_list:
+                composer_id_list.remove(abs(composer_id))
+    composer_id_list = utils.distinct(composer_id_list)
+    return composer_id_list
+
+
 # ------------------------------------------------------------------------------------ performances
 
 #'{|}~áäçèéëíòóöüÿčřš′'
