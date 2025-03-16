@@ -655,6 +655,9 @@ def main_loop(player, state):
 def handle_favorites(composers, player, state):
     global tracklist_bbox
     print("handling favorites")
+    tm.clear_screen()
+    tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
+    tm.write("loading ... ", 0, pfont_med.HEIGHT, pfont_small, tm.WHITE)
     favorites = clu.get_playlist_items("tm_favorites")
     selection = select_from_favorites(favorites)
     if selection is not None:
