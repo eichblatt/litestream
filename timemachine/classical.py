@@ -617,9 +617,14 @@ def main_loop(player, state):
             if works is None:
                 selected_composer = keyed_composer
                 if selected_composer.id == 0:
-                    selected_composer, keyed_work, state = handle_favorites(composers, player, state)
-                    keyed_composer = selected_composer
-                    selected_work = keyed_work
+                    selected_composer, selected_work, state = handle_favorites(composers, player, state)
+                    if selected_work is None: # We bailed from handle favorites without selecting anything.
+                        selected_work = keyed_work
+                    else:
+                        keyed_work = selected_work 
+                        keyed_composer = selected_composer
+                        last_update_time = time.ticks_ms()
+                        set_knob_times(None) # To ensure that genres will be drawn
                 else:
                     display_selected_composer(selected_composer, selected_genre, show_loading=True)
                     if state["repertoire"] == "Full":
