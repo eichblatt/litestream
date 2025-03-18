@@ -72,8 +72,8 @@ class PlayerManager:
         self.audio_pump()
 
     def __repr__(self):
-        clstr = f"Player Manager: {len(self.tracklist)} tracks. Chunk lengths {[len(x) for x in self.chunklist]} so far"
-        clstr += f" {self.chunk_queue} tracks left to pump. "
+        clstr = f"Player Manager: {len(self.tracklist)} tracks. Chunk lengths:{[len(x) for x in self.chunklist]}"
+        clstr += f" tracks left to pump:{self.chunk_queue}"
         return clstr + f" {self.player}. "
 
     @property
@@ -84,14 +84,16 @@ class PlayerManager:
         print(f"extend_playlist: Track {self.chunk_queue[0]-1}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
 
-    def increment_track_screen(self, track_num=None):
+    def increment_track_screen(self, track_num=None, increment=1):
         if track_num and track_num == self.track_index:
             return self.track_index
-        if (self.track_index + 1) >= self.n_tracks:
+        if (self.track_index + increment) >= self.n_tracks:
             print(f"Cannot fast forward, already on last track {self.track_index}")
             return self.track_index
+        if (self.track_index + increment) <= 0:
+            print(f"Cannot rewind, already on first track {self.track_index}")
 
-        self.track_index = self.track_index + 1 if track_num is None else track_num
+        self.track_index = self.track_index + increment if track_num is None else track_num
         tracklist = self.remaining_track_names()
         try:
             self.DEBUG and print(f"playerManager display: {tracklist}")
@@ -182,9 +184,6 @@ class PlayerManager:
             return
         return self.player.play()
 
-    def rewind(self):
-        raise NotImplementedError("Cannot rewind yet.")
-        return
 
     def handle_button_presses(self, timer):
         if time.ticks_diff(time.ticks_ms(), self.last_button_time) < 1_000:
@@ -195,14 +194,14 @@ class PlayerManager:
             return
         else:
             # set the track to the cumulative position of the button presses (self.track_index)
-            self.button_window = None
             print(f"Button window expired, track index is {self.track_index}")
+            self.button_window = None
             if self.track_index >= self.n_tracks:
                 print("Cannot fast forward, already on last track.")
                 self.playlist_completed = True
                 self.block_pump = False 
                 return
-            elif (self.track_index) in self.chunk_queue: # >= self.n_tracks_sent:
+            elif (self.track_index) in self.chunk_queue: 
                 print(f"Rotating queue {self.track_index} is in {self.chunk_queue}")
                 ind = self.chunk_queue.index(self.track_index)
                 self.chunk_queue = self.chunk_queue[ind:] + self.chunk_queue[:ind] # rotate the queue
@@ -219,16 +218,25 @@ class PlayerManager:
             if self.resume_playing:
                 self.play()
 
-
+    def rewind(self):
+        self.last_button_time = time.ticks_ms()
+        self.increment_track_screen(increment=-1) # sets the track index
+        if self.button_window is None:
+            self.resume_playing = self.is_playing()
+            self.stop()
+            self.button_window = Timer(-1)
+            self.block_pump = True
+            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self.handle_button_presses)
+        return
 
     def ffwd(self):
         self.last_button_time = time.ticks_ms()
         self.increment_track_screen() # sets the track index
         if self.button_window is None:
-            self.block_pump = True
             self.resume_playing = self.is_playing()
             self.stop()
             self.button_window = Timer(-1)
+            self.block_pump = True
             self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self.handle_button_presses)
         return
 

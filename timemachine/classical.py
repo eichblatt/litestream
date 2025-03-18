@@ -319,8 +319,6 @@ def main_loop(player, state):
     power_press_time = 0
     play_pause_press_time = 0
     last_update_time = 0
-    resume_playing = -1
-    resume_playing_delay = 500
     performance_index = 0
     worklist_key = None
     worklist_index = 0
@@ -383,11 +381,6 @@ def main_loop(player, state):
                         tm.clear_bbox(playpause_bbox)
                     worklist = worklist[1:]
                 print("Stop PRESSED")
-
-        if player.is_stopped() and (resume_playing > 0) and (time.ticks_ms() >= resume_playing):
-            print("Resuming playing")
-            resume_playing = -1
-            player.play()
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
@@ -470,8 +463,6 @@ def main_loop(player, state):
                 print("Rewind RELEASED")
             else:
                 print("Rewind PRESSED")
-                if player.is_playing() or (resume_playing > 0):
-                    resume_playing = time.ticks_ms() + resume_playing_delay
                 if tm.power():
                     if tm.screen_state():
                         player.rewind()
@@ -485,9 +476,6 @@ def main_loop(player, state):
                 print("FFwd RELEASED")
             else:
                 print("FFwd PRESSED")
-                wasplaying = player.is_playing()
-                if wasplaying or (resume_playing > 0):
-                    resume_playing = time.ticks_ms() + resume_playing_delay
                 if tm.power():
                     if tm.screen_state():
                         player.ffwd()
