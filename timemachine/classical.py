@@ -61,6 +61,35 @@ KNOB_TIME = time.ticks_ms()
 CONFIG_CHOICES = ["Composers", "Repertoire", "Account"]
 HAS_TOKEN = False
 
+class MusicBoxContext():
+    COMPOSER = 1
+    GENRE = 2
+    WORK = 3
+    PERFORMANCE = 4
+    TRACKLIST = 5
+    OTHER = 6
+
+class MusicBoxState:
+    def __init__(self, player):
+        self.player = player
+        self.keyed_work = None
+        self.selected_work = None
+        self.selected_composer = None
+        self.keyed_composer = None
+        self.selected_genre = None
+        self.keyed_genre = None
+        self.selected_performance = None
+        self.tracklist = []
+        self.track_titles = []
+        self.performance_index = 0
+        self.worklist = []
+        self.worklist_key = None
+        self.worklist_index = 0
+        self.last_update_time = 0
+        self.play_pause_press_time = 0
+        self.select_press_time = 0
+        self.power_press_time = 0
+
 
 tapeid_range_dict = {}
 
@@ -285,6 +314,8 @@ def main_loop(player, state):
     pYSw_old = pMSw_old = pDSw_old = 1
     tm.label_soft_knobs("Composer", "Genre", "Work")
 
+    mind = MusicBoxState(player)
+
     clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     composer_list = state.get("composer_list", ["GREATS"])
     composers = sorted(get_composers(composer_list), key=lambda x: x.name)
@@ -292,36 +323,25 @@ def main_loop(player, state):
         composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
     tape = state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
-    keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[1].id))
-    tm.m._value = clu.get_key_index(composers, keyed_composer.id)
-    selected_composer = keyed_composer
-    worklist = []
+    mind.keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[1].id))
+    mind.selected_composer = mind.keyed_composer
+    tm.m._value = clu.get_key_index(composers, mind.keyed_composer.id)
     month_old = -1  # to force the screen to start at composer.
 
     if state.get("repertoire", "Must Know") == "Full":
-        composer_genres = get_cats(selected_composer.id)
+        composer_genres = get_cats(mind.selected_composer.id)
     else:
-        composer_genres = get_genres(selected_composer.id)
+        composer_genres = get_genres(mind.selected_composer.id)
     try:
         tm.d._value = next(i for i, x in enumerate(composer_genres) if x.id == tape.get("genre_id", 1))
     except StopIteration:
         tm.d._value = 0
     day_old = tm.d.value()
-    keyed_genre = composer_genres[day_old]
-    selected_genre = keyed_genre
+    mind.keyed_genre = composer_genres[day_old]
+    mind.selected_genre = mind.keyed_genre
 
     year_old = tm.y.value()
     works = None
-    keyed_work = None
-    selected_work = keyed_work
-    selected_performance = None
-    select_press_time = 0
-    power_press_time = 0
-    play_pause_press_time = 0
-    last_update_time = 0
-    performance_index = 0
-    worklist_key = None
-    worklist_index = 0
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     poll_count = 0
@@ -333,40 +353,40 @@ def main_loop(player, state):
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
             tm.power(0)
-        if player.playlist_completed and (len(worklist) > 0):
+        if player.playlist_completed and (len(mind.worklist) > 0):
             print(f"Player is finished, continuing the present worklist")
-            keyed_work = worklist[0]
-            worklist = worklist[1:]  # safer than popping, in case of empty list.
-            clu.increment_worklist_dict(worklist_key)
-            selected_work, track_titles, selected_performance = play_keyed_work(keyed_work, player, state)
+            mind.keyed_work = mind.worklist[0]
+            mind.worklist = mind.worklist[1:]  # safer than popping, in case of empty list.
+            clu.increment_worklist_dict(mind.worklist_key)
+            mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
             if not pPlayPause_old:
-                play_pause_press_time = time.ticks_ms()
+                mind.play_pause_press_time = time.ticks_ms()
                 print("PlayPause PRESSED")
-                if (time.ticks_ms() - play_pause_press_time) > 1_000:
+                if (time.ticks_ms() - mind.play_pause_press_time) > 1_000:
                     continue  # go to top of loop -- This was a long press, so do nothing.
             else:
                 print("short press of PlayPause -- RELEASED")
                 if player.is_stopped():
-                    state["selected_tape"]["composer_id"] = selected_composer.id
-                    state["selected_tape"]["genre_id"] = selected_genre.id
-                    tracklist, selected_performance, state = select_performance(keyed_work, player, state)
+                    state["selected_tape"]["composer_id"] = mind.selected_composer.id
+                    state["selected_tape"]["genre_id"] = mind.selected_genre.id
+                    mind.tracklist, mind.selected_performance, state = select_performance(mind.keyed_work, player, state)
                     save_state(state)
-                    selected_work = keyed_work
-                    tracklist_bbox.y0 = display_title(selected_work)
-                    track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
-                    print(f"Track titles are {track_titles}")
-                    display_tracks(*track_titles)
+                    mind.selected_work = mind.keyed_work
+                    tracklist_bbox.y0 = display_title(mind.selected_work)
+                    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
+                    print(f"Track titles are {mind.track_titles}")
+                    display_tracks(*mind.track_titles)
                 play_pause(player)
-                last_update_time = time.ticks_ms()
+                mind.last_update_time = time.ticks_ms()
 
         if not tm.pPlayPause.value():  # long press PlayPause
-            if (time.ticks_ms() - play_pause_press_time) > 1_000:
+            if (time.ticks_ms() - mind.play_pause_press_time) > 1_000:
                 print("                 Longpress of playpause")
-                # clu.toggle_favorites(selected_performance)
-                play_pause_press_time = time.ticks_ms() + 1_000
+                # clu.toggle_favorites(mind.selected_performance)
+                mind.play_pause_press_time = time.ticks_ms() + 1_000
                 pPlayPause_old = tm.pPlayPause.value()
                 print("PlayPause RELEASED")
 
@@ -379,81 +399,81 @@ def main_loop(player, state):
                     tm.screen_on()
                     if player.stop():
                         tm.clear_bbox(playpause_bbox)
-                    worklist = worklist[1:]
+                    mind.worklist = mind.worklist[1:]
                 print("Stop PRESSED")
 
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             if not pSelect_old:
-                select_press_time = time.ticks_ms()
+                mind.select_press_time = time.ticks_ms()
                 print("Select PRESSED")
             else:
                 print("short press of select -- released")
-                if (time.ticks_ms() - select_press_time) > 1_000:
+                if (time.ticks_ms() - mind.select_press_time) > 1_000:
                     continue  # go to top of loop -- This was a long press, so do nothing.
                 player.stop()
-                worklist = []
+                mind.worklist = []
                 if KNOB_TIME == COMPOSER_KEY_TIME:
-                    print(f"Composer last keyed {keyed_composer}")
-                    selected_composer = keyed_composer
+                    print(f"Composer last keyed {mind.keyed_composer}")
+                    mind.selected_composer = mind.keyed_composer
                     ## Play Composer Radio
                     # Not yet implemented
                 elif KNOB_TIME == GENRE_KEY_TIME:
-                    print(f"Genre last keyed {keyed_genre}")
+                    print(f"Genre last keyed {mind.keyed_genre}")
                     ## create playlist of all works in the genre
-                    selected_genre = keyed_genre
-                    worklist_key = None
+                    mind.selected_genre = mind.keyed_genre
+                    mind.worklist_key = None
                     if state["repertoire"] == "Full":
-                        worklist = get_cat_works(selected_composer.id, selected_genre)
-                        worklist_key = f"{selected_composer.id}_{selected_genre.id}"
+                        mind.worklist = get_cat_works(mind.selected_composer.id, mind.selected_genre)
+                        mind.worklist_key = f"{mind.selected_composer.id}_{mind.selected_genre.id}"
                     else:
-                        worklist = get_works(selected_composer.id)
-                    print(f"worklist is {worklist}")
-                    worklist_index = clu.worklist_dict().get(worklist_key, 0) % max(1, len(worklist))
-                    clu.set_worklist_dict(worklist_key, worklist_index)  # To keep the index within bounds of len(worklist).
-                    keyed_work = worklist[worklist_index]
-                    worklist = worklist[worklist_index + 1 :] + worklist[:worklist_index]  # wrap around
+                        mind.worklist = get_works(mind.selected_composer.id)
+                    print(f"worklist is {mind.worklist}")
+                    mind.worklist_index = clu.worklist_dict().get(mind.worklist_key, 0) % max(1, len(mind.worklist))
+                    clu.set_worklist_dict(mind.worklist_key, mind.worklist_index)  # To keep the index within bounds of len(mind.worklist).
+                    mind.keyed_work = mind.worklist[mind.worklist_index]
+                    mind.worklist = mind.worklist[mind.worklist_index + 1 :] + mind.worklist[:mind.worklist_index]  # wrap around
                 elif KNOB_TIME == WORK_KEY_TIME:
-                    print(f"Work last keyed {keyed_work}")
+                    print(f"Work last keyed {mind.keyed_work}")
                 else:
                     print("Unknown last keyed")
 
-                if keyed_work is None:
+                if mind.keyed_work is None:
                     # Figure out which work and performance to play
-                    # works = get_works(selected_composer.id)
+                    # works = get_works(mind.selected_composer.id)
                     pass
 
-                state["selected_tape"]["composer_id"] = selected_composer.id
-                state["selected_tape"]["genre_id"] = selected_genre.id
-                selected_work, track_titles, selected_performance = play_keyed_work(keyed_work, player, state)
-                last_update_time = time.ticks_ms()
+                state["selected_tape"]["composer_id"] = mind.selected_composer.id
+                state["selected_tape"]["genre_id"] = mind.selected_genre.id
+                mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
+                mind.last_update_time = time.ticks_ms()
                 print("Select RELEASED")
 
         if not tm.pSelect.value():  # long press Select
             # pSelect_old = tm.pSelect.value()
-            if (time.ticks_ms() - select_press_time) > 1_000:
+            if (time.ticks_ms() - mind.select_press_time) > 1_000:
                 player.pause()
                 print("                 Longpress of select")
-                performance_index = choose_performance(selected_composer, keyed_work)  # take control of knobs
-                if performance_index is not None:
-                    state["selected_tape"]["composer_id"] = selected_composer.id
-                    state["selected_tape"]["genre_id"] = selected_genre.id
-                    tracklist, selected_performance, state = select_performance(keyed_work, player, state, performance_index)
+                mind.performance_index = choose_performance(mind.selected_composer, mind.keyed_work)  # take control of knobs
+                if mind.performance_index is not None:
+                    state["selected_tape"]["composer_id"] = mind.selected_composer.id
+                    state["selected_tape"]["genre_id"] = mind.selected_genre.id
+                    mind.tracklist, mind.selected_performance, state = select_performance(mind.keyed_work, player, state, mind.performance_index)
                     save_state(state)
-                    selected_work = keyed_work
-                    tracklist_bbox.y0 = display_title(selected_work)
-                    tracklist_bbox.y0 = display_performance_info(selected_work, selected_performance)
-                    track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
-                    print(f"Track titles are {track_titles}")
-                    display_tracks(*track_titles)
+                    mind.selected_work = mind.keyed_work
+                    tracklist_bbox.y0 = display_title(mind.selected_work)
+                    tracklist_bbox.y0 = display_performance_info(mind.selected_work, mind.selected_performance)
+                    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
+                    print(f"Track titles are {mind.track_titles}")
+                    display_tracks(*mind.track_titles)
                     play_pause(player)
-                    last_update_time = time.ticks_ms()
+                    mind.last_update_time = time.ticks_ms()
                 else:
                     # behave as if we have twiddled a knob.
                     # tm.m._value = (tm.m.value() - 1) % len(composers)
                     set_knob_times(None)
                 time.sleep(2)
-                select_press_time = time.ticks_ms() + 1_000
+                mind.select_press_time = time.ticks_ms() + 1_000
                 pSelect_old = tm.pSelect.value()
                 print("Select RELEASED")
 
@@ -498,13 +518,13 @@ def main_loop(player, state):
                     tm.power(0)
                 else:
                     tm.power(1)
-                power_press_time = time.ticks_ms()
+                mind.power_press_time = time.ticks_ms()
                 print("Power PRESSED -- screen")
 
         if not tm.pPower.value():
-            if (time.ticks_ms() - power_press_time) > 1_000:
+            if (time.ticks_ms() - mind.power_press_time) > 1_000:
                 print("Power UP -- back to reconfigure")
-                power_press_time = time.ticks_ms()
+                mind.power_press_time = time.ticks_ms()
                 tm.label_soft_knobs("-", "-", "-")
                 tm.clear_screen()
                 tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
@@ -527,13 +547,13 @@ def main_loop(player, state):
                         print("Restarting player after authenticating")
                         player.play()
                 else:
-                    print(f"selected_performance is {selected_performance}, keyed_work is {keyed_work}")
-                    favored = clu.toggle_favorites(selected_performance if selected_performance is not None else keyed_work)
+                    print(f"mind.selected_performance is {mind.selected_performance}, keyed_work is {mind.keyed_work}")
+                    favored = clu.toggle_favorites(mind.selected_performance if mind.selected_performance is not None else mind.keyed_work)
                     if favored:
-                        print(f"Added {selected_performance} to favorites")
+                        print(f"Added {mind.selected_performance} to favorites")
                         # Draw the heart wherever on the screen it belongs
                     else:
-                        print(f"Removed {selected_performance} from favorites")
+                        print(f"Removed {mind.selected_performance} from favorites")
                         # Remove the heart from the screen.
 
             else:
@@ -562,82 +582,82 @@ def main_loop(player, state):
             # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
             # print(f"month_new: {month_new}")
             tm.power(1)
-            performance_index = 0
-            force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (last_update_time > KNOB_TIME)
+            mind.performance_index = 0
+            force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (mind.last_update_time > KNOB_TIME)
             set_knob_times(tm.m)
-            keyed_composer = composers[month_new]
+            mind.keyed_composer = composers[month_new]
             display_keyed_composers(composers, month_new, month_old, force_update)
-            print(f"keyed composer {keyed_composer}")
+            print(f"keyed composer {mind.keyed_composer}")
             works = None
             month_old = month_new
         elif day_old != day_new:  # Genre changes
             tm.power(1)
-            performance_index = 0
-            if keyed_composer.id == 0: # "Favorites"
-                selected_composer, selected_work, state = handle_favorites(composers, player, state)
-                if selected_work is None: # We bailed from handle favorites without selecting anything.
-                    selected_work = keyed_work
+            mind.performance_index = 0
+            if mind.keyed_composer.id == 0: # "Favorites"
+                mind.selected_composer, mind.selected_work, state = handle_favorites(composers, player, state)
+                if mind.selected_work is None: # We bailed from handle favorites without selecting anything.
+                    mind.selected_work = mind.keyed_work
                 else:
-                    keyed_work = selected_work 
-                    keyed_composer = selected_composer 
-                    last_update_time = time.ticks_ms()
-                    # tm.m._value = clu.get_key_index(composers, selected_composer.id)
+                    mind.keyed_work = mind.selected_work 
+                    mind.keyed_composer = mind.selected_composer 
+                    mind.last_update_time = time.ticks_ms()
+                    # tm.m._value = clu.get_key_index(composers, mind.selected_composer.id)
                     set_knob_times(None) # To ensure that genres will be drawn
             else:
-                if selected_composer != keyed_composer:
-                    selected_composer = keyed_composer  # we have selected the composer by changing the category
-                    display_selected_composer(selected_composer, show_loading=True)
+                if mind.selected_composer != mind.keyed_composer:
+                    mind.selected_composer = mind.keyed_composer  # we have selected the composer by changing the category
+                    display_selected_composer(mind.selected_composer, show_loading=True)
                 if state["repertoire"] == "Full":
-                    composer_genres = get_cats(selected_composer.id)
+                    composer_genres = get_cats(mind.selected_composer.id)
                     # print(f"cat_genres is {composer_genres}")
                 else:
-                    composer_genres = get_genres(selected_composer.id)
-                keyed_genre = display_keyed_genres(selected_composer, composer_genres, day_new, day_old)
-                print(f"keyed genre is {keyed_genre}")
+                    composer_genres = get_genres(mind.selected_composer.id)
+                mind.keyed_genre = display_keyed_genres(mind.selected_composer, composer_genres, day_new, day_old)
+                print(f"keyed genre is {mind.keyed_genre}")
                 set_knob_times(tm.d) 
             day_old = day_new
 
         elif year_old != year_new:  # Works changes
             tm.power(1)
-            performance_index = 0
-            if selected_genre.index != keyed_genre.index:
-                selected_genre = keyed_genre
+            mind.performance_index = 0
+            if mind.selected_genre.index != mind.keyed_genre.index:
+                mind.selected_genre = mind.keyed_genre
             if works is None:
-                selected_composer = keyed_composer
-                if selected_composer.id == 0:
-                    selected_composer, selected_work, state = handle_favorites(composers, player, state)
-                    if selected_work is None: # We bailed from handle favorites without selecting anything.
-                        selected_work = keyed_work
+                mind.selected_composer = mind.keyed_composer
+                if mind.selected_composer.id == 0:
+                    mind.selected_composer, mind.selected_work, state = handle_favorites(composers, player, state)
+                    if mind.selected_work is None: # We bailed from handle favorites without selecting anything.
+                        mind.selected_work = mind.keyed_work
                     else:
-                        keyed_work = selected_work 
-                        keyed_composer = selected_composer
-                        last_update_time = time.ticks_ms()
+                        mind.keyed_work = mind.selected_work 
+                        mind.keyed_composer = mind.selected_composer
+                        mind.last_update_time = time.ticks_ms()
                         set_knob_times(None) # To ensure that genres will be drawn
                 else:
-                    display_selected_composer(selected_composer, selected_genre, show_loading=True)
+                    display_selected_composer(mind.selected_composer, mind.selected_genre, show_loading=True)
                     if state["repertoire"] == "Full":
-                        composer_genres = get_cats(selected_composer.id)
+                        composer_genres = get_cats(mind.selected_composer.id)
                         print(f"cat_genres is {composer_genres}")
                     else:
-                        composer_genres = get_genres(selected_composer.id)
-            t = [g for g in composer_genres if g.id == keyed_genre.id]
+                        composer_genres = get_genres(mind.selected_composer.id)
+            t = [g for g in composer_genres if g.id == mind.keyed_genre.id]
             composer_genre = t[0] if len(t) > 0 else composer_genres[day_old % len(composer_genres)]
             print(f"composer_genre is {composer_genre}")
             if state["repertoire"] == "Full":
-                works = get_cat_works(selected_composer.id, composer_genre)
+                works = get_cat_works(mind.selected_composer.id, composer_genre)
             else:
-                works = get_works(selected_composer.id)
+                works = get_works(mind.selected_composer.id)
                 works = [w for w in works if w.genre == composer_genre.id]
-            keyed_work = display_keyed_works(selected_composer, composer_genre, works, year_new, year_old)
-            print(f"keyed work is {keyed_work}")
+            mind.keyed_work = display_keyed_works(mind.selected_composer, composer_genre, works, year_new, year_old)
+            print(f"keyed work is {mind.keyed_work}")
             year_old = year_new
             set_knob_times(tm.y)
 
-        if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, last_update_time)) > 12_000:
+        if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, mind.last_update_time)) > 12_000:
             print(player)
-            if KNOB_TIME > last_update_time:
-                update_display(player, selected_composer, selected_work, selected_performance)
-            last_update_time = time.ticks_ms()
+            if KNOB_TIME > mind.last_update_time:
+                update_display(player, mind.selected_composer, mind.selected_work, mind.selected_performance)
+            mind.last_update_time = time.ticks_ms()
 
 
 def handle_favorites(composers, player, state):
