@@ -70,8 +70,9 @@ class MusicBoxContext():
     OTHER = 6
 
 class MusicBoxState:
-    def __init__(self, player):
+    def __init__(self, player, state):
         self.player = player
+        self.state = state
         self.keyed_work = None
         self.selected_work = None
         self.selected_composer = None
@@ -288,21 +289,23 @@ def play_pause(player):
     return
 
 
-def play_keyed_work(keyed_work, player, state):
-    print(f"Playing {keyed_work}")
-    tracklist, p_id, state = select_performance(keyed_work, player, state)
-    save_state(state)
-    selected_work = keyed_work
+#def play_keyed_work(keyed_work, player, state):
+def play_keyed_work(mind):
+    print(f"Playing {mind.keyed_work}")
+    mind.tracklist, mind.selected_performance, mind.state = select_performance(mind.keyed_work, mind.player, mind.state)
+    save_state(mind.state)
+    mind.selected_work = mind.keyed_work
     # Display the Title
-    tracklist_bbox.y0 = display_title(selected_work)
+    tracklist_bbox.y0 = display_title(mind.selected_work)
     # Display the performance information
-    tracklist_bbox.y0 = display_performance_info(keyed_work, p_id)
+    tracklist_bbox.y0 = display_performance_info(mind.keyed_work, mind.selected_performance)
     # Display the tracklist
-    track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
-    print(f"Track titles are {track_titles}")
-    display_tracks(*track_titles)  # This doesn't show the credits.
-    play_pause(player)
-    return selected_work, track_titles, p_id
+    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
+    print(f"Track titles are {mind.track_titles}")
+    display_tracks(*mind.track_titles)  # This doesn't show the credits.
+    play_pause(mind.player)
+#    return selected_work, track_titles, p_id
+    return mind
 
 
 def main_loop(player, state):
@@ -314,7 +317,7 @@ def main_loop(player, state):
     pYSw_old = pMSw_old = pDSw_old = 1
     tm.label_soft_knobs("Composer", "Genre", "Work")
 
-    mind = MusicBoxState(player)
+    mind = MusicBoxState(player, state)
 
     clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     composer_list = state.get("composer_list", ["GREATS"])
@@ -358,7 +361,8 @@ def main_loop(player, state):
             mind.keyed_work = mind.worklist[0]
             mind.worklist = mind.worklist[1:]  # safer than popping, in case of empty list.
             clu.increment_worklist_dict(mind.worklist_key)
-            mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
+            #mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
+            mind = play_keyed_work(mind)
 
         if pPlayPause_old != tm.pPlayPause.value():
             pPlayPause_old = tm.pPlayPause.value()
@@ -446,6 +450,7 @@ def main_loop(player, state):
                 state["selected_tape"]["composer_id"] = mind.selected_composer.id
                 state["selected_tape"]["genre_id"] = mind.selected_genre.id
                 mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
+                mind = play_keyed_work(mind)
                 mind.last_update_time = time.ticks_ms()
                 print("Select RELEASED")
 
