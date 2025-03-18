@@ -449,7 +449,7 @@ def main_loop(player, state):
 
                 state["selected_tape"]["composer_id"] = mind.selected_composer.id
                 state["selected_tape"]["genre_id"] = mind.selected_genre.id
-                mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
+                #mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
                 mind = play_keyed_work(mind)
                 mind.last_update_time = time.ticks_ms()
                 print("Select RELEASED")
