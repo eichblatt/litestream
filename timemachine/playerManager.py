@@ -185,12 +185,21 @@ class PlayerManager:
         return self.player.play()
 
 
-    def handle_button_presses(self, timer):
+    def handle_button_presses(self):
+        if self.button_window is None:
+            self.resume_playing = self.is_playing()
+            self.stop()
+            self.block_pump = True
+            self.button_window = Timer(-1)
+            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self._play_selected_track)
+        return
+
+    def _play_selected_track(self, timer):
         if time.ticks_diff(time.ticks_ms(), self.last_button_time) < 1_000:
             # re-initialize the button window
             print(f"Button window extended, {timer}")
             self.button_window.deinit()
-            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self.handle_button_presses)
+            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self._play_selected_track)
             return
         else:
             # set the track to the cumulative position of the button presses (self.track_index)
@@ -221,24 +230,12 @@ class PlayerManager:
     def rewind(self):
         self.last_button_time = time.ticks_ms()
         self.increment_track_screen(increment=-1) # sets the track index
-        if self.button_window is None:
-            self.resume_playing = self.is_playing()
-            self.stop()
-            self.button_window = Timer(-1)
-            self.block_pump = True
-            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self.handle_button_presses)
-        return
+        self.handle_button_presses()
 
     def ffwd(self):
         self.last_button_time = time.ticks_ms()
         self.increment_track_screen() # sets the track index
-        if self.button_window is None:
-            self.resume_playing = self.is_playing()
-            self.stop()
-            self.button_window = Timer(-1)
-            self.block_pump = True
-            self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self.handle_button_presses)
-        return
+        self.handle_button_presses()
 
     def pump_chunks(self):
         next_chunklist = None
@@ -263,9 +260,9 @@ class PlayerManager:
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
                 self.DEBUG and print("Converting chunklist to a list")
-            while this_track - len(self.chunklist) > 0:
+            while this_track >= len(self.chunklist):
                 self.chunklist.append([])
-            self.chunklist.insert(this_track,next_chunklist)
+            self.chunklist[this_track] = next_chunklist
             hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): this_track}
             self.first_chunk_dict.update(hashdict)
 
