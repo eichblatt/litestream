@@ -1116,3 +1116,8 @@ class FirmwareUpdateRequiredException(Exception):
     def __init__(self, message="Firmware is out of date"):
         self.message = message
         super().__init__(self.message)
+
+class ConfigureException(Exception):
+    def __init__(self, message="Back to Config Menu"):
+        self.message = message
+        super().__init__(self.message)

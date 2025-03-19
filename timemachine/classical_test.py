@@ -277,6 +277,213 @@ def play_keyed_work():
     return 
 
 
+def poll_play_pause(pPlayPause_old):
+    if pPlayPause_old == tm.pPlayPause.value():
+        return pPlayPause_old
+    glc = cc.glc
+    pPlayPause_old = tm.pPlayPause.value()
+    if not pPlayPause_old:
+        glc.play_pause_press_time = time.ticks_ms()
+        print("PlayPause PRESSED")
+        if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
+            return  pPlayPause_old # This was a long press, so do nothing.
+    else:
+        print("short press of PlayPause -- RELEASED")
+        if glc.player.is_stopped():
+            glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+            glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+            select_performance()
+            save_state(glc.state)
+            glc.selected_work = glc.keyed_work
+            display_title(glc.selected_work)
+            glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+            print(f"Track titles are {glc.track_titles}")
+            display_tracks(*glc.track_titles)
+        play_pause(glc.player)
+        glc.last_update_time = time.ticks_ms()
+
+    if not tm.pPlayPause.value():  # long press PlayPause
+        if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
+            print("                 Longpress of playpause")
+            # clu.toggle_favorites(gxt.selected_performance)
+            glc.play_pause_press_time = time.ticks_ms() + 1_000
+            pPlayPause_old = tm.pPlayPause.value()
+            print("PlayPause RELEASED")
+    return pPlayPause_old
+
+def poll_select(pSelect_old):
+    if pSelect_old == tm.pSelect.value():
+        poll_select_longpress(pSelect_old)
+        return pSelect_old
+    pSelect_old = tm.pSelect.value()
+    glc = cc.glc
+    if not pSelect_old:
+        glc.select_press_time = time.ticks_ms()
+        print("Select PRESSED")
+    else:
+        print("short press of select -- released")
+        if (time.ticks_ms() - glc.select_press_time) > 1_000:
+            return pSelect_old # This was a long press, so do nothing.
+        glc.player.stop()
+        glc.worklist = []
+        if KNOB_TIME == COMPOSER_KEY_TIME:
+            print(f"Composer last keyed {glc.keyed_composer}")
+            glc.selected_composer = glc.keyed_composer
+            ## Play Composer Radio
+            # Not yet implemented
+        elif KNOB_TIME == GENRE_KEY_TIME:
+            print(f"Genre last keyed {glc.keyed_genre}")
+            ## create playlist of all works in the genre
+            glc.selected_genre = glc.keyed_genre
+            glc.worklist_key = None
+            if glc.state["repertoire"] == "Full":
+                # gxt.worklist = get_cat_works(gxt.selected_composer.id, gxt.selected_genre)
+                glc = get_cat_works(glc)
+                glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
+            else:
+                glc.worklist = get_works(glc.selected_composer.id)
+            print(f"worklist is {glc.worklist}")
+            glc.worklist_index = clu.worklist_dict().get(glc.worklist_key, 0) % max(1, len(glc.worklist))
+            clu.set_worklist_dict(glc.worklist_key, glc.worklist_index)  # To keep the index within bounds of len(gxt.worklist).
+            glc.keyed_work = glc.worklist[glc.worklist_index]
+            glc.worklist = glc.worklist[glc.worklist_index + 1 :] + glc.worklist[:glc.worklist_index]  # wrap around
+        elif KNOB_TIME == WORK_KEY_TIME:
+            print(f"Work last keyed {glc.keyed_work}")
+        else:
+            print("Unknown last keyed")
+
+        if glc.keyed_work is None:
+            # Figure out which work and performance to play
+            # works = get_works(gxt.selected_composer.id)
+            pass
+
+        glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+        glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+        play_keyed_work()
+        glc.last_update_time = time.ticks_ms()
+        print("Select RELEASED")
+    return pSelect_old
+
+def poll_select_longpress(pSelect_old):
+    if tm.pSelect.value():  # long press Select
+        return
+    glc = cc.glc
+    if (time.ticks_ms() - glc.select_press_time) < 1_000:
+        return
+    glc.player.pause()
+    print("                 Longpress of select")
+    glc.performance_index = choose_performance(glc.selected_composer, glc.keyed_work)  # take control of knobs
+    if glc.performance_index is not None:
+        glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+        glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+        select_performance()
+        save_state(glc.state)
+        glc.selected_work = glc.keyed_work
+        display_title(glc.selected_work)
+        display_performance_info()
+        glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+        print(f"Track titles are {glc.track_titles}")
+        display_tracks(*glc.track_titles)
+        play_pause(glc.player)
+        glc.last_update_time = time.ticks_ms()
+    else:
+        # behave as if we have twiddled a knob.
+        # tm.m._value = (tm.m.value() - 1) % len(composers)
+        set_knob_times(None)
+    time.sleep(2)
+    glc.select_press_time = time.ticks_ms() + 1_000
+    pSelect_old = tm.pSelect.value()
+    print("Select RELEASED")
+    return
+
+def poll_stop(pStop_old):
+    if pStop_old == tm.pStop.value():
+        return pStop_old
+    glc = cc.glc
+    pStop_old = tm.pStop.value()
+    if pStop_old:
+        print("Stop RELEASED")
+    else:
+        if tm.power():
+            tm.screen_on()
+            if glc.player.stop():
+                tm.clear_bbox(playpause_bbox)
+            glc.worklist = glc.worklist[1:]
+        print("Stop PRESSED")
+    return pStop_old
+
+def poll_rewind(pRewind_old):
+    if pRewind_old == tm.pRewind.value():
+        return pRewind_old
+    glc = cc.glc
+    pRewind_old = tm.pRewind.value()
+    if pRewind_old:
+        print("Rewind RELEASED")
+    else:
+        print("Rewind PRESSED")
+        if tm.power():
+            if tm.screen_state():
+                glc.player.rewind()
+            else:
+                glc.player.set_volume(max(glc.player.get_volume() - 1, 5))
+                print(f"volume set to {glc.player.get_volume()}")
+    return pRewind_old
+
+def poll_ffwd(pFFwd_old):
+    if pFFwd_old == tm.pFFwd.value():
+        return pFFwd_old
+    glc = cc.glc
+    pFFwd_old = tm.pFFwd.value()
+    if pFFwd_old:
+        print("FFwd RELEASED")
+    else:
+        print("FFwd PRESSED")
+        if tm.power():
+            if tm.screen_state():
+                glc.player.ffwd()
+            else:
+                try:
+                    glc.player.set_volume(glc.player.get_volume() + 1)
+                except AssertionError:
+                    pass
+                print(f"volume set to {glc.player.get_volume()}")
+    return pFFwd_old
+    
+def poll_power(pPower_old): 
+    if pPower_old == tm.pPower.value():
+        poll_power_longpress()
+        return pPower_old
+        
+    glc = cc.glc
+    pPower_old = tm.pPower.value()
+    if not pPower_old:
+        print(f"power state is {tm.power()}")
+        if tm.power() == 1:
+            glc.player.pause()
+            tm.power(0)
+        else:
+            tm.power(1)
+        glc.power_press_time = time.ticks_ms()
+        print("Power PRESSED -- screen")
+    else:
+        print("Power RELEASED")
+    return pPower_old
+
+def poll_power_longpress():
+    if tm.pPower.value():
+        return
+    glc = cc.glc
+    if (time.ticks_ms() - glc.power_press_time) < 1_000:
+        return 
+    print("Power UP -- back to reconfigure")
+    glc.power_press_time = time.ticks_ms()
+    tm.label_soft_knobs("-", "-", "-")
+    tm.clear_screen()
+    tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
+    glc.player.reset_player()
+    tm.power(1)
+    raise utils.ConfigureException()
+
 def main_loop():
     glc = cc.glc # Without this I get a complaint that local variable accessed before assignment.
     print(f"main loop. glc is {glc}")
@@ -333,180 +540,13 @@ def main_loop():
             clu.increment_worklist_dict(glc.worklist_key)
             play_keyed_work()
 
-        if pPlayPause_old != tm.pPlayPause.value():
-            pPlayPause_old = tm.pPlayPause.value()
-            if not pPlayPause_old:
-                glc.play_pause_press_time = time.ticks_ms()
-                print("PlayPause PRESSED")
-                if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
-                    continue  # go to top of loop -- This was a long press, so do nothing.
-            else:
-                print("short press of PlayPause -- RELEASED")
-                if glc.player.is_stopped():
-                    glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
-                    glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
-                    select_performance()
-                    save_state(glc.state)
-                    glc.selected_work = glc.keyed_work
-                    display_title(glc.selected_work)
-                    glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-                    print(f"Track titles are {glc.track_titles}")
-                    display_tracks(*glc.track_titles)
-                play_pause(glc.player)
-                glc.last_update_time = time.ticks_ms()
+        pPlayPause_old = poll_play_pause(pPlayPause_old)
+        pStop_old = poll_stop(pStop_old)
+        pSelect_old = poll_select(pSelect_old) 
+        pRewind_old = poll_rewind(pRewind_old)
+        pFFwd_old = poll_ffwd(pFFwd_old)
+        pPower_old = poll_power(pPower_old)
 
-        if not tm.pPlayPause.value():  # long press PlayPause
-            if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
-                print("                 Longpress of playpause")
-                # clu.toggle_favorites(gxt.selected_performance)
-                glc.play_pause_press_time = time.ticks_ms() + 1_000
-                pPlayPause_old = tm.pPlayPause.value()
-                print("PlayPause RELEASED")
-
-        if pStop_old != tm.pStop.value():
-            pStop_old = tm.pStop.value()
-            if pStop_old:
-                print("Stop RELEASED")
-            else:
-                if tm.power():
-                    tm.screen_on()
-                    if glc.player.stop():
-                        tm.clear_bbox(playpause_bbox)
-                    glc.worklist = glc.worklist[1:]
-                print("Stop PRESSED")
-
-        if pSelect_old != tm.pSelect.value():
-            pSelect_old = tm.pSelect.value()
-            if not pSelect_old:
-                glc.select_press_time = time.ticks_ms()
-                print("Select PRESSED")
-            else:
-                print("short press of select -- released")
-                if (time.ticks_ms() - glc.select_press_time) > 1_000:
-                    continue  # go to top of loop -- This was a long press, so do nothing.
-                glc.player.stop()
-                glc.worklist = []
-                if KNOB_TIME == COMPOSER_KEY_TIME:
-                    print(f"Composer last keyed {glc.keyed_composer}")
-                    glc.selected_composer = glc.keyed_composer
-                    ## Play Composer Radio
-                    # Not yet implemented
-                elif KNOB_TIME == GENRE_KEY_TIME:
-                    print(f"Genre last keyed {glc.keyed_genre}")
-                    ## create playlist of all works in the genre
-                    glc.selected_genre = glc.keyed_genre
-                    glc.worklist_key = None
-                    if glc.state["repertoire"] == "Full":
-                        # gxt.worklist = get_cat_works(gxt.selected_composer.id, gxt.selected_genre)
-                        glc = get_cat_works(glc)
-                        glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
-                    else:
-                        glc.worklist = get_works(glc.selected_composer.id)
-                    print(f"worklist is {glc.worklist}")
-                    glc.worklist_index = clu.worklist_dict().get(glc.worklist_key, 0) % max(1, len(glc.worklist))
-                    clu.set_worklist_dict(glc.worklist_key, glc.worklist_index)  # To keep the index within bounds of len(gxt.worklist).
-                    glc.keyed_work = glc.worklist[glc.worklist_index]
-                    glc.worklist = glc.worklist[glc.worklist_index + 1 :] + glc.worklist[:glc.worklist_index]  # wrap around
-                elif KNOB_TIME == WORK_KEY_TIME:
-                    print(f"Work last keyed {glc.keyed_work}")
-                else:
-                    print("Unknown last keyed")
-
-                if glc.keyed_work is None:
-                    # Figure out which work and performance to play
-                    # works = get_works(gxt.selected_composer.id)
-                    pass
-
-                glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
-                glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
-                play_keyed_work()
-                glc.last_update_time = time.ticks_ms()
-                print("Select RELEASED")
-
-        if not tm.pSelect.value():  # long press Select
-            # pSelect_old = tm.pSelect.value()
-            if (time.ticks_ms() - glc.select_press_time) > 1_000:
-                glc.player.pause()
-                print("                 Longpress of select")
-                glc.performance_index = choose_performance(glc.selected_composer, glc.keyed_work)  # take control of knobs
-                if glc.performance_index is not None:
-                    glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
-                    glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
-                    #gxt.tracklist, gxt.selected_performance, gxt.state = select_performance_args(gxt.keyed_work, gxt.player, gxt.state, gxt.performance_index)
-                    select_performance()
-                    save_state(glc.state)
-                    glc.selected_work = glc.keyed_work
-                    display_title(glc.selected_work)
-                    #tracklist_bbox.y0 = display_performance_info(glc.selected_work, glc.selected_performance)
-                    display_performance_info()
-                    glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-                    print(f"Track titles are {glc.track_titles}")
-                    display_tracks(*glc.track_titles)
-                    play_pause(glc.player)
-                    glc.last_update_time = time.ticks_ms()
-                else:
-                    # behave as if we have twiddled a knob.
-                    # tm.m._value = (tm.m.value() - 1) % len(composers)
-                    set_knob_times(None)
-                time.sleep(2)
-                glc.select_press_time = time.ticks_ms() + 1_000
-                pSelect_old = tm.pSelect.value()
-                print("Select RELEASED")
-
-        if pRewind_old != tm.pRewind.value():
-            pRewind_old = tm.pRewind.value()
-            if pRewind_old:
-                print("Rewind RELEASED")
-            else:
-                print("Rewind PRESSED")
-                if tm.power():
-                    if tm.screen_state():
-                        glc.player.rewind()
-                    else:
-                        glc.player.set_volume(max(glc.player.get_volume() - 1, 5))
-                        print(f"volume set to {glc.player.get_volume()}")
-
-        if pFFwd_old != tm.pFFwd.value():
-            pFFwd_old = tm.pFFwd.value()
-            if pFFwd_old:
-                print("FFwd RELEASED")
-            else:
-                print("FFwd PRESSED")
-                if tm.power():
-                    if tm.screen_state():
-                        glc.player.ffwd()
-                    else:
-                        try:
-                            glc.player.set_volume(glc.player.get_volume() + 1)
-                        except AssertionError:
-                            pass
-                        print(f"volume set to {glc.player.get_volume()}")
-
-        if pPower_old != tm.pPower.value():
-            # Press of Power button
-            pPower_old = tm.pPower.value()
-            if pPower_old:
-                print("Power RELEASED")
-            else:
-                print(f"power state is {tm.power()}")
-                if tm.power() == 1:
-                    glc.player.pause()
-                    tm.power(0)
-                else:
-                    tm.power(1)
-                glc.power_press_time = time.ticks_ms()
-                print("Power PRESSED -- screen")
-
-        if not tm.pPower.value():
-            if (time.ticks_ms() - glc.power_press_time) > 1_000:
-                print("Power UP -- back to reconfigure")
-                glc.power_press_time = time.ticks_ms()
-                tm.label_soft_knobs("-", "-", "-")
-                tm.clear_screen()
-                tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
-                glc.player.reset_player()
-                tm.power(1)
-                return
 
         if pYSw_old != tm.pYSw.value():
             pYSw_old = tm.pYSw.value()
@@ -1169,6 +1209,8 @@ def run():
         glc.ycursor = pfont_med.HEIGHT + 3 * pfont_small.HEIGHT
         main_loop()
 
+    except utils.ConfigureException as e:
+        return -1
     except Exception as e:
         if "Firmware" in str(e):
             raise utils.FirmwareUpdateRequiredException("AAC_Decoder not available in this firmware")
