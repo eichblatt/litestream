@@ -20,20 +20,16 @@ import os
 import re
 import time
 
-# import micropython # Use micropython.mem_info() to see memory available.
-#import fonts.date_font as date_font
-#import fonts.DejaVu_33 as large_font
-#import fonts.NotoSans_18 as pfont_smallx
 import fonts.NotoSans_bold_18 as pfont_small
 import fonts.NotoSans_24 as pfont_med
-#import fonts.NotoSans_32 as pfont_large
 
-# import archive_utils
 import board as tm
 import classical_utils as clu
+import classical_context as cc
 import utils
 from classical_utils import Composer, Genre, Work, Category
 from classical_utils import get_performances, get_composer_by_id, get_composers
+from classical_context import ScreenContext
 
 try:
     import playerManager
@@ -44,6 +40,7 @@ except ImportError as e:
     else:
         raise e
 
+############################################################################################# Globals
 DEBUG = True
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
 METADATA_ROOT = clu.METADATA_ROOT
@@ -59,39 +56,8 @@ WORK_KEY_TIME = time.ticks_ms()
 GENRE_KEY_TIME = time.ticks_ms()
 KNOB_TIME = time.ticks_ms()
 CONFIG_CHOICES = ["Composers", "Repertoire", "Account"]
-HAS_TOKEN = False
 
-class MusicBoxContext():
-    COMPOSER = 1
-    GENRE = 2
-    WORK = 3
-    PERFORMANCE = 4
-    TRACKLIST = 5
-    OTHER = 6
-
-class MusicBoxState:
-    def __init__(self, player, state):
-        self.player = player
-        self.state = state
-        self.keyed_work = None
-        self.selected_work = None
-        self.selected_composer = None
-        self.keyed_composer = None
-        self.selected_genre = None
-        self.keyed_genre = None
-        self.selected_performance = None
-        self.tracklist = []
-        self.track_titles = []
-        self.performance_index = 0
-        self.worklist = []
-        self.worklist_key = None
-        self.worklist_index = 0
-        self.last_update_time = 0
-        self.play_pause_press_time = 0
-        self.select_press_time = 0
-        self.power_press_time = 0
-
-
+glc = cc.glc
 tapeid_range_dict = {}
 
 selection_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
@@ -101,6 +67,7 @@ playpause_bbox = tm.Bbox(0.93 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - pfont_small.
 
 
 
+############################################################################################# Functions that belong in classical_utils.py
 def get_creators(composer_list):  # A non-library mode call to get a list of composers.
     if isinstance(composer_list, (str, int)):
         composer_list = [composer_list]
@@ -189,7 +156,12 @@ def get_cats(composer_id):
     return cat_dict[composer_id]
 
 
-def get_cat_works(composer_id, category, depth=0):
+def get_cat_works(mind):
+    works = _get_cat_works(mind.selected_composer.id, mind.selected_genre)
+    mind.worklist = works
+    return mind
+
+def _get_cat_works(composer_id, category):
     global works_dict
     print(f"Getting works for {composer_id}, category {category.id}")
     # In this case, the works_dict requires 2 keys: Composer and Category.
@@ -241,6 +213,20 @@ def get_tracklist(performance_id: int):
     tracklist = request_json(url)["tracks"]
     return tracklist
 
+def cleanup_track_names(track_names):
+    # Define a regular expression pattern to match unwanted prefixes
+    pattern = re.compile(r"^(No\.?\s*|Track\s*|#)\d+\s*[-:.,]*\s*")
+
+    track_names = utils.remove_common_start(track_names)
+    track_names = [s.lstrip(" .,0123456789") for s in track_names]
+    track_names = utils.remove_common_start(track_names)
+    track_names = [pattern.sub("", s) for s in track_names]
+    for i, name in enumerate(track_names):
+        if len(name) == 0:
+            track_names[i] = f"Track {i+1}"
+    return track_names
+
+############################################################################################# hardware handling
 
 def set_knob_times(knob):
     global WORK_KEY_TIME
@@ -261,7 +247,346 @@ load_state = clu.load_state
 save_state = clu.save_state
 request_json = clu.request_json
 
+def poll_play_pause(pPlayPause_old):
+    if pPlayPause_old == tm.pPlayPause.value():
+        return pPlayPause_old
+    glc = cc.glc
+    pPlayPause_old = tm.pPlayPause.value()
+    if not pPlayPause_old:
+        glc.play_pause_press_time = time.ticks_ms()
+        print("PlayPause PRESSED")
+        if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
+            return  pPlayPause_old # This was a long press, so do nothing.
+    else:
+        print("short press of PlayPause -- RELEASED")
+        if glc.player.is_stopped():
+            glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+            glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+            select_performance()
+            save_state(glc.state)
+            glc.selected_work = glc.keyed_work
+            display_title(glc.selected_work)
+            glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+            print(f"Track titles are {glc.track_titles}")
+            display_tracks(*glc.track_titles)
+        play_pause(glc.player)
+        glc.last_update_time = time.ticks_ms()
 
+    if not tm.pPlayPause.value():  # long press PlayPause
+        if (time.ticks_ms() - glc.play_pause_press_time) > 1_000:
+            print("                 Longpress of playpause")
+            # clu.toggle_favorites(gxt.selected_performance)
+            glc.play_pause_press_time = time.ticks_ms() + 1_000
+            pPlayPause_old = tm.pPlayPause.value()
+            print("PlayPause RELEASED")
+    return pPlayPause_old
+
+def poll_select(pSelect_old):
+    if pSelect_old == tm.pSelect.value():
+        poll_select_longpress(pSelect_old)
+        return pSelect_old
+    pSelect_old = int(not(pSelect_old)) # It has changed. pSelect_old is current value
+    glc = cc.glc
+    if not pSelect_old: # Changed, and currently being PRESSED
+        glc.select_press_time = time.ticks_ms()
+        print("Select PRESSED")
+    else:               # Changed, and currently being RELEASED
+        if (time.ticks_ms() - glc.select_press_time) > 1_000:
+            return pSelect_old # This was a long press, so do nothing.
+        print("short press of select -- released")
+        glc.player.stop()
+        glc.worklist = []
+        if KNOB_TIME == COMPOSER_KEY_TIME:
+            print(f"Composer last keyed {glc.keyed_composer}")
+            glc.selected_composer = glc.keyed_composer
+            ## Play Composer Radio
+            # Not yet implemented
+        elif KNOB_TIME == GENRE_KEY_TIME:
+            print(f"Genre last keyed {glc.keyed_genre}")
+            ## create playlist of all works in the genre
+            glc.selected_genre = glc.keyed_genre
+            glc.worklist_key = None
+            if glc.state["repertoire"] == "Full":
+                # gxt.worklist = get_cat_works(gxt.selected_composer.id, gxt.selected_genre)
+                glc = get_cat_works(glc)
+                glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
+            else:
+                glc.worklist = get_works(glc.selected_composer.id)
+            print(f"worklist is {glc.worklist}")
+            glc.worklist_index = clu.worklist_dict().get(glc.worklist_key, 0) % max(1, len(glc.worklist))
+            clu.set_worklist_dict(glc.worklist_key, glc.worklist_index)  # To keep the index within bounds of len(gxt.worklist).
+            glc.keyed_work = glc.worklist[glc.worklist_index]
+            glc.worklist = glc.worklist[glc.worklist_index + 1 :] + glc.worklist[:glc.worklist_index]  # wrap around
+        elif KNOB_TIME == WORK_KEY_TIME:
+            print(f"Work last keyed {glc.keyed_work}")
+        else:
+            print("Unknown last keyed")
+
+        if glc.keyed_work is None:
+            # Figure out which work and performance to play
+            # works = get_works(gxt.selected_composer.id)
+            pass
+
+        glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+        glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+        play_keyed_work()
+        glc.last_update_time = time.ticks_ms()
+        print("Select RELEASED")
+    return pSelect_old
+
+def poll_select_longpress(pSelect_old):
+    if pSelect_old:  # button is not being pressed, therefore it is not a long press.
+        return False
+    glc = cc.glc
+    if (time.ticks_ms() - glc.select_press_time) < 1_000: # button is being pressed, but not for very long.
+        return False
+    glc.player.pause()
+    print("                 Longpress of select")
+    glc.performance_index = choose_performance(glc.selected_composer, glc.keyed_work)  # take control of knobs
+    if glc.performance_index is not None:
+        glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+        glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
+        #select_performance()
+        select_performance(ntape=glc.performance_index)
+        save_state(glc.state)
+        glc.selected_work = glc.keyed_work
+        display_title(glc.selected_work)
+        display_performance_info()
+        print("performance info displayed")
+        glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+        print(f"Track titles are {glc.track_titles}")
+        display_tracks(*glc.track_titles)
+        play_pause(glc.player)
+        glc.last_update_time = time.ticks_ms()
+    else:
+        # behave as if we have twiddled a knob.
+        # tm.m._value = (tm.m.value() - 1) % len(composers)
+        set_knob_times(None)
+    time.sleep(2)
+    print("Select RELEASED")
+    return True
+
+def poll_stop(pStop_old):
+    if pStop_old == tm.pStop.value():
+        return pStop_old
+    glc = cc.glc
+    pStop_old = tm.pStop.value()
+    if pStop_old:
+        print("Stop RELEASED")
+    else:
+        if tm.power():
+            tm.screen_on()
+            if glc.player.stop():
+                tm.clear_bbox(playpause_bbox)
+            glc.worklist = glc.worklist[1:]
+        print("Stop PRESSED")
+    return pStop_old
+
+def poll_rewind(pRewind_old):
+    if pRewind_old == tm.pRewind.value():
+        return pRewind_old
+    glc = cc.glc
+    pRewind_old = tm.pRewind.value()
+    if pRewind_old:
+        print("Rewind RELEASED")
+    else:
+        print("Rewind PRESSED")
+        if tm.power():
+            if tm.screen_state():
+                glc.player.rewind()
+            else:
+                glc.player.set_volume(max(glc.player.get_volume() - 1, 5))
+                print(f"volume set to {glc.player.get_volume()}")
+    return pRewind_old
+
+def poll_ffwd(pFFwd_old):
+    if pFFwd_old == tm.pFFwd.value():
+        return pFFwd_old
+    glc = cc.glc
+    pFFwd_old = tm.pFFwd.value()
+    if pFFwd_old:
+        print("FFwd RELEASED")
+    else:
+        print("FFwd PRESSED")
+        if tm.power():
+            if tm.screen_state():
+                glc.player.ffwd()
+            else:
+                try:
+                    glc.player.set_volume(glc.player.get_volume() + 1)
+                except AssertionError:
+                    pass
+                print(f"volume set to {glc.player.get_volume()}")
+    return pFFwd_old
+    
+def poll_power(pPower_old): 
+    if pPower_old == tm.pPower.value():
+        poll_power_longpress()
+        return pPower_old
+        
+    glc = cc.glc
+    pPower_old = tm.pPower.value()
+    if not pPower_old:
+        print(f"power state is {tm.power()}")
+        if tm.power() == 1:
+            glc.player.pause()
+            tm.power(0)
+        else:
+            tm.power(1)
+        glc.power_press_time = time.ticks_ms()
+        print("Power PRESSED -- screen")
+    else:
+        print("Power RELEASED")
+    return pPower_old
+
+def poll_power_longpress():
+    if tm.pPower.value():
+        return
+    glc = cc.glc
+    if (time.ticks_ms() - glc.power_press_time) < 1_000:
+        return 
+    print("Power UP -- back to reconfigure")
+    glc.power_press_time = time.ticks_ms()
+    tm.label_soft_knobs("-", "-", "-")
+    tm.clear_screen()
+    tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
+    glc.player.reset_player()
+    tm.power(1)
+    raise utils.ConfigureException()
+        
+def poll_RightSwitch(pYSw_old):
+    if pYSw_old == tm.pYSw.value():
+        return pYSw_old
+    if not pYSw_old:
+        print("Right PRESSED")
+    else:
+        print("Right RELEASED")
+        glc = cc.glc
+        if not glc.HAS_TOKEN:
+            was_playing = glc.player.is_playing()
+            glc.player.pause()
+            glc.HAS_TOKEN = clu.authenticate_user()
+            glc.state = load_state()  # State may have changed in authenticate_user
+            utils.reset()
+            # We need to update the screen here!!
+            if was_playing:
+                print("Restarting gxt.player after authenticating")
+                glc.player.play()
+        else:
+            print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
+            favored = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
+            if favored:
+                print(f"Added {glc.selected_performance} to favorites")
+                # Draw the heart wherever on the screen it belongs
+            else:
+                print(f"Removed {glc.selected_performance} from favorites")
+                # Remove the heart from the screen.
+    return pYSw_old
+
+def poll_LeftSwitch(pMSw_old):
+    if pMSw_old == tm.pMSw.value():
+        return pMSw_old
+    pMSw_old = tm.pMSw.value()
+    if not pMSw_old:
+        tm.screen_off()  # screen off while playing
+        print("Left PRESSED")
+    else:
+        print("Left RELEASED")
+    return pMSw_old
+
+def poll_CenterSwitch(pDSw_old):
+    if pDSw_old == tm.pDSw.value():
+        return pDSw_old
+    pDSw_old = tm.pDSw.value()
+    if not pDSw_old:
+        print("Center PRESSED")
+    else:
+        print("Center RELEASED")
+    return pDSw_old
+
+def poll_knobs(month_old, day_old,year_old):
+    month_new = tm.m.value() 
+    day_new = tm.d.value()
+    year_new = tm.y.value()
+    glc = cc.glc
+
+    if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
+        # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
+        # print(f"month_new: {month_new}")
+        tm.power(1)
+        glc.performance_index = 0
+        force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
+        set_knob_times(tm.m)
+        glc.keyed_composer = glc.composers[month_new]
+        display_keyed_composers(glc.composers, month_new, month_old, force_update)
+        print(f"keyed composer {glc.keyed_composer}")
+        glc.works = None
+        month_old = month_new
+    elif day_old != day_new:  # Genre changes
+        tm.power(1)
+        glc.performance_index = 0
+        if glc.keyed_composer.id == 0: # "Favorites"
+            glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+            if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
+                glc.selected_work = glc.keyed_work
+            else:
+                glc.keyed_work = glc.selected_work 
+                glc.keyed_composer = glc.selected_composer 
+                glc.last_update_time = time.ticks_ms()
+                # tm.m._value = clu.get_key_index(composers, gxt.selected_composer.id)
+                set_knob_times(None) # To ensure that genres will be drawn
+        else:
+            if glc.selected_composer != glc.keyed_composer:
+                glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
+                display_selected_composer(glc.selected_composer, show_loading=True)
+            if glc.state["repertoire"] == "Full":
+                glc.composer_genres = get_cats(glc.selected_composer.id)
+                # print(f"cat_genres is {glc.composer_genres}")
+            else:
+                glc.composer_genres = get_genres(glc.selected_composer.id)
+            #glc.keyed_genre = display_keyed_genres(glc.selected_composer, glc.composer_genres, day_new, day_old)
+            display_keyed_genres(glc.composer_genres, day_new, day_old)
+            print(f"keyed genre is {glc.keyed_genre}")
+            set_knob_times(tm.d) 
+        day_old = day_new
+    elif year_old != year_new:  # Works changes
+        tm.power(1)
+        glc.performance_index = 0
+        if glc.selected_genre.index != glc.keyed_genre.index:
+            glc.selected_genre = glc.keyed_genre
+        if glc.works is None:
+            glc.selected_composer = glc.keyed_composer
+            if glc.selected_composer.id == 0:
+                glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+                if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
+                    glc.selected_work = glc.keyed_work
+                else:
+                    glc.keyed_work = glc.selected_work 
+                    glc.keyed_composer = glc.selected_composer
+                    glc.last_update_time = time.ticks_ms()
+                    set_knob_times(None) # To ensure that genres will be drawn
+            else:
+                display_selected_composer(glc.selected_composer, glc.selected_genre, show_loading=True)
+                if glc.state["repertoire"] == "Full":
+                    glc.composer_genres = get_cats(glc.selected_composer.id)
+                    print(f"cat_genres is {glc.composer_genres}")
+                else:
+                    glc.composer_genres = get_genres(glc.selected_composer.id)
+        t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
+        composer_genre = t[0] if len(t) > 0 else glc.composer_genres[day_old % len(glc.composer_genres)]
+        print(f"composer_genre is {composer_genre}")
+        if glc.state["repertoire"] == "Full":
+            glc.works = _get_cat_works(glc.selected_composer.id, composer_genre)
+        else:
+            glc.works = get_works(glc.selected_composer.id)
+            glc.works = [w for w in glc.works if w.genre == composer_genre.id]
+        glc.keyed_work = display_keyed_works(glc.selected_composer, composer_genre, glc.works, year_new, year_old)
+        print(f"keyed work is {glc.keyed_work}")
+        year_old = year_new
+        set_knob_times(tm.y)
+    return month_old, day_old, year_old
+
+############################################################################################# configure
 def configure(choice):
     assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
 
@@ -274,6 +599,7 @@ def configure(choice):
     state = load_state()
     return
 
+############################################################################################# Actions
 
 def play_pause(player):
     tm.clear_bbox(playpause_bbox)
@@ -289,384 +615,105 @@ def play_pause(player):
     return
 
 
-#def play_keyed_work(keyed_work, player, state):
-def play_keyed_work(mind):
-    print(f"Playing {mind.keyed_work}")
-    mind.tracklist, mind.selected_performance, mind.state = select_performance(mind.keyed_work, mind.player, mind.state)
-    save_state(mind.state)
-    mind.selected_work = mind.keyed_work
+def play_keyed_work():
+    print(f"Playing {glc.keyed_work}")
+    select_performance()
+    save_state(glc.state)
+    glc.selected_work = glc.keyed_work
     # Display the Title
-    tracklist_bbox.y0 = display_title(mind.selected_work)
+    display_title(glc.selected_work) 
+    #tracklist_bbox.y0 = display_title(glc.selected_work)
     # Display the performance information
-    tracklist_bbox.y0 = display_performance_info(mind.keyed_work, mind.selected_performance)
+    display_performance_info()
     # Display the tracklist
-    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
-    print(f"Track titles are {mind.track_titles}")
-    display_tracks(*mind.track_titles)  # This doesn't show the credits.
-    play_pause(mind.player)
-#    return selected_work, track_titles, p_id
-    return mind
+    glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+    print(f"Track titles are {glc.track_titles}")
+    display_tracks(*glc.track_titles)  # This doesn't show the credits.
+    play_pause(glc.player)
+    return 
 
 
-def main_loop(player, state):
-    global tracklist_bbox
-    global HAS_TOKEN
-    HAS_TOKEN = clu.validate_token(clu.access_token())
+############################################################################################# main loop
+
+def main_loop():
+    glc = cc.glc # Without this I get a complaint that local variable accessed before assignment.
+    print(f"main loop. glc is {glc}")
+    glc.HAS_TOKEN = clu.validate_token(clu.access_token())
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
     tm.label_soft_knobs("Composer", "Genre", "Work")
 
-    mind = MusicBoxState(player, state)
-
     clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
-    composer_list = state.get("composer_list", ["GREATS"])
-    composers = sorted(get_composers(composer_list), key=lambda x: x.name)
+    composer_list = glc.state.get("composer_list", ["GREATS"])
+    glc.composers = sorted(get_composers(composer_list), key=lambda x: x.name)
     if len(clu.FAVORITE_WORKS) > 0:
-        composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
-    tape = state["selected_tape"]
+        glc.composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
+    tape = glc.state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
-    mind.keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[1].id))
-    mind.selected_composer = mind.keyed_composer
-    tm.m._value = clu.get_key_index(composers, mind.keyed_composer.id)
+    glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[1].id))
+    glc.selected_composer = glc.keyed_composer
+    tm.m._value = clu.get_key_index(glc.composers, glc.keyed_composer.id)
     month_old = -1  # to force the screen to start at composer.
 
-    if state.get("repertoire", "Must Know") == "Full":
-        composer_genres = get_cats(mind.selected_composer.id)
+    if glc.state.get("repertoire", "Must Know") == "Full":
+        glc.composer_genres = get_cats(glc.selected_composer.id)
     else:
-        composer_genres = get_genres(mind.selected_composer.id)
+        glc.composer_genres = get_genres(glc.selected_composer.id)
     try:
-        tm.d._value = next(i for i, x in enumerate(composer_genres) if x.id == tape.get("genre_id", 1))
+        tm.d._value = next(i for i, x in enumerate(glc.composer_genres) if x.id == tape.get("genre_id", 1))
     except StopIteration:
         tm.d._value = 0
     day_old = tm.d.value()
-    mind.keyed_genre = composer_genres[day_old]
-    mind.selected_genre = mind.keyed_genre
+    glc.keyed_genre = glc.composer_genres[day_old]
+    glc.selected_genre = glc.keyed_genre
 
     year_old = tm.y.value()
-    works = None
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.NONE
+
     poll_count = 0
     print("main loop before while")
     while True:
-        player.audio_pump()
+        glc.player.audio_pump()
         poll_count = poll_count + 1
-        if player.is_playing():
+        if glc.player.is_playing():
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
             tm.power(0)
-        if player.playlist_completed and (len(mind.worklist) > 0):
+        if glc.player.playlist_completed and (len(glc.worklist) > 0):
             print(f"Player is finished, continuing the present worklist")
-            mind.keyed_work = mind.worklist[0]
-            mind.worklist = mind.worklist[1:]  # safer than popping, in case of empty list.
-            clu.increment_worklist_dict(mind.worklist_key)
-            #mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
-            mind = play_keyed_work(mind)
+            glc.keyed_work = glc.worklist[0]
+            glc.worklist = glc.worklist[1:]  # safer than popping, in case of empty list.
+            clu.increment_worklist_dict(glc.worklist_key)
+            play_keyed_work()
 
-        if pPlayPause_old != tm.pPlayPause.value():
-            pPlayPause_old = tm.pPlayPause.value()
-            if not pPlayPause_old:
-                mind.play_pause_press_time = time.ticks_ms()
-                print("PlayPause PRESSED")
-                if (time.ticks_ms() - mind.play_pause_press_time) > 1_000:
-                    continue  # go to top of loop -- This was a long press, so do nothing.
-            else:
-                print("short press of PlayPause -- RELEASED")
-                if player.is_stopped():
-                    state["selected_tape"]["composer_id"] = mind.selected_composer.id
-                    state["selected_tape"]["genre_id"] = mind.selected_genre.id
-                    mind.tracklist, mind.selected_performance, state = select_performance(mind.keyed_work, player, state)
-                    save_state(state)
-                    mind.selected_work = mind.keyed_work
-                    tracklist_bbox.y0 = display_title(mind.selected_work)
-                    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
-                    print(f"Track titles are {mind.track_titles}")
-                    display_tracks(*mind.track_titles)
-                play_pause(player)
-                mind.last_update_time = time.ticks_ms()
+        pSelect_old = poll_select(pSelect_old) 
+        pPlayPause_old = poll_play_pause(pPlayPause_old)
+        pStop_old = poll_stop(pStop_old)
+        pRewind_old = poll_rewind(pRewind_old)
+        pFFwd_old = poll_ffwd(pFFwd_old)
+        pPower_old = poll_power(pPower_old)
 
-        if not tm.pPlayPause.value():  # long press PlayPause
-            if (time.ticks_ms() - mind.play_pause_press_time) > 1_000:
-                print("                 Longpress of playpause")
-                # clu.toggle_favorites(mind.selected_performance)
-                mind.play_pause_press_time = time.ticks_ms() + 1_000
-                pPlayPause_old = tm.pPlayPause.value()
-                print("PlayPause RELEASED")
+        pYSw_old = poll_RightSwitch(pYSw_old)
+        pMSw_old = poll_LeftSwitch(pMSw_old)
+        pDSw_old = poll_CenterSwitch(pDSw_old)
 
-        if pStop_old != tm.pStop.value():
-            pStop_old = tm.pStop.value()
-            if pStop_old:
-                print("Stop RELEASED")
-            else:
-                if tm.power():
-                    tm.screen_on()
-                    if player.stop():
-                        tm.clear_bbox(playpause_bbox)
-                    mind.worklist = mind.worklist[1:]
-                print("Stop PRESSED")
+        tm.m._value = tm.m.value() % len(glc.composers)
+        month_old, day_old, year_old = poll_knobs(month_old, day_old, year_old)
 
-        if pSelect_old != tm.pSelect.value():
-            pSelect_old = tm.pSelect.value()
-            if not pSelect_old:
-                mind.select_press_time = time.ticks_ms()
-                print("Select PRESSED")
-            else:
-                print("short press of select -- released")
-                if (time.ticks_ms() - mind.select_press_time) > 1_000:
-                    continue  # go to top of loop -- This was a long press, so do nothing.
-                player.stop()
-                mind.worklist = []
-                if KNOB_TIME == COMPOSER_KEY_TIME:
-                    print(f"Composer last keyed {mind.keyed_composer}")
-                    mind.selected_composer = mind.keyed_composer
-                    ## Play Composer Radio
-                    # Not yet implemented
-                elif KNOB_TIME == GENRE_KEY_TIME:
-                    print(f"Genre last keyed {mind.keyed_genre}")
-                    ## create playlist of all works in the genre
-                    mind.selected_genre = mind.keyed_genre
-                    mind.worklist_key = None
-                    if state["repertoire"] == "Full":
-                        mind.worklist = get_cat_works(mind.selected_composer.id, mind.selected_genre)
-                        mind.worklist_key = f"{mind.selected_composer.id}_{mind.selected_genre.id}"
-                    else:
-                        mind.worklist = get_works(mind.selected_composer.id)
-                    print(f"worklist is {mind.worklist}")
-                    mind.worklist_index = clu.worklist_dict().get(mind.worklist_key, 0) % max(1, len(mind.worklist))
-                    clu.set_worklist_dict(mind.worklist_key, mind.worklist_index)  # To keep the index within bounds of len(mind.worklist).
-                    mind.keyed_work = mind.worklist[mind.worklist_index]
-                    mind.worklist = mind.worklist[mind.worklist_index + 1 :] + mind.worklist[:mind.worklist_index]  # wrap around
-                elif KNOB_TIME == WORK_KEY_TIME:
-                    print(f"Work last keyed {mind.keyed_work}")
-                else:
-                    print("Unknown last keyed")
+        if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, glc.last_update_time)) > 12_000:
+            print(glc.player)
+            if KNOB_TIME > glc.last_update_time:
+                update_display()
+            glc.last_update_time = time.ticks_ms()
 
-                if mind.keyed_work is None:
-                    # Figure out which work and performance to play
-                    # works = get_works(mind.selected_composer.id)
-                    pass
 
-                state["selected_tape"]["composer_id"] = mind.selected_composer.id
-                state["selected_tape"]["genre_id"] = mind.selected_genre.id
-                #mind.selected_work, mind.track_titles, mind.selected_performance = play_keyed_work(mind.keyed_work, player, state)
-                mind = play_keyed_work(mind)
-                mind.last_update_time = time.ticks_ms()
-                print("Select RELEASED")
-
-        if not tm.pSelect.value():  # long press Select
-            # pSelect_old = tm.pSelect.value()
-            if (time.ticks_ms() - mind.select_press_time) > 1_000:
-                player.pause()
-                print("                 Longpress of select")
-                mind.performance_index = choose_performance(mind.selected_composer, mind.keyed_work)  # take control of knobs
-                if mind.performance_index is not None:
-                    state["selected_tape"]["composer_id"] = mind.selected_composer.id
-                    state["selected_tape"]["genre_id"] = mind.selected_genre.id
-                    mind.tracklist, mind.selected_performance, state = select_performance(mind.keyed_work, player, state, mind.performance_index)
-                    save_state(state)
-                    mind.selected_work = mind.keyed_work
-                    tracklist_bbox.y0 = display_title(mind.selected_work)
-                    tracklist_bbox.y0 = display_performance_info(mind.selected_work, mind.selected_performance)
-                    mind.track_titles = cleanup_track_names([x["subtitle"] for x in mind.tracklist])
-                    print(f"Track titles are {mind.track_titles}")
-                    display_tracks(*mind.track_titles)
-                    play_pause(player)
-                    mind.last_update_time = time.ticks_ms()
-                else:
-                    # behave as if we have twiddled a knob.
-                    # tm.m._value = (tm.m.value() - 1) % len(composers)
-                    set_knob_times(None)
-                time.sleep(2)
-                mind.select_press_time = time.ticks_ms() + 1_000
-                pSelect_old = tm.pSelect.value()
-                print("Select RELEASED")
-
-        if pRewind_old != tm.pRewind.value():
-            pRewind_old = tm.pRewind.value()
-            if pRewind_old:
-                print("Rewind RELEASED")
-            else:
-                print("Rewind PRESSED")
-                if tm.power():
-                    if tm.screen_state():
-                        player.rewind()
-                    else:
-                        player.set_volume(max(player.get_volume() - 1, 5))
-                        print(f"volume set to {player.get_volume()}")
-
-        if pFFwd_old != tm.pFFwd.value():
-            pFFwd_old = tm.pFFwd.value()
-            if pFFwd_old:
-                print("FFwd RELEASED")
-            else:
-                print("FFwd PRESSED")
-                if tm.power():
-                    if tm.screen_state():
-                        player.ffwd()
-                    else:
-                        try:
-                            player.set_volume(player.get_volume() + 1)
-                        except AssertionError:
-                            pass
-                        print(f"volume set to {player.get_volume()}")
-
-        if pPower_old != tm.pPower.value():
-            # Press of Power button
-            pPower_old = tm.pPower.value()
-            if pPower_old:
-                print("Power RELEASED")
-            else:
-                print(f"power state is {tm.power()}")
-                if tm.power() == 1:
-                    player.pause()
-                    tm.power(0)
-                else:
-                    tm.power(1)
-                mind.power_press_time = time.ticks_ms()
-                print("Power PRESSED -- screen")
-
-        if not tm.pPower.value():
-            if (time.ticks_ms() - mind.power_press_time) > 1_000:
-                print("Power UP -- back to reconfigure")
-                mind.power_press_time = time.ticks_ms()
-                tm.label_soft_knobs("-", "-", "-")
-                tm.clear_screen()
-                tm.write("Configure Music Box", 0, 0, pfont_med, tm.WHITE, show_end=-3)
-                player.reset_player()
-                tm.power(1)
-                return
-
-        if pYSw_old != tm.pYSw.value():
-            pYSw_old = tm.pYSw.value()
-            if pYSw_old:
-                print("Right RELEASED")
-                if not HAS_TOKEN:
-                    was_playing = player.is_playing()
-                    player.pause()
-                    HAS_TOKEN = clu.authenticate_user()
-                    state = load_state()  # State may have changed in authenticate_user
-                    utils.reset()
-                    # We need to update the screen here!!
-                    if was_playing:
-                        print("Restarting player after authenticating")
-                        player.play()
-                else:
-                    print(f"mind.selected_performance is {mind.selected_performance}, keyed_work is {mind.keyed_work}")
-                    favored = clu.toggle_favorites(mind.selected_performance if mind.selected_performance is not None else mind.keyed_work)
-                    if favored:
-                        print(f"Added {mind.selected_performance} to favorites")
-                        # Draw the heart wherever on the screen it belongs
-                    else:
-                        print(f"Removed {mind.selected_performance} from favorites")
-                        # Remove the heart from the screen.
-
-            else:
-                print("Right PRESSED")
-
-        if pMSw_old != tm.pMSw.value():
-            pMSw_old = tm.pMSw.value()
-            if pMSw_old:
-                print("Left RELEASED")
-            else:
-                tm.screen_off()  # screen off while playing
-                print("Left PRESSED")
-
-        if pDSw_old != tm.pDSw.value():
-            pDSw_old = tm.pDSw.value()
-            if pDSw_old:
-                print("Center RELEASED")
-            else:
-                print("Center PRESSED")
-
-        month_new = tm.m.value() % len(composers)
-        day_new = tm.d.value()
-        year_new = tm.y.value()
-
-        if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
-            # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
-            # print(f"month_new: {month_new}")
-            tm.power(1)
-            mind.performance_index = 0
-            force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (mind.last_update_time > KNOB_TIME)
-            set_knob_times(tm.m)
-            mind.keyed_composer = composers[month_new]
-            display_keyed_composers(composers, month_new, month_old, force_update)
-            print(f"keyed composer {mind.keyed_composer}")
-            works = None
-            month_old = month_new
-        elif day_old != day_new:  # Genre changes
-            tm.power(1)
-            mind.performance_index = 0
-            if mind.keyed_composer.id == 0: # "Favorites"
-                mind.selected_composer, mind.selected_work, state = handle_favorites(composers, player, state)
-                if mind.selected_work is None: # We bailed from handle favorites without selecting anything.
-                    mind.selected_work = mind.keyed_work
-                else:
-                    mind.keyed_work = mind.selected_work 
-                    mind.keyed_composer = mind.selected_composer 
-                    mind.last_update_time = time.ticks_ms()
-                    # tm.m._value = clu.get_key_index(composers, mind.selected_composer.id)
-                    set_knob_times(None) # To ensure that genres will be drawn
-            else:
-                if mind.selected_composer != mind.keyed_composer:
-                    mind.selected_composer = mind.keyed_composer  # we have selected the composer by changing the category
-                    display_selected_composer(mind.selected_composer, show_loading=True)
-                if state["repertoire"] == "Full":
-                    composer_genres = get_cats(mind.selected_composer.id)
-                    # print(f"cat_genres is {composer_genres}")
-                else:
-                    composer_genres = get_genres(mind.selected_composer.id)
-                mind.keyed_genre = display_keyed_genres(mind.selected_composer, composer_genres, day_new, day_old)
-                print(f"keyed genre is {mind.keyed_genre}")
-                set_knob_times(tm.d) 
-            day_old = day_new
-
-        elif year_old != year_new:  # Works changes
-            tm.power(1)
-            mind.performance_index = 0
-            if mind.selected_genre.index != mind.keyed_genre.index:
-                mind.selected_genre = mind.keyed_genre
-            if works is None:
-                mind.selected_composer = mind.keyed_composer
-                if mind.selected_composer.id == 0:
-                    mind.selected_composer, mind.selected_work, state = handle_favorites(composers, player, state)
-                    if mind.selected_work is None: # We bailed from handle favorites without selecting anything.
-                        mind.selected_work = mind.keyed_work
-                    else:
-                        mind.keyed_work = mind.selected_work 
-                        mind.keyed_composer = mind.selected_composer
-                        mind.last_update_time = time.ticks_ms()
-                        set_knob_times(None) # To ensure that genres will be drawn
-                else:
-                    display_selected_composer(mind.selected_composer, mind.selected_genre, show_loading=True)
-                    if state["repertoire"] == "Full":
-                        composer_genres = get_cats(mind.selected_composer.id)
-                        print(f"cat_genres is {composer_genres}")
-                    else:
-                        composer_genres = get_genres(mind.selected_composer.id)
-            t = [g for g in composer_genres if g.id == mind.keyed_genre.id]
-            composer_genre = t[0] if len(t) > 0 else composer_genres[day_old % len(composer_genres)]
-            print(f"composer_genre is {composer_genre}")
-            if state["repertoire"] == "Full":
-                works = get_cat_works(mind.selected_composer.id, composer_genre)
-            else:
-                works = get_works(mind.selected_composer.id)
-                works = [w for w in works if w.genre == composer_genre.id]
-            mind.keyed_work = display_keyed_works(mind.selected_composer, composer_genre, works, year_new, year_old)
-            print(f"keyed work is {mind.keyed_work}")
-            year_old = year_new
-            set_knob_times(tm.y)
-
-        if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, mind.last_update_time)) > 12_000:
-            print(player)
-            if KNOB_TIME > mind.last_update_time:
-                update_display(player, mind.selected_composer, mind.selected_work, mind.selected_performance)
-            mind.last_update_time = time.ticks_ms()
-
+############################################################################################# favorites
 
 def handle_favorites(composers, player, state):
-    global tracklist_bbox
     print("handling favorites")
     tm.clear_screen()
     tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
@@ -678,10 +725,10 @@ def handle_favorites(composers, player, state):
         state["selected_tape"]["composer_id"] = selected_composer.id
         state["selected_tape"]["genre_id"] = 1  # Not sure what to do here
         selected_work = Work(name=selection["w_title"], id=int(selection["w_id"]))
-        tracklist, selected_performance, state = select_performance(selected_work, player, state, p_id=selection["kv"])
+        tracklist, selected_performance, state = _select_performance(selected_work, player, state, p_id=selection["kv"])
         display_selected_composer(selected_composer, show_loading=True)
-        tracklist_bbox.y0 = display_title(selected_work)
-        tracklist_bbox.y0 = display_performance_info(selected_work, selected_performance)
+        display_title(selected_work)
+        _display_performance_info(selected_work, selected_performance)
         track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
         print(f"Track titles are {track_titles}")
         display_tracks(*track_titles)
@@ -691,289 +738,6 @@ def handle_favorites(composers, player, state):
         selected_composer = composers[1]  # Avoid favorites as a composer
         selected_work = None
     return selected_composer, selected_work, state
-
-
-def update_display(player, composer, work, p_id):
-    global tracklist_bbox
-
-    print(f"Updating display for {composer}, {work}, {p_id}")
-    tm.clear_bbox(playpause_bbox)
-    if player.is_stopped():
-        pass
-    elif player.is_playing():
-        display_selected_composer(composer)
-        tracklist_bbox.y0 = display_title(work)
-        tracklist_bbox.y0 = display_performance_info(work.id, p_id)
-        display_tracks(*player.remaining_track_names())
-        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
-    elif player.is_paused():
-        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
-
-
-def display_title(work):
-    tm.clear_bbox(work_bbox)
-    title = work.name
-    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, tm.YELLOW, show_end=-3, indent=2)
-    if work.id in clu.FAVORITE_WORKS:
-        tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, tm.RED)
-    return work_bbox.y0 + len(msg.split("\n")) * pfont_small.HEIGHT
-
-
-def cleanup_track_names(track_names):
-    # Define a regular expression pattern to match unwanted prefixes
-    pattern = re.compile(r"^(No\.?\s*|Track\s*|#)\d+\s*[-:.,]*\s*")
-
-    track_names = utils.remove_common_start(track_names)
-    track_names = [s.lstrip(" .,0123456789") for s in track_names]
-    track_names = utils.remove_common_start(track_names)
-    track_names = [pattern.sub("", s) for s in track_names]
-    for i, name in enumerate(track_names):
-        if len(name) == 0:
-            track_names[i] = f"Track {i+1}"
-    return track_names
-
-
-def get_this_performance(work_id, p_id):
-    performances = get_performances(work_id)
-    this_perf = None
-    for perf in performances:
-        if perf["p_id"] == p_id:
-            this_perf = perf
-            break
-    return this_perf
-
-
-def display_performance_info(work_id, p_id):
-    # Display performance information for the selected work above the tracklist
-    global tracklist_bbox
-    if p_id is None:
-        return tracklist_bbox.y0
-    y0 = tracklist_bbox.y0
-    this_perf = get_this_performance(work_id, p_id)
-    if this_perf is None:
-        return tracklist_bbox.y0
-    print(f"Performance is {this_perf}")
-    for prj in this_perf.get("performers", {"type": "Unknown", "name": "Unknown"}):
-        msg = tm.write(f"{prj["name"]}", 0, y0, color=tm.PURPLE, font=pfont_small, show_end=1)
-        y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-    tracklist_bbox.y0 = y0
-    return tracklist_bbox.y0
-
-
-def display_tracks(*track_names):
-    print(f"in display_tracks. Track names are {track_names[:3]}...")
-    if len(track_names) == 0:
-        return
-    tm.clear_to_bottom(0, tracklist_bbox.y0)
-    lines_written = 0
-    last_valid_str = 0
-    in_credits = False
-
-    for i in range(len(track_names)):
-        if len(track_names[i]) > 0:
-            last_valid_str = i
-    i = 0
-    y0 = tracklist_bbox.y0
-    text_height = pfont_small.HEIGHT
-    max_lines = (tm.SCREEN_HEIGHT - y0) // text_height
-    while (lines_written < max_lines) and i < len(track_names):
-        name = track_names[i]
-        name = name.strip("-> ")  # remove trailing spaces and >'s
-        if i <= last_valid_str and len(name) == 0:
-            name = "Unknown"
-        if name == "..credits..":
-            name = " - -" * 20
-            in_credits = True
-        name = utils.capitalize(name.lower())
-        y0 = tracklist_bbox.y0 + (text_height * lines_written)
-        show_end = -2 if i == 0 else 0
-        color = tm.WHITE if i == 0 else tm.tracklist_color if not in_credits else tm.PURPLE
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
-        lines_written += len(msg.split("\n"))
-        i = i + 1
-    if not HAS_TOKEN:
-        print("Writing Subscription Note")
-        # This message informs the user to press the right knob to access full tracks, likely requiring authentication or subscription.
-        message = "Press Right knob for full tracks"
-        n_lines = tm.add_line_breaks(message, 0, pfont_small, 2).count("\n") + 1
-        y1 = tm.SCREEN_HEIGHT - n_lines * (text_height + 1)
-        tm.clear_to_bottom(0, y1)
-        tm.write(message, 0, y1, pfont_small, tm.YELLOW, show_end=-2)
-    return
-
-
-def display_keyed_title(keyed_title, color=tm.PURPLE):
-    # print(f"in display_keyed_title {keyed_title}")
-    tm.clear_bbox(tm.title_bbox)
-    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, show_end=-2)
-
-
-def display_keyed_works(composer, composer_genre, works, index, prev_index):
-    # Set up the display
-    # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}")
-    names = [w.name for w in works]
-    index = index % len(names)
-    prev_index = prev_index % len(names)
-    nlines, npixels = divmod(tm.SCREEN_HEIGHT - (2 * pfont_med.HEIGHT), pfont_small.HEIGHT)
-    nlines = min(len(names), nlines)
-    page_start = nlines * (index // nlines)
-    prev_page_start = nlines * (prev_index // nlines)
-    draw_all = (KNOB_TIME > WORK_KEY_TIME) or page_start != prev_page_start
-
-    # Write the Composer and Genre
-    if draw_all:
-        display_selected_composer(composer, composer_genre)
-    y0 = 2 * pfont_med.HEIGHT
-
-    # Write the works
-    for i in range(nlines):
-        array_index = (page_start + i) % len(names)
-        keyed_work = array_index == index
-        prev_work = array_index == prev_index
-        text = (">" if keyed_work else "") + names[(page_start + i) % len(names)]
-        text_color = tm.WHITE if keyed_work else tm.PURPLE
-        if (keyed_work or prev_work) or draw_all:
-            if prev_work:
-                tm.clear_area(selection_bbox.x0, y0 + i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
-            text = tm.write(text, 0, y0 + i * pfont_small.HEIGHT, color=text_color, font=pfont_small, show_end=1)
-        if works[array_index].id in clu.FAVORITE_WORKS:
-            tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, y0 + i * pfont_small.HEIGHT, tm.RED)
-    return works[index]
-
-
-def display_selected_composer(composer, composer_genre=None, show_loading=False):
-    tm.clear_bbox(selection_bbox)
-    y0 = 0
-    tm.write(composer.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
-    y0 = y0 + pfont_med.HEIGHT
-    if composer_genre is not None:
-        tm.write(composer_genre.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
-        y0 = y0 + pfont_med.HEIGHT
-    if show_loading:
-        tm.write("loading from classicalarchives.com...", 0, y0, color=tm.WHITE, font=pfont_small, show_end=-3)
-
-
-def display_keyed_genres(composer, composer_genres, index, prev_index):
-    genres = [x.name for x in composer_genres]
-    nlines = min(len(genres), (tm.SCREEN_HEIGHT - pfont_med.HEIGHT) // pfont_small.HEIGHT)
-    y0 = pfont_med.HEIGHT
-    index = index % len(genres)
-    prev_index = prev_index % len(genres)
-    start_index = nlines * (index // nlines)
-    prev_start_index = nlines * (prev_index // nlines)
-    draw_all = (KNOB_TIME > GENRE_KEY_TIME) or start_index != prev_start_index
-    print( f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})")
-    if draw_all:
-        display_selected_composer(composer)
-    for i in range(nlines):
-        array_index = (start_index + i) % len(genres)
-        keyed_genre = array_index == index
-        prev_genre = array_index == prev_index
-        if (keyed_genre or prev_genre) or draw_all:
-            text = (">" if keyed_genre else "") + genres[(start_index + i) % len(genres)]
-            text_color = tm.WHITE if keyed_genre else tm.PURPLE
-            if composer_genres[array_index].nworks < 1:  # Empty categories
-                text_color = tm.YELLOW
-            if prev_genre:
-                tm.clear_area(0, y0 + i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
-            tm.write(
-                text,
-                selection_bbox.x0,
-                y0 + i * pfont_small.HEIGHT,
-                color=text_color,
-                font=pfont_small,
-                show_end=-2 if keyed_genre else 1,
-            )
-    return composer_genres[index]
-
-
-def display_keyed_composers(composers, index, prev_index, force_update=False):
-    n_comp = len(composers)
-    nlines = min(n_comp, tm.SCREEN_HEIGHT // pfont_small.HEIGHT)
-    index = index % n_comp
-    prev_index = prev_index % n_comp
-    start_index = nlines * (index // nlines)
-    prev_start_index = nlines * (prev_index // nlines)
-    draw_all = force_update or start_index != prev_start_index
-    if draw_all:
-        tm.clear_bbox(selection_bbox)
-    for i in range(nlines):
-        array_index = (start_index + i) % n_comp
-        keyed_composer = array_index == index
-        prev_composer = array_index == prev_index
-        text = (">" if keyed_composer else "") + composers[(start_index + i) % n_comp].name
-        text_color = tm.WHITE if keyed_composer else tm.PURPLE
-        if (keyed_composer or prev_composer) or draw_all:
-            if prev_composer:
-                tm.clear_area(selection_bbox.x0, i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
-            tm.write(text, selection_bbox.x0, i * pfont_small.HEIGHT, color=text_color, font=pfont_small, show_end=1)
-    return
-
-
-def get_performance_info(perf):
-    pr = perf.get("performers", {"type": "Unknown", "name": "Unknown"})
-    label = perf.get("label", "Unknown")
-    n_tracks = perf.get("trk", 0)
-    dur = int(perf.get("dur", 0))
-    duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
-    date = perf.get("release_date", "1900-01-01")
-    return pr, label, n_tracks, duration, date
-
-
-def display_performance_choices(composer, work, performances, index):
-    # Screen Layout:
-    # Composer (medium font)
-    # Work Title (medium font)
-    # Release Date, Ntracks, Duration
-    # performance titles (small font; up to 3 lines for current, 1 line for rest)
-    #  ...
-    # instructions to exit (small font)
-
-    tm.clear_screen()
-    display_selected_composer(composer)
-    y0 = display_title(work)
-    i = 0
-    while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
-        indx = (index + i) % len(performances)
-        pr, label, n_tracks, duration, date = get_performance_info(performances[indx])
-        ind = f"{indx+1}/{len(performances)}"
-        color = tm.WHITE if i == 0 else tm.tracklist_color
-        tm.write(ind, 0, y0, color=color, font=pfont_small, show_end=1)
-        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{duration} {n_tracks}trk")
-        tm.write(f"{duration} {n_tracks}trk", x0, y0, color=color, font=pfont_small, show_end=1)
-        y0 = y0 + pfont_small.HEIGHT
-        for prj in pr[:2]:
-            ptype = prj["type"].replace("Chorus/", "")
-            msg = tm.write(f"{ptype}: {prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
-            y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-        tm.write(label, 0, y0, color=color, font=pfont_small, show_end=1)
-        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"r:{date}")
-        tm.write(f"r:{date}", x0, y0, color=color, font=pfont_small)
-        y0 = y0 + pfont_small.HEIGHT
-        i = i + 1
-    return i
-
-
-def show_composers(composer_list):
-    message = "Loading Composers"
-    print(f"{composer_list}")
-    print(message)
-    tm.clear_screen()
-    tm.write(message, 0, 0, pfont_med, tm.YELLOW)
-    y0 = pfont_med.HEIGHT
-
-    for composer in composer_list:
-        if isinstance(composer, int):
-            composer_name = get_composers(abs(composer))[0].name
-            if composer < 0:
-                composer_name = f"-{composer_name}"
-        else:
-            composer_name = composer
-        if y0 > tm.SCREEN_HEIGHT - pfont_small.HEIGHT:
-            break
-        tm.write(f"{composer_name}", 0, y0, pfont_small, color=tm.WHITE)
-        y0 += pfont_small.HEIGHT
-    time.sleep(0.5)
 
 
 def select_from_favorites(favorites):
@@ -1030,6 +794,8 @@ def select_from_favorites(favorites):
     return retval
 
 
+############################################################################################# display fns
+
 def display_favorite_choices(index, favorites):
     # Screen Layout:
     # "Favorites" (med font)
@@ -1038,6 +804,9 @@ def display_favorite_choices(index, favorites):
     # performer info (small font; up to 2 lines)
     #  ...
     # instructions to exit (small font)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.FAVORITES
+    #print(f"display_favorite_choices: {glc.prev_SCREEN} -> {glc.SCREEN}")
     y0 = pfont_med.HEIGHT
     tm.clear_to_bottom(0, y0)
     i = 0
@@ -1060,16 +829,316 @@ def display_favorite_choices(index, favorites):
     return i
 
 
+def update_display():
+    glc = cc.glc
+    print(f"Updating display for {glc.selected_composer}, {glc.selected_work}, {glc.selected_performance}")
+    tm.clear_bbox(playpause_bbox)
+    if glc.player.is_stopped():
+        pass
+    elif glc.player.is_playing():
+        display_selected_composer(glc.selected_composer)
+        display_title(glc.selected_work)
+        display_performance_info()
+        display_tracks(*glc.player.remaining_track_names())
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
+    elif glc.player.is_paused():
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
+
+
+def display_title(work):
+    tm.clear_bbox(work_bbox)
+    title = work.name
+    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, tm.YELLOW, show_end=-3, indent=2)
+    if work.id in clu.FAVORITE_WORKS:
+        tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, tm.RED)
+    glc.ycursor = work_bbox.y0 + len(msg.split("\n")) * pfont_small.HEIGHT
+    return 
+
+
+
+def display_performance_info():
+    #tracklist_bbox.y0 = display_performance_info(glc.selected_work, glc.selected_performance)
+    _display_performance_info(glc.selected_work, glc.selected_performance)
+    return
+
+def _display_performance_info(work_id, p_id):
+    # Display performance information for the selected work above the tracklist
+    print(f"in display_performance_info. Work_id is {work_id}, p_id is {p_id}")
+    if p_id is None:
+        return 
+    y0 = glc.ycursor
+    this_perf = get_this_performance(work_id, p_id)
+    if this_perf is None:
+        return 
+    print(f"Performance is {this_perf}")
+    for prj in this_perf.get("performers", {"type": "Unknown", "name": "Unknown"}):
+        msg = tm.write(f"{prj["name"]}", 0, y0, color=tm.PURPLE, font=pfont_small, show_end=1)
+        y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+    glc.ycursor = y0
+    return 
+
+
+def display_tracks(*track_names):
+    print(f"in display_tracks. Track names are {track_names[:3]}...")
+    if len(track_names) == 0:
+        return
+    tm.clear_to_bottom(0, tracklist_bbox.y0)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.TRACKLIST
+    #print(f"display_tracks: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    lines_written = 0
+    last_valid_str = 0
+    in_credits = False
+
+    for i in range(len(track_names)):
+        if len(track_names[i]) > 0:
+            last_valid_str = i
+    i = 0
+    y0 = tracklist_bbox.y0
+    text_height = pfont_small.HEIGHT
+    max_lines = (tm.SCREEN_HEIGHT - y0) // text_height
+    while (lines_written < max_lines) and i < len(track_names):
+        name = track_names[i]
+        name = name.strip("-> ")  # remove trailing spaces and >'s
+        if i <= last_valid_str and len(name) == 0:
+            name = "Unknown"
+        if name == "..credits..":
+            name = " - -" * 20
+            in_credits = True
+        name = utils.capitalize(name.lower())
+        y0 = tracklist_bbox.y0 + (text_height * lines_written)
+        show_end = -2 if i == 0 else 0
+        color = tm.WHITE if i == 0 else tm.tracklist_color if not in_credits else tm.PURPLE
+        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
+        lines_written += len(msg.split("\n"))
+        i = i + 1
+    if not glc.HAS_TOKEN:
+        print("Writing Subscription Note")
+        # This message informs the user to press the right knob to access full tracks, likely requiring authentication or subscription.
+        message = "Press Right knob for full tracks"
+        n_lines = tm.add_line_breaks(message, 0, pfont_small, 2).count("\n") + 1
+        y1 = tm.SCREEN_HEIGHT - n_lines * (text_height + 1)
+        tm.clear_to_bottom(0, y1)
+        tm.write(message, 0, y1, pfont_small, tm.YELLOW, show_end=-2)
+    return
+
+
+def display_keyed_title(keyed_title, color=tm.PURPLE):
+    # print(f"in display_keyed_title {keyed_title}")
+    tm.clear_bbox(tm.title_bbox)
+    tm.write(keyed_title, tm.title_bbox.x0, tm.title_bbox.y0, color=color, font=pfont_small, show_end=-2)
+
+
+def display_keyed_works(composer, composer_genre, works, index, prev_index):
+    # Set up the display
+    # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}")
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.WORK
+    #print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    names = [w.name for w in works]
+    index = index % len(names)
+    prev_index = prev_index % len(names)
+    nlines, npixels = divmod(tm.SCREEN_HEIGHT - (2 * pfont_med.HEIGHT), pfont_small.HEIGHT)
+    nlines = min(len(names), nlines)
+    page_start = nlines * (index // nlines)
+    prev_page_start = nlines * (prev_index // nlines)
+    #draw_all = (KNOB_TIME > WORK_KEY_TIME) or page_start != prev_page_start
+    draw_all = (glc.SCREEN!=glc.prev_SCREEN) or page_start != prev_page_start
+
+    # Write the Composer and Genre
+    if draw_all:
+        display_selected_composer(composer, composer_genre)
+    y0 = 2 * pfont_med.HEIGHT
+
+    # Write the works
+    for i in range(nlines):
+        array_index = (page_start + i) % len(names)
+        keyed_work = array_index == index
+        prev_work = array_index == prev_index
+        text = (">" if keyed_work else "") + names[(page_start + i) % len(names)]
+        text_color = tm.WHITE if keyed_work else tm.PURPLE
+        if (keyed_work or prev_work) or draw_all:
+            if prev_work:
+                tm.clear_area(selection_bbox.x0, y0 + i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
+            text = tm.write(text, 0, y0 + i * pfont_small.HEIGHT, color=text_color, font=pfont_small, show_end=1)
+        if works[array_index].id in clu.FAVORITE_WORKS:
+            tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, y0 + i * pfont_small.HEIGHT, tm.RED)
+    return works[index]
+
+
+def display_selected_composer(composer, composer_genre=None, show_loading=False):
+    tm.clear_bbox(selection_bbox)
+    y0 = 0
+    tm.write(composer.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
+    y0 = y0 + pfont_med.HEIGHT
+    if composer_genre is not None:
+        tm.write(composer_genre.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
+        y0 = y0 + pfont_med.HEIGHT
+    if show_loading:
+        tm.write("loading from classicalarchives.com...", 0, y0, color=tm.WHITE, font=pfont_small, show_end=-3)
+
+
+def display_keyed_genres(composer_genres, index, prev_index):
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.GENRE
+    #print(f"display_keyed_genres: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    genres = [x.name for x in composer_genres]
+    nlines = min(len(genres), (tm.SCREEN_HEIGHT - pfont_med.HEIGHT) // pfont_small.HEIGHT)
+    y0 = pfont_med.HEIGHT
+    index = index % len(genres)
+    prev_index = prev_index % len(genres)
+    start_index = nlines * (index // nlines)
+    prev_start_index = nlines * (prev_index // nlines)
+    #draw_all = (KNOB_TIME > GENRE_KEY_TIME) or start_index != prev_start_index
+    draw_all = (glc.SCREEN!=glc.prev_SCREEN) or start_index != prev_start_index
+    print( f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})")
+    if draw_all:
+        display_selected_composer(glc.selected_composer)
+    for i in range(nlines):
+        array_index = (start_index + i) % len(genres)
+        keyed_genre = array_index == index
+        prev_genre = array_index == prev_index
+        if (keyed_genre or prev_genre) or draw_all:
+            text = (">" if keyed_genre else "") + genres[(start_index + i) % len(genres)]
+            text_color = tm.WHITE if keyed_genre else tm.PURPLE
+            if composer_genres[array_index].nworks < 1:  # Empty categories
+                text_color = tm.YELLOW
+            if prev_genre:
+                tm.clear_area(0, y0 + i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
+            tm.write(
+                text,
+                selection_bbox.x0,
+                y0 + i * pfont_small.HEIGHT,
+                color=text_color,
+                font=pfont_small,
+                show_end=-2 if keyed_genre else 1,
+            )
+    glc.keyed_genre = composer_genres[index]
+    return
+
+def display_keyed_composers(composers, index, prev_index, force_update=False):
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.COMPOSER
+    #print(f"display_keyed_composers: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    n_comp = len(composers)
+    nlines = min(n_comp, tm.SCREEN_HEIGHT // pfont_small.HEIGHT)
+    index = index % n_comp
+    prev_index = prev_index % n_comp
+    start_index = nlines * (index // nlines)
+    prev_start_index = nlines * (prev_index // nlines)
+    #draw_all = force_update or start_index != prev_start_index
+    draw_all = force_update or (glc.SCREEN!=glc.prev_SCREEN) or start_index != prev_start_index
+    if draw_all:
+        tm.clear_bbox(selection_bbox)
+    for i in range(nlines):
+        array_index = (start_index + i) % n_comp
+        keyed_composer = array_index == index
+        prev_composer = array_index == prev_index
+        text = (">" if keyed_composer else "") + composers[(start_index + i) % n_comp].name
+        text_color = tm.WHITE if keyed_composer else tm.PURPLE
+        if (keyed_composer or prev_composer) or draw_all:
+            if prev_composer:
+                tm.clear_area(selection_bbox.x0, i * pfont_small.HEIGHT, tm.SCREEN_WIDTH, pfont_small.HEIGHT)
+            tm.write(text, selection_bbox.x0, i * pfont_small.HEIGHT, color=text_color, font=pfont_small, show_end=1)
+    return
+
+
+def display_performance_choices(composer, work, performances, index):
+    # Screen Layout:
+    # Composer (medium font)
+    # Work Title (medium font)
+    # Release Date, Ntracks, Duration
+    # performance titles (small font; up to 3 lines for current, 1 line for rest)
+    #  ...
+    # instructions to exit (small font)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.PERFORMANCE
+    #print(f"display_performance_choices: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    tm.clear_screen()
+    display_selected_composer(composer)
+    display_title(work)
+    y0 = glc.ycursor
+    i = 0
+    while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
+        indx = (index + i) % len(performances)
+        pr, label, n_tracks, duration, date = get_performance_info(performances[indx])
+        ind = f"{indx+1}/{len(performances)}"
+        color = tm.WHITE if i == 0 else tm.tracklist_color
+        tm.write(ind, 0, y0, color=color, font=pfont_small, show_end=1)
+        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{duration} {n_tracks}trk")
+        tm.write(f"{duration} {n_tracks}trk", x0, y0, color=color, font=pfont_small, show_end=1)
+        y0 = y0 + pfont_small.HEIGHT
+        for prj in pr[:2]:
+            ptype = prj["type"].replace("Chorus/", "")
+            msg = tm.write(f"{ptype}: {prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
+            y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+        tm.write(label, 0, y0, color=color, font=pfont_small, show_end=1)
+        x0 = tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"r:{date}")
+        tm.write(f"r:{date}", x0, y0, color=color, font=pfont_small)
+        y0 = y0 + pfont_small.HEIGHT
+        i = i + 1
+    return i
+
+
+def show_composers(composer_list):
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.OTHER
+    #print(f"show_composers: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    message = "Loading Composers"
+    print(f"{composer_list}")
+    print(message)
+    tm.clear_screen()
+    tm.write(message, 0, 0, pfont_med, tm.YELLOW)
+    y0 = pfont_med.HEIGHT
+
+    for composer in composer_list:
+        if isinstance(composer, int):
+            composer_name = get_composers(abs(composer))[0].name
+            if composer < 0:
+                composer_name = f"-{composer_name}"
+        else:
+            composer_name = composer
+        if y0 > tm.SCREEN_HEIGHT - pfont_small.HEIGHT:
+            break
+        tm.write(f"{composer_name}", 0, y0, pfont_small, color=tm.WHITE)
+        y0 += pfont_small.HEIGHT
+    time.sleep(0.5)
+
+############################################################################################# performance related fns
+
+def get_this_performance(work_id, p_id):
+    performances = get_performances(work_id)
+    this_perf = None
+    for perf in performances:
+        if perf["p_id"] == p_id:
+            this_perf = perf
+            break
+    return this_perf
+
+def get_performance_info(perf):
+    pr = perf.get("performers", {"type": "Unknown", "name": "Unknown"})
+    label = perf.get("label", "Unknown")
+    n_tracks = perf.get("trk", 0)
+    dur = int(perf.get("dur", 0))
+    duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
+    date = perf.get("release_date", "1900-01-01")
+    return pr, label, n_tracks, duration, date
+
+
 def choose_performance(composer, keyed_work):
     # Hijack the knobs for navigation purposes
     # Show a set of performance options on the screen.
     # Scroll through performance options based on the knobs.
     # Poll for select, play, or stop buttons, to select a particular performance.
     # Reset the knobs if necessary.
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.OTHER
+    #print(f"choose_performance: {glc.prev_SCREEN} -> {glc.SCREEN}")
     tm.clear_screen()
     tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
     display_selected_composer(composer)
-    y0 = display_title(keyed_work)
+    display_title(keyed_work)
+    y0 = glc.ycursor
     tm.write(" loading performances from classicalarchives.com ...", 0, y0, pfont_small, show_end=-3)
 
     performances = get_performances(keyed_work)
@@ -1114,11 +1183,15 @@ def choose_performance(composer, keyed_work):
     return retval
 
 
-def select_performance(keyed_work, player, state, ntape=None, p_id=None):
+def select_performance(ntape=None, p_id=None):
+    glc.tracklist, glc.selected_performance, glc.state = _select_performance(glc.keyed_work, glc.player, glc.state, ntape, p_id)
+
+    
+def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
     print(f"selecting performance of keyed_work {keyed_work}")
-    tracklist_bbox.y0 = display_title(keyed_work)
-    tm.clear_to_bottom(0, tracklist_bbox.y0)
-    tm.write("loading...", 0, tracklist_bbox.y0, pfont_small, tm.WHITE)
+    display_title(keyed_work)
+    tm.clear_to_bottom(0, glc.ycursor)
+    tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.pause()  # was stop()
@@ -1131,7 +1204,7 @@ def select_performance(keyed_work, player, state, ntape=None, p_id=None):
         perf = get_performances(keyed_work)[ntape]
         p_id = perf["p_id"]
     perf = get_this_performance(keyed_work.id, p_id)
-    print(f"select_performance: Performance is {perf}")
+    print(f"_select_performance: Performance is {perf}")
     if perf:
         pr, label, n_tracks, duration, rel_date = get_performance_info(perf)
         additional_performers = [f'{prj["type"]}: {prj["name"]}' for prj in pr[2:]]
@@ -1143,8 +1216,8 @@ def select_performance(keyed_work, player, state, ntape=None, p_id=None):
     else:
         credits = []
     print(f"performance id is {p_id}")
-    tracklist_bbox.y0 = display_performance_info(keyed_work, p_id)
-    tm.write("loading tracks...", 0, tracklist_bbox.y0, pfont_small, tm.WHITE, show_end=-3)
+    _display_performance_info(keyed_work, p_id)
+    tm.write("loading tracks...", 0, glc.ycursor, pfont_small, tm.WHITE, show_end=-3)
     state["selected_tape"]["work_id"] = keyed_work.id
     state["selected_tape"]["p_id"] = p_id
     # Display the performance information
@@ -1158,20 +1231,24 @@ def select_performance(keyed_work, player, state, ntape=None, p_id=None):
     return tracklist, p_id, state
 
 
+############################################################################################# main
 
 def run():
     """run the livemusic controls"""
     try:
         wifi = utils.connect_wifi()
-        state = load_state()
-        print(f"state is {state}")  # Temporary
-        composer_list = state["composer_list"]
+        glc.state = load_state()
+        print(f"state is {cc.glc.state}")  # Temporary
+        composer_list = cc.glc.state["composer_list"]
         show_composers(composer_list)
         clu.initialize_knobs()
 
-        player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
-        main_loop(player, state)
+        glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
+        glc.ycursor = pfont_med.HEIGHT + 3 * pfont_small.HEIGHT
+        main_loop()
 
+    except utils.ConfigureException as e:
+        return -1
     except Exception as e:
         if "Firmware" in str(e):
             raise utils.FirmwareUpdateRequiredException("AAC_Decoder not available in this firmware")
