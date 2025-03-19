@@ -291,9 +291,9 @@ def poll_select(pSelect_old):
         glc.select_press_time = time.ticks_ms()
         print("Select PRESSED")
     else:
-        print("short press of select -- released")
         if (time.ticks_ms() - glc.select_press_time) < 1_000:
             return pSelect_old # This was a long press, so do nothing.
+        print("short press of select -- released")
         glc.player.stop()
         glc.worklist = []
         if KNOB_TIME == COMPOSER_KEY_TIME:
@@ -455,6 +455,138 @@ def poll_power_longpress():
     glc.player.reset_player()
     tm.power(1)
     raise utils.ConfigureException()
+        
+def poll_RightSwitch(pYSw_old):
+    if pYSw_old == tm.pYSw.value():
+        return pYSw_old
+    if not pYSw_old:
+        print("Right PRESSED")
+    else:
+        print("Right RELEASED")
+        glc = cc.glc
+        if not glc.HAS_TOKEN:
+            was_playing = glc.player.is_playing()
+            glc.player.pause()
+            glc.HAS_TOKEN = clu.authenticate_user()
+            glc.state = load_state()  # State may have changed in authenticate_user
+            utils.reset()
+            # We need to update the screen here!!
+            if was_playing:
+                print("Restarting gxt.player after authenticating")
+                glc.player.play()
+        else:
+            print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
+            favored = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
+            if favored:
+                print(f"Added {glc.selected_performance} to favorites")
+                # Draw the heart wherever on the screen it belongs
+            else:
+                print(f"Removed {glc.selected_performance} from favorites")
+                # Remove the heart from the screen.
+    return pYSw_old
+
+def poll_LeftSwitch(pMSw_old):
+    if pMSw_old == tm.pMSw.value():
+        return pMSw_old
+    pMSw_old = tm.pMSw.value()
+    if not pMSw_old:
+        tm.screen_off()  # screen off while playing
+        print("Left PRESSED")
+    else:
+        print("Left RELEASED")
+    return pMSw_old
+
+def poll_CenterSwitch(pDSw_old):
+    if pDSw_old == tm.pDSw.value():
+        return pDSw_old
+    pDSw_old = tm.pDSw.value()
+    if not pDSw_old:
+        print("Center PRESSED")
+    else:
+        print("Center RELEASED")
+    return pDSw_old
+
+def poll_knobs(month_old, day_old,year_old):
+    month_new = tm.m.value() 
+    day_new = tm.d.value()
+    year_new = tm.y.value()
+    glc = cc.glc
+
+    if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
+        # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
+        # print(f"month_new: {month_new}")
+        tm.power(1)
+        glc.performance_index = 0
+        force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
+        set_knob_times(tm.m)
+        glc.keyed_composer = glc.composers[month_new]
+        display_keyed_composers(glc.composers, month_new, month_old, force_update)
+        print(f"keyed composer {glc.keyed_composer}")
+        glc.works = None
+        month_old = month_new
+    elif day_old != day_new:  # Genre changes
+        tm.power(1)
+        glc.performance_index = 0
+        if glc.keyed_composer.id == 0: # "Favorites"
+            glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+            if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
+                glc.selected_work = glc.keyed_work
+            else:
+                glc.keyed_work = glc.selected_work 
+                glc.keyed_composer = glc.selected_composer 
+                glc.last_update_time = time.ticks_ms()
+                # tm.m._value = clu.get_key_index(composers, gxt.selected_composer.id)
+                set_knob_times(None) # To ensure that genres will be drawn
+        else:
+            if glc.selected_composer != glc.keyed_composer:
+                glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
+                display_selected_composer(glc.selected_composer, show_loading=True)
+            if glc.state["repertoire"] == "Full":
+                glc.composer_genres = get_cats(glc.selected_composer.id)
+                # print(f"cat_genres is {glc.composer_genres}")
+            else:
+                glc.composer_genres = get_genres(glc.selected_composer.id)
+            #glc.keyed_genre = display_keyed_genres(glc.selected_composer, glc.composer_genres, day_new, day_old)
+            display_keyed_genres(glc.composer_genres, day_new, day_old)
+            print(f"keyed genre is {glc.keyed_genre}")
+            set_knob_times(tm.d) 
+        day_old = day_new
+    elif year_old != year_new:  # Works changes
+        tm.power(1)
+        glc.performance_index = 0
+        if glc.selected_genre.index != glc.keyed_genre.index:
+            glc.selected_genre = glc.keyed_genre
+        if glc.works is None:
+            glc.selected_composer = glc.keyed_composer
+            if glc.selected_composer.id == 0:
+                glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+                if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
+                    glc.selected_work = glc.keyed_work
+                else:
+                    glc.keyed_work = glc.selected_work 
+                    glc.keyed_composer = glc.selected_composer
+                    glc.last_update_time = time.ticks_ms()
+                    set_knob_times(None) # To ensure that genres will be drawn
+            else:
+                display_selected_composer(glc.selected_composer, glc.selected_genre, show_loading=True)
+                if glc.state["repertoire"] == "Full":
+                    glc.composer_genres = get_cats(glc.selected_composer.id)
+                    print(f"cat_genres is {glc.composer_genres}")
+                else:
+                    glc.composer_genres = get_genres(glc.selected_composer.id)
+        t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
+        composer_genre = t[0] if len(t) > 0 else glc.composer_genres[day_old % len(glc.composer_genres)]
+        print(f"composer_genre is {composer_genre}")
+        if glc.state["repertoire"] == "Full":
+            glc.works = _get_cat_works(glc.selected_composer.id, composer_genre)
+        else:
+            glc.works = get_works(glc.selected_composer.id)
+            glc.works = [w for w in glc.works if w.genre == composer_genre.id]
+        glc.keyed_work = display_keyed_works(glc.selected_composer, composer_genre, glc.works, year_new, year_old)
+        print(f"keyed work is {glc.keyed_work}")
+        year_old = year_new
+        set_knob_times(tm.y)
+    return month_old, day_old, year_old
 
 ############################################################################################# configure
 def configure(choice):
@@ -516,30 +648,29 @@ def main_loop():
 
     clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     composer_list = glc.state.get("composer_list", ["GREATS"])
-    composers = sorted(get_composers(composer_list), key=lambda x: x.name)
+    glc.composers = sorted(get_composers(composer_list), key=lambda x: x.name)
     if len(clu.FAVORITE_WORKS) > 0:
-        composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
+        glc.composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
     tape = glc.state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
-    glc.keyed_composer = get_composer_by_id(composers, tape.get("composer_id", composers[1].id))
+    glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[1].id))
     glc.selected_composer = glc.keyed_composer
-    tm.m._value = clu.get_key_index(composers, glc.keyed_composer.id)
+    tm.m._value = clu.get_key_index(glc.composers, glc.keyed_composer.id)
     month_old = -1  # to force the screen to start at composer.
 
     if glc.state.get("repertoire", "Must Know") == "Full":
-        composer_genres = get_cats(glc.selected_composer.id)
+        glc.composer_genres = get_cats(glc.selected_composer.id)
     else:
-        composer_genres = get_genres(glc.selected_composer.id)
+        glc.composer_genres = get_genres(glc.selected_composer.id)
     try:
-        tm.d._value = next(i for i, x in enumerate(composer_genres) if x.id == tape.get("genre_id", 1))
+        tm.d._value = next(i for i, x in enumerate(glc.composer_genres) if x.id == tape.get("genre_id", 1))
     except StopIteration:
         tm.d._value = 0
     day_old = tm.d.value()
-    glc.keyed_genre = composer_genres[day_old]
+    glc.keyed_genre = glc.composer_genres[day_old]
     glc.selected_genre = glc.keyed_genre
 
     year_old = tm.y.value()
-    works = None
     tm.screen_on_time = time.ticks_ms()
     tm.clear_screen()
     glc.prev_SCREEN = glc.SCREEN
@@ -561,135 +692,19 @@ def main_loop():
             clu.increment_worklist_dict(glc.worklist_key)
             play_keyed_work()
 
+        pSelect_old = poll_select(pSelect_old) 
         pPlayPause_old = poll_play_pause(pPlayPause_old)
         pStop_old = poll_stop(pStop_old)
-        pSelect_old = poll_select(pSelect_old) 
         pRewind_old = poll_rewind(pRewind_old)
         pFFwd_old = poll_ffwd(pFFwd_old)
         pPower_old = poll_power(pPower_old)
 
+        pYSw_old = poll_RightSwitch(pYSw_old)
+        pMSw_old = poll_LeftSwitch(pMSw_old)
+        pDSw_old = poll_CenterSwitch(pDSw_old)
 
-        if pYSw_old != tm.pYSw.value():
-            pYSw_old = tm.pYSw.value()
-            if pYSw_old:
-                print("Right RELEASED")
-                if not glc.HAS_TOKEN:
-                    was_playing = glc.player.is_playing()
-                    glc.player.pause()
-                    glc.HAS_TOKEN = clu.authenticate_user()
-                    glc.state = load_state()  # State may have changed in authenticate_user
-                    utils.reset()
-                    # We need to update the screen here!!
-                    if was_playing:
-                        print("Restarting gxt.player after authenticating")
-                        glc.player.play()
-                else:
-                    print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
-                    favored = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
-                    if favored:
-                        print(f"Added {glc.selected_performance} to favorites")
-                        # Draw the heart wherever on the screen it belongs
-                    else:
-                        print(f"Removed {glc.selected_performance} from favorites")
-                        # Remove the heart from the screen.
-
-            else:
-                print("Right PRESSED")
-
-        if pMSw_old != tm.pMSw.value():
-            pMSw_old = tm.pMSw.value()
-            if pMSw_old:
-                print("Left RELEASED")
-            else:
-                tm.screen_off()  # screen off while playing
-                print("Left PRESSED")
-
-        if pDSw_old != tm.pDSw.value():
-            pDSw_old = tm.pDSw.value()
-            if pDSw_old:
-                print("Center RELEASED")
-            else:
-                print("Center PRESSED")
-
-        month_new = tm.m.value() % len(composers)
-        day_new = tm.d.value()
-        year_new = tm.y.value()
-
-        if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
-            # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
-            # print(f"month_new: {month_new}")
-            tm.power(1)
-            glc.performance_index = 0
-            force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
-            set_knob_times(tm.m)
-            glc.keyed_composer = composers[month_new]
-            display_keyed_composers(composers, month_new, month_old, force_update)
-            print(f"keyed composer {glc.keyed_composer}")
-            works = None
-            month_old = month_new
-        elif day_old != day_new:  # Genre changes
-            tm.power(1)
-            glc.performance_index = 0
-            if glc.keyed_composer.id == 0: # "Favorites"
-                glc.selected_composer, glc.selected_work, glc.state = handle_favorites(composers, glc.player, glc.state)
-                if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
-                    glc.selected_work = glc.keyed_work
-                else:
-                    glc.keyed_work = glc.selected_work 
-                    glc.keyed_composer = glc.selected_composer 
-                    glc.last_update_time = time.ticks_ms()
-                    # tm.m._value = clu.get_key_index(composers, gxt.selected_composer.id)
-                    set_knob_times(None) # To ensure that genres will be drawn
-            else:
-                if glc.selected_composer != glc.keyed_composer:
-                    glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
-                    display_selected_composer(glc.selected_composer, show_loading=True)
-                if glc.state["repertoire"] == "Full":
-                    composer_genres = get_cats(glc.selected_composer.id)
-                    # print(f"cat_genres is {composer_genres}")
-                else:
-                    composer_genres = get_genres(glc.selected_composer.id)
-                #glc.keyed_genre = display_keyed_genres(glc.selected_composer, composer_genres, day_new, day_old)
-                display_keyed_genres(composer_genres, day_new, day_old)
-                print(f"keyed genre is {glc.keyed_genre}")
-                set_knob_times(tm.d) 
-            day_old = day_new
-
-        elif year_old != year_new:  # Works changes
-            tm.power(1)
-            glc.performance_index = 0
-            if glc.selected_genre.index != glc.keyed_genre.index:
-                glc.selected_genre = glc.keyed_genre
-            if works is None:
-                glc.selected_composer = glc.keyed_composer
-                if glc.selected_composer.id == 0:
-                    glc.selected_composer, glc.selected_work, glc.state = handle_favorites(composers, glc.player, glc.state)
-                    if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
-                        glc.selected_work = glc.keyed_work
-                    else:
-                        glc.keyed_work = glc.selected_work 
-                        glc.keyed_composer = glc.selected_composer
-                        glc.last_update_time = time.ticks_ms()
-                        set_knob_times(None) # To ensure that genres will be drawn
-                else:
-                    display_selected_composer(glc.selected_composer, glc.selected_genre, show_loading=True)
-                    if glc.state["repertoire"] == "Full":
-                        composer_genres = get_cats(glc.selected_composer.id)
-                        print(f"cat_genres is {composer_genres}")
-                    else:
-                        composer_genres = get_genres(glc.selected_composer.id)
-            t = [g for g in composer_genres if g.id == glc.keyed_genre.id]
-            composer_genre = t[0] if len(t) > 0 else composer_genres[day_old % len(composer_genres)]
-            print(f"composer_genre is {composer_genre}")
-            if glc.state["repertoire"] == "Full":
-                works = _get_cat_works(glc.selected_composer.id, composer_genre)
-            else:
-                works = get_works(glc.selected_composer.id)
-                works = [w for w in works if w.genre == composer_genre.id]
-            glc.keyed_work = display_keyed_works(glc.selected_composer, composer_genre, works, year_new, year_old)
-            print(f"keyed work is {glc.keyed_work}")
-            year_old = year_new
-            set_knob_times(tm.y)
+        tm.m._value = tm.m.value() % len(glc.composers)
+        month_old, day_old, year_old = poll_knobs(month_old, day_old, year_old)
 
         if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, glc.last_update_time)) > 12_000:
             print(glc.player)

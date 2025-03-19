@@ -12,6 +12,9 @@ class GeneralContext:
     def __init__(self):
         self.player = None
         self.state = None
+        self.works = None
+        self.composers = None
+        self.composer_genres = None
         self.keyed_work = None
         self.selected_work = None
         self.selected_composer = None
@@ -38,6 +41,9 @@ class GeneralContext:
         items = [
             f"player: {self.player}",
             f"state: {self.state}",
+            f"works: {self.works}",
+            f"composers: {self.composers}",
+            f"composer_genres: {self.composer_genres}",
             f"keyed_work: {self.keyed_work}",
             f"selected_work: {self.selected_work}",
             f"selected_composer: {self.selected_composer}",
