@@ -81,7 +81,7 @@ class PlayerManager:
         return len(self.chunk_queue) == 0
 
     def extend_playlist(self, urllist):
-        print(f"extend_playlist: Track {self.chunk_queue[0]}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
+        print(f"extend_playlist: Track {len(self.first_chunk_dict)}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
 
     def increment_track_screen(self, track_num=None, increment=1):
@@ -205,7 +205,7 @@ class PlayerManager:
             # set the track to the cumulative position of the button presses (self.track_index)
             print(f"Button window expired, track index is {self.track_index}")
             self.button_window = None
-            if self.track_index >= self.n_tracks:
+            if (self.track_index+1) >= self.n_tracks:
                 print("Cannot fast forward, already on last track.")
                 self.playlist_completed = True
                 self.block_pump = False 
@@ -248,7 +248,7 @@ class PlayerManager:
             )
         else:
             if self.chunk_generator is None:
-                this_track = self.chunk_queue.pop(0)
+                this_track = self.chunk_queue[0]
                 self.chunk_generator = self.poll_chunklist(this_track)
             try:
                 next(self.chunk_generator)
@@ -256,6 +256,7 @@ class PlayerManager:
                 this_track, next_chunklist = e.value
                 self.chunk_generator = None  # prepare for next task
                 self.DEBUG and print(f"pump_chunks: StopIteration next chunklist is a {type(next_chunklist)}")
+                self.chunk_queue = self.chunk_queue[1:]  # remove the first element
         if next_chunklist:
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
