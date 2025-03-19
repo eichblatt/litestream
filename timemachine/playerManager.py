@@ -81,7 +81,7 @@ class PlayerManager:
         return len(self.chunk_queue) == 0
 
     def extend_playlist(self, urllist):
-        print(f"extend_playlist: Track {self.chunk_queue[0]-1}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
+        print(f"extend_playlist: Track {self.chunk_queue[0]}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         self.player.playlist.extend([(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist])
 
     def increment_track_screen(self, track_num=None, increment=1):

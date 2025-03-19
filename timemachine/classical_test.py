@@ -285,13 +285,13 @@ def poll_select(pSelect_old):
     if pSelect_old == tm.pSelect.value():
         poll_select_longpress(pSelect_old)
         return pSelect_old
-    pSelect_old = tm.pSelect.value()
+    pSelect_old = int(not(pSelect_old)) # It has changed. pSelect_old is current value
     glc = cc.glc
-    if not pSelect_old:
+    if not pSelect_old: # Changed, and currently being PRESSED
         glc.select_press_time = time.ticks_ms()
         print("Select PRESSED")
-    else:
-        if (time.ticks_ms() - glc.select_press_time) < 1_000:
+    else:               # Changed, and currently being RELEASED
+        if (time.ticks_ms() - glc.select_press_time) > 1_000:
             return pSelect_old # This was a long press, so do nothing.
         print("short press of select -- released")
         glc.player.stop()
@@ -335,11 +335,11 @@ def poll_select(pSelect_old):
     return pSelect_old
 
 def poll_select_longpress(pSelect_old):
-    if tm.pSelect.value():  # long press Select
-        return
+    if pSelect_old:  # button is not being pressed, therefore it is not a long press.
+        return False
     glc = cc.glc
-    if (time.ticks_ms() - glc.select_press_time) < 1_000:
-        return
+    if (time.ticks_ms() - glc.select_press_time) < 1_000: # button is being pressed, but not for very long.
+        return False
     glc.player.pause()
     print("                 Longpress of select")
     glc.performance_index = choose_performance(glc.selected_composer, glc.keyed_work)  # take control of knobs
@@ -363,10 +363,8 @@ def poll_select_longpress(pSelect_old):
         # tm.m._value = (tm.m.value() - 1) % len(composers)
         set_knob_times(None)
     time.sleep(2)
-    glc.select_press_time = time.ticks_ms() + 1_000
-    pSelect_old = tm.pSelect.value()
     print("Select RELEASED")
-    return
+    return True
 
 def poll_stop(pStop_old):
     if pStop_old == tm.pStop.value():
@@ -808,6 +806,7 @@ def display_favorite_choices(index, favorites):
     # instructions to exit (small font)
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.FAVORITES
+    #print(f"display_favorite_choices: {glc.prev_SCREEN} -> {glc.SCREEN}")
     y0 = pfont_med.HEIGHT
     tm.clear_to_bottom(0, y0)
     i = 0
@@ -884,8 +883,9 @@ def display_tracks(*track_names):
     if len(track_names) == 0:
         return
     tm.clear_to_bottom(0, tracklist_bbox.y0)
-    cc.glc.prev_SCREEN = cc.glc.SCREEN
-    cc.glc.SCREEN = ScreenContext.TRACKLIST
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.TRACKLIST
+    #print(f"display_tracks: {glc.prev_SCREEN} -> {glc.SCREEN}")
     lines_written = 0
     last_valid_str = 0
     in_credits = False
@@ -934,6 +934,7 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
     # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}")
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.WORK
+    #print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
     names = [w.name for w in works]
     index = index % len(names)
     prev_index = prev_index % len(names)
@@ -941,7 +942,8 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
     nlines = min(len(names), nlines)
     page_start = nlines * (index // nlines)
     prev_page_start = nlines * (prev_index // nlines)
-    draw_all = (KNOB_TIME > WORK_KEY_TIME) or page_start != prev_page_start
+    #draw_all = (KNOB_TIME > WORK_KEY_TIME) or page_start != prev_page_start
+    draw_all = (glc.SCREEN!=glc.prev_SCREEN) or page_start != prev_page_start
 
     # Write the Composer and Genre
     if draw_all:
@@ -979,6 +981,7 @@ def display_selected_composer(composer, composer_genre=None, show_loading=False)
 def display_keyed_genres(composer_genres, index, prev_index):
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.GENRE
+    #print(f"display_keyed_genres: {glc.prev_SCREEN} -> {glc.SCREEN}")
     genres = [x.name for x in composer_genres]
     nlines = min(len(genres), (tm.SCREEN_HEIGHT - pfont_med.HEIGHT) // pfont_small.HEIGHT)
     y0 = pfont_med.HEIGHT
@@ -986,7 +989,8 @@ def display_keyed_genres(composer_genres, index, prev_index):
     prev_index = prev_index % len(genres)
     start_index = nlines * (index // nlines)
     prev_start_index = nlines * (prev_index // nlines)
-    draw_all = (KNOB_TIME > GENRE_KEY_TIME) or start_index != prev_start_index
+    #draw_all = (KNOB_TIME > GENRE_KEY_TIME) or start_index != prev_start_index
+    draw_all = (glc.SCREEN!=glc.prev_SCREEN) or start_index != prev_start_index
     print( f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})")
     if draw_all:
         display_selected_composer(glc.selected_composer)
@@ -1015,13 +1019,15 @@ def display_keyed_genres(composer_genres, index, prev_index):
 def display_keyed_composers(composers, index, prev_index, force_update=False):
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.COMPOSER
+    #print(f"display_keyed_composers: {glc.prev_SCREEN} -> {glc.SCREEN}")
     n_comp = len(composers)
     nlines = min(n_comp, tm.SCREEN_HEIGHT // pfont_small.HEIGHT)
     index = index % n_comp
     prev_index = prev_index % n_comp
     start_index = nlines * (index // nlines)
     prev_start_index = nlines * (prev_index // nlines)
-    draw_all = force_update or start_index != prev_start_index
+    #draw_all = force_update or start_index != prev_start_index
+    draw_all = force_update or (glc.SCREEN!=glc.prev_SCREEN) or start_index != prev_start_index
     if draw_all:
         tm.clear_bbox(selection_bbox)
     for i in range(nlines):
@@ -1047,6 +1053,7 @@ def display_performance_choices(composer, work, performances, index):
     # instructions to exit (small font)
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.PERFORMANCE
+    #print(f"display_performance_choices: {glc.prev_SCREEN} -> {glc.SCREEN}")
     tm.clear_screen()
     display_selected_composer(composer)
     display_title(work)
@@ -1076,6 +1083,7 @@ def display_performance_choices(composer, work, performances, index):
 def show_composers(composer_list):
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
+    #print(f"show_composers: {glc.prev_SCREEN} -> {glc.SCREEN}")
     message = "Loading Composers"
     print(f"{composer_list}")
     print(message)
@@ -1125,6 +1133,7 @@ def choose_performance(composer, keyed_work):
     # Reset the knobs if necessary.
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
+    #print(f"choose_performance: {glc.prev_SCREEN} -> {glc.SCREEN}")
     tm.clear_screen()
     tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
     display_selected_composer(composer)
