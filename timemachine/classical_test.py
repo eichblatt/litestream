@@ -40,6 +40,7 @@ except ImportError as e:
     else:
         raise e
 
+############################################################################################# Globals
 DEBUG = True
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
 METADATA_ROOT = clu.METADATA_ROOT
@@ -66,6 +67,7 @@ playpause_bbox = tm.Bbox(0.93 * tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT - pfont_small.
 
 
 
+############################################################################################# Functions that belong in classical_utils.py
 def get_creators(composer_list):  # A non-library mode call to get a list of composers.
     if isinstance(composer_list, (str, int)):
         composer_list = [composer_list]
@@ -211,6 +213,20 @@ def get_tracklist(performance_id: int):
     tracklist = request_json(url)["tracks"]
     return tracklist
 
+def cleanup_track_names(track_names):
+    # Define a regular expression pattern to match unwanted prefixes
+    pattern = re.compile(r"^(No\.?\s*|Track\s*|#)\d+\s*[-:.,]*\s*")
+
+    track_names = utils.remove_common_start(track_names)
+    track_names = [s.lstrip(" .,0123456789") for s in track_names]
+    track_names = utils.remove_common_start(track_names)
+    track_names = [pattern.sub("", s) for s in track_names]
+    for i, name in enumerate(track_names):
+        if len(name) == 0:
+            track_names[i] = f"Track {i+1}"
+    return track_names
+
+############################################################################################# hardware handling
 
 def set_knob_times(knob):
     global WORK_KEY_TIME
@@ -230,52 +246,6 @@ def set_knob_times(knob):
 load_state = clu.load_state
 save_state = clu.save_state
 request_json = clu.request_json
-
-
-def configure(choice):
-    assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
-
-    if choice == "Composers":
-        return clu.configure_composers()
-    elif choice == "Repertoire":
-        return clu.configure_repertoire()
-    elif choice == "Account":
-        state = clu.configure_account()
-    state = load_state()
-    return
-
-
-def play_pause(player):
-    tm.clear_bbox(playpause_bbox)
-    if player.is_playing():
-        player.pause()
-        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.WHITE)
-    elif len(player.tracklist) > 0:
-        print(f"in play_pause: player.tracklist {player.tracklist}")
-        player.play()
-        tm.power(1)
-        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
-    set_knob_times(None)  # So that twiddling any knob causes refresh screen.
-    return
-
-
-def play_keyed_work():
-    print(f"Playing {glc.keyed_work}")
-    select_performance()
-    save_state(glc.state)
-    glc.selected_work = glc.keyed_work
-    # Display the Title
-    display_title(glc.selected_work) 
-    #tracklist_bbox.y0 = display_title(glc.selected_work)
-    # Display the performance information
-    display_performance_info()
-    # Display the tracklist
-    glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-    print(f"Track titles are {glc.track_titles}")
-    display_tracks(*glc.track_titles)  # This doesn't show the credits.
-    play_pause(glc.player)
-    return 
-
 
 def poll_play_pause(pPlayPause_old):
     if pPlayPause_old == tm.pPlayPause.value():
@@ -322,7 +292,7 @@ def poll_select(pSelect_old):
         print("Select PRESSED")
     else:
         print("short press of select -- released")
-        if (time.ticks_ms() - glc.select_press_time) > 1_000:
+        if (time.ticks_ms() - glc.select_press_time) < 1_000:
             return pSelect_old # This was a long press, so do nothing.
         glc.player.stop()
         glc.worklist = []
@@ -376,11 +346,13 @@ def poll_select_longpress(pSelect_old):
     if glc.performance_index is not None:
         glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
         glc.state["selected_tape"]["genre_id"] = glc.selected_genre.id
-        select_performance()
+        #select_performance()
+        select_performance(ntape=glc.performance_index)
         save_state(glc.state)
         glc.selected_work = glc.keyed_work
         display_title(glc.selected_work)
         display_performance_info()
+        print("performance info displayed")
         glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
         print(f"Track titles are {glc.track_titles}")
         display_tracks(*glc.track_titles)
@@ -483,6 +455,55 @@ def poll_power_longpress():
     glc.player.reset_player()
     tm.power(1)
     raise utils.ConfigureException()
+
+############################################################################################# configure
+def configure(choice):
+    assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
+
+    if choice == "Composers":
+        return clu.configure_composers()
+    elif choice == "Repertoire":
+        return clu.configure_repertoire()
+    elif choice == "Account":
+        state = clu.configure_account()
+    state = load_state()
+    return
+
+############################################################################################# Actions
+
+def play_pause(player):
+    tm.clear_bbox(playpause_bbox)
+    if player.is_playing():
+        player.pause()
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.WHITE)
+    elif len(player.tracklist) > 0:
+        print(f"in play_pause: player.tracklist {player.tracklist}")
+        player.play()
+        tm.power(1)
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
+    set_knob_times(None)  # So that twiddling any knob causes refresh screen.
+    return
+
+
+def play_keyed_work():
+    print(f"Playing {glc.keyed_work}")
+    select_performance()
+    save_state(glc.state)
+    glc.selected_work = glc.keyed_work
+    # Display the Title
+    display_title(glc.selected_work) 
+    #tracklist_bbox.y0 = display_title(glc.selected_work)
+    # Display the performance information
+    display_performance_info()
+    # Display the tracklist
+    glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
+    print(f"Track titles are {glc.track_titles}")
+    display_tracks(*glc.track_titles)  # This doesn't show the credits.
+    play_pause(glc.player)
+    return 
+
+
+############################################################################################# main loop
 
 def main_loop():
     glc = cc.glc # Without this I get a complaint that local variable accessed before assignment.
@@ -677,6 +698,8 @@ def main_loop():
             glc.last_update_time = time.ticks_ms()
 
 
+############################################################################################# favorites
+
 def handle_favorites(composers, player, state):
     print("handling favorites")
     tm.clear_screen()
@@ -702,6 +725,94 @@ def handle_favorites(composers, player, state):
         selected_composer = composers[1]  # Avoid favorites as a composer
         selected_work = None
     return selected_composer, selected_work, state
+
+
+def select_from_favorites(favorites):
+    # Hijack the knobs for navigation purposes
+    # Show a set of favorites on the screen.
+    # Scroll through options based on the knobs.
+    # Poll for select, play, or stop buttons, to select a particular performance.
+    print("In select_from_favorites")
+    tm.clear_screen()
+    tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
+    tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
+    y0 = pfont_med.HEIGHT
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
+    tm.m._value = 0
+    tm.d._value = 0
+    tm.y._value = 0
+    prev_index = -1
+    button_press_time = time.ticks_ms()
+    retval = None
+
+    while True:
+        index = tm.m.value() * 100 + tm.d.value() * 10 + tm.y.value()
+        index = index % len(favorites)
+        if index != prev_index:
+            set_knob_times(None)  # force screen refresh
+            display_favorite_choices(index, favorites)
+            prev_index = index
+
+        if time.ticks_diff(time.ticks_ms(), button_press_time) < 2_000:  # crude de-bouncing.
+            continue
+        if not tm.pYSw.value():  # drop a favorite
+            button_press_time = time.ticks_ms()
+            print("Year switch pressed -- toggling a favorite")
+            favored = clu.toggle_favorites(favorites[index]["kv"])
+            print(f"favorite {index} toggled. Favored = {favored}")
+            if not favored:
+                favorites.pop(index)
+                prev_index = (prev_index - 2) % len(favorites)
+
+        if not tm.pStop.value():
+            retval = None
+            break
+
+        if (not tm.pSelect.value()) or (not tm.pPlayPause.value()):
+            retval = favorites[index]
+            break
+
+        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
+            print("Returning to composers/genres/works after 120 sec of inactivity")
+            retval = None
+            break
+    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
+    tm.label_soft_knobs("Composer", "Genre", "Work")
+    return retval
+
+
+############################################################################################# display fns
+
+def display_favorite_choices(index, favorites):
+    # Screen Layout:
+    # "Favorites" (med font)
+    # Composer (small font, 1 line)
+    # Work Title (small font, up to 2 lines)
+    # performer info (small font; up to 2 lines)
+    #  ...
+    # instructions to exit (small font)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.FAVORITES
+    y0 = pfont_med.HEIGHT
+    tm.clear_to_bottom(0, y0)
+    i = 0
+    # print(f"Displaying favorites from index {index}. Favorites = {favorites}")
+    while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
+        indx = (index + i) % len(favorites)
+        ind = f"{indx+1}/{len(favorites)}"
+        item = favorites[indx]
+        color = tm.WHITE if i == 0 else tm.tracklist_color
+        tm.write(ind, 0, y0, color=color, font=pfont_small)
+        x0 = tm.tft.write_len(pfont_small, ind)
+        tm.write(f"{item['c_ln']},{item['c_fn']}", x0 + 3, y0, color=color, font=pfont_small)
+        y0 = y0 + pfont_small.HEIGHT
+        msg = tm.write(item["w_title"], 0, y0, color=color, font=pfont_small, show_end=-3)
+        y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+        for prj in item["performers"][:2]:
+            msg = tm.write(f"{prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
+            y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
+        i = i + 1
+    return i
 
 
 def update_display():
@@ -730,29 +841,6 @@ def display_title(work):
     return 
 
 
-def cleanup_track_names(track_names):
-    # Define a regular expression pattern to match unwanted prefixes
-    pattern = re.compile(r"^(No\.?\s*|Track\s*|#)\d+\s*[-:.,]*\s*")
-
-    track_names = utils.remove_common_start(track_names)
-    track_names = [s.lstrip(" .,0123456789") for s in track_names]
-    track_names = utils.remove_common_start(track_names)
-    track_names = [pattern.sub("", s) for s in track_names]
-    for i, name in enumerate(track_names):
-        if len(name) == 0:
-            track_names[i] = f"Track {i+1}"
-    return track_names
-
-
-def get_this_performance(work_id, p_id):
-    performances = get_performances(work_id)
-    this_perf = None
-    for perf in performances:
-        if perf["p_id"] == p_id:
-            this_perf = perf
-            break
-    return this_perf
-
 
 def display_performance_info():
     #tracklist_bbox.y0 = display_performance_info(glc.selected_work, glc.selected_performance)
@@ -761,6 +849,7 @@ def display_performance_info():
 
 def _display_performance_info(work_id, p_id):
     # Display performance information for the selected work above the tracklist
+    print(f"in display_performance_info. Work_id is {work_id}, p_id is {p_id}")
     if p_id is None:
         return 
     y0 = glc.ycursor
@@ -933,16 +1022,6 @@ def display_keyed_composers(composers, index, prev_index, force_update=False):
     return
 
 
-def get_performance_info(perf):
-    pr = perf.get("performers", {"type": "Unknown", "name": "Unknown"})
-    label = perf.get("label", "Unknown")
-    n_tracks = perf.get("trk", 0)
-    dur = int(perf.get("dur", 0))
-    duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
-    date = perf.get("release_date", "1900-01-01")
-    return pr, label, n_tracks, duration, date
-
-
 def display_performance_choices(composer, work, performances, index):
     # Screen Layout:
     # Composer (medium font)
@@ -1002,91 +1081,25 @@ def show_composers(composer_list):
         y0 += pfont_small.HEIGHT
     time.sleep(0.5)
 
+############################################################################################# performance related fns
 
-def select_from_favorites(favorites):
-    # Hijack the knobs for navigation purposes
-    # Show a set of favorites on the screen.
-    # Scroll through options based on the knobs.
-    # Poll for select, play, or stop buttons, to select a particular performance.
-    print("In select_from_favorites")
-    tm.clear_screen()
-    tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
-    tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
-    y0 = pfont_med.HEIGHT
-    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
-    tm.m._value = 0
-    tm.d._value = 0
-    tm.y._value = 0
-    prev_index = -1
-    button_press_time = time.ticks_ms()
-    retval = None
-
-    while True:
-        index = tm.m.value() * 100 + tm.d.value() * 10 + tm.y.value()
-        index = index % len(favorites)
-        if index != prev_index:
-            set_knob_times(None)  # force screen refresh
-            display_favorite_choices(index, favorites)
-            prev_index = index
-
-        if time.ticks_diff(time.ticks_ms(), button_press_time) < 2_000:  # crude de-bouncing.
-            continue
-        if not tm.pYSw.value():  # drop a favorite
-            button_press_time = time.ticks_ms()
-            print("Year switch pressed -- toggling a favorite")
-            favored = clu.toggle_favorites(favorites[index]["kv"])
-            print(f"favorite {index} toggled. Favored = {favored}")
-            if not favored:
-                favorites.pop(index)
-                prev_index = (prev_index - 2) % len(favorites)
-
-        if not tm.pStop.value():
-            retval = None
+def get_this_performance(work_id, p_id):
+    performances = get_performances(work_id)
+    this_perf = None
+    for perf in performances:
+        if perf["p_id"] == p_id:
+            this_perf = perf
             break
+    return this_perf
 
-        if (not tm.pSelect.value()) or (not tm.pPlayPause.value()):
-            retval = favorites[index]
-            break
-
-        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
-            print("Returning to composers/genres/works after 120 sec of inactivity")
-            retval = None
-            break
-    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work")
-    return retval
-
-
-def display_favorite_choices(index, favorites):
-    # Screen Layout:
-    # "Favorites" (med font)
-    # Composer (small font, 1 line)
-    # Work Title (small font, up to 2 lines)
-    # performer info (small font; up to 2 lines)
-    #  ...
-    # instructions to exit (small font)
-    glc.prev_SCREEN = glc.SCREEN
-    glc.SCREEN = ScreenContext.FAVORITES
-    y0 = pfont_med.HEIGHT
-    tm.clear_to_bottom(0, y0)
-    i = 0
-    # print(f"Displaying favorites from index {index}. Favorites = {favorites}")
-    while y0 < tm.SCREEN_HEIGHT - 3 * pfont_small.HEIGHT:
-        indx = (index + i) % len(favorites)
-        ind = f"{indx+1}/{len(favorites)}"
-        item = favorites[indx]
-        color = tm.WHITE if i == 0 else tm.tracklist_color
-        tm.write(ind, 0, y0, color=color, font=pfont_small)
-        x0 = tm.tft.write_len(pfont_small, ind)
-        tm.write(f"{item['c_ln']},{item['c_fn']}", x0 + 3, y0, color=color, font=pfont_small)
-        y0 = y0 + pfont_small.HEIGHT
-        msg = tm.write(item["w_title"], 0, y0, color=color, font=pfont_small, show_end=-3)
-        y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-        for prj in item["performers"][:2]:
-            msg = tm.write(f"{prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
-            y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-        i = i + 1
-    return i
+def get_performance_info(perf):
+    pr = perf.get("performers", {"type": "Unknown", "name": "Unknown"})
+    label = perf.get("label", "Unknown")
+    n_tracks = perf.get("trk", 0)
+    dur = int(perf.get("dur", 0))
+    duration = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
+    date = perf.get("release_date", "1900-01-01")
+    return pr, label, n_tracks, duration, date
 
 
 def choose_performance(composer, keyed_work):
@@ -1146,8 +1159,8 @@ def choose_performance(composer, keyed_work):
     return retval
 
 
-def select_performance():
-    glc.tracklist, glc.selected_performance, glc.state = _select_performance(glc.keyed_work, glc.player, glc.state)
+def select_performance(ntape=None, p_id=None):
+    glc.tracklist, glc.selected_performance, glc.state = _select_performance(glc.keyed_work, glc.player, glc.state, ntape, p_id)
 
     
 def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
@@ -1194,6 +1207,7 @@ def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
     return tracklist, p_id, state
 
 
+############################################################################################# main
 
 def run():
     """run the livemusic controls"""
