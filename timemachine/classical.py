@@ -25,11 +25,10 @@ import fonts.NotoSans_24 as pfont_med
 
 import board as tm
 import classical_utils as clu
-import classical_context as cc
 import utils
 from classical_utils import Composer, Genre, Work, Category
 from classical_utils import get_performances, get_composer_by_id, get_composers
-from classical_context import ScreenContext
+from classical_utils import ScreenContext
 
 try:
     import playerManager
@@ -57,7 +56,7 @@ GENRE_KEY_TIME = time.ticks_ms()
 KNOB_TIME = time.ticks_ms()
 CONFIG_CHOICES = ["Composers", "Repertoire", "Account"]
 
-glc = cc.glc
+glc = clu.glc
 tapeid_range_dict = {}
 
 selection_bbox = tm.Bbox(0, 0, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
@@ -250,7 +249,7 @@ request_json = clu.request_json
 def poll_play_pause(pPlayPause_old):
     if pPlayPause_old == tm.pPlayPause.value():
         return pPlayPause_old
-    glc = cc.glc
+    glc = clu.glc
     pPlayPause_old = tm.pPlayPause.value()
     if not pPlayPause_old:
         glc.play_pause_press_time = time.ticks_ms()
@@ -286,7 +285,7 @@ def poll_select(pSelect_old):
         poll_select_longpress(pSelect_old)
         return pSelect_old
     pSelect_old = int(not(pSelect_old)) # It has changed. pSelect_old is current value
-    glc = cc.glc
+    glc = clu.glc
     if not pSelect_old: # Changed, and currently being PRESSED
         glc.select_press_time = time.ticks_ms()
         print("Select PRESSED")
@@ -337,7 +336,7 @@ def poll_select(pSelect_old):
 def poll_select_longpress(pSelect_old):
     if pSelect_old:  # button is not being pressed, therefore it is not a long press.
         return False
-    glc = cc.glc
+    glc = clu.glc
     if (time.ticks_ms() - glc.select_press_time) < 1_000: # button is being pressed, but not for very long.
         return False
     glc.player.pause()
@@ -369,7 +368,7 @@ def poll_select_longpress(pSelect_old):
 def poll_stop(pStop_old):
     if pStop_old == tm.pStop.value():
         return pStop_old
-    glc = cc.glc
+    glc = clu.glc
     pStop_old = tm.pStop.value()
     if pStop_old:
         print("Stop RELEASED")
@@ -385,7 +384,7 @@ def poll_stop(pStop_old):
 def poll_rewind(pRewind_old):
     if pRewind_old == tm.pRewind.value():
         return pRewind_old
-    glc = cc.glc
+    glc = clu.glc
     pRewind_old = tm.pRewind.value()
     if pRewind_old:
         print("Rewind RELEASED")
@@ -402,7 +401,7 @@ def poll_rewind(pRewind_old):
 def poll_ffwd(pFFwd_old):
     if pFFwd_old == tm.pFFwd.value():
         return pFFwd_old
-    glc = cc.glc
+    glc = clu.glc
     pFFwd_old = tm.pFFwd.value()
     if pFFwd_old:
         print("FFwd RELEASED")
@@ -424,7 +423,7 @@ def poll_power(pPower_old):
         poll_power_longpress()
         return pPower_old
         
-    glc = cc.glc
+    glc = clu.glc
     pPower_old = tm.pPower.value()
     if not pPower_old:
         print(f"power state is {tm.power()}")
@@ -442,7 +441,7 @@ def poll_power(pPower_old):
 def poll_power_longpress():
     if tm.pPower.value():
         return
-    glc = cc.glc
+    glc = clu.glc
     if (time.ticks_ms() - glc.power_press_time) < 1_000:
         return 
     print("Power UP -- back to reconfigure")
@@ -461,7 +460,7 @@ def poll_RightSwitch(pYSw_old):
         print("Right PRESSED")
     else:
         print("Right RELEASED")
-        glc = cc.glc
+        glc = clu.glc
         if not glc.HAS_TOKEN:
             was_playing = glc.player.is_playing()
             glc.player.pause()
@@ -508,7 +507,7 @@ def poll_knobs(month_old, day_old,year_old):
     month_new = tm.m.value() 
     day_new = tm.d.value()
     year_new = tm.y.value()
-    glc = cc.glc
+    glc = clu.glc
 
     if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
         # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
@@ -636,7 +635,7 @@ def play_keyed_work():
 ############################################################################################# main loop
 
 def main_loop():
-    glc = cc.glc # Without this I get a complaint that local variable accessed before assignment.
+    glc = clu.glc # Without this I get a complaint that local variable accessed before assignment.
     print(f"main loop. glc is {glc}")
     glc.HAS_TOKEN = clu.validate_token(clu.access_token())
     pPower_old = 0
@@ -830,7 +829,7 @@ def display_favorite_choices(index, favorites):
 
 
 def update_display():
-    glc = cc.glc
+    glc = clu.glc
     print(f"Updating display for {glc.selected_composer}, {glc.selected_work}, {glc.selected_performance}")
     tm.clear_bbox(playpause_bbox)
     if glc.player.is_stopped():
@@ -1238,8 +1237,8 @@ def run():
     try:
         wifi = utils.connect_wifi()
         glc.state = load_state()
-        print(f"state is {cc.glc.state}")  # Temporary
-        composer_list = cc.glc.state["composer_list"]
+        print(f"state is {clu.glc.state}")  # Temporary
+        composer_list = clu.glc.state["composer_list"]
         show_composers(composer_list)
         clu.initialize_knobs()
 
