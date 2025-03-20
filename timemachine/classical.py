@@ -473,13 +473,14 @@ def poll_RightSwitch(pYSw_old):
                 glc.player.play()
         else:
             print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
-            favored = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
-            if favored:
-                print(f"Added {glc.selected_performance} to favorites")
-                # Draw the heart wherever on the screen it belongs
-            else:
-                print(f"Removed {glc.selected_performance} from favorites")
-                # Remove the heart from the screen.
+            if glc.SCREEN == ScreenContext.TRACKLIST:
+                heart_color = tm.RED if not glc.selected_work.id in clu.FAVORITE_WORKS else tm.BLACK
+                tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, heart_color)
+            _ = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
+            print(f"Refresh screen {glc.SCREEN} to show the heart change")
+            if glc.SCREEN == ScreenContext.TRACKLIST: # Not strictly necessary, but will update the heart to what the database knows.
+                display_title(glc.selected_work)
+                display_performance_info()
     return pYSw_old
 
 def poll_LeftSwitch(pMSw_old):
@@ -525,7 +526,7 @@ def poll_knobs(month_old, day_old,year_old):
         tm.power(1)
         glc.performance_index = 0
         if glc.keyed_composer.id == 0: # "Favorites"
-            glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+            handle_favorites()
             if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
                 glc.selected_work = glc.keyed_work
             else:
@@ -556,7 +557,7 @@ def poll_knobs(month_old, day_old,year_old):
         if glc.works is None:
             glc.selected_composer = glc.keyed_composer
             if glc.selected_composer.id == 0:
-                glc.selected_composer, glc.selected_work, glc.state = handle_favorites(glc.composers, glc.player, glc.state)
+                handle_favorites()
                 if glc.selected_work is None: # We bailed from handle favorites without selecting anything.
                     glc.selected_work = glc.keyed_work
                 else:
@@ -700,7 +701,6 @@ def main_loop():
         pMSw_old = poll_LeftSwitch(pMSw_old)
         pDSw_old = poll_CenterSwitch(pDSw_old)
 
-        tm.m._value = tm.m.value() % len(glc.composers)
         month_old, day_old, year_old = poll_knobs(month_old, day_old, year_old)
 
         if time.ticks_diff(time.ticks_ms(), max(KNOB_TIME, glc.last_update_time)) > 12_000:
@@ -712,31 +712,35 @@ def main_loop():
 
 ############################################################################################# favorites
 
-def handle_favorites(composers, player, state):
+def handle_favorites():
+    # Set the glc.selected_composer and glc.selected_work based on selection, or default to first composer.
+    glc = clu.glc
     print("handling favorites")
     tm.clear_screen()
     tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
     tm.write("loading ... ", 0, pfont_med.HEIGHT, pfont_small, tm.WHITE)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.OTHER
     favorites = clu.get_playlist_items("tm_favorites")
     selection = select_from_favorites(favorites)
     if selection is not None:
-        selected_composer = get_composer_by_id(composers, int(selection["c_id"]))
-        state["selected_tape"]["composer_id"] = selected_composer.id
-        state["selected_tape"]["genre_id"] = 1  # Not sure what to do here
-        selected_work = Work(name=selection["w_title"], id=int(selection["w_id"]))
-        tracklist, selected_performance, state = _select_performance(selected_work, player, state, p_id=selection["kv"])
-        display_selected_composer(selected_composer, show_loading=True)
-        display_title(selected_work)
-        _display_performance_info(selected_work, selected_performance)
+        glc.selected_composer = get_composer_by_id(glc.composers, int(selection["c_id"]))
+        glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
+        glc.state["selected_tape"]["genre_id"] = 1  # Not sure what to do here
+        glc.selected_work = Work(name=selection["w_title"], id=int(selection["w_id"]))
+        tracklist, selected_performance, glc.state = _select_performance(glc.selected_work, glc.player, glc.state, p_id=selection["kv"])
+        display_selected_composer(glc.selected_composer, show_loading=True)
+        display_title(glc.selected_work)
+        _display_performance_info(glc.selected_work, selected_performance)
         track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
         print(f"Track titles are {track_titles}")
         display_tracks(*track_titles)
-        play_pause(player)
+        play_pause(glc.player)
         set_knob_times(None)
     else:
-        selected_composer = composers[1]  # Avoid favorites as a composer
-        selected_work = None
-    return selected_composer, selected_work, state
+        glc.selected_composer = glc.composers[1]  # Avoid favorites as a composer
+        glc.selected_work = None
+    return 
 
 
 def select_from_favorites(favorites):
@@ -748,6 +752,9 @@ def select_from_favorites(favorites):
     tm.clear_screen()
     tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
     tm.write("Favorites", 0, 0, pfont_med, tm.YELLOW)
+    glc = clu.glc
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.FAVORITES
     y0 = pfont_med.HEIGHT
     incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
     tm.m._value = 0
@@ -769,7 +776,7 @@ def select_from_favorites(favorites):
             continue
         if not tm.pYSw.value():  # drop a favorite
             button_press_time = time.ticks_ms()
-            print("Year switch pressed -- toggling a favorite")
+            print("Year switch pressed -- toggling a favorite -- We should update the screen to reflect this")
             favored = clu.toggle_favorites(favorites[index]["kv"])
             print(f"favorite {index} toggled. Favored = {favored}")
             if not favored:
@@ -878,10 +885,11 @@ def _display_performance_info(work_id, p_id):
 
 
 def display_tracks(*track_names):
+    glc = clu.glc
     print(f"in display_tracks. Track names are {track_names[:3]}...")
     if len(track_names) == 0:
         return
-    tm.clear_to_bottom(0, tracklist_bbox.y0)
+    tm.clear_to_bottom(0, glc.ycursor)
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.TRACKLIST
     #print(f"display_tracks: {glc.prev_SCREEN} -> {glc.SCREEN}")
@@ -893,7 +901,7 @@ def display_tracks(*track_names):
         if len(track_names[i]) > 0:
             last_valid_str = i
     i = 0
-    y0 = tracklist_bbox.y0
+    y0 = glc.ycursor
     text_height = pfont_small.HEIGHT
     max_lines = (tm.SCREEN_HEIGHT - y0) // text_height
     while (lines_written < max_lines) and i < len(track_names):
@@ -905,7 +913,7 @@ def display_tracks(*track_names):
             name = " - -" * 20
             in_credits = True
         name = utils.capitalize(name.lower())
-        y0 = tracklist_bbox.y0 + (text_height * lines_written)
+        y0 = glc.ycursor + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color if not in_credits else tm.PURPLE
         msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
@@ -1193,7 +1201,7 @@ def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
     tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
-    player.pause()  # was stop()
+    player.stop()  # was pause() for speed.
     if ntape is None:
         p_id = keyed_work.perf_id
         if p_id == 0:  # i.e, repertoire in Full, we don't get a p_id with the work.
