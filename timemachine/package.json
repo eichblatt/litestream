@@ -45,10 +45,6 @@
             "github:eichblatt/litestream/timemachine/classical_utils.py"
         ],
         [
-            "classical_context.py",
-            "github:eichblatt/litestream/timemachine/classical_context.py"
-        ],
-        [
             "playerManager.py",
             "github:eichblatt/litestream/timemachine/playerManager.py"
         ],
