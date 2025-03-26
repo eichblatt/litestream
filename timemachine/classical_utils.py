@@ -301,13 +301,12 @@ favored_names = {
 
 @micropython.native
 def score(perf, track_counts_mode=(0, 0)):
-    dur = 0
     promotion = 0
     date = 19000101
     n_tracks = perf.get("trk", 0)
     track_count_penalty = 100 if n_tracks < track_counts_mode[1] else 65  # too few tracks is worse than too many
     trk = max(0, 1000 - track_count_penalty * min(abs(n_tracks - track_counts_mode[0]), abs(n_tracks - track_counts_mode[1])))
-    # dur = int(perf.get("dur", 0)) * 100
+    dur = perf.get("dur", 0) // 60
     # print(f"scoring {perf.get('name', 'Unknown')}, trk is {trk}. n_tracks is {perf.get('trk',0)}")
     try:
         perf_info = perf.get("performers", [{"type": "Unknown", "name": "Unknown"}])
