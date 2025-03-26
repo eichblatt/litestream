@@ -158,6 +158,7 @@ def get_key_index(composers, composer_id):
             return i
     return -1
 
+
 # ------------------------------------------------------------------------------------ configure composers
 # NOTE This should move to classical_utils, but it depends on get_composers, which is harder to move.
 def configure_composers():
@@ -299,13 +300,13 @@ favored_names = {
 
 
 @micropython.native
-def score(perf, track_counts_mode=0):
+def score(perf, track_counts_mode=(0, 0)):
     dur = 0
     promotion = 0
     date = 19000101
     n_tracks = perf.get("trk", 0)
-    track_count_penalty = 100 if n_tracks < track_counts_mode else 65  # too few tracks is worse than too many
-    trk = max(0, 1000 - track_count_penalty * abs(n_tracks - track_counts_mode))
+    track_count_penalty = 100 if n_tracks < track_counts_mode[1] else 65  # too few tracks is worse than too many
+    trk = max(0, 1000 - track_count_penalty * min(abs(n_tracks - track_counts_mode[0]), abs(n_tracks - track_counts_mode[1])))
     # dur = int(perf.get("dur", 0)) * 100
     # print(f"scoring {perf.get('name', 'Unknown')}, trk is {trk}. n_tracks is {perf.get('trk',0)}")
     try:
@@ -332,8 +333,10 @@ def get_performances(work):
 
     url = f"{CLASSICAL_API}?mode=library&action=perf&work_id={work_id}"
     performances = request_json(url)
-    track_counts = [perf.get("trk", 0) for perf in performances[:30]]  # for symphonies prefer 4 tracks generally
+    track_counts = [perf.get("trk", 0) for perf in performances[:35]]  # for symphonies prefer 4 tracks generally
+    # compute bimodal track counts if one of the modes is 1 track (e.g. Eugene Onegin)
     track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
+    track_counts_mode = (track_counts_mode, max(set(track_counts) - {1, 2}, key=track_counts.count) if track_counts else 0)
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
     if work_id in FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
@@ -721,8 +724,9 @@ def load_state():
 def save_state(state):
     utils.save_state(state, "classical")
 
+
 # ------------------------------------------------------------------------------------ context
-class ScreenContext():
+class ScreenContext:
     NONE = 0
     COMPOSER = 1
     GENRE = 2
@@ -731,6 +735,7 @@ class ScreenContext():
     TRACKLIST = 5
     FAVORITES = 6
     OTHER = 7
+
 
 class GeneralContext:
     def __init__(self):
@@ -760,7 +765,7 @@ class GeneralContext:
         self.SCREEN = ScreenContext.NONE
         self.prev_SCREEN = ScreenContext.NONE
         self.HAS_TOKEN = False
-        
+
     def __repr__(self):
         items = [
             f"player: {self.player}",
@@ -773,7 +778,7 @@ class GeneralContext:
             f"selected_composer: {self.selected_composer}",
             f"keyed_composer: {self.keyed_composer}",
             f"selected_genre: {self.selected_genre}",
-            f"keyed_genre: {self.keyed_genre}", 
+            f"keyed_genre: {self.keyed_genre}",
             f"selected_performance: {self.selected_performance}",
             f"tracklist: {self.tracklist}",
             f"track_titles: {self.track_titles}",
@@ -788,9 +793,10 @@ class GeneralContext:
             f"ycursor: {self.ycursor}",
             f"SCREEN: {self.SCREEN}",
             f"prev_SCREEN: {self.prev_SCREEN}",
-            f"HAS_TOKEN: {self.HAS_TOKEN}"
+            f"HAS_TOKEN: {self.HAS_TOKEN}",
         ]
         return "GeneralContext:\n" + "\n".join(items)
+
 
 glc = GeneralContext()
 glc.SCREEN = ScreenContext.NONE
