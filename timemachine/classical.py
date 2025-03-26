@@ -534,10 +534,10 @@ def poll_CenterSwitch(pDSw_old):
 
 
 def poll_knobs(month_old, day_old, year_old):
-    month_new = tm.m.value()
-    day_new = tm.d.value()
-    year_new = tm.y.value()
     glc = clu.glc
+    month_new = tm.m.value() % len(glc.composers)
+    day_new = tm.d.value()  # % len(glc.composer_genres) if glc.composer_genres is not None else 1
+    year_new = tm.y.value()  # % len(glc.works) if glc.works is not None else 1
 
     if month_old != month_new:  # Composer changes # | year_old != year_new | day_old != day_new
         # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
