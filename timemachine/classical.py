@@ -358,7 +358,6 @@ def poll_select(pSelect_old):
             glc.radio_counter = 0
             display_selected_composer(glc.selected_composer, show_loading=True)
             play_composer_radio()
-            tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, pfont_med.HEIGHT)
             return pSelect_old
 
         glc.player.stop()
