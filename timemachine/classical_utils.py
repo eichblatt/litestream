@@ -743,16 +743,16 @@ class GeneralContext:
         self.works = None
         self.composers = None
         self.composer_genres = None
-        self.keyed_work = None
-        self.selected_work = None
-        self.selected_composer = None
         self.keyed_composer = None
-        self.selected_genre = None
         self.keyed_genre = None
+        self.keyed_work = None
+        self.selected_composer = None
+        self.selected_genre = None
+        self.selected_work = None
         self.selected_performance = None
+        self.performance_index = 0
         self.tracklist = []
         self.track_titles = []
-        self.performance_index = 0
         self.worklist = []
         self.worklist_key = None
         self.worklist_index = 0
@@ -761,6 +761,9 @@ class GeneralContext:
         self.select_press_time = 0
         self.power_press_time = 0
         self.ycursor = 0
+        self.radio_mode = None
+        self.radio_counter = 0
+        self.radio_data = []
         self.SCREEN = ScreenContext.NONE
         self.prev_SCREEN = ScreenContext.NONE
         self.HAS_TOKEN = False
@@ -772,16 +775,16 @@ class GeneralContext:
             f"works: {self.works}",
             f"composers: {self.composers}",
             f"composer_genres: {self.composer_genres}",
-            f"keyed_work: {self.keyed_work}",
-            f"selected_work: {self.selected_work}",
-            f"selected_composer: {self.selected_composer}",
             f"keyed_composer: {self.keyed_composer}",
-            f"selected_genre: {self.selected_genre}",
             f"keyed_genre: {self.keyed_genre}",
+            f"keyed_work: {self.keyed_work}",
+            f"selected_composer: {self.selected_composer}",
+            f"selected_genre: {self.selected_genre}",
+            f"selected_work: {self.selected_work}",
             f"selected_performance: {self.selected_performance}",
+            f"performance_index: {self.performance_index}",
             f"tracklist: {self.tracklist}",
             f"track_titles: {self.track_titles}",
-            f"performance_index: {self.performance_index}",
             f"worklist: {self.worklist}",
             f"worklist_key: {self.worklist_key}",
             f"worklist_index: {self.worklist_index}",
@@ -790,6 +793,9 @@ class GeneralContext:
             f"select_press_time: {self.select_press_time}",
             f"power_press_time: {self.power_press_time}",
             f"ycursor: {self.ycursor}",
+            f"radio_mode: {self.radio_mode}",
+            f"radio_counter: {self.radio_counter}",
+            f"radio_data: {self.radio_data}",
             f"SCREEN: {self.SCREEN}",
             f"prev_SCREEN: {self.prev_SCREEN}",
             f"HAS_TOKEN: {self.HAS_TOKEN}",

@@ -346,6 +346,18 @@ def power(state=None):
     return state
 
 
+# ------------------------------------------------ draw function
+def draw_radio_icon(x, y, r=9, color=YELLOW):
+    x = x + r
+    y = y + r
+    for i in range(0, r, 4):
+        tft.circle(x, y, r - i, color)
+        tft.circle(x, y, r - (i + 1), color)
+    tft.fill_polygon([(0, 0), (r - 2, r + 1), (-(r - 2), r + 1)], x, y, BLACK)
+    tft.fill_polygon([(0, 0), (r - 2, -(r + 1)), (-(r - 2), -(r + 1))], x, y, BLACK)
+    return
+
+
 # ---------------------------------------- calibration
 def calibrate_knobs():
     print("Running knob calibration")
