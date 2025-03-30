@@ -400,6 +400,9 @@ def poll_select(pSelect_old):
 
         if glc.SCREEN == ScreenContext.GENRE:
             print(f"Should play {glc.keyed_genre} radio")
+            tm.clear_to_bottom(0, pfont_med.HEIGHT)
+            msg = tm.write(f"Loading {glc.keyed_genre.name} radio ...", 0, pfont_med.HEIGHT, pfont_small, tm.WHITE, show_end=-4)
+            glc.ycursor = pfont_med.HEIGHT + len(msg.split("\n")) * pfont_small.HEIGHT
             # If the genre is a folder containing other genres, then play the radio for that composer/genre.
             # If the genre contains works, then play the works in order.
             glc.selected_composer = glc.keyed_composer
@@ -407,11 +410,17 @@ def poll_select(pSelect_old):
             if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
                 if not glc.HAS_TOKEN:
                     print("User must be authenticated to play composer radio")
+                    tm.clear_to_bottom(0, pfont_med.HEIGHT)
+                    msg = tm.write(
+                        f"Loading {glc.keyed_genre.name} radio ...", 0, pfont_med.HEIGHT, pfont_small, tm.WHITE, show_end=-4
+                    )
                     return pSelect_old
                 try:
                     play_radio(glc.selected_genre)
                 except ValueError as e:
                     print(f"Error playing radio: {e}")
+                    tm.clear_to_bottom(0, pfont_med.HEIGHT)
+                    tm.write("Error playing radio", 0, glc.ycursor, pfont_small, tm.WHITE, show_end=-2)
                     return pSelect_old
 
             glc.worklist_key = None
@@ -683,6 +692,8 @@ def poll_knobs(month_old, day_old, year_old):
         glc.performance_index = 0
         if glc.selected_genre.index != glc.keyed_genre.index:
             glc.selected_genre = glc.keyed_genre
+        if glc.selected_genre.nworks == 0:  # We are in a folder...play a radio
+            return month_old, day_old, year_old
         if glc.works is None:
             glc.selected_composer = glc.keyed_composer
             if glc.selected_composer.id == 0:
