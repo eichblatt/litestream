@@ -163,10 +163,10 @@ def get_cats(composer_id):
     return cat_dict[composer_id]
 
 
-def get_cat_works(mind):
-    works = _get_cat_works(mind.selected_composer.id, mind.selected_genre)
-    mind.worklist = works
-    return mind
+def get_cat_works(glc):
+    works = _get_cat_works(glc.selected_composer.id, glc.selected_genre)
+    glc.worklist = works
+    return glc
 
 
 def _get_cat_works(composer_id, category):
@@ -215,20 +215,22 @@ def _get_cat_works(composer_id, category):
     return works
 
 
-def get_composer_radio(composer: Composer):
+def select_radio(selection: Composer | Category):
     protocol = 5
-    radio_station = utils.url_escape(f"fw:composer:{composer.id}")
+    selection_type = "composer" if isinstance(selection, Composer) else "category"
+    radio_station = utils.url_escape(f"fw:{selection_type}:{selection.id}")
     url = f"{CLASSICAL_API}?action=get_stream&radio_id={radio_station}&sp={protocol}"
-    print(f"Composer {composer} radio. URL: {url}")
+    print(f"{selection} radio. URL: {url}")
     radio_data = request_json(url)
     print(f"radio data is {radio_data})")
     return radio_data
 
 
-def play_composer_radio():
+"""
+def play_composer_radio(composer: Composer):
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     if not glc.radio_data:
-        radio_data = get_composer_radio(glc.selected_composer)
+        radio_data = select_radio(composer)
     else:
         radio_data = glc.radio_data
     first_title = radio_data[0]["title"]
@@ -250,6 +252,39 @@ def play_composer_radio():
     play_tracklist(radio_data, credits)
     play_pause(glc.player)
     glc.radio_mode = "Composer"
+    glc.radio_counter += 1
+    return
+
+"""
+
+
+def play_radio(selection: Composer | Category):
+    tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
+    if not glc.radio_data:
+        radio_data = select_radio(selection)
+        if "error" in radio_data.keys():
+            raise ValueError(f"Error in selecting radio: {selection}")
+    else:
+        radio_data = glc.radio_data
+    first_title = radio_data[0]["title"]
+    glc.radio_data = [item for item in radio_data if item["title"] != first_title]
+    radio_data = [item for item in radio_data if item["title"] == first_title]
+    glc.selected_work = Work(name=first_title, id=-1)
+    display_title(glc.selected_work)
+    print(f"work title {glc.selected_work.name}")
+
+    n_tracks = len(radio_data)
+    dur = sum([int(x["dur"]) for x in radio_data])
+    dur = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
+    album_title = list({x["album_title"] for x in radio_data})
+    album_title = album_title[0] if len(album_title) == 1 else "Various"
+    artists = list({x["artist"] for x in radio_data})
+    credits = ["..credits.."] + [album_title] + artists + [f"Duration: {dur}. {n_tracks} trks"]
+    print(f"credits: {credits}")
+
+    play_tracklist(radio_data, credits)
+    play_pause(glc.player)
+    glc.radio_mode = "Composer" if isinstance(selection, Composer) else "Category"
     glc.radio_counter += 1
     return
 
@@ -357,7 +392,7 @@ def poll_select(pSelect_old):
             glc.selected_composer = glc.keyed_composer
             glc.radio_counter = 0
             display_selected_composer(glc.selected_composer, show_loading=True)
-            play_composer_radio()
+            play_radio(glc.selected_composer)
             return pSelect_old
 
         glc.player.stop()
@@ -367,7 +402,18 @@ def poll_select(pSelect_old):
             print(f"Should play {glc.keyed_genre} radio")
             # If the genre is a folder containing other genres, then play the radio for that composer/genre.
             # If the genre contains works, then play the works in order.
+            glc.selected_composer = glc.keyed_composer
             glc.selected_genre = glc.keyed_genre
+            if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
+                if not glc.HAS_TOKEN:
+                    print("User must be authenticated to play composer radio")
+                    return pSelect_old
+                try:
+                    play_radio(glc.selected_genre)
+                except ValueError as e:
+                    print(f"Error playing radio: {e}")
+                    return pSelect_old
+
             glc.worklist_key = None
             if glc.state["repertoire"] == "Full":
                 glc = get_cat_works(glc)
@@ -381,7 +427,7 @@ def poll_select(pSelect_old):
             glc.worklist = glc.worklist[glc.worklist_index + 1 :] + glc.worklist[: glc.worklist_index]  # wrap around
             glc.player.playlist_completed = True
             glc.radio_mode = "worklist"
-            glc.radio_counter = 1
+            glc.radio_counter = 0
             return pSelect_old
 
         if glc.SCREEN == ScreenContext.WORK:
@@ -702,16 +748,14 @@ def play_pause(player):
 
 
 def play_keyed_work():
+    # Set the keyed_work to the selected_work, and play it.
+    glc = clu.glc
+    glc.selected_work = glc.keyed_work
     print(f"Playing {glc.keyed_work}")
     select_performance()
     save_state(glc.state)
-    glc.selected_work = glc.keyed_work
-    # Display the Title
     display_title(glc.selected_work)
-    # tracklist_bbox.y0 = display_title(glc.selected_work)
-    # Display the performance information
     display_performance_info()
-    # Display the tracklist
     glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
     print(f"Track titles are {glc.track_titles}")
     display_tracks(*glc.track_titles)  # This doesn't show the credits.
@@ -772,14 +816,20 @@ def main_loop():
             tm.power(0)
         if glc.player.playlist_completed:
             if (glc.radio_mode == "worklist") and (len(glc.worklist) > 0):
-                glc.radio_counter += 1
+                tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
                 print(f"Player is finished, continuing the present worklist")
                 glc.keyed_work = glc.worklist[0]
                 glc.worklist = glc.worklist[1:]  # safer than popping, in case of empty list.
                 clu.increment_worklist_dict(glc.worklist_key)
                 play_keyed_work()
+                glc.radio_counter += 1
             elif (glc.radio_mode == "Composer") and (glc.radio_counter < 20):
-                play_composer_radio()
+                play_radio(glc.selected_composer)
+            elif (glc.radio_mode == "Category") and (glc.radio_counter < 20):
+                try:
+                    play_radio(glc.selected_genre)
+                except ValueError as e:
+                    print(f"Error playing radio: {e}")
 
         pSelect_old = poll_select(pSelect_old)
         pPlayPause_old = poll_play_pause(pPlayPause_old)

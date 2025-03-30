@@ -334,8 +334,16 @@ def get_performances(work):
     performances = request_json(url)
     track_counts = [perf.get("trk", 0) for perf in performances[:35]]  # for symphonies prefer 4 tracks generally
     # compute bimodal track counts if one of the modes is 1 track (e.g. Eugene Onegin)
-    track_counts_mode = max(set(track_counts), key=track_counts.count) if track_counts else 0
-    track_counts_mode = (track_counts_mode, max(set(track_counts) - {1, 2}, key=track_counts.count) if track_counts else 0)
+    track_counts_set = set(track_counts)
+    if track_counts_set == {1}:
+        track_counts_mode = (1, 1)
+    elif track_counts_set == {1, 2}:
+        track_counts_mode = (1, 2)
+    elif track_counts_set == {2}:
+        track_counts_mode = (2, 2)
+    else:
+        track_counts_mode = max(track_counts_set, key=track_counts.count) if track_counts else 0
+        track_counts_mode = (track_counts_mode, max(track_counts_set - {1, 2}, key=track_counts.count) if track_counts else 0)
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
     if work_id in FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.

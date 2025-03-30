@@ -303,6 +303,7 @@ WHITE = color_rgb(255, 255, 255)
 BLACK = color_rgb(0, 0, 0)
 YELLOW = color_rgb(255, 255, 20)
 PURPLE = color_rgb(255, 72, 255)
+GREEN = color_rgb(0, 255, 100)
 stage_date_color = YELLOW
 
 
@@ -347,7 +348,7 @@ def power(state=None):
 
 
 # ------------------------------------------------ draw function
-def draw_radio_icon(x, y, r=9, color=YELLOW):
+def draw_radio_icon(x, y, r=9, color=GREEN):
     x = x + r
     y = y + r
     for i in range(0, r, 4):
