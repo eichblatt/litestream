@@ -278,8 +278,11 @@ def play_radio(selection: Composer | Category):
     dur = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
     album_title = list({x["album_title"] for x in radio_data})
     album_title = album_title[0] if len(album_title) == 1 else "Various"
+    album_title = tm.add_line_breaks(album_title, 0, pfont_small, -3).split("\n")
     artists = list({x["artist"] for x in radio_data})
-    credits = ["..credits.."] + [album_title] + artists + [f"Duration: {dur}. {n_tracks} trks"]
+    artists = tm.add_line_breaks(", ".join(artists), 0, pfont_small, -3).split("\n")
+
+    credits = ["..credits.."] + album_title + artists + [f"Duration: {dur}. {n_tracks} trks"]
     print(f"credits: {credits}")
 
     play_tracklist(radio_data, credits)
