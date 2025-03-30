@@ -262,7 +262,7 @@ def play_radio(selection: Composer | Category):
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     if not glc.radio_data:
         radio_data = select_radio(selection)
-        if "error" in radio_data.keys():
+        if isinstance(radio_data, dict) and "error" in radio_data.keys():
             raise ValueError(f"Error in selecting radio: {selection}")
     else:
         radio_data = glc.radio_data
