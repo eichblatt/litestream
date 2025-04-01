@@ -1066,7 +1066,7 @@ class AudioPlayer:
 
             pos = self.InBuffer.any()
 
-            #print(f"Decoding: {pos}", end=' ')
+            # print(f"Decoding: {pos}", end=' ')
             ts = time.ticks_ms()
 
             ### AAC ###
@@ -1088,7 +1088,9 @@ class AudioPlayer:
                         self.current_track_bytes_parsed_out += parsedLength
                         self.DecodeInfo[-1][0] += parsedLength
 
-                    self.DEBUG and print("Parsed:", parsedLength, self.current_track_bytes_parsed_in, self.current_track_bytes_parsed_out)
+                    self.DEBUG and print(
+                        "Parsed:", parsedLength, self.current_track_bytes_parsed_in, self.current_track_bytes_parsed_out
+                    )
 
                     if len(self.TrackInfo) > 0:
                         # Have we finished parsing this track?
@@ -1181,7 +1183,7 @@ class AudioPlayer:
                     # We have finished decoding the whole playlist. Now we just need to wait for the play loop to run out
                     if len(self.TrackInfo) == 0:
                         if len(self.playlist) > 0:
-                            raise RuntimeError("Finished decoding the playlist -- but playlist is not empty")
+                            raise RuntimeError(f"Finished decoding playlist -- but there are {len(self.playlist)} more tracks")
                         print("Finished decoding playlist")
                         self.callbacks["messages"](f"decode_chunk: Finished decoding playlist")
                         self.DecodeLoopRunning = False
@@ -1191,7 +1193,7 @@ class AudioPlayer:
                         # self.VorbisDecoder.Vorbis_Close()
                         self.AACDecoder.AAC_Close()
                         # Don't call stop() here or the end of the song will be cut off
-                    
+
                     break
 
             # If we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample), start playing them.
