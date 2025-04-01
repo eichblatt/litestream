@@ -32,3 +32,6 @@ Upload this to the Google Cloud in the browser.
 
 In case the metadata is stale, ie, the URLs are no longer valid, we need to delete the files in the `tapes` cloud folder:
 <https://console.cloud.google.com/storage/browser/spertilo-data/tapes>
+
+## Bash script
+
