@@ -325,12 +325,12 @@ def select_radio_channel():
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
     radio_id = None
-    choices = ["General", "Must Know", "Essentials", "Early Genres", "Custom Periods/Genres...", "Cancel"]
+    choices = ["General", "Must Know", "Essentials", "Early Genres", "Periods/Genres...", "Cancel"]
 
     choice = utils.select_option("Select a Radio", choices)
     if choice == "Cancel":
         return radio_id
-    if choice == "Custom Periods/Genres...":
+    if choice == "Periods/Genres...":
         return custom_radio_id()
     radio_id = f'{choice.lower().replace(" ", "")}'
     return radio_id
@@ -343,19 +343,7 @@ def custom_radio_id():
     # Choose options based on the knobs.
     # Poll for select, play, or stop buttons, to accept choices
     print("In select_custom_radio")
-    tm.clear_screen()
-    tm.label_soft_knobs("", "Jump 10", "Next/Prev")
-    tm.write("Radio Options", 0, 0, pfont_med, tm.YELLOW)
-    glc = clu.glc
-    glc.prev_SCREEN = glc.SCREEN
-    glc.SCREEN = ScreenContext.RADIO
-    y0 = pfont_med.HEIGHT
-    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
-    tm.m._value = 0
-    tm.d._value = 0
-    tm.y._value = 0
-    prev_index = -1
-    button_press_time = time.ticks_ms()
+
     radio_id = None
     radios = [
         "Early/Renaissance",
@@ -370,33 +358,19 @@ def custom_radio_id():
         "Solo Instrument",
         "Vocal",
         "Stage (incl. Opera)",
-        "Cancel",
     ]
 
-    while True:
-        index = tm.d.value() * 10 + tm.y.value()
-        index = index % len(radios)
-        if index != prev_index:
-            set_knob_times(None)  # force screen refresh
-            prev_index = index
-
-        if time.ticks_diff(time.ticks_ms(), button_press_time) < 2_000:  # crude de-bouncing.
-            continue
-
-        if not tm.pStop.value():
-            radio_id = None
-            break
-
-        if (not tm.pSelect.value()) or (not tm.pPlayPause.value()):
-            radio_id = radios[index]
-            break
-
-        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
-            print("Returning to composers/genres/works after 120 sec of inactivity")
-            radio_id = None
-            break
-    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+    radio_options = utils.select_multiple_options("Toggle the Desired Elements", radios)
+    periods = []
+    genres = []
+    for option in radio_options:
+        ind = 1 + radios.index(option)
+        if ind <= 7:
+            periods.append(ind)
+        else:
+            genres.append(ind - 7)
+    radio_id = utils.url_escape(f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}")
+    print(f"radio_id is {radio_id}")
     return radio_id
 
 
@@ -775,8 +749,6 @@ def poll_knobs(month_old, day_old, year_old):
         # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
         # print(f"month_new: {month_new}")
         tm.power(1)
-        glc.prev_SCREEN = glc.SCREEN
-        glc.SCREEN = ScreenContext.COMPOSER
         glc.performance_index = 0
         force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
         set_knob_times(tm.m)
@@ -787,8 +759,6 @@ def poll_knobs(month_old, day_old, year_old):
         month_old = month_new
     elif day_old != day_new:  # Genre changes
         tm.power(1)
-        glc.prev_SCREEN = glc.SCREEN
-        glc.SCREEN = ScreenContext.GENRE
         glc.performance_index = 0
         if glc.keyed_composer.id == 0:  # "Favorites"
             handle_favorites()
@@ -806,6 +776,10 @@ def poll_knobs(month_old, day_old, year_old):
             handle_radio()
             glc.prev_SCREEN = glc.SCREEN
             glc.SCREEN = ScreenContext.GENRE
+            glc.keyed_work = glc.selected_work
+            glc.keyed_composer = glc.composers[2]
+            glc.last_update_time = time.ticks_ms()
+            set_knob_times(None)  # To ensure that genres will be drawn
         else:
             if glc.selected_composer != glc.keyed_composer:
                 glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
@@ -823,8 +797,6 @@ def poll_knobs(month_old, day_old, year_old):
     elif year_old != year_new:  # Works changes
         print(f"Year knob twiddled old:{year_old} new:{year_new}")
         tm.power(1)
-        glc.prev_SCREEN = glc.SCREEN
-        glc.SCREEN = ScreenContext.WORK
         glc.performance_index = 0
         if glc.selected_genre.index != glc.keyed_genre.index:
             glc.selected_genre = glc.keyed_genre

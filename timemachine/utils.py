@@ -37,15 +37,13 @@ DEV_BOX_PATH = "/config/.is_dev_box"
 MAIN_APP_PATH = "/config/.main_app"
 STOP_CHAR = "$StoP$"
 
-choices_color = tm.WHITE
-
 
 # Utils using TM hardware
 ######################################################################################### Utils using TM hardware
 #
 
 
-def select_option(message, choices):
+def select_option(message, choices, mask=None):
     if len(choices) == 0:
         return ""
     pSelect_old = True
@@ -57,12 +55,17 @@ def select_option(message, choices):
     tm.d._range_mode = tm.d.RANGE_WRAP
 
     tm.label_soft_knobs("", "", "Next/Prev")
+
+    if mask is None:
+        mask = [False] * len(choices)
     step = step_old = 0
     text_height = pfont_small.HEIGHT  # was 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
+    choices_color = tm.WHITE
+    background_color = tm.BLACK
     message = message.replace("\n", " ")
     message = tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color, show_end=-3)
     message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
@@ -78,17 +81,23 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.write(choices[s], 0, y0, pfont_small, choices_color, show_end=True)
+                text_color = choices_color if not mask[s] else background_color
+                background = choices_color if mask[s] else background_color
+                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
                 y0 += text_height
 
             text = ">" + choices[step]
-            tm.write(text, 0, y0, pfont_small, tm.PURPLE, show_end=True)
+            text_color = tm.PURPLE if not mask[step] else background_color
+            background = tm.PURPLE if mask[step] else background_color
+            tm.write(text, 0, y0, pfont_small, text_color, background=background, show_end=True)
             y0 += text_height
 
             for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
                 if y0 > (tm.SCREEN_HEIGHT - text_height):
                     continue
-                tm.write(choices[s], 0, y0, pfont_small, choices_color, show_end=True)
+                text_color = choices_color if not mask[s] else background_color
+                background = choices_color if mask[s] else background_color
+                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
                 y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
@@ -96,6 +105,22 @@ def select_option(message, choices):
     print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
     return choice
+
+
+def select_multiple_options(message, choices, mask=None):
+    if len(choices) == 0:
+        return ""
+    if mask is None:
+        mask = [False] * len(choices)
+    while True:
+        choice = select_option(message, choices + ["DONE"], mask + [False])
+        if choice == "DONE":
+            break
+        ind = choices.index(choice)
+        choices = choices[ind:] + choices[:ind]  # rotate the list
+        mask = mask[ind:] + mask[:ind]  # rotate the mask
+        mask[0] = not mask[0]
+    return [choices[i] for i in range(len(choices)) if mask[i]][-2::-1]  # remove the DONE, and put in order.
 
 
 def select_chars(message, message2="", already=None):
