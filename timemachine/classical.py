@@ -513,11 +513,8 @@ def poll_select(pSelect_old):
                     tm.write("Error playing radio", 0, glc.ycursor, pfont_small, tm.WHITE, show_end=-2)
 
             glc.worklist_key = None
-            if glc.state["repertoire"] == "Full":
-                glc = get_cat_works(glc)
-                glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
-            else:
-                glc.worklist = get_works(glc.selected_composer.id)
+            glc = get_cat_works(glc)
+            glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
             print(f"worklist is {glc.worklist}")
             glc.worklist_index = clu.worklist_dict().get(glc.worklist_key, 0) % max(1, len(glc.worklist))
             clu.set_worklist_dict(glc.worklist_key, glc.worklist_index)  # To keep the index within bounds of len(gxt.worklist).
@@ -790,12 +787,8 @@ def poll_knobs(month_old, day_old, year_old):
             if glc.selected_composer != glc.keyed_composer:
                 glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
                 display_selected_composer(glc.selected_composer, show_loading=True)
-            if glc.state["repertoire"] == "Full":
-                glc.composer_genres = get_cats(glc.selected_composer.id)
-                # print(f"cat_genres is {glc.composer_genres}")
-            else:
-                glc.composer_genres = get_genres(glc.selected_composer.id)
-            # glc.keyed_genre = display_keyed_genres(glc.selected_composer, glc.composer_genres, day_new, day_old)
+            glc.composer_genres = get_cats(glc.selected_composer.id)
+            # print(f"cat_genres is {glc.composer_genres}")
             display_keyed_genres(glc.composer_genres, day_new, day_old)
             print(f"keyed genre is {glc.keyed_genre}")
             set_knob_times(tm.d)
@@ -822,19 +815,12 @@ def poll_knobs(month_old, day_old, year_old):
                     set_knob_times(None)  # To ensure that genres will be drawn
             else:
                 display_selected_composer(glc.selected_composer, glc.selected_genre, show_loading=True)
-                if glc.state["repertoire"] == "Full":
-                    glc.composer_genres = get_cats(glc.selected_composer.id)
-                    print(f"cat_genres is {glc.composer_genres}")
-                else:
-                    glc.composer_genres = get_genres(glc.selected_composer.id)
+                glc.composer_genres = get_cats(glc.selected_composer.id)
+                print(f"cat_genres is {glc.composer_genres}")
         t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
         composer_genre = t[0] if len(t) > 0 else glc.composer_genres[day_old % len(glc.composer_genres)]
         print(f"composer_genre is {composer_genre}")
-        if glc.state["repertoire"] == "Full":
-            glc.works = _get_cat_works(glc.selected_composer.id, composer_genre)
-        else:
-            glc.works = get_works(glc.selected_composer.id)
-            glc.works = [w for w in glc.works if w.genre == composer_genre.id]
+        glc.works = _get_cat_works(glc.selected_composer.id, composer_genre)
         glc.keyed_work = display_keyed_works(glc.selected_composer, composer_genre, glc.works, year_new, year_old)
         print(f"keyed work is {glc.keyed_work}")
         year_old = year_new
@@ -848,8 +834,6 @@ def configure(choice):
 
     if choice == "Composers":
         return clu.configure_composers()
-    elif choice == "Repertoire":
-        return clu.configure_repertoire()
     elif choice == "Account":
         state = clu.configure_account()
     state = load_state()
@@ -914,10 +898,7 @@ def main_loop():
     tm.m._value = clu.get_key_index(glc.composers, glc.keyed_composer.id)
     month_old = -1  # to force the screen to start at composer.
 
-    if glc.state.get("repertoire", "Must Know") == "Full":
-        glc.composer_genres = get_cats(glc.selected_composer.id)
-    else:
-        glc.composer_genres = get_genres(glc.selected_composer.id)
+    glc.composer_genres = get_cats(glc.selected_composer.id)
     try:
         tm.d._value = next(i for i, x in enumerate(glc.composer_genres) if x.id == tape.get("genre_id", 1))
     except StopIteration:

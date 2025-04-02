@@ -521,21 +521,6 @@ def set_worklist_dict(key, val):
     utils.write_json(wl_dict, f"{METADATA_ROOT}/worklists.json")
 
 
-# ------------------------------------------------------------------------------------ repertoire
-def configure_repertoire():
-    state = load_state()
-    repertoire = state.get("repertoire", "Must Know")
-    choices = ["Must Know", "Full", "No Change"]
-    choice = utils.select_option(f"Select Option (now: {repertoire})", choices)
-    print(f"configure_collection: chose {choice}")
-    if choice in ["No Change", "Cancel", repertoire]:
-        return
-
-    state["repertoire"] = choice
-    save_state(state)
-    utils.reset()
-
-
 # ------------------------------------------------------------------------------------ cache management
 def clear_cache(pattern="*"):
     utils.remove_files(f"{METADATA_ROOT}/{pattern}")
