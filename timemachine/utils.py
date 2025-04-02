@@ -28,6 +28,7 @@ import sys
 import time
 
 import board as tm
+import fonts.NotoSans_bold_18 as pfont_small
 
 WIFI_CRED_HIST_PATH = "/config/wifi_cred_hist.json"
 WIFI_CRED_PATH = "/wifi_cred.json"
@@ -57,13 +58,13 @@ def select_option(message, choices):
 
     tm.label_soft_knobs("", "", "Next/Prev")
     step = step_old = 0
-    text_height = tm.pfont_small.HEIGHT  # was 17
+    text_height = pfont_small.HEIGHT  # was 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
     message = message.replace("\n", " ")
-    message = tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color, show_end=-3)
+    message = tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color, show_end=-3)
     message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
     select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
@@ -77,17 +78,17 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                tm.write(choices[s], 0, y0, pfont_small, choices_color, show_end=True)
                 y0 += text_height
 
             text = ">" + choices[step]
-            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, show_end=True)
+            tm.write(text, 0, y0, pfont_small, tm.PURPLE, show_end=True)
             y0 += text_height
 
             for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
                 if y0 > (tm.SCREEN_HEIGHT - text_height):
                     continue
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                tm.write(choices[s], 0, y0, pfont_small, choices_color, show_end=True)
                 y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
@@ -1116,6 +1117,7 @@ class FirmwareUpdateRequiredException(Exception):
     def __init__(self, message="Firmware is out of date"):
         self.message = message
         super().__init__(self.message)
+
 
 class ConfigureException(Exception):
     def __init__(self, message="Back to Config Menu"):
