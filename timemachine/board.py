@@ -221,7 +221,7 @@ knob_sense = get_knob_sense()
 setup_knobs(knob_sense)
 
 
-def label_soft_knobs(left, center, right):
+def label_soft_knobs(left, center, right, highlight_colors=()):
     if len(SCREEN_VPARTS) < 2:
         return
     print("labelling soft knobs")
@@ -235,9 +235,15 @@ def label_soft_knobs(left, center, right):
     if sum(widths) > SCREEN_WIDTH:
         raise NotImplementedError("Strings are too wide, Bailing")
     clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
-    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
-    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
-    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    xcursors = [0, int(0.5 * (SCREEN_WIDTH - widths[1])), SCREEN_WIDTH - widths[2]]
+    write(left, xcursors[0], SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
+    write(center, xcursors[1], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    write(right, xcursors[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+
+    for i, color in enumerate(highlight_colors):  # Draw a small colored rectangle next to the text.
+        if color is None:
+            continue
+        tft.fill_rect(xcursors[i] + 2, SCREEN_VPARTS[0] + (font.HEIGHT // 2) - 2, 4, 4, color)
     return
 
 

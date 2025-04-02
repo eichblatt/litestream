@@ -215,24 +215,30 @@ def _get_cat_works(composer_id, category):
     return works
 
 
-def select_radio(selection: Composer | Category):
-    protocol = 5
+############################################################################################# radio
+def get_radio_id(selection: Composer | Category):
     selection_type = "composer" if isinstance(selection, Composer) else "category"
     radio_station = utils.url_escape(f"fw:{selection_type}:{selection.id}")
-    url = f"{CLASSICAL_API}?action=get_stream&radio_id={radio_station}&sp={protocol}"
-    print(f"{selection} radio. URL: {url}")
+    return radio_station
+
+
+def get_radio_data(radio_id: str):
+    protocol = 5
+    url = f"{CLASSICAL_API}?action=get_stream&radio_id={radio_id}&sp={protocol}"
     radio_data = request_json(url)
-    print(f"radio data is {radio_data})")
+    print(f"radio data for {radio_id} is {radio_data}. URL: {url}")
     return radio_data
 
 
-"""
-def play_composer_radio(composer: Composer):
+def play_radio(radio_id: str):
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     if not glc.radio_data:
-        radio_data = select_radio(composer)
+        radio_data = get_radio_data(radio_id)
+        if isinstance(radio_data, dict) and "error" in radio_data.keys():
+            raise ValueError(f"Error in selecting radio: {radio_id}")
     else:
         radio_data = glc.radio_data
+    glc.radio_id = radio_id
     first_title = radio_data[0]["title"]
     glc.radio_data = [item for item in radio_data if item["title"] != first_title]
     radio_data = [item for item in radio_data if item["title"] == first_title]
@@ -245,20 +251,21 @@ def play_composer_radio(composer: Composer):
     dur = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
     album_title = list({x["album_title"] for x in radio_data})
     album_title = album_title[0] if len(album_title) == 1 else "Various"
+    album_title = tm.add_line_breaks(album_title, 0, pfont_small, -3).split("\n")
     artists = list({x["artist"] for x in radio_data})
-    credits = ["..credits.."] + [album_title] + artists + [f"Duration: {dur}. {n_tracks} trks"]
+    artists = tm.add_line_breaks(", ".join(artists), 0, pfont_small, -3).split("\n")
+
+    credits = ["..credits.."] + album_title + artists + [f"Duration: {dur}. {n_tracks} trks"]
     print(f"credits: {credits}")
 
     play_tracklist(radio_data, credits)
     play_pause(glc.player)
-    glc.radio_mode = "Composer"
     glc.radio_counter += 1
     return
 
+
 """
-
-
-def play_radio(selection: Composer | Category):
+def play_radio_orig(selection: Composer | Category):
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     if not glc.radio_data:
         radio_data = select_radio(selection)
@@ -290,6 +297,107 @@ def play_radio(selection: Composer | Category):
     glc.radio_mode = "Composer" if isinstance(selection, Composer) else "Category"
     glc.radio_counter += 1
     return
+"""
+
+
+def handle_radio():
+    # Set the glc.selected_composer and glc.selected_work based on selection, or default to first composer.
+    glc = clu.glc
+    print("handling radio")
+    tm.clear_screen()
+    tm.write("Radio Selection", 0, 0, pfont_med, tm.YELLOW)
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.OTHER
+    selected_radio_id = select_radio_channel()
+    if selected_radio_id is not None:
+        play_radio(selected_radio_id)
+    else:
+        glc.selected_composer = glc.composers[2]  # Avoid favorites as a composer
+        glc.selected_work = None
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+    return
+
+
+def select_radio_channel():
+    print("In select_radio_channel")
+    tm.clear_screen()
+    glc = clu.glc
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.OTHER
+    radio_id = None
+    choices = ["General", "Must Know", "Essentials", "Early Genres", "Custom Periods/Genres...", "Cancel"]
+
+    choice = utils.select_option("Select a Radio", choices)
+    if choice == "Cancel":
+        return radio_id
+    if choice == "Custom Periods/Genres...":
+        return custom_radio_id()
+    radio_id = f'{choice.lower().replace(" ", "")}'
+    return radio_id
+
+
+def custom_radio_id():
+    print("Custom Periods/Genres not implemented")
+    # Hijack the knobs for navigation purposes
+    # Show a set of custom radio choices
+    # Choose options based on the knobs.
+    # Poll for select, play, or stop buttons, to accept choices
+    print("In select_custom_radio")
+    tm.clear_screen()
+    tm.label_soft_knobs("", "Jump 10", "Next/Prev")
+    tm.write("Radio Options", 0, 0, pfont_med, tm.YELLOW)
+    glc = clu.glc
+    glc.prev_SCREEN = glc.SCREEN
+    glc.SCREEN = ScreenContext.RADIO
+    y0 = pfont_med.HEIGHT
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
+    tm.m._value = 0
+    tm.d._value = 0
+    tm.y._value = 0
+    prev_index = -1
+    button_press_time = time.ticks_ms()
+    radio_id = None
+    radios = [
+        "Early/Renaissance",
+        "Baroque",
+        "Classical",
+        "Romantic",
+        "Late Romantic",
+        "Impressionist",
+        "Modern",
+        "Orchestral",
+        "Chamber",
+        "Solo Instrument",
+        "Vocal",
+        "Stage (incl. Opera)",
+        "Cancel",
+    ]
+
+    while True:
+        index = tm.d.value() * 10 + tm.y.value()
+        index = index % len(radios)
+        if index != prev_index:
+            set_knob_times(None)  # force screen refresh
+            prev_index = index
+
+        if time.ticks_diff(time.ticks_ms(), button_press_time) < 2_000:  # crude de-bouncing.
+            continue
+
+        if not tm.pStop.value():
+            radio_id = None
+            break
+
+        if (not tm.pSelect.value()) or (not tm.pPlayPause.value()):
+            radio_id = radios[index]
+            break
+
+        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
+            print("Returning to composers/genres/works after 120 sec of inactivity")
+            radio_id = None
+            break
+    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+    return radio_id
 
 
 def get_tracklist(performance_id: int):
@@ -395,7 +503,9 @@ def poll_select(pSelect_old):
             glc.selected_composer = glc.keyed_composer
             glc.radio_counter = 0
             display_selected_composer(glc.selected_composer, show_loading=True)
-            play_radio(glc.selected_composer)
+            radio_id = get_radio_id(glc.selected_composer)
+            play_radio(radio_id)
+            glc.radio_mode = "Composer"
             return pSelect_old
 
         glc.player.stop()
@@ -419,12 +529,14 @@ def poll_select(pSelect_old):
                     )
                     return pSelect_old
                 try:
-                    play_radio(glc.selected_genre)
+                    radio_id = get_radio_id(glc.selected_genre)
+                    play_radio(radio_id)
+                    glc.radio_mode = "Category"
+                    return pSelect_old
                 except ValueError as e:
                     print(f"Error playing radio: {e}")
                     tm.clear_to_bottom(0, pfont_med.HEIGHT)
                     tm.write("Error playing radio", 0, glc.ycursor, pfont_small, tm.WHITE, show_end=-2)
-                    return pSelect_old
 
             glc.worklist_key = None
             if glc.state["repertoire"] == "Full":
@@ -609,6 +721,14 @@ def poll_RightSwitch(pYSw_old):
                 glc.player.play()
         else:
             print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
+            if glc.SCREEN == ScreenContext.COMPOSER:
+                tm.m._value = 0  # Set the composer index to 0 (Favorites)
+                # tm.d._value += 1  # "twiddle" the genre knob
+                # handle_favorites()
+                glc.keyed_composer = glc.composers[0]
+                glc.selected_composer = glc.keyed_composer
+                return pYSw_old
+
             if glc.SCREEN == ScreenContext.TRACKLIST:
                 heart_color = tm.RED if not glc.selected_work.id in clu.FAVORITE_WORKS else tm.BLACK
                 tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, heart_color)
@@ -655,6 +775,8 @@ def poll_knobs(month_old, day_old, year_old):
         # print(f"time diff is {time.ticks_diff(time.ticks_ms(), WORK_KEY_TIME)}")
         # print(f"month_new: {month_new}")
         tm.power(1)
+        glc.prev_SCREEN = glc.SCREEN
+        glc.SCREEN = ScreenContext.COMPOSER
         glc.performance_index = 0
         force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
         set_knob_times(tm.m)
@@ -665,9 +787,13 @@ def poll_knobs(month_old, day_old, year_old):
         month_old = month_new
     elif day_old != day_new:  # Genre changes
         tm.power(1)
+        glc.prev_SCREEN = glc.SCREEN
+        glc.SCREEN = ScreenContext.GENRE
         glc.performance_index = 0
         if glc.keyed_composer.id == 0:  # "Favorites"
             handle_favorites()
+            glc.prev_SCREEN = glc.SCREEN
+            glc.SCREEN = ScreenContext.GENRE
             if glc.selected_work is None:  # We bailed from handle favorites without selecting anything.
                 glc.selected_work = glc.keyed_work
             else:
@@ -676,6 +802,10 @@ def poll_knobs(month_old, day_old, year_old):
                 glc.last_update_time = time.ticks_ms()
                 # tm.m._value = clu.get_key_index(composers, gxt.selected_composer.id)
                 set_knob_times(None)  # To ensure that genres will be drawn
+        elif glc.keyed_composer.id == 1:  # "Radios"
+            handle_radio()
+            glc.prev_SCREEN = glc.SCREEN
+            glc.SCREEN = ScreenContext.GENRE
         else:
             if glc.selected_composer != glc.keyed_composer:
                 glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
@@ -691,11 +821,15 @@ def poll_knobs(month_old, day_old, year_old):
             set_knob_times(tm.d)
         day_old = day_new
     elif year_old != year_new:  # Works changes
+        print(f"Year knob twiddled old:{year_old} new:{year_new}")
         tm.power(1)
+        glc.prev_SCREEN = glc.SCREEN
+        glc.SCREEN = ScreenContext.WORK
         glc.performance_index = 0
         if glc.selected_genre.index != glc.keyed_genre.index:
             glc.selected_genre = glc.keyed_genre
         if glc.selected_genre.nworks == 0:  # We are in a folder...play a radio
+            print("Folder Radio. Returning from year knob twiddle without doing anything")
             return month_old, day_old, year_old
         if glc.works is None:
             glc.selected_composer = glc.keyed_composer
@@ -787,13 +921,14 @@ def main_loop():
     pPower_old = 0
     pSelect_old = pPlayPause_old = pStop_old = pRewind_old = pFFwd_old = 1
     pYSw_old = pMSw_old = pDSw_old = 1
-    tm.label_soft_knobs("Composer", "Genre", "Work")
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
 
     clu.populate_favorites()  # Populate values for clu.FAVORITE_PERFORMANCES and clu.FAVORITE_WORKS
     composer_list = glc.state.get("composer_list", ["GREATS"])
     glc.composers = sorted(get_composers(composer_list), key=lambda x: x.name)
     if len(clu.FAVORITE_WORKS) > 0:
         glc.composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
+        glc.composers.insert(1, Composer({"id": 1, "ln": "Radio", "fn": ""}))
     tape = glc.state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
     glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[1].id))
@@ -838,13 +973,18 @@ def main_loop():
                 play_keyed_work()
                 glc.radio_counter += 1
             elif (glc.radio_mode == "Composer") and (glc.radio_counter < 20):
-                play_radio(glc.selected_composer)
+                radio_id = get_radio_id(glc.selected_composer)
+                play_radio(radio_id)
+                glc.radio_mode = "Composer"
             elif (glc.radio_mode == "Category") and (glc.radio_counter < 20):
-                try:
-                    play_radio(glc.selected_genre)
-                except ValueError as e:
-                    print(f"Error playing radio: {e}")
+                radio_id = get_radio_id(glc.selected_genre)
+                play_radio(radio_id)
+                glc.radio_mode = "Category"
 
+        if glc.SCREEN != glc.prev_SCREEN:
+            glc.prev_SCREEN = glc.SCREEN
+            if glc.SCREEN in [ScreenContext.WORK, ScreenContext.TRACKLIST]:
+                tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
         pSelect_old = poll_select(pSelect_old)
         pPlayPause_old = poll_play_pause(pPlayPause_old)
         pStop_old = poll_stop(pStop_old)
@@ -896,7 +1036,7 @@ def handle_favorites():
         play_pause(glc.player)
         set_knob_times(None)
     else:
-        glc.selected_composer = glc.composers[1]  # Avoid favorites as a composer
+        glc.selected_composer = glc.composers[2]  # Avoid favorites as a composer
         glc.selected_work = None
     return
 
@@ -954,7 +1094,7 @@ def select_from_favorites(favorites):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work")
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
     return retval
 
 
@@ -1411,7 +1551,7 @@ def choose_performance(composer, keyed_work):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work")
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
     return retval
 
 
@@ -1486,7 +1626,7 @@ def run():
         show_composers(composer_list)
         clu.initialize_knobs()
 
-        glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
+        glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=True)
         glc.ycursor = pfont_med.HEIGHT + 3 * pfont_small.HEIGHT
         main_loop()
 

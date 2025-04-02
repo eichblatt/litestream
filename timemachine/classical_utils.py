@@ -301,6 +301,8 @@ favored_names = {
 
 @micropython.native
 def score(perf, track_counts_mode=(0, 0)):
+    if track_counts_mode == (0, 0):
+        return 1
     promotion = 0
     date = 19000101
     n_tracks = perf.get("trk", 0)
@@ -741,7 +743,8 @@ class ScreenContext:
     PERFORMANCE = 4
     TRACKLIST = 5
     FAVORITES = 6
-    OTHER = 7
+    RADIO = 7
+    OTHER = 8
 
 
 class GeneralContext:
@@ -769,6 +772,7 @@ class GeneralContext:
         self.select_press_time = 0
         self.power_press_time = 0
         self.ycursor = 0
+        self.radio_id = None
         self.radio_mode = None
         self.radio_counter = 0
         self.radio_data = []
@@ -801,6 +805,7 @@ class GeneralContext:
             f"select_press_time: {self.select_press_time}",
             f"power_press_time: {self.power_press_time}",
             f"ycursor: {self.ycursor}",
+            f"radio_id: {self.radio_id}",
             f"radio_mode: {self.radio_mode}",
             f"radio_counter: {self.radio_counter}",
             f"radio_data: {self.radio_data}",

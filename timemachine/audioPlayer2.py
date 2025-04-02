@@ -1088,7 +1088,7 @@ class AudioPlayer:
                         self.current_track_bytes_parsed_out += parsedLength
                         self.DecodeInfo[-1][0] += parsedLength
 
-                    self.DEBUG and print(
+                    (self.DEBUG > 2) and print(
                         "Parsed:", parsedLength, self.current_track_bytes_parsed_in, self.current_track_bytes_parsed_out
                     )
 

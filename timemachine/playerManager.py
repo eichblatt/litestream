@@ -42,7 +42,7 @@ class PlayerManager:
         self.first_chunk_dict = {}
         self.track_index = 0
         self.pump_dry = True
-        self.block_pump = False 
+        self.block_pump = False
         self.chunk_generator = None
         self.urls = []  # high-level urls
 
@@ -60,7 +60,7 @@ class PlayerManager:
         self.first_chunk_dict = {}
         self.track_index = 0
         self.pump_dry = True
-        self.block_pump = False 
+        self.block_pump = False
         self.chunk_generator = None
 
         setbreak_url = "https://storage.googleapis.com/spertilo-data/sundry/silence600.ogg"
@@ -88,10 +88,10 @@ class PlayerManager:
         if track_num and track_num == self.track_index:
             return self.track_index
         if (self.track_index + increment) >= self.n_tracks:
-            print(f"Cannot fast forward, already on last track {self.track_index}")
+            print(f"increment_track_screen. already on last track {self.track_index}")
             return self.track_index
         if (self.track_index + increment) <= 0:
-            print(f"Cannot rewind, already on first track {self.track_index}")
+            print(f"increment_track_screen. already on first track {self.track_index}")
 
         self.track_index = self.track_index + increment if track_num is None else track_num
         tracklist = self.remaining_track_names()
@@ -130,12 +130,16 @@ class PlayerManager:
         if "Finished reading all tracks" in message:
             if not self.chunked_urls:
                 return
-            #remaining_chunks = self.chunklist[self.n_tracks_sent :]
-            #if len(remaining_chunks) > 0:
+            # remaining_chunks = self.chunklist[self.n_tracks_sent :]
+            # if len(remaining_chunks) > 0:
             #    self.extend_playlist(remaining_chunks[0])
             #    self.play()
 
         if "Finished playing playlist" in message:
+            if len(self.chunk_queue) > 0:
+                print("Finished playing playlist, but more chunks to pump!!!")
+                self.audio_pump()
+                return
             self.stop(reset_head=True)
             self.playlist_completed = True
             try:
@@ -184,7 +188,6 @@ class PlayerManager:
             return
         return self.player.play()
 
-
     def handle_button_presses(self):
         if self.button_window is None:
             self.resume_playing = self.is_playing()
@@ -205,20 +208,20 @@ class PlayerManager:
             # set the track to the cumulative position of the button presses (self.track_index)
             print(f"Button window expired, track index is {self.track_index}")
             self.button_window = None
-            if (self.track_index+1) >= self.n_tracks:
+            if (self.track_index + 1) >= self.n_tracks:
                 print("Cannot fast forward, already on last track.")
                 self.playlist_completed = True
-                self.block_pump = False 
+                self.block_pump = False
                 return
-            elif (self.track_index) in self.chunk_queue: 
+            elif (self.track_index) in self.chunk_queue:
                 print(f"Rotating queue {self.track_index} is in {self.chunk_queue}")
                 ind = self.chunk_queue.index(self.track_index)
-                self.chunk_queue = self.chunk_queue[ind:] + self.chunk_queue[:ind] # rotate the queue
+                self.chunk_queue = self.chunk_queue[ind:] + self.chunk_queue[:ind]  # rotate the queue
                 print(f"After Rotating queue {self.chunk_queue}")
-                #self.chunk_generator = None
+                # self.chunk_generator = None
                 self.player.playlist = []
                 self.pump_dry = True
-                self.block_pump = False 
+                self.block_pump = False
                 self.audio_pump()
             chunks_to_send = []
             for chunk in self.chunklist[self.track_index :]:
@@ -229,12 +232,12 @@ class PlayerManager:
 
     def rewind(self):
         self.last_button_time = time.ticks_ms()
-        self.increment_track_screen(increment=-1) # sets the track index
+        self.increment_track_screen(increment=-1)  # sets the track index
         self.handle_button_presses()
 
     def ffwd(self):
         self.last_button_time = time.ticks_ms()
-        self.increment_track_screen() # sets the track index
+        self.increment_track_screen()  # sets the track index
         self.handle_button_presses()
 
     def pump_chunks(self):
@@ -247,6 +250,8 @@ class PlayerManager:
                 f"pump_chunks: first chunklist is {next_chunklist[:2]}..{next_chunklist[-2:]} type {type(next_chunklist)}"
             )
         else:
+            if len(self.player.playlist) > 3:
+                return
             if self.chunk_generator is None:
                 this_track = self.chunk_queue[0]
                 self.chunk_generator = self.poll_chunklist(this_track)
@@ -286,7 +291,7 @@ class PlayerManager:
     async def get_chunklist(self, url):
         if url.endswith("m3u8"):
             # determine the chunks
-            self.DEBUG and print(f"first url is {url}")
+            print(f"get_chunklist. first url is {url}")
             self.chunked_urls = True
             base_url = "/".join(url.split("/")[:-1])
             chunklist_url = await requests.get(url)
