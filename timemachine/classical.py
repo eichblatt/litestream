@@ -1626,7 +1626,7 @@ def run():
         show_composers(composer_list)
         clu.initialize_knobs()
 
-        glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=True)
+        glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
         glc.ycursor = pfont_med.HEIGHT + 3 * pfont_small.HEIGHT
         main_loop()
 
