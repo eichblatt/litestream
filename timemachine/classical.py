@@ -248,6 +248,7 @@ def play_radio(radio_id: str):
     glc.selected_work = Work(name=first_title, id=-1)
     display_selected_composer(glc.selected_composer)
     display_title(glc.selected_work)
+    tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     print(f"work title {glc.selected_work.name}")
 
     n_tracks = len(radio_data)
@@ -301,47 +302,24 @@ def select_radio_channel():
     if choice == "Cancel":
         return radio_id
     if choice == "Periods/Genres...":
-        return custom_radio_id()
+        return set_custom_radio()
     radio_id = f'{choice.lower().replace(" ", "")}'
     clu.initialize_knobs()
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
     return radio_id
 
 
-def custom_radio_id():
+def set_custom_radio():
     print("In select_custom_radio")
     glc = clu.glc
     incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
 
     radio_id = None
-    radios = [
-        "Early/Renaissance",
-        "Baroque",
-        "Classical",
-        "Romantic",
-        "Late Romantic",
-        "Impressionist",
-        "Modern",
-        "Orchestral",
-        "Chamber",
-        "Solo Instrument",
-        "Vocal",
-        "Stage (incl. Opera)",
-    ]
     radio_pgrggr = glc.state.get("radio_pgrggr", None)
     if radio_pgrggr:
-        radio_pgrggr = [x in radio_pgrggr for x in radios]
-    radio_options = utils.select_multiple_options("Toggle Desired Elements", radios, radio_pgrggr)
-    periods = []
-    genres = []
-    for option in radio_options:
-        ind = 1 + radios.index(option)
-        if ind <= 7:
-            periods.append(ind)
-        else:
-            genres.append(ind - 7)
-    radio_id = utils.url_escape(f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}")
-    print(f"radio_id is {radio_id}")
+        radio_pgrggr = [x in radio_pgrggr for x in clu.radio_groups]
+    radio_options = utils.select_multiple_options("Toggle Desired Elements", clu.radio_groups, radio_pgrggr)
+    radio_id = clu.get_custom_radio_id(radio_options)
     glc.state["radio_pgrggr"] = radio_options
     save_state(glc.state)
     clu.initialize_knobs()  # Set the ranges UNBOUNDED.
@@ -449,12 +427,26 @@ def poll_select(pSelect_old):
                 print("User must be authenticated to play composer radio")
                 return pSelect_old
             glc.player.stop()
-            glc.selected_composer = glc.keyed_composer
-            glc.radio_counter = 0
-            display_selected_composer(glc.selected_composer, show_loading=True)
-            radio_id = get_radio_id(glc.selected_composer)
-            play_radio(radio_id)
-            glc.radio_mode = "Composer"
+            if glc.keyed_composer.id < 2:  # Either Favorites or Radios
+                if glc.keyed_composer.id == 0:  # Favorites
+                    handle_favorites()
+                elif glc.keyed_composer.id == 1:  # Radio
+                    if glc.radio_id:
+                        glc.radio_counter = 0
+                        play_radio(glc.radio_id)
+                    elif glc.state.get("radio_pgrggr", None):
+                        radio_id = clu.get_custom_radio_id(glc.state["radio_pgrggr"])
+                        play_radio(radio_id)
+                        glc.radio_mode = "Periods/Genres..."
+                    else:
+                        handle_radio()
+            else:
+                glc.selected_composer = glc.keyed_composer
+                glc.radio_counter = 0
+                display_selected_composer(glc.selected_composer, show_loading=True)
+                radio_id = get_radio_id(glc.selected_composer)
+                play_radio(radio_id)
+                glc.radio_mode = "Composer"
             return pSelect_old
 
         glc.player.stop()
@@ -897,6 +889,7 @@ def main_loop():
         if glc.player.is_playing():
             tm.screen_on_time = time.ticks_ms()
         elif time.ticks_diff(time.ticks_ms(), tm.screen_on_time) > (20 * 60_000):
+            glc.radio_counter = 0  # resumed radios will play a full set of performances.
             tm.power(0)
         if glc.player.playlist_completed:
             if (glc.radio_mode == "worklist") and (len(glc.worklist) > 0):

@@ -709,6 +709,46 @@ def manage_playlist():
 """
 
 
+# ------------------------------------------------------------------------------------ radio stuff
+radio_groups = [
+    "Early/Renaissance",
+    "Baroque",
+    "Classical",
+    "Romantic",
+    "Late Romantic",
+    "Impressionist",
+    "Modern",
+    "Orchestral",
+    "Chamber",
+    "Solo Instrument",
+    "Vocal",
+    "Stage (incl. Opera)",
+]
+
+
+def get_custom_radio_id(radio_options):
+    # Get the radio id for the selected periods and genres.
+    # This is a string of the form "fw:pgrggr:1,2;3,4"
+    # where 1,2 are the period ids and 3,4 are the genre ids.
+    # The first part is the period ids, and the second part is the genre ids.
+    # The ids are separated by commas and semicolons.
+    # The periods are 1-7 and the genres are 8-12.
+    # The periods are 1-7 and the genres are 8-12.
+    if not radio_options:
+        return None
+    periods = []
+    genres = []
+    for option in radio_options:
+        ind = 1 + radio_groups.index(option)
+        if ind <= 7:
+            periods.append(ind)
+        else:
+            genres.append(ind - 7)
+    radio_id = utils.url_escape(f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}")
+    print(f"radio_id is {radio_id}")
+    return radio_id
+
+
 # ------------------------------------------------------------------------------------ state management
 def load_state():
     state = utils.load_state("classical")
