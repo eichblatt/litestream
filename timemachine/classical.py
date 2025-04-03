@@ -231,8 +231,9 @@ def get_radio_data(radio_id: str):
 
 
 def play_radio(radio_id: str):
+    glc = clu.glc
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
-    if not glc.radio_data:
+    if (radio_id != glc.radio_id) or not glc.radio_data:
         radio_data = get_radio_data(radio_id)
         if isinstance(radio_data, dict) and "error" in radio_data.keys():
             raise ValueError(f"Error in selecting radio: {radio_id}")
@@ -931,19 +932,14 @@ def main_loop():
                 clu.increment_worklist_dict(glc.worklist_key)
                 play_keyed_work()
                 glc.radio_counter += 1
-            elif (glc.radio_mode == "Composer") and (glc.radio_counter < 20):
-                radio_id = get_radio_id(glc.selected_composer)
-                play_radio(radio_id)
-                glc.radio_mode = "Composer"
-            elif (glc.radio_mode == "Category") and (glc.radio_counter < 20):
-                radio_id = get_radio_id(glc.selected_genre)
-                play_radio(radio_id)
-                glc.radio_mode = "Category"
+            elif (glc.radio_mode in ["Composer", "Category"]) and (glc.radio_counter < 20):
+                # radio_id = get_radio_id(glc.selected_composer)
+                play_radio(glc.radio_id)
 
         if glc.SCREEN != glc.prev_SCREEN:
             glc.prev_SCREEN = glc.SCREEN
             if glc.SCREEN in [ScreenContext.WORK, ScreenContext.TRACKLIST]:
-                tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
+                tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
         pSelect_old = poll_select(pSelect_old)
         pPlayPause_old = poll_play_pause(pPlayPause_old)
         pStop_old = poll_stop(pStop_old)
@@ -1053,7 +1049,7 @@ def select_from_favorites(favorites):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
     return retval
 
 
@@ -1510,7 +1506,7 @@ def choose_performance(composer, keyed_work):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
     return retval
 
 
