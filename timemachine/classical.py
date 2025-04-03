@@ -344,6 +344,8 @@ def custom_radio_id():
     # Choose options based on the knobs.
     # Poll for select, play, or stop buttons, to accept choices
     print("In select_custom_radio")
+    glc = clu.glc
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
 
     radio_id = None
     radios = [
@@ -360,8 +362,10 @@ def custom_radio_id():
         "Vocal",
         "Stage (incl. Opera)",
     ]
-
-    radio_options = utils.select_multiple_options("Toggle the Desired Elements", radios)
+    radio_pgrggr = glc.state.get("radio_pgrggr", None)
+    if radio_pgrggr:
+        radio_pgrggr = [x in radio_pgrggr for x in radios]
+    radio_options = utils.select_multiple_options("Toggle the Desired Elements", radios, radio_pgrggr)
     periods = []
     genres = []
     for option in radio_options:
@@ -372,6 +376,10 @@ def custom_radio_id():
             genres.append(ind - 7)
     radio_id = utils.url_escape(f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}")
     print(f"radio_id is {radio_id}")
+    glc.state["radio_pgrggr"] = radio_options
+    save_state(glc.state)
+    clu.initialize_knobs()  # Set the ranges UNBOUNDED.
+    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
     return radio_id
 
 

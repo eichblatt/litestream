@@ -48,11 +48,12 @@ def select_option(message, choices, mask=None):
         return ""
     pSelect_old = True
     tm.y._value = tm.y._min_val = 0
-    tm.d._value = tm.d._min_val = 0
-    tm.y._max_val = len(choices) - 1
-    tm.d._max_val = len(choices) - 1
-    tm.y._range_mode = tm.y.RANGE_WRAP
-    tm.d._range_mode = tm.d.RANGE_WRAP
+    # tm.y._max_val = len(choices) - 1
+    tm.y._range_mode = tm.y.RANGE_UNBOUNDED
+
+    # tm.d._value = tm.d._min_val = 0
+    # tm.d._max_val = len(choices) - 1
+    # tm.d._range_mode = tm.d.RANGE_WRAP
 
     tm.label_soft_knobs("", "", "Next/Prev")
 
@@ -113,14 +114,14 @@ def select_multiple_options(message, choices, mask=None):
     if mask is None:
         mask = [False] * len(choices)
     while True:
-        choice = select_option(message, choices + ["DONE"], mask + [False])
+        choice = select_option(message, ["DONE"] + choices, [False] + mask)
         if choice == "DONE":
             break
         ind = choices.index(choice)
-        choices = choices[ind:] + choices[:ind]  # rotate the list
-        mask = mask[ind:] + mask[:ind]  # rotate the mask
-        mask[0] = not mask[0]
-    return [choices[i] for i in range(len(choices)) if mask[i]][-2::-1]  # remove the DONE, and put in order.
+        mask[ind] = not mask[ind]
+    retval = [choices[i] for i in range(len(choices)) if mask[i]]
+    print(f"select multiple choices returning {retval}")
+    return retval
 
 
 def select_chars(message, message2="", already=None):
