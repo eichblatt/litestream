@@ -325,24 +325,23 @@ def select_radio_channel():
     glc = clu.glc
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
     radio_id = None
-    choices = ["General", "Must Know", "Essentials", "Early Genres", "Periods/Genres...", "Cancel"]
+    choices = ["My Favorites", "General", "Must Know", "Essentials", "Early Genres", "Periods/Genres...", "Cancel"]
 
     choice = utils.select_option("Select a Radio", choices)
+    glc.radio_mode = choice
     if choice == "Cancel":
         return radio_id
     if choice == "Periods/Genres...":
         return custom_radio_id()
     radio_id = f'{choice.lower().replace(" ", "")}'
+    clu.initialize_knobs()
+    tm.m._value, tm.d._value, tm.y._value = incoming_knobs
     return radio_id
 
 
 def custom_radio_id():
-    print("Custom Periods/Genres not implemented")
-    # Hijack the knobs for navigation purposes
-    # Show a set of custom radio choices
-    # Choose options based on the knobs.
-    # Poll for select, play, or stop buttons, to accept choices
     print("In select_custom_radio")
     glc = clu.glc
     incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
@@ -365,7 +364,7 @@ def custom_radio_id():
     radio_pgrggr = glc.state.get("radio_pgrggr", None)
     if radio_pgrggr:
         radio_pgrggr = [x in radio_pgrggr for x in radios]
-    radio_options = utils.select_multiple_options("Toggle the Desired Elements", radios, radio_pgrggr)
+    radio_options = utils.select_multiple_options("Toggle Desired Elements", radios, radio_pgrggr)
     periods = []
     genres = []
     for option in radio_options:
@@ -431,9 +430,9 @@ request_json = clu.request_json
 
 
 def poll_play_pause(pPlayPause_old):
+    glc = clu.glc
     if pPlayPause_old == tm.pPlayPause.value():
         return pPlayPause_old
-    glc = clu.glc
     pPlayPause_old = tm.pPlayPause.value()
     if not pPlayPause_old:
         glc.play_pause_press_time = time.ticks_ms()
@@ -555,9 +554,9 @@ def poll_select(pSelect_old):
 
 
 def poll_select_longpress(pSelect_old):
+    glc = clu.glc
     if pSelect_old:  # button is not being pressed, therefore it is not a long press.
         return False
-    glc = clu.glc
     if (time.ticks_ms() - glc.select_press_time) < 1_000:  # button is being pressed, but not for very long.
         return False
     glc.player.pause()
@@ -810,6 +809,7 @@ def poll_knobs(month_old, day_old, year_old):
             glc.selected_genre = glc.keyed_genre
         if glc.selected_genre.nworks == 0:  # We are in a folder...play a radio
             print("Folder Radio. Returning from year knob twiddle without doing anything")
+            year_old = year_new
             return month_old, day_old, year_old
         if glc.works is None:
             glc.selected_composer = glc.keyed_composer
@@ -940,8 +940,7 @@ def main_loop():
                 clu.increment_worklist_dict(glc.worklist_key)
                 play_keyed_work()
                 glc.radio_counter += 1
-            elif (glc.radio_mode in ["Composer", "Category"]) and (glc.radio_counter < 20):
-                # radio_id = get_radio_id(glc.selected_composer)
+            elif (glc.radio_mode is not None) and (glc.radio_counter < 20):
                 play_radio(glc.radio_id)
 
         if glc.SCREEN != glc.prev_SCREEN:

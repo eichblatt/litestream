@@ -1095,19 +1095,23 @@ def load_classical_state(state_path):  # Move to classical.py
         composer_list = state.get("composer_list", ["GREATS"])
         selected_tape = state.get("selected_tape", {})
         access_token = state.get("access_token", "")
+        radio_pgrggr = state.get("radio_pgrggr", None)
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "radio_pgrggr": radio_pgrggr,
         }
     else:
         composer_list = ["GREATS"]
         selected_tape = {}
         access_token = ""
+        radio_pgrggr = None
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
+            "radio_pgrggr": radio_pgrggr,
         }
         write_json(state, state_path)
     return state
