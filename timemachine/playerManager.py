@@ -250,7 +250,7 @@ class PlayerManager:
                 f"pump_chunks: first chunklist is {next_chunklist[:2]}..{next_chunklist[-2:]} type {type(next_chunklist)}"
             )
         else:
-            if len(self.player.playlist) > 3:
+            if len(self.player.playlist) > 4:
                 return
             if self.chunk_generator is None:
                 this_track = self.chunk_queue[0]

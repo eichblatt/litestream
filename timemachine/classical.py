@@ -243,7 +243,10 @@ def play_radio(radio_id: str):
     first_title = radio_data[0]["title"]
     glc.radio_data = [item for item in radio_data if item["title"] != first_title]
     radio_data = [item for item in radio_data if item["title"] == first_title]
+    ln, fn = [x.strip() for x in radio_data[0]["composer"].split(",")]
+    glc.selected_composer = Composer({"ln": ln, "fn": fn, "id": -1})
     glc.selected_work = Work(name=first_title, id=-1)
+    display_selected_composer(glc.selected_composer)
     display_title(glc.selected_work)
     print(f"work title {glc.selected_work.name}")
 
