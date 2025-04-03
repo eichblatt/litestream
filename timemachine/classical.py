@@ -268,42 +268,6 @@ def play_radio(radio_id: str):
     return
 
 
-"""
-def play_radio_orig(selection: Composer | Category):
-    tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
-    if not glc.radio_data:
-        radio_data = select_radio(selection)
-        if isinstance(radio_data, dict) and "error" in radio_data.keys():
-            raise ValueError(f"Error in selecting radio: {selection}")
-    else:
-        radio_data = glc.radio_data
-    first_title = radio_data[0]["title"]
-    glc.radio_data = [item for item in radio_data if item["title"] != first_title]
-    radio_data = [item for item in radio_data if item["title"] == first_title]
-    glc.selected_work = Work(name=first_title, id=-1)
-    display_title(glc.selected_work)
-    print(f"work title {glc.selected_work.name}")
-
-    n_tracks = len(radio_data)
-    dur = sum([int(x["dur"]) for x in radio_data])
-    dur = f"{dur//3600}h{(dur%3600)//60:02}m" if dur > 3600 else f"{(dur%3600)//60:02}m{dur%60:02}s"
-    album_title = list({x["album_title"] for x in radio_data})
-    album_title = album_title[0] if len(album_title) == 1 else "Various"
-    album_title = tm.add_line_breaks(album_title, 0, pfont_small, -3).split("\n")
-    artists = list({x["artist"] for x in radio_data})
-    artists = tm.add_line_breaks(", ".join(artists), 0, pfont_small, -3).split("\n")
-
-    credits = ["..credits.."] + album_title + artists + [f"Duration: {dur}. {n_tracks} trks"]
-    print(f"credits: {credits}")
-
-    play_tracklist(radio_data, credits)
-    play_pause(glc.player)
-    glc.radio_mode = "Composer" if isinstance(selection, Composer) else "Category"
-    glc.radio_counter += 1
-    return
-"""
-
-
 def handle_radio():
     # Set the glc.selected_composer and glc.selected_work based on selection, or default to first composer.
     glc = clu.glc
