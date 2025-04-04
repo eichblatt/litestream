@@ -744,9 +744,35 @@ def get_custom_radio_id(radio_options):
             periods.append(ind)
         else:
             genres.append(ind - 7)
-    radio_id = utils.url_escape(f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}")
+    radio_id = f"fw:pgrggr:{','.join([str(x) for x in periods])};{','.join([str(x) for x in genres])}"
     print(f"radio_id is {radio_id}")
     return radio_id
+
+
+def get_radio_name(radio_id):
+    # Get the radio name for the selected periods and genres.
+    # This is a string of the form "fw:pgrggr:1,2;3,4"
+    # where 1,2 are the period ids and 3,4 are the genre ids.
+    # The parts before the ; are period ids, after ; are the genre ids.
+    # The ids are separated by commas
+    # The periods are 1-7 and the genres are 8-12.
+    print(f"get_radio_name: radio_id is {radio_id}")
+    works = ""
+    radio_name = radio_id
+    radio_id = radio_id.split(":")
+    if radio_id[0] == "fw":
+        works = " works"
+    if "pgrggr" in radio_id:
+        pgr = radio_id[-1].split(";")
+        periods = [int(x) for x in pgr[0].split(",")]
+        genres = [int(x) + 7 for x in pgr[1].split(",")]
+        radio_name = f"Radio: {', '.join([radio_groups[x - 1] for x in periods + genres])}{works}"
+    elif "composer" in radio_id:
+        print(f"Radio_id is {radio_id}")
+        composer_name = get_composer_by_id(glc.composers, int(radio_id[-1])).name
+        radio_name = f"Radio:{works} {composer_name}"
+    print(f"radio_name is {radio_name}")
+    return radio_name
 
 
 # ------------------------------------------------------------------------------------ state management

@@ -218,13 +218,13 @@ def _get_cat_works(composer_id, category):
 ############################################################################################# radio
 def get_radio_id(selection: Composer | Category):
     selection_type = "composer" if isinstance(selection, Composer) else "category"
-    radio_station = utils.url_escape(f"fw:{selection_type}:{selection.id}")
+    radio_station = f"fw:{selection_type}:{selection.id}"
     return radio_station
 
 
 def get_radio_data(radio_id: str):
     protocol = 5
-    url = f"{CLASSICAL_API}?action=get_stream&radio_id={radio_id}&sp={protocol}"
+    url = f"{CLASSICAL_API}?action=get_stream&radio_id={utils.url_escape(radio_id)}&sp={protocol}"
     radio_data = request_json(url)
     print(f"radio data for {radio_id} is {radio_data}. URL: {url}")
     return radio_data
@@ -249,6 +249,7 @@ def play_radio(radio_id: str):
     display_selected_composer(glc.selected_composer)
     display_title(glc.selected_work)
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
+    tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
     print(f"work title {glc.selected_work.name}")
 
     n_tracks = len(radio_data)
@@ -277,6 +278,8 @@ def handle_radio():
     tm.write("Radio Selection", 0, 0, pfont_med, tm.YELLOW)
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
+    glc.player.stop()
+    # glc.player.playlist_completed = True # Needed?
     selected_radio_id = select_radio_channel()
     if selected_radio_id is not None:
         play_radio(selected_radio_id)
@@ -431,6 +434,7 @@ def poll_select(pSelect_old):
                 if glc.keyed_composer.id == 0:  # Favorites
                     handle_favorites()
                 elif glc.keyed_composer.id == 1:  # Radio
+                    glc.player.stop()
                     if glc.radio_id:
                         glc.radio_counter = 0
                         play_radio(glc.radio_id)
@@ -672,9 +676,8 @@ def poll_RightSwitch(pYSw_old):
                 tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, heart_color)
             _ = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
             print(f"Refresh screen {glc.SCREEN} to show the heart change")
-            if (
-                glc.SCREEN == ScreenContext.TRACKLIST
-            ):  # Not strictly necessary, but will update the heart to what the database knows.
+            # Not strictly necessary, but will update the heart to what the database knows.
+            if glc.SCREEN == ScreenContext.TRACKLIST:
                 display_title(glc.selected_work)
                 display_performance_info()
     return pYSw_old
@@ -706,6 +709,10 @@ def poll_CenterSwitch(pDSw_old):
             glc.keyed_composer = glc.composers[1]
             glc.selected_composer = glc.keyed_composer
             return pDSw_old
+        if glc.SCREEN == ScreenContext.TRACKLIST:
+            # Display the name of the radio, and the number of tracks for 10 seconds, then return to the tracklist.
+            display_title(Work(name=clu.get_radio_name(glc.radio_id), id=-1), color=tm.GREEN)
+            set_knob_times(None)  # force an update of the screen after 12 seconds
     return pDSw_old
 
 
@@ -906,7 +913,7 @@ def main_loop():
         if glc.SCREEN != glc.prev_SCREEN:
             glc.prev_SCREEN = glc.SCREEN
             if glc.SCREEN in [ScreenContext.WORK, ScreenContext.TRACKLIST]:
-                tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+                tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
         pSelect_old = poll_select(pSelect_old)
         pPlayPause_old = poll_play_pause(pPlayPause_old)
         pStop_old = poll_stop(pStop_old)
@@ -1016,7 +1023,7 @@ def select_from_favorites(favorites):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
     return retval
 
 
@@ -1074,10 +1081,10 @@ def update_display():
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
 
 
-def display_title(work):
+def display_title(work, color=tm.YELLOW):
     tm.clear_bbox(work_bbox)
     title = work.name
-    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, tm.YELLOW, show_end=-3, indent=2)
+    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, color, show_end=-3, indent=2)
     if work.id in clu.FAVORITE_WORKS:
         tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, tm.RED)
     glc.ycursor = work_bbox.y0 + len(msg.split("\n")) * pfont_small.HEIGHT
@@ -1473,7 +1480,7 @@ def choose_performance(composer, keyed_work):
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
-    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, None, tm.RED))
+    tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
     return retval
 
 
