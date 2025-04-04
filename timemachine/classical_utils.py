@@ -768,7 +768,6 @@ def get_radio_name(radio_id):
         genres = [int(x) + 7 for x in pgr[1].split(",")]
         radio_name = f"Radio: {', '.join([radio_groups[x - 1] for x in periods + genres])}{works}"
     elif "composer" in radio_id:
-        print(f"Radio_id is {radio_id}")
         composer_name = get_composer_by_id(glc.composers, int(radio_id[-1])).name
         radio_name = f"Radio:{works} {composer_name}"
     print(f"radio_name is {radio_name}")
