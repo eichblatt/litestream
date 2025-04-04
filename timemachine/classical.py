@@ -711,8 +711,9 @@ def poll_CenterSwitch(pDSw_old):
             return pDSw_old
         if glc.SCREEN == ScreenContext.TRACKLIST:
             # Display the name of the radio, and the number of tracks for 10 seconds, then return to the tracklist.
-            display_title(Work(name=clu.get_radio_name(glc.radio_id), id=-1), color=tm.GREEN)
-            set_knob_times(None)  # force an update of the screen after 12 seconds
+            if glc.radio_mode:
+                display_title(Work(name=clu.get_radio_name(glc.radio_id), id=-1), color=tm.GREEN)
+                set_knob_times(None)  # force an update of the screen after 12 seconds
     return pDSw_old
 
 
