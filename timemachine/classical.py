@@ -55,7 +55,8 @@ WORK_KEY_TIME = time.ticks_ms()
 GENRE_KEY_TIME = time.ticks_ms()
 KNOB_TIME = time.ticks_ms()
 CONFIG_CHOICES = ["Composers", "Repertoire", "Account"]
-
+FAVORITES_INDEX = 1
+RADIO_INDEX = 0
 glc = clu.glc
 tapeid_range_dict = {}
 
@@ -431,9 +432,9 @@ def poll_select(pSelect_old):
                 return pSelect_old
             glc.player.stop()
             if glc.keyed_composer.id < 2:  # Either Favorites or Radios
-                if glc.keyed_composer.id == 0:  # Favorites
+                if glc.keyed_composer.id == FAVORITES_INDEX:  # Favorites
                     handle_favorites()
-                elif glc.keyed_composer.id == 1:  # Radio
+                elif glc.keyed_composer.id == RADIO_INDEX:  # Radio
                     glc.player.stop()
                     if glc.radio_id:
                         glc.radio_counter = 0
@@ -498,6 +499,8 @@ def poll_select(pSelect_old):
 
         if glc.SCREEN == ScreenContext.WORK:
             # elif KNOB_TIME == WORK_KEY_TIME:
+            glc.selected_composer = glc.keyed_composer
+            glc.selected_genre = glc.keyed_genre
             print(f"Work last keyed {glc.keyed_work}")
         else:
             print("Unknown last keyed")
@@ -664,10 +667,10 @@ def poll_RightSwitch(pYSw_old):
         else:
             print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
             if glc.SCREEN == ScreenContext.COMPOSER:
-                tm.m._value = 0  # Set the composer index to 0 (Favorites)
+                tm.m._value = FAVORITES_INDEX  # Set the composer index to 0 (Favorites)
                 # tm.d._value += 1  # "twiddle" the genre knob
                 # handle_favorites()
-                glc.keyed_composer = glc.composers[0]
+                glc.keyed_composer = glc.composers[FAVORITES_INDEX]
                 glc.selected_composer = glc.keyed_composer
                 return pYSw_old
 
@@ -705,8 +708,8 @@ def poll_CenterSwitch(pDSw_old):
         print("Center RELEASED")
         glc = clu.glc
         if glc.SCREEN == ScreenContext.COMPOSER:
-            tm.m._value = 1  # Set the composer index to 0 (Favorites)
-            glc.keyed_composer = glc.composers[1]
+            tm.m._value = RADIO_INDEX  # Set the composer index to (Radio)
+            glc.keyed_composer = glc.composers[RADIO_INDEX]
             glc.selected_composer = glc.keyed_composer
             return pDSw_old
         if glc.SCREEN == ScreenContext.TRACKLIST:
@@ -738,7 +741,7 @@ def poll_knobs(month_old, day_old, year_old):
     elif day_old != day_new:  # Genre changes
         tm.power(1)
         glc.performance_index = 0
-        if glc.keyed_composer.id == 0:  # "Favorites"
+        if glc.keyed_composer.id == FAVORITES_INDEX:  # "Favorites"
             handle_favorites()
             glc.prev_SCREEN = glc.SCREEN
             glc.SCREEN = ScreenContext.GENRE
@@ -750,7 +753,7 @@ def poll_knobs(month_old, day_old, year_old):
                 glc.last_update_time = time.ticks_ms()
                 # tm.m._value = clu.get_key_index(composers, gxt.selected_composer.id)
                 set_knob_times(None)  # To ensure that genres will be drawn
-        elif glc.keyed_composer.id == 1:  # "Radios"
+        elif glc.keyed_composer.id == RADIO_INDEX:  # "Radios"
             handle_radio()
             glc.prev_SCREEN = glc.SCREEN
             glc.SCREEN = ScreenContext.GENRE
@@ -772,15 +775,15 @@ def poll_knobs(month_old, day_old, year_old):
         print(f"Year knob twiddled old:{year_old} new:{year_new}")
         tm.power(1)
         glc.performance_index = 0
-        if glc.selected_genre.index != glc.keyed_genre.index:
-            glc.selected_genre = glc.keyed_genre
-        if glc.selected_genre.nworks == 0:  # We are in a folder...play a radio
+        # if glc.selected_genre.index != glc.keyed_genre.index:
+        #    glc.selected_genre = glc.keyed_genre
+        if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
             print("Folder Radio. Returning from year knob twiddle without doing anything")
             year_old = year_new
             return month_old, day_old, year_old
         if glc.works is None:
-            glc.selected_composer = glc.keyed_composer
-            if glc.selected_composer.id == 0:
+            # glc.selected_composer = glc.keyed_composer
+            if glc.keyed_composer.id == FAVORITES_INDEX:
                 handle_favorites()
                 if glc.selected_work is None:  # We bailed from handle favorites without selecting anything.
                     glc.selected_work = glc.keyed_work
@@ -790,14 +793,14 @@ def poll_knobs(month_old, day_old, year_old):
                     glc.last_update_time = time.ticks_ms()
                     set_knob_times(None)  # To ensure that genres will be drawn
             else:
-                display_selected_composer(glc.selected_composer, glc.selected_genre, show_loading=True)
-                glc.composer_genres = get_cats(glc.selected_composer.id)
+                display_selected_composer(glc.keyed_composer, glc.keyed_genre, show_loading=True)
+                glc.composer_genres = get_cats(glc.keyed_composer.id)
                 print(f"cat_genres is {glc.composer_genres}")
         t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
         composer_genre = t[0] if len(t) > 0 else glc.composer_genres[day_old % len(glc.composer_genres)]
         print(f"composer_genre is {composer_genre}")
-        glc.works = _get_cat_works(glc.selected_composer.id, composer_genre)
-        glc.keyed_work = display_keyed_works(glc.selected_composer, composer_genre, glc.works, year_new, year_old)
+        glc.works = _get_cat_works(glc.keyed_composer.id, composer_genre)
+        glc.keyed_work = display_keyed_works(glc.keyed_composer, composer_genre, glc.works, year_new, year_old)
         print(f"keyed work is {glc.keyed_work}")
         year_old = year_new
         set_knob_times(tm.y)
@@ -865,8 +868,9 @@ def main_loop():
     composer_list = glc.state.get("composer_list", ["GREATS"])
     glc.composers = sorted(get_composers(composer_list), key=lambda x: x.name)
     if len(clu.FAVORITE_WORKS) > 0:
-        glc.composers.insert(0, Composer({"id": 0, "ln": "Favorites", "fn": ""}))
-        glc.composers.insert(1, Composer({"id": 1, "ln": "Radio", "fn": ""}))
+        glc.composers.insert(0, Composer({"id": FAVORITES_INDEX, "ln": "Favorites", "fn": ""}))
+    if glc.HAS_TOKEN:
+        glc.composers.insert(0, Composer({"id": RADIO_INDEX, "ln": "Radio", "fn": ""}))
     tape = glc.state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
     glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[1].id))

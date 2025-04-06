@@ -108,11 +108,15 @@ def get_composers(composer_list, match_field="lnu", beyond_notable=False):
         ALL_COMPOSERS = utils.read_json(outpath)
     else:
         if utils.path_exists(full_outpath):
-            ALL_COMPOSERS = utils.read_json(full_outpath)
+            try:
+                ALL_COMPOSERS = utils.read_json(full_outpath)
+            except Exception as e:
+                utils.remove_file(full_outpath)
+                ALL_COMPOSERS = request_json(url, outpath=full_outpath)
         else:
             ALL_COMPOSERS = request_json(url, outpath=full_outpath)
         if not beyond_notable:
-            ALL_COMPOSERS = [x for x in ALL_COMPOSERS if x["nc"]]
+            ALL_COMPOSERS = [x for x in ALL_COMPOSERS if x["nc"]]  # Notable only
             utils.write_json(ALL_COMPOSERS, outpath)
 
     for composer in composer_list:
