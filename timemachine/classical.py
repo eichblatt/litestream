@@ -165,12 +165,12 @@ def get_cats(composer_id):
 
 
 def get_cat_works(glc):
-    works = _get_cat_works(glc.selected_composer.id, glc.selected_genre)
+    works = uget_cat_works(glc.selected_composer.id, glc.selected_genre)
     glc.worklist = works
     return glc
 
 
-def _get_cat_works(composer_id, category):
+def uget_cat_works(composer_id, category):
     global works_dict
     print(f"Getting works for {composer_id}, category {category.id}")
     # In this case, the works_dict requires 2 keys: Composer and Category.
@@ -775,11 +775,17 @@ def poll_knobs(month_old, day_old, year_old):
         print(f"Year knob twiddled old:{year_old} new:{year_new}")
         tm.power(1)
         glc.performance_index = 0
-        year_old = year_new
-        # if glc.selected_genre.index != glc.keyed_genre.index:
-        #    glc.selected_genre = glc.keyed_genre
+        if glc.selected_genre.index != glc.keyed_genre.index:
+            glc.selected_genre = glc.keyed_genre
         if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
+            # if glc.SCREEN == ScreenContext.TRACKLIST:
+            #    # We are playing a favorite work, and we don't know the genre, so we can't display the works.
+            #    # In this case, let's just display the works for the selected composer's _first_ genre.
+            #    possible_genres = [x for x in get_cats(glc.keyed_composer.id) if x.nworks > 0]
+            #    glc.keyed_genre = possible_genres[0]
+            # else:
             print("Folder Radio. Returning from year knob twiddle without doing anything")
+            year_old = year_new  # This must be done AFTER display_keyed_works!!
             return month_old, day_old, year_old
         if glc.works is None:
             # glc.selected_composer = glc.keyed_composer
@@ -800,10 +806,11 @@ def poll_knobs(month_old, day_old, year_old):
         t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
         composer_genre = t[0] if len(t) > 0 else glc.composer_genres[day_old % len(glc.composer_genres)]
         print(f"composer_genre is {composer_genre}")
-        glc.works = _get_cat_works(glc.keyed_composer.id, composer_genre)
+        glc.works = uget_cat_works(glc.keyed_composer.id, composer_genre)
         glc.keyed_work = display_keyed_works(glc.keyed_composer, composer_genre, glc.works, year_new, year_old)
         print(f"keyed work is {glc.keyed_work}")
         set_knob_times(tm.y)
+        year_old = year_new  # This must be done AFTER display_keyed_works!!
     return month_old, day_old, year_old
 
 
@@ -1180,7 +1187,7 @@ def display_keyed_title(keyed_title, color=tm.PURPLE):
 
 def display_keyed_works(composer, composer_genre, works, index, prev_index):
     # Set up the display
-    # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}")
+    # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}, prev_index {prev_index}")
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.WORK
     # print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
@@ -1191,7 +1198,6 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
     nlines = min(len(names), nlines)
     page_start = nlines * (index // nlines)
     prev_page_start = nlines * (prev_index // nlines)
-    # draw_all = (KNOB_TIME > WORK_KEY_TIME) or page_start != prev_page_start
     draw_all = (glc.SCREEN != glc.prev_SCREEN) or page_start != prev_page_start
 
     # Write the Composer and Genre
