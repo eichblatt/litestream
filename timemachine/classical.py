@@ -775,11 +775,11 @@ def poll_knobs(month_old, day_old, year_old):
         print(f"Year knob twiddled old:{year_old} new:{year_new}")
         tm.power(1)
         glc.performance_index = 0
+        year_old = year_new
         # if glc.selected_genre.index != glc.keyed_genre.index:
         #    glc.selected_genre = glc.keyed_genre
         if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
             print("Folder Radio. Returning from year knob twiddle without doing anything")
-            year_old = year_new
             return month_old, day_old, year_old
         if glc.works is None:
             # glc.selected_composer = glc.keyed_composer
@@ -792,6 +792,7 @@ def poll_knobs(month_old, day_old, year_old):
                     glc.keyed_composer = glc.selected_composer
                     glc.last_update_time = time.ticks_ms()
                     set_knob_times(None)  # To ensure that genres will be drawn
+                    return month_old, day_old, year_old
             else:
                 display_selected_composer(glc.keyed_composer, glc.keyed_genre, show_loading=True)
                 glc.composer_genres = get_cats(glc.keyed_composer.id)
@@ -802,7 +803,6 @@ def poll_knobs(month_old, day_old, year_old):
         glc.works = _get_cat_works(glc.keyed_composer.id, composer_genre)
         glc.keyed_work = display_keyed_works(glc.keyed_composer, composer_genre, glc.works, year_new, year_old)
         print(f"keyed work is {glc.keyed_work}")
-        year_old = year_new
         set_knob_times(tm.y)
     return month_old, day_old, year_old
 
