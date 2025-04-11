@@ -513,7 +513,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
             out_lines.append(test)
             if len(test) < len(line):
                 new_lines = new_lines + 1
-                line = line[len(test) :]
+                line = line[len(test) - len(indention) :]
             else:
                 break
         out_lines = "\n".join(out_lines)

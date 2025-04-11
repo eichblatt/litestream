@@ -52,7 +52,7 @@ class PlayerManager:
         self.resume_playing = False
 
     def set_playlist(self, track_titles, urls, credits=[]):
-        self.chunklist = []
+        self.chunklist = [[] for _ in range(len(urls))]
         self.tracklist = track_titles
         self.credits = credits
         self.playlist_completed = False
@@ -221,12 +221,14 @@ class PlayerManager:
                 # self.chunk_generator = None
                 self.player.playlist = []
                 self.pump_dry = True
-                self.block_pump = False
-                self.audio_pump()
-            chunks_to_send = []
-            for chunk in self.chunklist[self.track_index :]:
-                chunks_to_send.extend(chunk)
-            self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
+                self.audio_pump(unblock=True)
+            self.player.playlist = [
+                (chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in self.chunklist[self.track_index]
+            ]
+            # chunks_to_send = []
+            # for chunk in self.chunklist[self.track_index :]:
+            #    chunks_to_send.extend(chunk)
+            # self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
             if self.resume_playing:
                 self.play()
 
@@ -266,8 +268,6 @@ class PlayerManager:
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
                 self.DEBUG and print("Converting chunklist to a list")
-            while this_track >= len(self.chunklist):
-                self.chunklist.append([])
             self.chunklist[this_track] = next_chunklist
             hashdict = {hashlib.md5(next_chunklist[0].encode()).digest().hex(): this_track}
             self.first_chunk_dict.update(hashdict)
@@ -282,7 +282,6 @@ class PlayerManager:
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
             loop.run_until_complete(dummy())  # start the task, not sure why dummy is required
-            # print("polling chunklist")
             yield
         next_chunklist = task.data
         loop.close()
@@ -307,9 +306,10 @@ class PlayerManager:
             chunklist = [url]
         return chunklist
 
-    def audio_pump(self):
-        if (self.all_tracks_sent) or self.block_pump:
+    def audio_pump(self, unblock=False):
+        if (self.all_tracks_sent) or (self.block_pump and not unblock):
             return
+        self.block_pump = False
         self.pump_chunks()
         return
 

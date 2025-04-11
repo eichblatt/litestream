@@ -228,6 +228,7 @@ def basic_main():
     print("in basic_main")
 
     start_time = time.ticks_ms()
+    tm.power(1)
     hidden_setdate = False
     tm.calibrate_screen()
     ypos = 0

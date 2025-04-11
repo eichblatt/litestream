@@ -777,16 +777,15 @@ def poll_knobs(month_old, day_old, year_old):
         glc.performance_index = 0
         if glc.selected_genre.index != glc.keyed_genre.index:
             glc.selected_genre = glc.keyed_genre
-        if glc.keyed_genre.nworks == 0:  # We are in a folder...play a radio
-            # if glc.SCREEN == ScreenContext.TRACKLIST:
-            #    # We are playing a favorite work, and we don't know the genre, so we can't display the works.
-            #    # In this case, let's just display the works for the selected composer's _first_ genre.
-            #    possible_genres = [x for x in get_cats(glc.keyed_composer.id) if x.nworks > 0]
-            #    glc.keyed_genre = possible_genres[0]
-            # else:
-            print("Folder Radio. Returning from year knob twiddle without doing anything")
-            year_old = year_new  # This must be done AFTER display_keyed_works!!
-            return month_old, day_old, year_old
+        if glc.keyed_genre.nworks == 0:  # Either already playing a favorite or a radio, or we are in a folder.
+            if glc.SCREEN == ScreenContext.TRACKLIST:
+                # Playing a favorite or radio. genre is unknown, --> display works for composer's _first_ genre.
+                possible_genres = [x for x in get_cats(glc.keyed_composer.id) if x.nworks > 0]
+                glc.keyed_genre = possible_genres[0]
+            else:  # We are in a folder...play a radio
+                print("Folder Radio. Returning from year knob twiddle without doing anything")
+                year_old = year_new  # This must be done AFTER display_keyed_works!!
+                return month_old, day_old, year_old
         if glc.works is None:
             # glc.selected_composer = glc.keyed_composer
             if glc.keyed_composer.id == FAVORITES_INDEX:
@@ -880,7 +879,9 @@ def main_loop():
         glc.composers.insert(0, Composer({"id": RADIO_INDEX, "ln": "Radio", "fn": ""}))
     tape = glc.state["selected_tape"]
     # tm.m._max_val = len(composers) - 1
-    glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[1].id))
+    glc.keyed_composer = get_composer_by_id(glc.composers, tape.get("composer_id", glc.composers[2].id))
+    if glc.keyed_composer.id < 100:
+        glc.keyed_composer = glc.composers[2]  # The first real composer
     glc.selected_composer = glc.keyed_composer
     tm.m._value = clu.get_key_index(glc.composers, glc.keyed_composer.id)
     month_old = -1  # to force the screen to start at composer.
@@ -1030,8 +1031,8 @@ def select_from_favorites(favorites):
             retval = favorites[index]
             break
 
-        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 120_000:
-            print("Returning to composers/genres/works after 120 sec of inactivity")
+        if time.ticks_diff(time.ticks_ms(), KNOB_TIME) > 60_000:
+            print("Returning to composers/genres/works after 60 sec of inactivity")
             retval = None
             break
     tm.m._value, tm.d._value, tm.y._value = incoming_knobs
@@ -1096,7 +1097,7 @@ def update_display():
 def display_title(work, color=tm.YELLOW):
     tm.clear_bbox(work_bbox)
     title = work.name
-    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, color, show_end=-3, indent=2)
+    msg = tm.write(f"{title}", 0, work_bbox.y0, pfont_small, color, show_end=-3, indent=1)
     if work.id in clu.FAVORITE_WORKS:
         tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, tm.RED)
     glc.ycursor = work_bbox.y0 + len(msg.split("\n")) * pfont_small.HEIGHT
@@ -1158,7 +1159,7 @@ def display_tracks(*track_names):
         y0 = glc.ycursor + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color if not in_credits else tm.PURPLE
-        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, color, show_end, indent=1)
         lines_written += len(msg.split("\n"))
         i = i + 1
     if not glc.HAS_TOKEN:
