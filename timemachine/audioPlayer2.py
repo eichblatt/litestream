@@ -382,7 +382,7 @@ class AudioPlayer:
 
         self.reset_player()
 
-    def reset_player(self, reset_head=True):
+    def reset_player(self):
         self.DEBUG and print("Resetting Player")
         # self.callbacks["messages"](f"reset_player")
         self.PlayLoopRunning = False
@@ -394,13 +394,12 @@ class AudioPlayer:
         self.ID3Tag_size = 0
         self.PLAY_STATE = play_state_Stopped
 
-        if reset_head:
-            self.callbacks["messages"](f"reset_head")
-            if hasattr(self, "pumptimer"):
-                self.pumptimer.deinit()
-                # time.sleep(0.1)
-            self._init_vars()
-            self.start_timer()
+        self.callbacks["messages"](f"reset_head")
+        if hasattr(self, "pumptimer"):
+            self.pumptimer.deinit()
+            # time.sleep(0.1)
+        self._init_vars()
+        self.start_timer()
 
         # Clear the buffers
         print(f"reset_player before clear InBuffer: {time.ticks_ms()}")
@@ -608,9 +607,9 @@ class AudioPlayer:
             self.callbacks["messages"](f"Pausing URL {self.hash_being_read}")
             self.PLAY_STATE = play_state_Paused
 
-    def stop(self, reset_head=True):
+    def stop(self):
         self.mute_audio()
-        self.reset_player(reset_head)
+        self.reset_player()
 
         if self.PLAY_STATE == play_state_Stopped:
             return False
