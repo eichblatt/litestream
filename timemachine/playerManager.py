@@ -38,11 +38,10 @@ class PlayerManager:
         self.tracklist = []  # track titles
         self.credits = []
         self.playlist_completed = False
-        self.chunk_queue = []
         self.first_chunk_dict = {}
         self.track_index = 0
         self.pump_dry = True
-        self.block_pump = False
+        self.block_pump = True
         self.chunk_generator = None
         self.urls = []  # high-level urls
 
@@ -56,7 +55,6 @@ class PlayerManager:
         self.tracklist = track_titles
         self.credits = credits
         self.playlist_completed = False
-        self.chunk_queue = list(range(len(urls)))
         self.first_chunk_dict = {}
         self.track_index = 0
         self.pump_dry = True
@@ -75,12 +73,7 @@ class PlayerManager:
         clstr = (
             f"Player Manager: {self.track_index}/{len(self.tracklist)} tracks. Chunk lengths:{[len(x) for x in self.chunklist]}"
         )
-        clstr += f" tracks left to pump:{self.chunk_queue}"
         return clstr + f" {self.player}. "
-
-    @property
-    def all_tracks_sent(self):
-        return len(self.chunk_queue) == 0
 
     def extend_playlist(self, urllist):
         print(f"extend_playlist: Track {len(self.first_chunk_dict)}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
@@ -89,7 +82,6 @@ class PlayerManager:
         new_elements = [x for x in new_elements if x[0] not in [y[0] for y in self.player.playlist]]
         if len(new_elements) < len0:
             print(f"extend_playlist: {len0 - len(new_elements)} duplicates removed")
-            self.chunk_queue.pop(0)
         self.player.playlist.extend(new_elements)
 
     def increment_track_screen(self, track_num=None, increment=1):
@@ -144,10 +136,6 @@ class PlayerManager:
             #    self.play()
 
         if "Finished playing playlist" in message:
-            if len(self.chunk_queue) > 0:
-                print("Finished playing playlist, but more chunks to pump!!!")
-                self.audio_pump(unblock=True)
-                return
             self.stop(reset_head=True)
             self.playlist_completed = True
             try:
@@ -187,7 +175,7 @@ class PlayerManager:
         # self.ready_to_pump = False
         # print("No more chunks will be sent -- player reset")
         self.button_window = None
-        self.player.stop(reset_head)
+        self.player.stop(reset_head)  # set the player.playlist to []
         return
 
     def play(self):
@@ -199,7 +187,7 @@ class PlayerManager:
     def handle_button_presses(self):
         if self.button_window is None:
             self.resume_playing = self.is_playing()
-            self.stop()
+            self.stop()  # set player.playlist to []
             self.block_pump = True
             self.button_window = Timer(-1)
             self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self._play_selected_track)
@@ -214,33 +202,25 @@ class PlayerManager:
             self.button_window.deinit()
             self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self._play_selected_track)
             return
-        else:
-            # set the track to the cumulative position of the button presses (self.track_index)
-            print(f"Button window expired, track index is {self.track_index}")
-            self.button_window = None
-            if (self.track_index + 1) >= self.n_tracks:
-                print("Cannot fast forward, already on last track.")
-                self.playlist_completed = True
-                self.block_pump = False
-                return
-            elif (self.track_index) in self.chunk_queue:
-                print(f"Rotating queue {self.track_index} is in {self.chunk_queue}")
-                ind = self.chunk_queue.index(self.track_index)
-                self.chunk_queue = self.chunk_queue[ind:] + self.chunk_queue[:ind]  # rotate the queue
-                print(f"After Rotating queue {self.chunk_queue}")
-                # self.chunk_generator = None
-                self.player.playlist = []
-                self.pump_dry = True
-            self.player.playlist = [
-                (chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in self.chunklist[self.track_index]
-            ]
-            self.audio_pump(unblock=True)
-            # chunks_to_send = []
-            # for chunk in self.chunklist[self.track_index :]:
-            #    chunks_to_send.extend(chunk)
-            # self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
-            if self.resume_playing:
-                self.play()
+        # set the track to the cumulative position of the button presses (self.track_index)
+        print(f"Button window expired, track index is {self.track_index}")
+        self.button_window = None
+        if not 0 < (self.track_index) < self.n_tracks:
+            print("setting track_index to be within bounds")
+            self.track_index = max(0, min(self.track_index, len(self.urls) - 1))
+            # self.playlist_completed = True
+            # self.block_pump = False
+            # return
+        self.pump_dry = True
+        chunks_to_send = self.chunklist[self.track_index]
+        if len(chunks_to_send) > 0:
+            self.player.playlist = [(chunk, hashlib.md5(chunk.encode()).digest().hex()) for chunk in chunks_to_send]
+        self.audio_pump(unblock=True)
+        # chunks_to_send = []
+        # for chunk in self.chunklist[self.track_index :]:
+        #    chunks_to_send.extend(chunk)
+        if self.resume_playing:
+            self.play()
 
     def rewind(self):
         self.last_button_time = time.ticks_ms()
@@ -253,46 +233,46 @@ class PlayerManager:
         self.handle_button_presses()
 
     def pump_chunks(self):
-        if len(self.player.playlist) > 4:
+        if self.block_pump or len(self.player.playlist) > 4:
             return
         next_chunklist = None
+        next_index = None
         if self.pump_dry:  # Block until first chunks are pumped
-            this_track = self.chunk_queue.pop(0)
-            next_chunklist = asyncio.run(self.get_chunklist(self.urls[this_track]))
+            next_index = self.track_index
+            next_chunklist = asyncio.run(self.get_chunklist(self.urls[next_index]))
             self.pump_dry = False
             self.DEBUG and print(
                 f"pump_chunks: first chunklist is {next_chunklist[:2]}..{next_chunklist[-2:]} type {type(next_chunklist)}"
             )
         else:
-            next_chunklist = self.chunklist[
-                self.track_index + 1
-            ]  # Can't use self.track_index because it is incremented in the messenger
-            if next_chunklist:
-                this_track = self.track_index + 1
-                self.track_index += 1
-            else:
+            # Find the next index without a chunklist
+            for i in range(self.track_index, len(self.chunklist)):
+                if self.chunklist[i] == []:  # Check if the chunklist for this index is empty
+                    next_index = i
+                    print(f"pump_chunks: next index is {next_index}")
+                    break
+
+            if next_index:
                 if self.chunk_generator is None:
-                    this_track = self.chunk_queue[0]
-                    self.chunk_generator = self.poll_chunklist(this_track)
+                    self.chunk_generator = self.poll_chunklist(next_index)
                 try:
                     next(self.chunk_generator)
                 except StopIteration as e:
-                    this_track, next_chunklist = e.value
+                    next_index, next_chunklist = e.value
                     self.chunk_generator = None  # prepare for next task
-                    self.chunk_queue = self.chunk_queue[1:]  # remove the first element
         if next_chunklist:
             print(f"pump_chunks {next_chunklist}")
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
-            self.chunklist[this_track] = next_chunklist
+            self.chunklist[next_index] = next_chunklist
             hashkey = hashlib.md5(next_chunklist[0].encode()).digest().hex()
-            hashdict = {hashkey: this_track}
+            hashdict = {hashkey: next_index}
             self.first_chunk_dict.update(hashdict)
             self.extend_playlist(next_chunklist)
         return
 
-    def poll_chunklist(self, this_track):
-        url = self.urls[this_track]
+    def poll_chunklist(self, next_index):
+        url = self.urls[next_index]
         loop = asyncio.get_event_loop()
         task = loop.create_task(self.get_chunklist(url))
         while not task.done():
@@ -300,7 +280,7 @@ class PlayerManager:
             yield
         next_chunklist = task.data
         loop.close()
-        return this_track, next_chunklist
+        return next_index, next_chunklist
 
     async def get_chunklist(self, url):
         if url.endswith("m3u8"):
@@ -322,7 +302,7 @@ class PlayerManager:
         return chunklist
 
     def audio_pump(self, unblock=False):
-        if (self.all_tracks_sent) or (self.block_pump and not unblock):
+        if self.block_pump and not unblock:
             return
         self.block_pump = False
         self.pump_chunks()
