@@ -42,6 +42,7 @@ class PlayerManager:
         self.first_chunk_dict = {}
         self.track_index = 0
         self.pump_dry = True
+        self.pump_busy = False
         self.block_pump = True
         self.pumpahead = 1
         self.chunk_generator = None
@@ -268,14 +269,16 @@ class PlayerManager:
                     break
 
             if next_index:
-                print(f"{next_index} next (+{self.pumpahead})", end=" - ")
+                self.DEBUG and print(f"{next_index}(+{self.pumpahead})", end=". ")
                 if self.chunk_generator is None:
                     self.chunk_generator = self.poll_chunklist(next_index)
                 try:
                     next(self.chunk_generator)
+                    self.pump_busy = True
                 except StopIteration as e:
                     next_index, next_chunklist = e.value
                     self.chunk_generator = None  # prepare for next task
+                    self.pump_busy = False
         if next_chunklist:
             self.DEBUG and print(f"pump_chunks {next_chunklist}")
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
