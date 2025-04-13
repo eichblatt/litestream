@@ -635,6 +635,8 @@ def get_playlist_ids(playlist_name):
 
 
 def get_playlist_items(playlist_name):
+    if not glc.HAS_TOKEN:
+        return []
     print(f"getting playlist items from {playlist_name}")
     playlist_id = get_public_playlist_id(playlist_name)
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=list_playlist_items&public_playlist_id={playlist_id}"

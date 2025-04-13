@@ -952,7 +952,7 @@ def disconnect_wifi():
     wifi.disconnect()
 
 
-def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
+def connect_wifi(retry_time=100, timeout=10000, itry=0):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -965,7 +965,6 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
-        hidden = False
         if itry <= 1:
             try:
                 tm.self_test()
@@ -980,20 +979,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         write_json(wifi_cred, WIFI_CRED_PATH)
         reset()
 
-    if not hidden:
-        tm.clear_screen()
-        tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
-        y0 = tm.pfont_small.HEIGHT
-        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, -3)
-        version_strings = sys.version.split(" ")
-        uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
-        tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
-        y0 = y0 + tm.pfont_small.HEIGHT
-        software_version = get_software_version()
-        dev_flag = "dev" if is_dev_box() else ""
-        print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    splash_screen()
+
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:
@@ -1014,8 +1001,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         s = wifi.status()
 
     if wifi.isconnected():
-        if not hidden:
-            tm.write("Connected   ", y=0, color=tm.WHITE)
+        tm.write("Connected   ", y=0, color=tm.WHITE)
 
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
@@ -1028,6 +1014,26 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
             remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
+
+
+def splash_screen():
+    tm.clear_screen()
+    tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
+    y0 = tm.pfont_small.HEIGHT
+    msg = "Powered by archive.org and phish.in"
+    main_app_name = get_main_app().__name__
+    if main_app_name == "classical":
+        msg = "Powered by classicalarchives.com"
+    msg = tm.write(msg, 0, y0, tm.pfont_med, tm.PURPLE, -3)
+    version_strings = sys.version.split(" ")
+    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
+    y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
+    tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    y0 = y0 + tm.pfont_small.HEIGHT
+    software_version = get_software_version()
+    dev_flag = "dev" if is_dev_box() else ""
+    print(f"Software_version {software_version} {dev_flag}")
+    tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
 
 
 # app states
