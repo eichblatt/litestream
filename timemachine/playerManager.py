@@ -269,7 +269,7 @@ class PlayerManager:
                     break
 
             if next_index:
-                self.DEBUG and print(f"{next_index}(+{self.pumpahead})", end=". ")
+                # self.DEBUG and print(f"{next_index}(+{self.pumpahead})", end=". ")
                 if self.chunk_generator is None:
                     self.chunk_generator = self.poll_chunklist(next_index)
                 try:
@@ -280,7 +280,7 @@ class PlayerManager:
                     self.chunk_generator = None  # prepare for next task
                     self.pump_busy = False
         if next_chunklist:
-            self.DEBUG and print(f"pump_chunks {next_chunklist}")
+            # self.DEBUG and print(f"pump_chunks {next_chunklist}")
             if not isinstance(next_chunklist, list):  # A hack, this should not be needed.
                 next_chunklist = next_chunklist.value
             self.chunklist[next_index] = next_chunklist
