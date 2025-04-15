@@ -484,10 +484,10 @@ def poll_for_which_button(button_dict, timeout=None, default=None):
 
 
 # ---------------------------------------- text functions
-def trim_string_middle(text, x_pos, font):
+def trim_string_middle(text, x_pos, font, midpoint=0.5):
     pixel_width = tft.write_len(font, text)
     while (pixel_width + x_pos) > SCREEN_WIDTH:
-        middle_char = len(text) // 2
+        middle_char = int(len(text) * midpoint)
         text = text[: middle_char - 1] + "~" + text[middle_char + 1 :]
         pixel_width = tft.write_len(font, text)
     return text + 3 * " "  # Add spaces so that right side of screen is erased
@@ -531,8 +531,10 @@ def write(msg, x=0, y=0, font=pfont_med, color=WHITE, show_end=0, indent=0, back
     text = msg.split("\n")
     y0 = y
     for line in text:
-        if show_end == 1:
-            line = trim_string_middle(line, x, font)
+        if 0 < show_end <= 1:
+            if show_end == 1:
+                show_end = 0.5
+            line = trim_string_middle(line, x, font, midpoint=show_end)
         if bounds_check and ((x > SCREEN_WIDTH) or (y0 > SCREEN_HEIGHT - font.HEIGHT)):
             print(f"write: x {x} or y {y0} out of bounds. Not writing {msg}")
             continue

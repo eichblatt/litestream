@@ -1213,6 +1213,7 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
         prev_work = array_index == prev_index
         text = (">" if keyed_work else "") + names[(page_start + i) % len(names)]
         text_color = tm.WHITE if keyed_work else tm.PURPLE
+        show_end = 0.25 if keyed_work else 0
         if (keyed_work or prev_work) or draw_all:
             if prev_work:
                 tm.clear_area(
@@ -1227,7 +1228,7 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
                 y0 + i * pfont_small.HEIGHT,
                 color=text_color,
                 font=pfont_small,
-                show_end=1,
+                show_end=show_end,
             )
         if works[array_index].id in clu.FAVORITE_WORKS:
             tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, y0 + i * pfont_small.HEIGHT, tm.RED)
@@ -1288,7 +1289,7 @@ def display_keyed_genres(composer_genres, index, prev_index):
                 y0 + i * pfont_small.HEIGHT,
                 color=text_color,
                 font=pfont_small,
-                show_end=-2 if keyed_genre else 1,
+                show_end=-2 if keyed_genre else 0.6,
             )
     glc.keyed_genre = composer_genres[index]
     return
