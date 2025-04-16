@@ -341,15 +341,17 @@ def get_performances(work):
     track_counts = [perf.get("trk", 0) for perf in performances[:35]]  # for symphonies prefer 4 tracks generally
     # compute bimodal track counts if one of the modes is 1 track (e.g. Eugene Onegin)
     track_counts_set = set(track_counts)
-    if track_counts_set == {1}:
+    if not track_counts:
+        track_counts_mode = (0, 0)
+    elif (track_counts_set == {1}) or (track_counts.count(1) / len(track_counts) >= 0.9):
         track_counts_mode = (1, 1)
     elif track_counts_set == {1, 2}:
         track_counts_mode = (1, 2)
     elif track_counts_set == {2}:
         track_counts_mode = (2, 2)
     else:
-        track_counts_mode = max(track_counts_set, key=track_counts.count) if track_counts else 0
-        track_counts_mode = (track_counts_mode, max(track_counts_set - {1, 2}, key=track_counts.count) if track_counts else 0)
+        track_counts_mode = max(track_counts_set, key=track_counts.count)
+        track_counts_mode = (track_counts_mode, max(track_counts_set - {1, 2}, key=track_counts.count))
     print(f"getting performances, before sorting {time.ticks_ms()}. Track counts mode is {track_counts_mode}")
     performances = sorted(performances[:30], key=lambda perf: score(perf, track_counts_mode), reverse=True) + performances[30:]
     if work_id in FAVORITE_WORKS:  # Promote a favorite performance to the top of the list, regardless of score.
@@ -560,12 +562,13 @@ def create_playlist(playlist_name):
 
 
 def toggle_favorites(performance_id):
+    print(f"toggle_favorites: p_ids: {performance_id}, type: {type(performance_id)}")
     result = 0  # 0 means removed, 1 means added
     if performance_id is None:
         return result
     p_ids, w_ids = get_playlist_ids("tm_favorites")
     if isinstance(performance_id, Work):
-        work_id = performance_id
+        work_id = performance_id.id
         print(f"toggle_favorites: performance_id is a Work: {work_id}")
         if work_id in w_ids:
             for i, w_id in enumerate(w_ids):
@@ -577,16 +580,17 @@ def toggle_favorites(performance_id):
             performance_id = get_performances(work_id)[0].get("p_id", 0)
             add_to_playlist("tm_favorites", performance_id)
             result = 1
-        return result
-    if performance_id in p_ids:
-        remove_from_playlist("tm_favorites", performance_id)
-        result = 0
     else:
-        add_to_playlist("tm_favorites", performance_id)
-        result = 1
+        if performance_id in p_ids:
+            remove_from_playlist("tm_favorites", performance_id)
+            result = 0
+        else:
+            add_to_playlist("tm_favorites", performance_id)
+            result = 1
 
     # NOTE We could speed this up by just updating the lists.
     populate_favorites()
+    print(f"toggle_favorites returning {result}")
     return result
 
 
@@ -817,6 +821,7 @@ class GeneralContext:
         self.selected_genre = None
         self.selected_work = None
         self.selected_performance = None
+        self.this_work_y = None
         self.performance_index = 0
         self.tracklist = []
         self.track_titles = []
@@ -850,6 +855,7 @@ class GeneralContext:
             f"selected_genre: {self.selected_genre}",
             f"selected_work: {self.selected_work}",
             f"selected_performance: {self.selected_performance}",
+            f"this_work_y: {self.this_work_y}",
             f"performance_index: {self.performance_index}",
             f"tracklist: {self.tracklist}",
             f"track_titles: {self.track_titles}",

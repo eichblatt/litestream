@@ -677,12 +677,18 @@ def poll_RightSwitch(pYSw_old):
             if glc.SCREEN == ScreenContext.TRACKLIST:
                 heart_color = tm.RED if not glc.selected_work.id in clu.FAVORITE_WORKS else tm.BLACK
                 tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, work_bbox.y0, heart_color)
+            elif glc.SCREEN == ScreenContext.WORK:
+                heart_color = tm.RED if not glc.keyed_work.id in clu.FAVORITE_WORKS else tm.BLACK
+                tm.tft.fill_polygon(tm.HeartPoly, tm.SCREEN_WIDTH - 20, glc.this_work_y, heart_color)
+
             _ = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
-            print(f"Refresh screen {glc.SCREEN} to show the heart change")
             # Not strictly necessary, but will update the heart to what the database knows.
             if glc.SCREEN == ScreenContext.TRACKLIST:
+                print(f"Refresh TRACKLIST screen to show the heart change")
                 display_title(glc.selected_work)
                 display_performance_info()
+            elif glc.SCREEN == ScreenContext.WORK:
+                print(f"Refresh WORK screen to show the heart change -- Not Yet Implemented")
     return pYSw_old
 
 
@@ -1189,6 +1195,7 @@ def display_keyed_title(keyed_title, color=tm.PURPLE):
 def display_keyed_works(composer, composer_genre, works, index, prev_index):
     # Set up the display
     # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}, prev_index {prev_index}")
+    glc = clu.glc
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.WORK
     # print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
@@ -1214,18 +1221,21 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
         text = (">" if keyed_work else "") + names[(page_start + i) % len(names)]
         text_color = tm.WHITE if keyed_work else tm.PURPLE
         show_end = 0.25 if keyed_work else 0
+        y_location = y0 + i * pfont_small.HEIGHT
+        if keyed_work:
+            glc.this_work_y = y_location
         if (keyed_work or prev_work) or draw_all:
             if prev_work:
                 tm.clear_area(
                     selection_bbox.x0,
-                    y0 + i * pfont_small.HEIGHT,
+                    y_location,
                     tm.SCREEN_WIDTH,
                     pfont_small.HEIGHT,
                 )
             text = tm.write(
                 text,
                 0,
-                y0 + i * pfont_small.HEIGHT,
+                y_location,
                 color=text_color,
                 font=pfont_small,
                 show_end=show_end,
