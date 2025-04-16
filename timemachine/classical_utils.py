@@ -51,16 +51,18 @@ class Composer:
 class Genre:
     # init with **kwargs so that we can instantiate from json. E.g. Genre(**utils.read_json(path))
     def __init__(self, **kwargs):  # name, id, works=[], index=0):
-        self.name = kwargs["name"]
+        self.name = kwargs["title"]
         self.id = kwargs["id"]
-        self.index = kwargs.get("index", 0)
-        self.nworks = 1  # at least!
+        self.index = kwargs.get("seq", 0)
+        self.nworks = kwargs.get("nw", 0)
+        self.parent = kwargs.get("pid", None)
+        self.has_radio = kwargs.get("r", False)
 
     def __repr__(self):  # dump the dict so that we can write to/read from json.
         return json.dumps(self.__dict__)
 
     def __str__(self):
-        return f"({self.index}) {self.id} - {self.name} "
+        return f"({self.index}) {self.id} - {self.name} - {self.nworks} works"
 
 
 class Category:

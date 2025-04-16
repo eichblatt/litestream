@@ -54,7 +54,7 @@ COMPOSER_KEY_TIME = time.ticks_ms()
 WORK_KEY_TIME = time.ticks_ms()
 GENRE_KEY_TIME = time.ticks_ms()
 KNOB_TIME = time.ticks_ms()
-CONFIG_CHOICES = ["Composers", "Repertoire", "Account"]
+CONFIG_CHOICES = ["Composers", "Account"]
 FAVORITES_INDEX = 1
 RADIO_INDEX = 0
 glc = clu.glc
@@ -84,33 +84,6 @@ def get_creators(composer_list):  # A non-library mode call to get a list of com
     return ALL_COMPOSERS
 
 
-def get_genres(composer_id=0):
-    global genres
-    global genre_dict
-    if composer_id == 0:
-        if len(genres) > 0:
-            return genres
-        url = f"{CLASSICAL_API}?action=genres"
-        outpath = f"{METADATA_ROOT}/genres.json"
-    elif isinstance(composer_id, int):
-        retval = genre_dict.get(composer_id, None)
-        if retval:
-            return retval
-        url = f"{CLASSICAL_API}?action=genres&creator_ids={composer_id}"
-        outpath = f"{METADATA_ROOT}/{composer_id}_genres.json"
-
-    if utils.path_exists(outpath):
-        g = utils.read_json(outpath)["genres"]
-    else:
-        g = request_json(url, outpath)["genres"]
-    if composer_id != 0:
-        genre_dict[composer_id] = [Genre(id=x[0], name=x[1], index=i) for i, x in enumerate(g)]
-        return genre_dict[composer_id]
-    else:
-        genres = g
-        return genres
-
-
 def get_works(composer_id):
     global works_dict
     # Note: Keep a local cache (dictionary) of works by composer, but NOT a disk cache.
@@ -123,44 +96,18 @@ def get_works(composer_id):
     return works_dict[composer_id]
 
 
-def get_cats_helper(composer_id, category_id=None, already=[]):
-    # Recursive function to get all categories beneath this composer.
-    # For pure categories (categories containing only sub-categories), the second
-    #     element of the list is False. These should not be "selected", but are purely for organization
-
-    url = f"{CLASSICAL_API}?mode=library&action=work&composer_id={composer_id}" + (
-        f"&category_id={category_id}" if category_id is not None else ""
-    )
-    j = request_json(url)
-    cats = {x["name"]: x["id"] for x in j if x["type"] == "c"}
-    works = [Work(**(x | {"index": i})) for i, x in enumerate([x for x in j if x["type"] != "c"])]
-    if len(already) > 0:
-        # We are "wasting" the effort of creating these works, but saving space. We will re-query if selected.
-        already[-1].nworks = len(works)
-    for category_name, category_id in cats.items():
-        already = get_cats_helper(
-            composer_id,
-            category_id,
-            already + [Category(name=category_name, id=category_id)],
-        )
-    return already
-
-
 def get_cats(composer_id):
     global cat_dict
-    # If this takes up too much memory, we can reduce the dict to just the index, id, and name. (ie. remove works)
-    if composer_id == 0:
-        raise ValueError("Cannot get categories for composer id 0")
-    filepath = f"{METADATA_ROOT}/{composer_id}_cats.json"
-    if len(cat_dict.get(composer_id, {})) == 0:
-        if utils.path_exists(filepath):
-            cat_dict[composer_id] = [Category(**x) for x in utils.read_json(filepath)]
-            return cat_dict[composer_id]
-        else:
-            cat_dict[composer_id] = get_cats_helper(composer_id)
-            for i, cat in enumerate(cat_dict[composer_id]):
-                cat.index = i
-        utils.write_json(cat_dict[composer_id], filepath)
+    if composer_id in cat_dict.keys():
+        return cat_dict[composer_id]
+
+    if composer_id < 10:
+        raise ValueError("Cannot get categories for composer id < 10")
+    if isinstance(composer_id, Composer):
+        composer_id = composer_id.id
+    url = f"{CLASSICAL_API}?mode=library&action=categories&composer_id={composer_id}"
+    j = request_json(url)
+    cat_dict[composer_id] = [Genre(**x) for x in j]
     return cat_dict[composer_id]
 
 
@@ -1002,7 +949,7 @@ def select_from_favorites(favorites):
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.FAVORITES
     y0 = pfont_med.HEIGHT
-    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
+    incoming_knobs = [tm.m.value(), tm.d.value(), tm.y.value()]
     tm.m._value = 0
     tm.d._value = 0
     tm.y._value = 0
@@ -1031,6 +978,7 @@ def select_from_favorites(favorites):
 
         if not tm.pStop.value():
             retval = None
+            incoming_knobs[0] = (incoming_knobs[0] + 1) % len(glc.composers)  # Force screen to revert to COMPOSER
             break
 
         if (not tm.pSelect.value()) or (not tm.pPlayPause.value()):
@@ -1079,6 +1027,7 @@ def display_favorite_choices(index, favorites):
             msg = tm.write(f"{prj["name"]}", 0, y0, color=color, font=pfont_small, show_end=-2)
             y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
         i = i + 1
+    tm.write("Stop to Exit", 0, tm.SCREEN_HEIGHT - pfont_small.HEIGHT, pfont_small, tm.YELLOW)
     return i
 
 
