@@ -93,10 +93,6 @@
             "github:eichblatt/litestream/timemachine/fonts/NotoSans_32.py"
         ],
         [
-            "fonts/NotoSans_48.py",
-            "github:eichblatt/litestream/timemachine/fonts/NotoSans_48.py"
-        ],
-        [
             "mrequests/mrequests.mpy",
             "github:eichblatt/litestream/timemachine/mrequests/mrequests.mpy"
         ],

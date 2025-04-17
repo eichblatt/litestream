@@ -96,7 +96,7 @@ elif screen_type in (2, 3):
     import fonts.NotoSans_24 as pfont_smallx
     import fonts.NotoSans_24 as pfont_small
     import fonts.NotoSans_24 as pfont_med
-    import fonts.NotoSans_48 as pfont_large
+    import fonts.NotoSans_24 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
 
@@ -104,7 +104,7 @@ elif screen_type in (2, 3):
     SCREEN_WIDTH = 320
     SCREEN_VPARTS = (SCREEN_HEIGHT, pfont_tiny.HEIGHT)
 
-    # import fonts.NotoSans_24 as pfont_med
+    # import fonts.NotoSans_48 as pfont_large
     # import fonts.NotoSans_18 as pfont_small
     # import fonts.DejaVu_33 as large_font
     # import fonts.date_font as date_font
