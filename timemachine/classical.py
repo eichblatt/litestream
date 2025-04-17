@@ -1125,6 +1125,11 @@ def display_tracks(*track_names):
         y1 = tm.SCREEN_HEIGHT - n_lines * (text_height + 1)
         tm.clear_to_bottom(0, y1)
         tm.write(message, 0, y1, pfont_small, tm.YELLOW, show_end=-2)
+
+    if glc.player.is_playing():
+        tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
+    elif glc.player.is_paused():
+        tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.pause_color)
     return
 
 
