@@ -698,7 +698,7 @@ def display_tracks(*track_names):
         show_end = -2 if i == 0 else 0
         color = tm.WHITE if i == 0 else tm.tracklist_color
         font = pfont_small if i == 0 else pfont_smallx
-        msg = tm.write(f"{name}", 0, y0, font, color, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, font, color, show_end, indent=1)
         y0 += text_height * len(msg.split("\n"))
         i = i + 1
     return msg

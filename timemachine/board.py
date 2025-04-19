@@ -96,7 +96,7 @@ elif screen_type in (2, 3):
     import fonts.NotoSans_24 as pfont_smallx
     import fonts.NotoSans_24 as pfont_small
     import fonts.NotoSans_24 as pfont_med
-    import fonts.NotoSans_48 as pfont_large
+    import fonts.NotoSans_24 as pfont_large
     import fonts.DejaVu_60 as large_font
     import fonts.DejaVu_33 as date_font
 
@@ -104,7 +104,7 @@ elif screen_type in (2, 3):
     SCREEN_WIDTH = 320
     SCREEN_VPARTS = (SCREEN_HEIGHT, pfont_tiny.HEIGHT)
 
-    # import fonts.NotoSans_24 as pfont_med
+    # import fonts.NotoSans_48 as pfont_large
     # import fonts.NotoSans_18 as pfont_small
     # import fonts.DejaVu_33 as large_font
     # import fonts.date_font as date_font
@@ -221,7 +221,7 @@ knob_sense = get_knob_sense()
 setup_knobs(knob_sense)
 
 
-def label_soft_knobs(left, center, right):
+def label_soft_knobs(left, center, right, highlight_colors=()):
     if len(SCREEN_VPARTS) < 2:
         return
     print("labelling soft knobs")
@@ -235,9 +235,15 @@ def label_soft_knobs(left, center, right):
     if sum(widths) > SCREEN_WIDTH:
         raise NotImplementedError("Strings are too wide, Bailing")
     clear_area(0, SCREEN_VPARTS[0], SCREEN_WIDTH, pfont_tiny.HEIGHT)
-    write(left, 0, SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
-    write(center, int(0.5 * SCREEN_WIDTH - 0.5 * widths[1]), SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
-    write(right, SCREEN_WIDTH - widths[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    xcursors = [0, int(0.5 * (SCREEN_WIDTH - widths[1])), SCREEN_WIDTH - widths[2]]
+    write(left, xcursors[0], SCREEN_VPARTS[0], font, color=fg, background=bg, bounds_check=False)
+    write(center, xcursors[1], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+    write(right, xcursors[2], SCREEN_VPARTS[0], font, fg, background=bg, bounds_check=False)
+
+    for i, color in enumerate(highlight_colors):  # Draw a small colored rectangle next to the text.
+        if color is None:
+            continue
+        tft.fill_rect(xcursors[i] + 2, SCREEN_VPARTS[0] + (font.HEIGHT // 2) - 2, 4, 4, color)
     return
 
 
@@ -281,6 +287,7 @@ PausePoly = [(0, 0), (0, 15), (3, 15), (3, 0), (7, 0), (7, 15), (10, 15), (10, 0
 # StopPoly = [(0, 0), (0, 15), (15, 15), (15, 0)]
 RewPoly = [(7, 0), (0, 8), (7, 15), (7, 0), (15, 0), (8, 8), (15, 15), (15, 0)]
 FFPoly = [(0, 0), (0, 15), (8, 8), (0, 0), (8, 0), (8, 15), (15, 8), (8, 0)]
+HeartPoly = [(9, 8), (11, 2), (14, 0), (17, 3), (17, 6), (9, 17), (1, 6), (1, 3), (4, 0), (7, 2)]
 
 
 # ------------------------------------------------ colors
@@ -302,6 +309,7 @@ WHITE = color_rgb(255, 255, 255)
 BLACK = color_rgb(0, 0, 0)
 YELLOW = color_rgb(255, 255, 20)
 PURPLE = color_rgb(255, 72, 255)
+GREEN = color_rgb(0, 255, 100)
 stage_date_color = YELLOW
 
 
@@ -343,6 +351,18 @@ def power(state=None):
     else:
         raise ValueError(f"invalid power state {state}")
     return state
+
+
+# ------------------------------------------------ draw function
+def draw_radio_icon(x, y, r=9, color=GREEN):
+    x = x + r
+    y = y + r
+    for i in range(0, r, 4):
+        tft.circle(x, y, r - i, color)
+        tft.circle(x, y, r - (i + 1), color)
+    tft.fill_polygon([(0, 0), (r - 2, r + 1), (-(r - 2), r + 1)], x, y, BLACK)
+    tft.fill_polygon([(0, 0), (r - 2, -(r + 1)), (-(r - 2), -(r + 1))], x, y, BLACK)
+    return
 
 
 # ---------------------------------------- calibration
@@ -463,10 +483,10 @@ def poll_for_which_button(button_dict, timeout=None, default=None):
 
 
 # ---------------------------------------- text functions
-def trim_string_middle(text, x_pos, font):
+def trim_string_middle(text, x_pos, font, midpoint=0.5):
     pixel_width = tft.write_len(font, text)
     while (pixel_width + x_pos) > SCREEN_WIDTH:
-        middle_char = len(text) // 2
+        middle_char = int(len(text) * midpoint)
         text = text[: middle_char - 1] + "~" + text[middle_char + 1 :]
         pixel_width = tft.write_len(font, text)
     return text + 3 * " "  # Add spaces so that right side of screen is erased
@@ -492,7 +512,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
             out_lines.append(test)
             if len(test) < len(line):
                 new_lines = new_lines + 1
-                line = line[len(test) :]
+                line = line[len(test) - len(indention) :]
             else:
                 break
         out_lines = "\n".join(out_lines)
@@ -510,8 +530,10 @@ def write(msg, x=0, y=0, font=pfont_med, color=WHITE, show_end=0, indent=0, back
     text = msg.split("\n")
     y0 = y
     for line in text:
-        if show_end == 1:
-            line = trim_string_middle(line, x, font)
+        if 0 < show_end <= 1:
+            if show_end == 1:
+                show_end = 0.5
+            line = trim_string_middle(line, x, font, midpoint=show_end)
         if bounds_check and ((x > SCREEN_WIDTH) or (y0 > SCREEN_HEIGHT - font.HEIGHT)):
             print(f"write: x {x} or y {y0} out of bounds. Not writing {msg}")
             continue
