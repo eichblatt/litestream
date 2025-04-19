@@ -1024,16 +1024,18 @@ def splash_screen():
     main_app_name = get_main_app().__name__
     if main_app_name == "classical":
         msg = "Powered by classicalarchives.com"
-    msg = tm.write(msg, 0, y0, tm.pfont_med, tm.PURPLE, -3)
+    msg = tm.write(msg, 0, y0, tm.pfont_small, tm.PURPLE, -3)
     version_strings = sys.version.split(" ")
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-    y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
+    y0 = y0 + len(msg.split("\n")) * tm.pfont_small.HEIGHT
     tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
     y0 = y0 + tm.pfont_small.HEIGHT
     software_version = get_software_version()
+    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
     dev_flag = "dev" if is_dev_box() else ""
     print(f"Software_version {software_version} {dev_flag}")
     tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    tm.write(f"{mac_address}", 0, y0 + tm.pfont_smallx.HEIGHT, tm.pfont_smallx, tm.WHITE)
 
 
 # app states
