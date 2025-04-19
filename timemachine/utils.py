@@ -28,6 +28,7 @@ import sys
 import time
 
 import board as tm
+import fonts.NotoSans_bold_18 as pfont_small
 
 WIFI_CRED_HIST_PATH = "/config/wifi_cred_hist.json"
 WIFI_CRED_PATH = "/wifi_cred.json"
@@ -36,34 +37,38 @@ DEV_BOX_PATH = "/config/.is_dev_box"
 MAIN_APP_PATH = "/config/.main_app"
 STOP_CHAR = "$StoP$"
 
-choices_color = tm.WHITE
-
 
 # Utils using TM hardware
 ######################################################################################### Utils using TM hardware
 #
 
 
-def select_option(message, choices):
+def select_option(message, choices, mask=None):
     if len(choices) == 0:
         return ""
     pSelect_old = True
     tm.y._value = tm.y._min_val = 0
-    tm.d._value = tm.d._min_val = 0
-    tm.y._max_val = len(choices) - 1
-    tm.d._max_val = len(choices) - 1
-    tm.y._range_mode = tm.y.RANGE_WRAP
-    tm.d._range_mode = tm.d.RANGE_WRAP
+    # tm.y._max_val = len(choices) - 1
+    tm.y._range_mode = tm.y.RANGE_UNBOUNDED
+
+    # tm.d._value = tm.d._min_val = 0
+    # tm.d._max_val = len(choices) - 1
+    # tm.d._range_mode = tm.d.RANGE_WRAP
 
     tm.label_soft_knobs("", "", "Next/Prev")
+
+    if mask is None:
+        mask = [False] * len(choices)
     step = step_old = 0
-    text_height = tm.pfont_small.HEIGHT  # was 17
+    text_height = pfont_small.HEIGHT  # was 17
     choice = ""
     first_time = True
     tm.clear_screen()
     # init_screen()
+    choices_color = tm.WHITE
+    background_color = tm.BLACK
     message = message.replace("\n", " ")
-    message = tm.write(f"{message}", 0, 0, tm.pfont_small, tm.tracklist_color, show_end=-3)
+    message = tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color, show_end=-3)
     message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
     select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
     while pSelect_old == tm.pSelect.value():
@@ -77,17 +82,23 @@ def select_option(message, choices):
             # init_screen()
 
             for i, s in enumerate(range(max(0, step - 2), step)):
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                text_color = choices_color if not mask[s] else background_color
+                background = choices_color if mask[s] else background_color
+                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
                 y0 += text_height
 
             text = ">" + choices[step]
-            tm.write(text, 0, y0, tm.pfont_small, tm.PURPLE, show_end=True)
+            text_color = tm.PURPLE if not mask[step] else background_color
+            background = tm.PURPLE if mask[step] else background_color
+            tm.write(text, 0, y0, pfont_small, text_color, background=background, show_end=True)
             y0 += text_height
 
             for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
                 if y0 > (tm.SCREEN_HEIGHT - text_height):
                     continue
-                tm.write(choices[s], 0, y0, tm.pfont_small, choices_color, show_end=True)
+                text_color = choices_color if not mask[s] else background_color
+                background = choices_color if mask[s] else background_color
+                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
                 y0 += text_height
             # print(f"step is {step}. Text is {text}")
         time.sleep(0.2)
@@ -95,6 +106,22 @@ def select_option(message, choices):
     print(f"step is now {step}. Choice: {choice}")
     time.sleep(0.6)
     return choice
+
+
+def select_multiple_options(message, choices, mask=None):
+    if len(choices) == 0:
+        return ""
+    if mask is None:
+        mask = [False] * len(choices)
+    while True:
+        choice = select_option(message, ["DONE"] + choices, [False] + mask)
+        if choice == "DONE":
+            break
+        ind = choices.index(choice)
+        mask[ind] = not mask[ind]
+    retval = [choices[i] for i in range(len(choices)) if mask[i]]
+    print(f"select multiple choices returning {retval}")
+    return retval
 
 
 def select_chars(message, message2="", already=None):
@@ -336,6 +363,16 @@ def qr_code(message, startpos=(0, 0), pixel_size=2):
     return startpos[0] + i * pixel_size, startpos[1] + j * pixel_size
 
 
+def capture_knob_values():
+    return tm.y.value(), tm.m.value(), tm.d.value()
+
+
+def restore_knob_values(y, m, d):
+    tm.y._value = y
+    tm.m._value = m
+    tm.d._value = d
+
+
 # OS Utils
 ################################################################################################################# OS-related utils
 #
@@ -565,6 +602,16 @@ def set_datetime(hidden=False):
             pass
     else:
         return None
+
+
+def get_date():
+    return get_datetime().split(" ")[0]
+
+
+def get_datetime():
+    dt = time.localtime(time.mktime(time.gmtime()) - 6 * 3600)  # Central time
+    dtstr = [f"{dt[0]}"] + [f"{x:02d}" for x in dt[1:]]
+    return f"{dtstr[0]}.{dtstr[1]}.{dtstr[2]} {dtstr[3]}:{dtstr[4]}:{dtstr[5]}"
 
 
 ############################################################################################### partitions
@@ -905,7 +952,7 @@ def disconnect_wifi():
     wifi.disconnect()
 
 
-def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
+def connect_wifi(retry_time=100, timeout=10000, itry=0):
     wifi = network.WLAN(network.STA_IF)
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
@@ -918,7 +965,6 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         # We want to re-calibrate whenever the wifi changes, so that users will
         # calibrate the machine when they receive it.
         # (It will be shipped with WIFI CRED from the manufacturing tests, that will fail).
-        hidden = False
         if itry <= 1:
             try:
                 tm.self_test()
@@ -933,20 +979,8 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         write_json(wifi_cred, WIFI_CRED_PATH)
         reset()
 
-    if not hidden:
-        tm.clear_screen()
-        tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
-        y0 = tm.pfont_small.HEIGHT
-        msg = tm.write("Powered by archive.org and phish.in", 0, y0, tm.pfont_med, tm.PURPLE, -3)
-        version_strings = sys.version.split(" ")
-        uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
-        y0 = y0 + len(msg.split("\n")) * tm.pfont_med.HEIGHT
-        tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
-        y0 = y0 + tm.pfont_small.HEIGHT
-        software_version = get_software_version()
-        dev_flag = "dev" if is_dev_box() else ""
-        print(f"Software_version {software_version} {dev_flag}")
-        tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    splash_screen()
+
     try:
         wifi.connect(wifi_cred["name"], wifi_cred["passkey"])
     except Exception as e:
@@ -967,8 +1001,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
         s = wifi.status()
 
     if wifi.isconnected():
-        if not hidden:
-            tm.write("Connected   ", y=0, color=tm.WHITE)
+        tm.write("Connected   ", y=0, color=tm.WHITE)
 
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
@@ -981,6 +1014,28 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0, hidden=False):
             remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
+
+
+def splash_screen():
+    tm.clear_screen()
+    tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
+    y0 = tm.pfont_small.HEIGHT
+    msg = "Powered by archive.org and phish.in"
+    main_app_name = get_main_app().__name__
+    if main_app_name == "classical":
+        msg = "Powered by classicalarchives.com"
+    msg = tm.write(msg, 0, y0, tm.pfont_small, tm.PURPLE, -3)
+    version_strings = sys.version.split(" ")
+    uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
+    y0 = y0 + len(msg.split("\n")) * tm.pfont_small.HEIGHT
+    tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    y0 = y0 + tm.pfont_small.HEIGHT
+    software_version = get_software_version()
+    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
+    dev_flag = "dev" if is_dev_box() else ""
+    print(f"Software_version {software_version} {dev_flag}")
+    tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
+    tm.write(f"{mac_address}", 0, y0 + tm.pfont_smallx.HEIGHT, tm.pfont_smallx, tm.WHITE)
 
 
 # app states
@@ -1048,23 +1103,23 @@ def load_classical_state(state_path):  # Move to classical.py
         composer_list = state.get("composer_list", ["GREATS"])
         selected_tape = state.get("selected_tape", {})
         access_token = state.get("access_token", "")
-        repertoire = state.get("repertoire", "Standard")
+        radio_pgrggr = state.get("radio_pgrggr", None)
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
-            "repertoire": repertoire,
+            "radio_pgrggr": radio_pgrggr,
         }
     else:
         composer_list = ["GREATS"]
         selected_tape = {}
         access_token = ""
-        repertoire = "Standard"
+        radio_pgrggr = None
         state = {
             "composer_list": composer_list,
             "selected_tape": selected_tape,
             "access_token": access_token,
-            "repertoire": repertoire,
+            "radio_pgrggr": radio_pgrggr,
         }
         write_json(state, state_path)
     return state
@@ -1094,5 +1149,11 @@ if not isdir("/config"):
 
 class FirmwareUpdateRequiredException(Exception):
     def __init__(self, message="Firmware is out of date"):
+        self.message = message
+        super().__init__(self.message)
+
+
+class ConfigureException(Exception):
+    def __init__(self, message="Back to Config Menu"):
         self.message = message
         super().__init__(self.message)

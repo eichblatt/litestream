@@ -84,7 +84,7 @@ def test_update():
     tm.write("Press Select Button", 0, tm.pfont_large.HEIGHT, tm.pfont_med, tm.YELLOW, show_end=-3)
 
     start_time = time.ticks_ms()
-    while time.ticks_ms() < (start_time + 60_000):
+    while time.ticks_ms() < (start_time + 20 * 60_000):
         if pSelect_old != tm.pSelect.value():
             pSelect_old = tm.pSelect.value()
             update_code = True
@@ -228,6 +228,7 @@ def basic_main():
     print("in basic_main")
 
     start_time = time.ticks_ms()
+    tm.power(1)
     hidden_setdate = False
     tm.calibrate_screen()
     ypos = 0
@@ -246,6 +247,8 @@ def basic_main():
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.write(f"{uversion}", 0, ypos, tm.pfont_smallx, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
+    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
+    tm.write(f"{mac_address}", 0, ypos + tm.pfont_smallx.HEIGHT, tm.pfont_smallx, tm.WHITE)
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):
         reconfigure()
