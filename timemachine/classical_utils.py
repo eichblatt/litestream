@@ -430,6 +430,7 @@ def authenticate_user():
         print(f"Error in authenticate_user: {e}")
         tm.clear_screen()
         tm.write("Authentication Failed", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        time.sleep(2)
         validated = False
     finally:
         tm.label_soft_knobs("Composer", "Genre", "Work")
