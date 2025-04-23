@@ -35,3 +35,4 @@ In case the metadata is stale, ie, the URLs are no longer valid, we need to dele
 
 ## Bash script
 
+: (myenv) /home/steve/myenv ~/projects/deadstream ; bash ./update_cloud_meta.sh -c "Phish DeadAndCompany BillyString"
