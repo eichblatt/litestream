@@ -1,4 +1,5 @@
 import json
+import network
 import re
 import time
 import utils
@@ -398,7 +399,7 @@ def configure_account():
     utils.reset()
 
 
-def authenticate_user():
+def authenticate_user_password():
     validated = False
     tm.clear_screen()
     tm.label_soft_knobs("", "jump 10", "next")
@@ -437,17 +438,30 @@ def authenticate_user():
     return validated
 
 
+def getlinkcode():
+    mac_address = network.WLAN().config("mac").hex()
+    url = f"{CLASSICAL_API}?action=oauth_getlinkcode&deviceid=TimeMachine%20{mac_address}"
+    oauth_resp = request_json(url)
+    return oauth_resp
+
+
 def authenticate_user_qr():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "")
     # Send API call to server to obtain code.
     # auth_code = requests.get("https://prs.net/tm/get_code").text
-    auth_code = "123456"
-    url = f"https://prs.net/tm/{auth_code}"
-    x0, y0 = utils.qr_code(url)
-    msg = tm.write(f"Visit https://prs.net/tm/{auth_code} to authenticate.", 0, y0, pfont_small, tm.YELLOW, show_end=-2)
+    linkcode = getlinkcode()
+    x0, y0 = utils.qr_code(linkcode["oauthUrl"])
+    msg = tm.write(
+        f"Visit {linkcode['oauthShortUrl']} to authenticate. Code {linkcode['linkCode']}",
+        0,
+        y0,
+        pfont_small,
+        tm.YELLOW,
+        show_end=-3,
+    )
     y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-    token = poll_for_token(auth_code, y0=y0)
+    token = poll_for_token(linkcode, y0=y0)
     validated = validate_token(token)
     if validated:
         tm.clear_to_bottom(0, y0)
@@ -462,7 +476,7 @@ def authenticate_user_qr():
     return validated
 
 
-def poll_for_token(auth_code, timeout=60 * 6, y0=0):
+def poll_for_token(auth_code, timeout=60 * 15, y0=0):
     # Poll server for validation
     token = ""
     start_time = time.time()
@@ -471,15 +485,26 @@ def poll_for_token(auth_code, timeout=60 * 6, y0=0):
         print(f"Polling for token: {auth_code}. Time elapsed: {elapsed_time}/{timeout}s")
         tm.write(f"Polling: {timeout - elapsed_time}s", 0, y0, pfont_med, tm.WHITE)
         tm.write(f"Stop to cancel", 0, y0 + pfont_med.HEIGHT, pfont_med, tm.YELLOW)
-        # token = requests.get(f"https://prs.net/tm/validate/{auth_code}").text
-        if elapsed_time > 10:
-            token = utils.read_file(TOKEN_FILE)[0].strip()
+        resp = requests.get(
+            f"{CLASSICAL_API}?action=oauth_getauthtoken&linkCode={auth_code['linkCode']}&linkDeviceId={auth_code['linkDeviceId']}"
+        ).json()
+        if "error" in resp.keys():
+            if resp["error"].endswith("FAILURE"):
+                return ""
+            elif resp["error"].endswith("RETRY"):
+                time.sleep(5)
+                continue
+        else:
+            token = resp.get("authToken", "")
         if tm.poll_for_button(tm.pStop, 1):
             print(f"Cancelled polling for token. Time elapsed: {time.time() - start_time}s")
             break
         if token != "":
             break
     return token
+
+
+authenticate_user = authenticate_user_qr
 
 
 def validate_token(token):
@@ -679,8 +704,7 @@ def get_member_alias():
 
 def propose_member_alias():
     # Create a member alias based on the MAC address of the device.
-    wifi = utils.connect_wifi()
-    mac_address = wifi.config("mac").hex()
+    mac_address = network.WLAN().config("mac").hex()
     member_alias = f"tm{mac_address}"[:16]
     return member_alias
 

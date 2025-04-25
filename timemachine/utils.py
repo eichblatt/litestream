@@ -1016,6 +1016,11 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
         connect_wifi(itry=itry + 1)
 
 
+def get_mac_address():
+    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
+    return mac_address
+
+
 def splash_screen():
     tm.clear_screen()
     tm.write("Connecting..", font=tm.pfont_smallx, color=tm.YELLOW)
@@ -1031,7 +1036,7 @@ def splash_screen():
     tm.write(f"{uversion}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
     y0 = y0 + tm.pfont_small.HEIGHT
     software_version = get_software_version()
-    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
+    mac_address = get_mac_address()
     dev_flag = "dev" if is_dev_box() else ""
     print(f"Software_version {software_version} {dev_flag}")
     tm.write(f"{software_version} {dev_flag}", 0, y0, tm.pfont_smallx, tm.WHITE, show_end=1)
