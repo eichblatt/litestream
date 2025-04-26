@@ -7,6 +7,7 @@ import utils
 import archive_utils
 import board as tm
 import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_bold_18 as pfont_bold
 import fonts.NotoSans_24 as pfont_med
 
 try:
@@ -448,15 +449,17 @@ def getlinkcode():
 def authenticate_user_qr():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "")
+    msg = tm.write("Authentication Process Starting...", 0, 0, pfont_bold, tm.WHITE, show_end=-3)
     # Send API call to server to obtain code.
     # auth_code = requests.get("https://prs.net/tm/get_code").text
     linkcode = getlinkcode()
+    tm.clear_screen()
     x0, y0 = utils.qr_code(linkcode["oauthUrl"])
     msg = tm.write(
         f"Visit {linkcode['oauthShortUrl']} to authenticate. Code {linkcode['linkCode']}",
         0,
         y0,
-        pfont_small,
+        pfont_bold,
         tm.YELLOW,
         show_end=-3,
     )
@@ -492,11 +495,10 @@ def poll_for_token(auth_code, timeout=60 * 15, y0=0):
             if resp["error"].endswith("FAILURE"):
                 return ""
             elif resp["error"].endswith("RETRY"):
-                time.sleep(5)
-                continue
+                pass
         else:
             token = resp.get("authToken", "")
-        if tm.poll_for_button(tm.pStop, 1):
+        if tm.poll_for_button(tm.pStop, 5):
             print(f"Cancelled polling for token. Time elapsed: {time.time() - start_time}s")
             break
         if token != "":
