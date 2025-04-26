@@ -331,11 +331,12 @@ class PlayerManager:
         return self.player.is_paused()
 
     def set_volume(self, volume):
-        self.volume = volume
+        self.volume = min(max(volume, 5), 11)
         return self.player.set_volume(self.volume)
 
     def get_volume(self):
-        return self.player.get_volume()
+        self.volume = self.player.get_volume()
+        return self.volume
 
     def reset_player(self):
         return self.player.reset_player()
