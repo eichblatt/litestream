@@ -450,11 +450,9 @@ def authenticate_user_qr():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "")
     msg = tm.write("Authentication Process Starting...", 0, 0, pfont_bold, tm.WHITE, show_end=-3)
-    # Send API call to server to obtain code.
-    # auth_code = requests.get("https://prs.net/tm/get_code").text
-    linkcode = getlinkcode()
-    tm.clear_screen()
+    linkcode = getlinkcode()  # Send API call to server to obtain code.
     x0, y0 = utils.qr_code(linkcode["oauthUrl"])
+    tm.clear_to_bottom(0, y0)
     msg = tm.write(
         f"Visit {linkcode['oauthShortUrl']} to authenticate. Code {linkcode['linkCode']}",
         0,

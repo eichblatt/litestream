@@ -354,6 +354,7 @@ def qr_code(message, startpos=(0, 0), pixel_size=2):
         return
     if (max_x < 0) or (max_y < 0):
         raise ValueError("QR code too big for screen")
+    tm.clear_area(0, 0, tm.SCREEN_WIDTH, max_y)
     for i, row in enumerate(matrix):
         for j, column in enumerate(row):
             color = tm.BLACK if column else tm.WHITE
