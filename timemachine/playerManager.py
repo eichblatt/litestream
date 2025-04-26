@@ -46,6 +46,7 @@ class PlayerManager:
         self.pumpahead = 1
         self.chunk_generator = None
         self.urls = []  # high-level urls
+        self.volume = 11
 
         self.chunked_urls = False
         self.button_window = None
@@ -190,6 +191,7 @@ class PlayerManager:
         # print("No more chunks will be sent -- player reset")
         self.button_window = None
         self.player.stop()  # set the player.playlist to [] if reset_head
+        self.set_volume(self.volume)
         self.pumped_indices = []
         if reset_head:
             self.increment_track_screen(0)  # reset the track index, and update the screen
@@ -329,7 +331,8 @@ class PlayerManager:
         return self.player.is_paused()
 
     def set_volume(self, volume):
-        return self.player.set_volume(volume)
+        self.volume = volume
+        return self.player.set_volume(self.volume)
 
     def get_volume(self):
         return self.player.get_volume()
