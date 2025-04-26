@@ -91,6 +91,37 @@ In machine_timer_isr(), replace the call to mp_sched_schedule with one to mp_sch
 //mp_sched_schedule(self->callback, self);
 mp_sched_schedule_node(&self->timer_node, call_timer_callback);
 
+Fix RingIO to handle >64kB buffers, and have a fast close() function
+====================================================================
+nano ~/micropython/py/objringio.c
+
+Add this function above micropython_ringio_any():
+static mp_obj_t micropython_ringio_stream_close(mp_obj_t self_in)
+{
+    micropython_ringio_obj_t *self = MP_OBJ_TO_PTR(self_in);
+
+    self->ringbuffer.iget = self->ringbuffer.iput = 0;
+
+    return mp_const_none;
+}
+// Define a Python reference to the function above.
+static MP_DEFINE_CONST_FUN_OBJ_1(micropython_ringio_stream_close_obj, micropython_ringio_stream_close);
+
+Change the dict table to reference this function and comment out the built-in close:
+//{ MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },
+{ MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&micropython_ringio_stream_close_obj) },
+
+nano ~/micropython/py/ringbuf.h
+
+Change the _ringbuf_t struct to have 32-bit vars instead of 16-bit vars:
+
+typedef struct _ringbuf_t {
+    uint8_t *buf;
+    uint32_t size;
+    uint32_t iget;
+    uint32_t iput;
+} ringbuf_t;
+
 
 Allow the AudioDecoder C module to use tracked memory allocation
 ================================================================
