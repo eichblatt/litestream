@@ -612,12 +612,12 @@ def toggle_favorites(performance_id):
         if work_id in w_ids:
             for i, w_id in enumerate(w_ids):
                 if w_id == work_id:
-                    remove_from_favorites(p_ids[i])
+                    remove_from_favorites(p_ids[i], work_id=work_id)
                     result = 0
                     break
         else:
             performance_id = get_performances(work_id)[0].get("p_id", 0)
-            add_to_favorites(performance_id)
+            add_to_favorites(performance_id, word_id=work_id)
             result = 1
     else:
         if performance_id in p_ids:
@@ -631,7 +631,9 @@ def toggle_favorites(performance_id):
     return result
 
 
-def add_to_favorites(performance_id, value=1):
+def add_to_favorites(performance_id, value=1, work_id=None):
+    global FAVORITE_PERFORMANCES
+    global FAVORITE_WORKS
     mode = "adding" if value else "removing"
     print(f"add_to_favorites: {mode} performance_id {performance_id}")
     if performance_id is None:
@@ -640,12 +642,22 @@ def add_to_favorites(performance_id, value=1):
     # add this performance to the playlist.
     url = f"{CLASSICAL_API}?mode=favorites&action=set&rec_id={performance_id}&value={value}&perf=1"
     resp = request_json(url, debug=False)
-    populate_favorites()
+    if work_id is not None:  # We have enough info to update the FAVORITE_* lists without checking with server.
+        if value:
+            FAVORITE_WORKS.append(work_id)
+            FAVORITE_PERFORMANCES.append(performance_id)
+        else:
+            if work_id in FAVORITE_WORKS:
+                FAVORITE_WORKS.remove(work_id)
+            if performance_id in FAVORITE_PERFORMANCES:
+                FAVORITE_PERFORMANCES.remove(performance_id)
+    else:  # use the server to update the FAVORITE_* lists.
+        populate_favorites()
     return
 
 
-def remove_from_favorites(performance_id):
-    return add_to_favorites(performance_id, value=0)
+def remove_from_favorites(performance_id, work_id=None):
+    return add_to_favorites(performance_id, value=0, work_id=work_id)
 
 
 def toggle_favorites_playlist(performance_id):

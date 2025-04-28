@@ -635,7 +635,7 @@ def poll_RightSwitch(pYSw_old):
                 display_title(glc.selected_work)
                 display_performance_info()
             elif glc.SCREEN == ScreenContext.WORK:
-                print(f"Refresh WORK screen to show the heart change -- Not Yet Implemented")
+                print(f"Refresh WORK screen to show the heart change")
     return pYSw_old
 
 
