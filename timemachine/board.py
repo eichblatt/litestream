@@ -298,7 +298,7 @@ def color_rgb(r, g, b):
         raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
 
 
-tracklist_color = color_rgb(0, 158, 255)
+tracklist_color = color_rgb(150, 158, 255)
 # play_color = color_rgb(20, 255, 60)
 play_color = color_rgb(255, 0, 15)
 pause_color = color_rgb(255, 0, 15)
