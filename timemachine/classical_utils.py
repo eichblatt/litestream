@@ -586,13 +586,14 @@ def initialize_knobs():
 
 
 # ------------------------------------------------------------------------------------ favorites management
-
-
 def populate_favorites():
     global FAVORITE_PERFORMANCES
     global FAVORITE_WORKS
     url = f"{CLASSICAL_API}?mode=favorites&action=list-fav-perf"
-    fav_perf = request_json(url)["fav_perf"]
+    fav_perf = request_json(url).get("fav_perf", None)
+    if fav_perf is None:
+        print("populate_favorites: No favorites found")
+        return
     FAVORITE_PERFORMANCES = [x["perf_id"] for x in fav_perf]
     FAVORITE_WORKS = [x["work_id"] for x in fav_perf]
     # FAVORITE_PERFORMANCES, FAVORITE_WORKS = get_playlist_ids("tm_favorites")
@@ -617,7 +618,7 @@ def toggle_favorites(performance_id):
                     break
         else:
             performance_id = get_performances(work_id)[0].get("p_id", 0)
-            add_to_favorites(performance_id, word_id=work_id)
+            add_to_favorites(performance_id, work_id=work_id)
             result = 1
     else:
         if performance_id in p_ids:
@@ -693,7 +694,7 @@ def toggle_favorites_playlist(performance_id):
     return result
 
 
-def get_favorite_items():
+def get_favorite_items(N_items=100, start=0):
     if not glc.HAS_TOKEN:
         return []
     print("getting favorite items")

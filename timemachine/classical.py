@@ -913,6 +913,7 @@ def handle_favorites():
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
     favorites = clu.get_playlist_items("tm_favorites")
+    # favorites = clu.get_favorite_items(N_favorites)
     selection = select_from_favorites(favorites)
     if selection is not None:
         glc.selected_composer = get_composer_by_id(glc.composers, int(selection["c_id"]))
@@ -967,7 +968,7 @@ def select_from_favorites(favorites):
 
         if time.ticks_diff(time.ticks_ms(), button_press_time) < 2_000:  # crude de-bouncing.
             continue
-        if not tm.pYSw.value():  # drop a favorite
+        if not tm.pYSw.value():  # toggle a favorite
             button_press_time = time.ticks_ms()
             print("Year switch pressed -- toggling a favorite -- We should update the screen to reflect this")
             favored = clu.toggle_favorites(favorites[index]["kv"])
@@ -1472,10 +1473,12 @@ def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
     tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
-    player.stop()  # was pause() for speed.
+    player.stop()
     if ntape is None:
         p_id = keyed_work.perf_id
-        if p_id == 0:  # i.e, repertoire in Full, we don't get a p_id with the work.
+        if keyed_work.id in clu.FAVORITE_WORKS:
+            p_id = clu.FAVORITE_PERFORMANCES[clu.FAVORITE_WORKS.index(keyed_work.id)]
+        if p_id == 0:  # i.e, we don't get a p_id with the work.
             perf = get_performances(keyed_work)[0]
             p_id = perf["p_id"]
     elif p_id is None:  # p_id and ntape are both None
