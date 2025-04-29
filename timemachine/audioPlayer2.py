@@ -16,10 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import re, socket, time, gc
+import socket, time, gc
 from machine import Pin, I2S, Timer
 import micropython
-import _thread
 import time
 from errno import EINPROGRESS
 import select
@@ -45,9 +44,8 @@ read_phase_end = const(3)
 
 decode_phase_idle = const(0)
 decode_phase_trackstart = const(1)
-decode_phase_inheader = const(2)
-decode_phase_readinfo = const(3)
-decode_phase_decoding = const(4)
+decode_phase_readinfo = const(2)
+decode_phase_decoding = const(3)
 
 play_phase_idle = const(0)
 play_phase_start = const(1)
@@ -314,6 +312,7 @@ class TrackReader:
 
         self.read_phase = read_phase_idle
         self.TrackLength = 0
+        self.hash_being_read = None
 
         if self.sock is not None:
             self.sock.close()
@@ -321,7 +320,7 @@ class TrackReader:
 
         # The number of bytes of the current track that we have read from the network
         # This is compared against the length of the track returned from the server in the Content-Range or content-length header to determine end-of-track read
-        # (this is potentially different to which track we are currently playing. We could be reading ahead of decoding and playing by one or more tracks)
+        # This is potentially different to which track we are currently playing. We could be reading ahead of decoding and playing by one or more tracks
         self.current_track_bytes_read = 0
 
     def start(self):
@@ -383,48 +382,45 @@ class TrackReader:
             # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
             except Exception as e:
                 print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
-                self.callbacks["messages"](f"read_chunk: long pause {self.context.hash_being_decoded}")
+                self.callbacks["messages"](f"read_chunk: long pause {self.hash_being_read}")
 
                 # Start reading the current track again, but at the offset where we were up to
                 #self.start_track(self.current_track_bytes_read)
 
     def end_track(self):
         #self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read}")
-        print("Track read end", end=' - ')
+        print(f"Track {self.hash_being_read} read end", end=' - ')
         gc.collect()
         
         if len(self.context.playlist) > 0:
             # We can read the header of the next track now
             print("reading next track")
-            self.callbacks["messages"](f"end_track: Finished reading track {self.context.hash_being_read}")
+            self.callbacks["messages"](f"read_chunk: Finished reading track {self.hash_being_read}")
             self.read_phase = read_phase_start
             self.trackReader = self.start_track()
         else:
             # We have no more data to read from the network, but we have to let the decoder run out, and then let the play loop run out
             print("finished reading playlist")
-            self.callbacks["messages"](f"end_track: Finished reading all tracks")
+            self.callbacks["messages"](f"read_chunk: Finished reading playlist")
             self.sock.close()
             self.sock = None
             self.read_phase = read_phase_idle
 
     def start_track(self, offset=0):
-        print("Track read start")
-        self.callbacks["messages"]("play: Start reading track")
         track_length = 0
         self.current_track_bytes_read = offset
         
         url, hash = self.context.playlist.pop(0)
-        self.context.hash_being_read = hash
-        self.context.decode_stack.append(hash)
-        self.context.play_stack.append(hash)
+        self.hash_being_read = hash
         host, port, path = self.parse_url(url.encode())
 
         # We might have a socket already from the previous track
         if self.sock:
             self.sock.close()
             self.sock = None
-        
-        self.callbacks["messages"](f"start_track: Start reading track {hash}")
+
+        print(f"Track {self.hash_being_read} read start")
+        self.callbacks["messages"](f"read_chunk: Start reading track {self.hash_being_read}")
         
         while True:
              # Load up the output buffer before the expensive SSL connect
@@ -531,7 +527,7 @@ class TrackReader:
         # Store the end-of-track and format marker for this track (except if we are restarting a track)
         if offset == 0:
             if path.lower().endswith(".ts") or path.lower().endswith(".aac"):
-                self.context.decoder.Add_to_Decode_List(track_length, format_AAC)
+                self.context.decoder.Add_to_Decode_List(track_length, format_AAC, hash)
             else:
                 raise RuntimeError("Unsupported audio type")
 
@@ -601,8 +597,8 @@ class TrackDecoder:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
-    def Add_to_Decode_List(self, TrackLength, TrackType):
-        self.DecodeInfo.append((TrackLength, TrackType))
+    def Add_to_Decode_List(self, TrackLength, TrackType, hash):
+        self.DecodeInfo.append((TrackLength, TrackType, hash))
 
     def isRunning(self):
         return self.decode_phase != decode_phase_idle
@@ -625,31 +621,18 @@ class TrackDecoder:
                          3: "InBuffer Dry", 4: "Finished Decoding",
                          5: "No Track Info", 6: "Decoder Dry"}
 
-        if self.decode_phase == decode_phase_trackstart:
-            # We're at the start of a new track
-            # Check if decode_stack is empty before trying to pop
-            if not self.context.decode_stack:
-                print("Warning: decode_stack is empty but decode_phase is trackstart")
-                self.callbacks["messages"]("decode_chunk: No tracks to decode")
-                self.decode_phase == decode_phase_idle
-                return self.context.OutBuffer.any()
-                
-            self.context.hash_being_decoded = self.context.decode_stack.pop(0)
-
-            print(f"Track {self.context.hash_being_decoded} decode start")
-            self.callbacks["messages"](f"decode_chunk: Start decoding track {self.context.hash_being_decoded}")
-
-            self.decode_phase = decode_phase_inheader
-
         # This phase looks for the sync word in the parsed data
-        if self.decode_phase == decode_phase_inheader:
+        if self.decode_phase == decode_phase_trackstart:
             # Ensure DecodeInfo is not empty
             if not self.DecodeInfo:
-                print("Warning: DecodeInfo is empty during inheader phase")
-                self.callbacks["messages"]("decode_chunk: No track info available")
+                print("Warning: DecodeInfo is empty during trackstart phase")
+                self.callbacks["messages"]("decode_chunk: Decode error")
                 self.decode_phase = decode_phase_idle
                 return self.context.OutBuffer.any()
-            
+                
+            print(f"Track {self.DecodeInfo[0][2]} decode start")
+            self.callbacks["messages"](f"decode_chunk: Start decoding track {self.DecodeInfo[0][2]}")
+                    
             if self.DecodeInfo[0][1] == format_AAC:
                 # De-allocate buffers from previous decoder instances  
                 self.AACDecoder.AAC_Close()
@@ -676,7 +659,8 @@ class TrackDecoder:
 
                     # There are some tracks that don't have valid data. If we get to the end of the track without finding the sync work, skip this track
                     if self.current_track_bytes_parsed_in >= self.DecodeInfo[0][0]:
-                        print("Track decode end - no Sync word")
+                        print(f"Track {self.DecodeInfo[0][2]} decode end - no Sync word")
+                        self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.DecodeInfo[0][2]}")
                         self.DecodeInfo.pop(0)
                         self.AACDecoder.close() # Clear out any data that we already loaded into the decoder
                         self.decode_phase = decode_phase_trackstart
@@ -708,7 +692,8 @@ class TrackDecoder:
                 
                 # Sometimes we see a track with no audio data in it, just the Track Info. Skip this track
                 if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
-                    print("Track decode end - no Audio Data")
+                    print(f"Track {self.DecodeInfo[0][2]} decode end - no Audio Data")
+                    self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.DecodeInfo[0][2]}")
                     self.DecodeInfo.pop(0)
                     self.AACDecoder.close() # Clear out any data that we already loaded into the decoder
                     self.decode_phase = decode_phase_trackstart
@@ -730,10 +715,10 @@ class TrackDecoder:
 
                 if channels != 0:
                     # We don't know the parsed track length yet, so set it to False at this point
-                    self.ParsedDecodeInfo.append([False, format_AAC])
+                    self.ParsedDecodeInfo.append([False, format_AAC, self.DecodeInfo[0][2]])
 
                     # Store the track info so that the player can init the I2S device at the beginning of the track
-                    self.context.player.Add_to_Play_List(channels, sample_rate, bits_per_sample)
+                    self.context.player.Add_to_Play_List(channels, sample_rate, bits_per_sample, self.DecodeInfo[0][2])
                     
                     self.decode_phase = decode_phase_decoding
                     break
@@ -791,10 +776,10 @@ class TrackDecoder:
                                 break
                             elif self.current_track_bytes_parsed_in > self.DecodeInfo[0][0]:
                                 print(f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.DecodeInfo[0][0]}")
-                                print(f"DecodeInfo: {self.DecodeInfo}")
-                                print(f"ParsedDecodeInfo: {self.ParsedDecodeInfo}")
+                                print(f"DecodeInfo: {self.DecodeInfo} ParsedDecodeInfo: {self.ParsedDecodeInfo}")
+                                self.callbacks["messages"]("decode_chunk: Decode error")
                                 raise RuntimeError("Bytes parsed > track length")  # temporary, for debugging
-
+                            
                     # InBuffer Dry
                     if self.AACDecoder.write_used() == 0:
                         break_reason = 3
@@ -827,8 +812,8 @@ class TrackDecoder:
                 # Check if we have a parsed length of the track (only populated when we have finished parsing the track) and if so, have we decoded to the end of the current track?
                 if len(self.ParsedDecodeInfo) > 0:
                     if self.current_track_bytes_decoder_in == self.ParsedDecodeInfo[0][0]:
-                        print(f"Track decode end", end=" - ")
-                        self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.context.hash_being_decoded}")
+                        print(f"Track {self.ParsedDecodeInfo[0][2]} decode end", end=" - ")
+                        self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.ParsedDecodeInfo[0][2]}")
                         self.current_track_bytes_decoder_in = 0
                         self.decode_phase = decode_phase_trackstart
 
@@ -901,9 +886,9 @@ class TrackPlayer:
 
         self.audio_out.irq(self.i2s_callback)
 
-    def Add_to_Play_List(self, channels, sample_rate, bits_per_sample):
+    def Add_to_Play_List(self, channels, sample_rate, bits_per_sample, hash):
         # We don't know the length of this track until the decoder has finished decoding it, so set the length to False initially
-        self.PlayInfo.append([channels, sample_rate, bits_per_sample, False])
+        self.PlayInfo.append([channels, sample_rate, bits_per_sample, False, hash])
     
     def Update_Track_Length(self, TrackLength):
         # We use the Track length to detect end-of-track and re-init the I2S device at the right spot (required in case the bitrate changes between songs)
@@ -916,7 +901,10 @@ class TrackPlayer:
     
     def start(self):
         self.play_phase = play_phase_start
-        
+
+    def stop(self):
+        self.play_phase = play_phase_idle
+
     def play_chunk(self):
         if not self.I2SAvailable or self.play_phase == play_phase_idle:
             return
@@ -924,10 +912,9 @@ class TrackPlayer:
         # Are we at the beginning of a track, and the decoder has given us some format info. 
         # If so, init the I2S device (Note that the sample_rate may vary between tracks)
         if self.play_phase == play_phase_start and len(self.PlayInfo) > 0:
-            self.context.hash_being_played = self.context.play_stack.pop(0)
             self.current_track_bytes_played = 0
-            self.callbacks["messages"](f"play_chunk: Start playing track {self.context.hash_being_played}")
-            print("Track play start")
+            self.callbacks["messages"](f"play_chunk: Start playing track {self.PlayInfo[0][4]}")
+            print(f"Track {self.PlayInfo[0][4]} play start")
 
             # The I2S object returns the following: I2S(id=0, sck=13, ws=14, sd=17, mode=5, bits=16, format=1, rate=44100, ibuf=71680)
             # Check if it is the same as the already initialised device. If so, do nothing. If not, init it to the new values
@@ -957,8 +944,8 @@ class TrackPlayer:
         
         # Make sure this is before the play_phase_playing check so that it doesn't fall through to this
         if self.play_phase == play_phase_end:
-            print("Track play end", end =" - ")
-            self.callbacks["messages"](f"play_chunk: Finished playing track {self.context.hash_being_played}")
+            print(f"Track {self.PlayInfo[0][4]} play end", end =" - ")
+            self.callbacks["messages"](f"play_chunk: Finished playing track {self.PlayInfo[0][4]}")
             
              # Remove the info for this track
             self.PlayInfo.pop(0)
@@ -969,7 +956,6 @@ class TrackPlayer:
                     # Stop the I2S device
                     self.audio_out.deinit()
                     self.callbacks["messages"](f"play_chunk: Finished playing playlist")
-                    #self.callbacks["messages"]("AudioPlayer: Playlist playback complete") - Do we need this as well?
                     self.play_phase = play_phase_idle
             else:
                 print("playing next track")
@@ -1014,16 +1000,11 @@ class TrackPlayer:
 class AudioPlayer:
     def __init__(self, callbacks={}, debug=0):
         self.callbacks = callbacks
-        if "display" not in callbacks.keys():
-            self.callbacks["display"] = lambda x, y: None
         if "messages" not in callbacks.keys():
             self.callbacks["messages"] = lambda m: m
 
         self.DEBUG = debug
-
         self.pumptimer = Timer(0)
-        #_thread.start_new_thread(self.do_pump, ())
-
         self.reader = TrackReader(self, callbacks, debug)
         self.decoder = TrackDecoder(self, callbacks, debug)
         self.player = TrackPlayer(self, callbacks, debug)
@@ -1075,8 +1056,6 @@ class AudioPlayer:
         self.decoder.reset()
         self.player.reset()
         self.audioplayer_state = audioplayer_state_Stopped
-        
-        self.callbacks["messages"](f"reset_head")
         self.init_vars()
         self.start_timer()
 
@@ -1094,10 +1073,7 @@ class AudioPlayer:
         self.song_transition = None
         self.mute_pin = mute_pin
 
-        self.hash_being_read = self.hash_being_played = self.hash_being_decoded = None
         self._playlist = []
-        self.decode_stack = []
-        self.play_stack = []
         self.InBuffer.close()
         self.OutBuffer.close()
             
@@ -1126,8 +1102,6 @@ class AudioPlayer:
             retstring += f" DecodeInfo {self.decoder.DecodeInfo}"
             retstring += f" ParsedDecodeInfo {self.decoder.ParsedDecodeInfo}"
             retstring += f" PlayInfo {self.player.PlayInfo}"
-            retstring += f" decode_stack {self.decode_stack}"
-            retstring += f" play_stack {self.play_stack}"
         return retstring
 
     def ntracks(self):
@@ -1150,25 +1124,19 @@ class AudioPlayer:
     def play(self):
         # Do not unmute here or you will hear a tiny bit of the previous track when ffwd/rewinding
         if self.audioplayer_state == audioplayer_state_Stopped:
-            #print("Track read start")
-            #self.callbacks["messages"]("play: Start reading track")
             self.reader.start()
             self.audioplayer_state = audioplayer_state_Playing
-
         elif self.audioplayer_state == audioplayer_state_Playing:
-            self.callbacks["messages"](f"Playing URL {self.hash_being_read}")
-
+            pass
         elif self.audioplayer_state == audioplayer_state_Paused:
-            self.callbacks["messages"](f"Un-pausing URL {self.hash_being_read}")
             self.audioplayer_state = audioplayer_state_Playing
-            self.player.play_chunk()
 
         self.unmute_audio()
 
     def pause(self):
         if self.audioplayer_state == audioplayer_state_Playing:
             self.mute_audio()
-            self.callbacks["messages"](f"Pausing URL {self.hash_being_read}")
+            self.player.stop()
             self.audioplayer_state = audioplayer_state_Paused
 
     def stop(self):
@@ -1194,9 +1162,6 @@ class AudioPlayer:
     def is_playing(self):
         return self.audioplayer_state == audioplayer_state_Playing
 
-    #def audio_pump(self):
-    #    return 5000
-    
     def do_pump(self, _):
         # Read the next chunk of data from the network
         self.reader.read_chunk()
@@ -1212,19 +1177,5 @@ class AudioPlayer:
             self.player.start()
 
         self.player.play_chunk()
-
-        # Check if we've completely finished the playlist
-        '''if (self.audioplayer_state == audioplayer_state_Playing and
-            not self.reader.isRunning() and
-            not self.decoder.isRunning() and
-            not self.player.isRunning):
-            
-            print("Playlist playback complete")
-            #self.callbacks["messages"](f"play_chunk: Finished playing playlist")
-            self.callbacks["messages"]("AudioPlayer: Playlist playback complete")
-            # Don't call stop() here as it resets the player, just change state
-            self.audioplayer_state = audioplayer_state_Stopped
-            self.playlist_finished = True
-            #self.player.PlayLoopRunning = False'''
 
         self.pumptimer.init(period=10, mode=Timer.ONE_SHOT, callback=self.do_pump)
