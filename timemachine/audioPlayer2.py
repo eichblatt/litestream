@@ -61,6 +61,7 @@ ws_pin = Pin(14)  # Word clock output
 sd_pin = Pin(17)  # Serial data output
 mute_pin = Pin(3, Pin.OUT, value=1)  # XSMT on DAC chip
 
+
 @micropython.native
 class TSPacketParser:
     TS_PACKET_SIZE = 188
@@ -293,6 +294,7 @@ class TSPacketParser:
             value = (value << 7) | (byte & 0x7F)
         return value
 
+
 class TrackReader:
     def __init__(self, context, callbacks, debug=0):
         self.context = context
@@ -306,7 +308,7 @@ class TrackReader:
         self.ReadBufferMV = memoryview(self.ReadBufferBytes)
 
         self.reset()
-        
+
     def reset(self):
         self.trackReader = self.start_track()
 
@@ -325,18 +327,18 @@ class TrackReader:
 
     def start(self):
         self.read_phase = read_phase_start
-        
+
     def isRunning(self):
-        return self.read_phase != read_phase_idle  
+        return self.read_phase != read_phase_idle
 
     def read_chunk(self):
         if self.read_phase == read_phase_idle:
             return
-                
+
         elif self.read_phase == read_phase_start:
-            #if len(self.context.playlist) == 0:
+            # if len(self.context.playlist) == 0:
             #    return
-            
+
             try:
                 next(self.trackReader)
             except StopIteration:
@@ -370,7 +372,7 @@ class TrackReader:
                     self.context.InBuffer.write(self.ReadBufferMV[0:data])
 
                 # Have we read to the end of the track?
-                if self.current_track_bytes_read == self.TrackLength: #self.context.TrackInfo[-1][0]:
+                if self.current_track_bytes_read == self.TrackLength:  # self.context.TrackInfo[-1][0]:
                     self.read_phase = read_phase_end
 
                 # Peer closed socket. This is usually because we are in a long pause, and our socket closes
@@ -385,13 +387,13 @@ class TrackReader:
                 self.callbacks["messages"](f"read_chunk: long pause {self.hash_being_read}")
 
                 # Start reading the current track again, but at the offset where we were up to
-                #self.start_track(self.current_track_bytes_read)
+                # self.start_track(self.current_track_bytes_read)
 
     def end_track(self):
-        #self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read}")
-        print(f"Track {self.hash_being_read} read end", end=' - ')
+        # self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read}")
+        print(f"Track {self.hash_being_read} read end", end=" - ")
         gc.collect()
-        
+
         if len(self.context.playlist) > 0:
             # We can read the header of the next track now
             print("reading next track")
@@ -409,7 +411,7 @@ class TrackReader:
     def start_track(self, offset=0):
         track_length = 0
         self.current_track_bytes_read = offset
-        
+
         url, hash = self.context.playlist.pop(0)
         self.hash_being_read = hash
         host, port, path = self.parse_url(url.encode())
@@ -421,9 +423,9 @@ class TrackReader:
 
         print(f"Track {self.hash_being_read} read start")
         self.callbacks["messages"](f"read_chunk: Start reading track {self.hash_being_read}")
-        
+
         while True:
-             # Load up the output buffer before the expensive SSL connect
+            # Load up the output buffer before the expensive SSL connect
             for _ in range(5):
                 yield
 
@@ -433,7 +435,7 @@ class TrackReader:
             print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
             addr = socket.getaddrinfo(host, port)[0][-1]
 
-             # Tell the socket to return straight away (async)
+            # Tell the socket to return straight away (async)
             conn.setblocking(False)
 
             # Connect the socket.
@@ -442,7 +444,7 @@ class TrackReader:
             try:
                 conn.connect(addr)
             except OSError as er:
-                if (er.errno != EINPROGRESS):
+                if er.errno != EINPROGRESS:
                     raise RuntimeError("Socket connect error")
 
             # If this is an SSL connection, wrap the socket in an SSLContext.
@@ -544,6 +546,7 @@ class TrackReader:
         path = url[1] if url[1].startswith("/") else "/" + url[1]
         return host, port, path
 
+
 @micropython.native
 class TrackDecoder:
     def __init__(self, context, callbacks, debug=0):
@@ -556,13 +559,13 @@ class TrackDecoder:
         self.ParserInMV = memoryview(self.ParserInBytes)
         self.ParserOutBytes = bytearray(188)
         self.ParserOutMV = memoryview(self.ParserOutBytes)
-        
+
         # A buffer used to store decoded audio data, allowing us to adjust volume,  before writing it to the OutBuffer
         self.AudioBufferSize = 4 * 1024
         self.AudioBufferBytes = bytearray(self.AudioBufferSize)
         self.AudioBufferMV = memoryview(self.AudioBufferBytes)
         self.reset()
-    
+
     def reset(self):
         self.decode_phase = decode_phase_idle
 
@@ -575,18 +578,18 @@ class TrackDecoder:
         # The number of bytes the parser has read from the input buffer for this track. Used to detect the end of track by the decoder
         self.current_track_bytes_parsed_in = 0
 
-         # The number of bytes that the parser has parsed for this track
+        # The number of bytes that the parser has parsed for this track
         self.current_track_bytes_parsed_out = 0
-        
-        # DecodeInfo is a list of track lengths and their corresponding audio type (vorbis or MP3). 
+
+        # DecodeInfo is a list of track lengths and their corresponding audio type (vorbis or MP3).
         # This tells the decoder when to move onto the next track, and also which decoder to use.
         self.DecodeInfo = []
 
         # Clear any data that has already been sent to the decoder
         self.AACDecoder.close()
-         
-         # ParsedDecodeInfo contains the length of the parsed data for the decoder to decode. It is different to DecodeInfo as a .ts file
-         # will have more bytes to read than there is audio data to decode
+
+        # ParsedDecodeInfo contains the length of the parsed data for the decoder to decode. It is different to DecodeInfo as a .ts file
+        # will have more bytes to read than there is audio data to decode
         self.ParsedDecodeInfo = []
 
         # We don't want the parser running in the gap between finishing parsing a track and finishing decoding a track
@@ -602,24 +605,30 @@ class TrackDecoder:
 
     def isRunning(self):
         return self.decode_phase != decode_phase_idle
-        
+
     def start(self):
         self.decode_phase = decode_phase_trackstart
 
     def decode_chunk(self, timeout=10):
         if self.decode_phase == decode_phase_idle:
             return self.context.OutBuffer.any()
-        
+
         # There could still be data in the decoder, so an empty inbuffer doesn't mean we have no data to decode => check both
         if self.context.InBuffer.any() == 0 and self.AACDecoder.write_used() == 0:
-            #print("Decoder starved")
+            # print("Decoder starved")
             return self.context.OutBuffer.any()
-        
+
         TimeStart = time.ticks_ms()
         break_reason = 0
-        break_reasons = {0: "Unknown", 1: "Out Buffer Full", 2: "Timeout",
-                         3: "InBuffer Dry", 4: "Finished Decoding",
-                         5: "No Track Info", 6: "Decoder Dry"}
+        break_reasons = {
+            0: "Unknown",
+            1: "Out Buffer Full",
+            2: "Timeout",
+            3: "InBuffer Dry",
+            4: "Finished Decoding",
+            5: "No Track Info",
+            6: "Decoder Dry",
+        }
 
         # This phase looks for the sync word in the parsed data
         if self.decode_phase == decode_phase_trackstart:
@@ -629,12 +638,12 @@ class TrackDecoder:
                 self.callbacks["messages"]("decode_chunk: Decode error")
                 self.decode_phase = decode_phase_idle
                 return self.context.OutBuffer.any()
-                
+
             print(f"Track {self.DecodeInfo[0][2]} decode start")
             self.callbacks["messages"](f"decode_chunk: Start decoding track {self.DecodeInfo[0][2]}")
-                    
+
             if self.DecodeInfo[0][1] == format_AAC:
-                # De-allocate buffers from previous decoder instances  
+                # De-allocate buffers from previous decoder instances
                 self.AACDecoder.AAC_Close()
 
                 # Init (allocate memory) and Start (look for sync word) the correct decoder
@@ -649,7 +658,7 @@ class TrackDecoder:
                 self.current_track_bytes_parsed_out = 0
                 self.TSParser.reset()
                 self.ParserRunning = True
-                
+
                 # Parse the .ts file in 188 byte chunks if there is enough space to write to the decoder until we see the sync word
                 while self.AACDecoder.write_free() >= 188 and self.context.InBuffer.any() >= 188:
                     # Read the data from the InBuffer into the parser
@@ -662,26 +671,26 @@ class TrackDecoder:
                         print(f"Track {self.DecodeInfo[0][2]} decode end - no Sync word")
                         self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.DecodeInfo[0][2]}")
                         self.DecodeInfo.pop(0)
-                        self.AACDecoder.close() # Clear out any data that we already loaded into the decoder
+                        self.AACDecoder.close()  # Clear out any data that we already loaded into the decoder
                         self.decode_phase = decode_phase_trackstart
-                        
+
                         return self.context.OutBuffer.any()
-                    
+
                     # Write the parsed data to the decoder
                     if parsedLength > 0:
                         assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
                         self.current_track_bytes_parsed_out += parsedLength
 
                     FoundSyncWordAt = self.AACDecoder.AAC_Start()
-                    
+
                     if FoundSyncWordAt >= 0:
                         self.DEBUG and print("Decoder Start success. Sync word at", FoundSyncWordAt)
-                        #self.context.InBuffer.read(FoundSyncWordAt) # Look at this later, don't think it will work
+                        # self.context.InBuffer.read(FoundSyncWordAt) # Look at this later, don't think it will work
                         self.decode_phase = decode_phase_readinfo
                         break
                     else:
-                        pass # No sync word yet, keep looking
-        
+                        pass  # No sync word yet, keep looking
+
         # This phase looks for the Track Info in the parsed data
         if self.decode_phase == decode_phase_readinfo:
             while self.AACDecoder.write_free() >= 188 and self.context.InBuffer.any() >= 188:
@@ -689,24 +698,24 @@ class TrackDecoder:
                 self.context.InBuffer.readinto(self.ParserInMV, 188)
                 parsedLength = self.TSParser.parse_packet(self.ParserInMV, self.ParserOutMV)
                 self.current_track_bytes_parsed_in += 188
-                
+
                 # Sometimes we see a track with no audio data in it, just the Track Info. Skip this track
                 if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
                     print(f"Track {self.DecodeInfo[0][2]} decode end - no Audio Data")
                     self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.DecodeInfo[0][2]}")
                     self.DecodeInfo.pop(0)
-                    self.AACDecoder.close() # Clear out any data that we already loaded into the decoder
+                    self.AACDecoder.close()  # Clear out any data that we already loaded into the decoder
                     self.decode_phase = decode_phase_trackstart
                     break
 
                 if parsedLength > 0:
-                        assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
-                        self.current_track_bytes_parsed_out += parsedLength
+                    assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
+                    self.current_track_bytes_parsed_out += parsedLength
 
                 # Decode what we have so far
                 Result, BytesDecoded, AudioSamples, BiB = self.AACDecoder.AAC_Decode()
                 self.current_track_bytes_decoder_in += BytesDecoded
-                
+
                 # Try and read the track info
                 channels, sample_rate, bits_per_sample, bit_rate = self.AACDecoder.AAC_GetInfo()
 
@@ -719,13 +728,13 @@ class TrackDecoder:
 
                     # Store the track info so that the player can init the I2S device at the beginning of the track
                     self.context.player.Add_to_Play_List(channels, sample_rate, bits_per_sample, self.DecodeInfo[0][2])
-                    
+
                     self.decode_phase = decode_phase_decoding
                     break
 
         # This phase looks decodes the audio data in the parsed data
         if self.decode_phase == decode_phase_decoding:
-            counter = 0 # For debugging. See how many times we run the loop before timeout
+            counter = 0  # For debugging. See how many times we run the loop before timeout
 
             # Keep decoding until timeout, end of playlist decoding, or error
             while True:
@@ -753,20 +762,20 @@ class TrackDecoder:
                     # Parse the .ts file in 188 byte chunks until we have filled up the decoder or there is nothing left to parse
                     # Do this here rather than in the read loop as when the player is running it should only do a few parses here,
                     # whereas if we do it while reading it will parse a big chunk, affecting responsiveness
-                    while (self.ParserRunning and self.AACDecoder.write_free() >= 188 and self.context.InBuffer.any() >= 188):
+                    while self.ParserRunning and self.AACDecoder.write_free() >= 188 and self.context.InBuffer.any() >= 188:
                         self.context.InBuffer.readinto(self.ParserInMV, 188)
                         parsedLength = self.TSParser.parse_packet(self.ParserInMV, self.ParserOutMV)
                         self.current_track_bytes_parsed_in += 188
-                        
+
                         # Write the parsed data to the decoder
                         if parsedLength > 0:
                             assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
                             self.current_track_bytes_parsed_out += parsedLength
 
-                        if len(self.DecodeInfo) > 0: # Do we need this check?
+                        if len(self.DecodeInfo) > 0:  # Do we need this check?
                             # Have we finished parsing this track? If so, update the parsed length
                             if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
-                                #self.DEBUG and print("Finished Parsing")
+                                # self.DEBUG and print("Finished Parsing")
                                 self.ParsedDecodeInfo[-1][0] = self.current_track_bytes_parsed_out
                                 self.current_track_bytes_parsed_out = 0
                                 self.current_track_bytes_parsed_in = 0
@@ -775,11 +784,13 @@ class TrackDecoder:
                                 self.ParserRunning = False
                                 break
                             elif self.current_track_bytes_parsed_in > self.DecodeInfo[0][0]:
-                                print(f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.DecodeInfo[0][0]}")
+                                print(
+                                    f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.DecodeInfo[0][0]}"
+                                )
                                 print(f"DecodeInfo: {self.DecodeInfo} ParsedDecodeInfo: {self.ParsedDecodeInfo}")
                                 self.callbacks["messages"]("decode_chunk: Decode error")
                                 raise RuntimeError("Bytes parsed > track length")  # temporary, for debugging
-                            
+
                     # InBuffer Dry
                     if self.AACDecoder.write_used() == 0:
                         break_reason = 3
@@ -793,22 +804,24 @@ class TrackDecoder:
 
                         if Result in (0, 110):
                             self.current_track_bytes_decoder_out += AudioSamples * 2
-                            self.context.OutBuffer.write(self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2))
+                            self.context.OutBuffer.write(
+                                self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
+                            )
 
                     # We get this if there is not enough data in the decoder to decode the next packet, so we need to wait until the reader gets some more data
                     elif Result == -13:
                         print("Decoder dry")
                         break_reason = 6
                         break
-                    
+
                     elif Result == -6:
                         print("Corrupted packet")
                         raise RuntimeError("Corrupted packet")
-                    
+
                     else:
                         print("Decode Packet failed. Error:", Result)
                         raise RuntimeError("Decode Packet failed")
-                    
+
                 # Check if we have a parsed length of the track (only populated when we have finished parsing the track) and if so, have we decoded to the end of the current track?
                 if len(self.ParsedDecodeInfo) > 0:
                     if self.current_track_bytes_decoder_in == self.ParsedDecodeInfo[0][0]:
@@ -844,9 +857,10 @@ class TrackDecoder:
             else:
                 print("")
         else:
-            self.consecutive_zeros += 1        
+            self.consecutive_zeros += 1
 
         return self.context.OutBuffer.any()
+
 
 class TrackPlayer:
     def __init__(self, context, callbacks, debug=0):
@@ -864,24 +878,22 @@ class TrackPlayer:
 
     def reset(self):
         self.play_phase = play_phase_idle
-        
+
         self.I2SAvailable = True
-        
+
         # PlayInfo is filled out when the decoder starts a new track, and tells us the format of the track (rate, bits, channels, length)
         self.PlayInfo = []
 
         # The number of bytes played for the current track. Used to detect the end of track
         self.current_track_bytes_played = 0
-        
+
         if hasattr(self, "audio_out"):
             self.audio_out.deinit()
             del self.audio_out
 
         # Make rate=1 so that it doesn't match in play_chunk() and gets inited properly in the first call to play_chunk()
         self.audio_out = I2S(
-            0, sck=sck_pin, ws=ws_pin, sd=sd_pin,
-            mode=I2S.TX, bits=16, format=I2S.STEREO,
-            rate=44100, ibuf=self.ChunkSize
+            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=self.ChunkSize
         )
 
         self.audio_out.irq(self.i2s_callback)
@@ -889,7 +901,7 @@ class TrackPlayer:
     def Add_to_Play_List(self, channels, sample_rate, bits_per_sample, hash):
         # We don't know the length of this track until the decoder has finished decoding it, so set the length to False initially
         self.PlayInfo.append([channels, sample_rate, bits_per_sample, False, hash])
-    
+
     def Update_Track_Length(self, TrackLength):
         # We use the Track length to detect end-of-track and re-init the I2S device at the right spot (required in case the bitrate changes between songs)
         if TrackLength == 0:
@@ -898,7 +910,7 @@ class TrackPlayer:
 
     def isRunning(self):
         return self.play_phase != play_phase_idle
-    
+
     def start(self):
         self.play_phase = play_phase_start
 
@@ -908,8 +920,8 @@ class TrackPlayer:
     def play_chunk(self):
         if not self.I2SAvailable or self.play_phase == play_phase_idle:
             return
-        
-        # Are we at the beginning of a track, and the decoder has given us some format info. 
+
+        # Are we at the beginning of a track, and the decoder has given us some format info.
         # If so, init the I2S device (Note that the sample_rate may vary between tracks)
         if self.play_phase == play_phase_start and len(self.PlayInfo) > 0:
             self.current_track_bytes_played = 0
@@ -923,13 +935,19 @@ class TrackPlayer:
             current_rate = int(str(self.audio_out).split(",")[7].split("=")[1])
 
             # PlayInfo[] has channels, sample_rate, bits_per_sample, length
-            if (current_bits != self.PlayInfo[0][2] or
-                current_channels != self.PlayInfo[0][0] or
-                current_rate != self.PlayInfo[0][1]):
-                print(f"Init I2S device. Bits:{self.PlayInfo[0][2]}, Channels:{self.PlayInfo[0][0]}, Rate:{self.PlayInfo[0][1]}")
-                
+            if (
+                current_bits != self.PlayInfo[0][2]
+                or current_channels != self.PlayInfo[0][0]
+                or current_rate != self.PlayInfo[0][1]
+            ):
+                print(
+                    f"Init I2S device. Bits:{self.PlayInfo[0][2]}, Channels:{self.PlayInfo[0][0]}, Rate:{self.PlayInfo[0][1]}"
+                )
+
                 self.audio_out.init(
-                    sck=sck_pin, ws=ws_pin, sd=sd_pin,
+                    sck=sck_pin,
+                    ws=ws_pin,
+                    sd=sd_pin,
                     mode=I2S.TX,
                     bits=self.PlayInfo[0][2],
                     format=I2S.STEREO if self.PlayInfo[0][0] == 2 else I2S.MONO,
@@ -941,22 +959,27 @@ class TrackPlayer:
                 self.audio_out.irq(self.i2s_callback)
 
             self.play_phase = play_phase_playing
-        
+
         # Make sure this is before the play_phase_playing check so that it doesn't fall through to this
         if self.play_phase == play_phase_end:
-            print(f"Track {self.PlayInfo[0][4]} play end", end =" - ")
+            print(f"Track {self.PlayInfo[0][4]} play end", end=" - ")
             self.callbacks["messages"](f"play_chunk: Finished playing track {self.PlayInfo[0][4]}")
-            
-             # Remove the info for this track
+
+            # Remove the info for this track
             self.PlayInfo.pop(0)
 
-            if  len(self.context.playlist) == 0 and len(self.PlayInfo) == 0 and self.context.InBuffer.any() == 0 and self.context.OutBuffer.any() == 0:
-                    print("finished playing playlist")
+            if (
+                len(self.context.playlist) == 0
+                and len(self.PlayInfo) == 0
+                and self.context.InBuffer.any() == 0
+                and self.context.OutBuffer.any() == 0
+            ):
+                print("finished playing playlist")
 
-                    # Stop the I2S device
-                    self.audio_out.deinit()
-                    self.callbacks["messages"](f"play_chunk: Finished playing playlist")
-                    self.play_phase = play_phase_idle
+                # Stop the I2S device
+                self.audio_out.deinit()
+                self.callbacks["messages"](f"play_chunk: Finished playing playlist")
+                self.play_phase = play_phase_idle
             else:
                 print("playing next track")
                 self.play_phase = play_phase_start
@@ -964,14 +987,14 @@ class TrackPlayer:
         if self.play_phase == play_phase_playing:
             # Play what we have, up to the chunk size
             BytesToPlay = min(self.context.OutBuffer.any(), self.ChunkSize)
-            
+
             # Do we have a length for this track yet? (We only get this after the decoder has finished decoding it)
             if len(self.PlayInfo) > 0 and self.PlayInfo[0][3] != False:
                 # If so, have we played all of the decoded bytes for this track?
                 if self.current_track_bytes_played + BytesToPlay >= self.PlayInfo[0][3]:
                     # Adjust the bytes to play to only be the remaining bytes for this track
                     BytesToPlay = self.PlayInfo[0][3] - self.current_track_bytes_played
-                    
+
                     self.play_phase = play_phase_end
 
             # The output buffer can get starved if the network is slow, or if we slow the decoder too much (e.g. by writing too much debug output)
@@ -997,6 +1020,7 @@ class TrackPlayer:
     def i2s_callback(self, t):
         self.I2SAvailable = True
 
+
 class AudioPlayer:
     def __init__(self, callbacks={}, debug=0):
         self.callbacks = callbacks
@@ -1008,7 +1032,7 @@ class AudioPlayer:
         self.reader = TrackReader(self, callbacks, debug)
         self.decoder = TrackDecoder(self, callbacks, debug)
         self.player = TrackPlayer(self, callbacks, debug)
-       
+
         self.init_buffers()
         self.reset_player()
 
@@ -1032,7 +1056,7 @@ class AudioPlayer:
     @property
     def playlist(self):
         return self._playlist
-    
+
     @playlist.setter
     def playlist(self, value):
         self._playlist = value
@@ -1066,7 +1090,7 @@ class AudioPlayer:
         self.decoder.AACDecoder.AAC_Close()
 
         print(self)
-    
+
     def init_vars(self):
         self.volume = 0
         self.sock = None
@@ -1076,7 +1100,7 @@ class AudioPlayer:
         self._playlist = []
         self.InBuffer.close()
         self.OutBuffer.close()
-            
+
     def __repr__(self):
         if self.audioplayer_state == audioplayer_state_Playing:
             status = "Playing"
@@ -1145,9 +1169,9 @@ class AudioPlayer:
 
         if self.audioplayer_state == audioplayer_state_Stopped:
             return False
-        
+
         self.audioplayer_state = audioplayer_state_Stopped
-        
+
         return True
 
     def advance_track(self, increment=1):
@@ -1169,11 +1193,15 @@ class AudioPlayer:
         # Start the decode loop once we have more than 940 bytes (5 x .ts packets) in the InBuffer. No point starting decoding too early or the decoder can fail with insufficient data
         if not self.decoder.isRunning() and self.InBuffer.any() > 940 and self.audioplayer_state == audioplayer_state_Playing:
             self.decoder.start()
-            
+
         self.decoder.decode_chunk()
 
         # Start the play loop if we have more than 1 second of output samples buffered (2 channels, 2 bytes per sample)
-        if not self.player.isRunning() and self.OutBuffer.any() / 44100 / 2 / 2 > 1 and self.audioplayer_state == audioplayer_state_Playing:
+        if (
+            not self.player.isRunning()
+            and self.OutBuffer.any() / 44100 / 2 / 2 > 1
+            and self.audioplayer_state == audioplayer_state_Playing
+        ):
             self.player.start()
 
         self.player.play_chunk()
