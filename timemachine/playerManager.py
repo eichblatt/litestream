@@ -84,17 +84,12 @@ class PlayerManager:
         urllist = self.chunklist[next_index]
         print(f"extend_playlist: Track {next_index}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         new_elements = [(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist]
-        # This is not working, the URL's can change between calls.
-        # len0 = len(new_elements)
-        # new_elements = [x for x in new_elements if x[0] not in [y[0] for y in self.player.playlist]]
-        # if len(new_elements) < len0:
-        #    print(f"extend_playlist: {len0 - len(new_elements)} duplicates removed")
-        # if len(new_elements) == 0:
-        #    return 0
+
         hashkey = new_elements[0][1]
         hashdict = {hashkey: next_index}
         self.first_chunk_dict.update(hashdict)
-        self.player.playlist.extend(new_elements)
+        # self.player.playlist.extend(new_elements)  # use + [new_elements]
+        self.player.playlist += new_elements
         self.pumped_indices.append(next_index)
         # self.chunklist[next_index] = []  # No caching of URLs
         return len(new_elements)
@@ -142,7 +137,7 @@ class PlayerManager:
             if not self.chunked_urls:
                 return
 
-        if "Finished reading all tracks" in message:
+        if "Finished reading playlist" in message:
             if not self.chunked_urls:
                 return
 

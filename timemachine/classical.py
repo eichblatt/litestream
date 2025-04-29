@@ -1502,6 +1502,7 @@ def _select_performance(keyed_work, player, state, ntape=None, p_id=None):
         credits = []
     print(f"performance id is {p_id}")
     _display_performance_info(keyed_work, p_id)
+    tm.clear_to_bottom(0, glc.ycursor)
     tm.write("loading tracks...", 0, glc.ycursor, pfont_small, tm.WHITE, show_end=-3)
     state["selected_tape"]["work_id"] = keyed_work.id
     state["selected_tape"]["p_id"] = p_id

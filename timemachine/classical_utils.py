@@ -594,7 +594,7 @@ def populate_favorites():
     if fav_perf is None:
         print("populate_favorites: No favorites found")
         return
-    FAVORITE_PERFORMANCES = [x["perf_id"] for x in fav_perf]
+    FAVORITE_PERFORMANCES = [x["perf_id"] for x in fav_perf]  # These are in newest-first order
     FAVORITE_WORKS = [x["work_id"] for x in fav_perf]
     # FAVORITE_PERFORMANCES, FAVORITE_WORKS = get_playlist_ids("tm_favorites")
     print(f"populate_favorites: FAVORITE_PERFORMANCES: {FAVORITE_PERFORMANCES}, FAVORITE_WORKS: {FAVORITE_WORKS}")
