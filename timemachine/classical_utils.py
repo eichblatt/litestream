@@ -589,6 +589,7 @@ def initialize_knobs():
 def populate_favorites():
     global FAVORITE_PERFORMANCES
     global FAVORITE_WORKS
+
     url = f"{CLASSICAL_API}?mode=favorites&action=list-fav-perf"
     fav_perf = request_json(url).get("fav_perf", None)
     if fav_perf is None:
@@ -598,6 +599,10 @@ def populate_favorites():
     FAVORITE_WORKS = [x["work_id"] for x in fav_perf]
     # FAVORITE_PERFORMANCES, FAVORITE_WORKS = get_playlist_ids("tm_favorites")
     print(f"populate_favorites: FAVORITE_PERFORMANCES: {FAVORITE_PERFORMANCES}, FAVORITE_WORKS: {FAVORITE_WORKS}")
+
+    # TEMPORARY  ######################################
+    set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)
+    # END TEMPORARY ###################################
 
 
 def toggle_favorites(performance_id):
@@ -713,6 +718,16 @@ def get_favorite_recs():
     return items
 
 
+def add_favorites_to_tm_playlist():
+    playlist_pids = get_playlist_ids("tm_favorites")[0]
+    pids = [x for x in FAVORITE_PERFORMANCES if not x in playlist_pids]
+    for fp in pids:
+        add_to_playlist("tm_favorites", fp)
+    pids = [x for x in playlist_pids if not x in FAVORITE_PERFORMANCES]
+    for fp in pids:
+        remove_from_playlist("tm_favorites", fp)
+
+
 # ------------------------------------------------------------------------------------ playlist management
 def create_playlist(playlist_name):
     member_alias = get_member_alias()
@@ -727,6 +742,7 @@ def create_playlist(playlist_name):
 
 
 def add_to_playlist(playlist_name, performance_id):
+    # NOTE If performance_id is already in the playlist, this will not add it again.
     print(f"add_to_playlist: adding performance_id {performance_id} to {playlist_name}")
     if (performance_id is None) or (playlist_name == ""):
         print("Returning without adding")
@@ -752,6 +768,15 @@ def remove_from_playlist(playlist_name, performance_id):
     print(f"remove_from_playlist: items_to_keep: {items_to_keep}")
     # remove this performance from the playlist.
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(items_to_keep)}"
+    resp = request_json(url, debug=True)
+    return
+
+
+def set_playlist_to(playlist_name: str, performance_ids: list):
+    print(f"setting entire playlist {playlist_name}: to {performance_ids}")
+    playlist_id = get_public_playlist_id(playlist_name)
+    performance_ids = [str(x) for x in performance_ids if isinstance(x, int)]
+    url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(performance_ids)}"
     resp = request_json(url, debug=True)
     return
 
