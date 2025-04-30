@@ -810,9 +810,6 @@ class TrackDecoder:
                                 )
                                 == AudioSamples * 2
                             ), f"Buffer underrun: {AudioSamples}"
-                            # self.context.OutBuffer.write(
-                            #    self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
-                            # )
 
                     # We get this if there is not enough data in the decoder to decode the next packet, so we need to wait until the reader gets some more data
                     elif Result == -13:
