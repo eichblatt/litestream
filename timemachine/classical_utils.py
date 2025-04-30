@@ -601,7 +601,10 @@ def populate_favorites():
     print(f"populate_favorites: FAVORITE_PERFORMANCES: {FAVORITE_PERFORMANCES}, FAVORITE_WORKS: {FAVORITE_WORKS}")
 
     # TEMPORARY  ######################################
-    set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)
+    try:
+        set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)
+    except Exception as e:
+        print(f"populate_favorites: unable to set playlist {e}")
     # END TEMPORARY ###################################
 
 
