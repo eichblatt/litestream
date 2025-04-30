@@ -804,9 +804,11 @@ class TrackDecoder:
 
                         if Result in (0, 110):
                             self.current_track_bytes_decoder_out += AudioSamples * 2
-                            assert self.context.OutBuffer.write(
-                                self.AudioBufferMV,
-                                self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2) == AudioSamples * 2,
+                            assert (
+                                self.context.OutBuffer.write(
+                                    self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
+                                )
+                                == AudioSamples * 2
                             ), f"Buffer underrun: {AudioSamples}"
                             # self.context.OutBuffer.write(
                             #    self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
