@@ -807,8 +807,7 @@ class TrackDecoder:
                             assert self.context.OutBuffer.write(
                                 self.AudioBufferMV,
                                 self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2) == AudioSamples * 2,
-                                f"Buffer underrun: {AudioSamples}",
-                            )
+                            ), f"Buffer underrun: {AudioSamples}"
                             # self.context.OutBuffer.write(
                             #    self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
                             # )
