@@ -590,7 +590,7 @@ def populate_favorites():
     global FAVORITE_PERFORMANCES
     global FAVORITE_WORKS
 
-    url = f"{CLASSICAL_API}?mode=favorites&action=list-fav-perf"
+    url = f"{CLASSICAL_API}?mode=favorites&action=list-fav-perf&limit=128"
     fav_perf = request_json(url).get("fav_perf", None)
     if fav_perf is None:
         print("populate_favorites: No favorites found")
@@ -602,7 +602,7 @@ def populate_favorites():
 
     # TEMPORARY  ######################################
     try:
-        set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)
+        set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)  # doesn't work
     except Exception as e:
         print(f"populate_favorites: unable to set playlist {e}")
     # END TEMPORARY ###################################
@@ -714,7 +714,7 @@ def get_favorite_recs():
     if not glc.HAS_TOKEN:
         return []
     print("getting favorite recordings")
-    url = f"{CLASSICAL_API}?mode=favorites&action=list"
+    url = f"{CLASSICAL_API}?mode=favorites&action=list&limit=128"
     items = request_json(url)
     items = items.get("favorites", [])
     items = [x for x in items if x.get("kt", "") in ["p"]]  # , "w"]]
@@ -756,32 +756,57 @@ def add_to_playlist(playlist_name, performance_id):
 
     # add this performance to the playlist.
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=add_performance&public_playlist_id={playlist_id}&performance_id={performance_id}"
-    resp = request_json(url, debug=True)
-    return
+    resp = request_json(url)
+    if resp.get("result", "") == "error":
+        print(f"add_to_playlist: ERROR {resp.get('error','unknown error')}")
+    return resp
 
 
-def remove_from_playlist(playlist_name, performance_id):
-    print(f"remove_from_playlist: removing performance_id {performance_id} from {playlist_name}")
+def remove_from_playlist(playlist_name, performance_ids):
+    print(f"remove_from_playlist: removing performance_id {performance_ids} from {playlist_name}")
+    if not isinstance(performance_ids, list):
+        performance_ids = [performance_ids]
     playlist_items = get_playlist_items(playlist_name)
     playlist_id = get_public_playlist_id(playlist_name)
     items_to_keep = []
     for item in playlist_items:
-        if item["kv"] != performance_id:
+        if item["kv"] not in performance_ids:
             items_to_keep.append(str(item["item_id"]))
     print(f"remove_from_playlist: items_to_keep: {items_to_keep}")
     # remove this performance from the playlist.
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(items_to_keep)}"
     resp = request_json(url, debug=True)
-    return
+    return resp
 
 
 def set_playlist_to(playlist_name: str, performance_ids: list):
+    # NOTE This function doesn't really work, because update_playlist_items cannot add new items, only delete/rearrange the existing ones.
+    playlist_contents = get_playlist_ids(playlist_name)
     print(f"setting entire playlist {playlist_name}: to {performance_ids}")
+    perfs_to_add = [x for x in performance_ids if not x in playlist_contents[0]]
+    perfs_to_remove = [x for x in playlist_contents[0] if not x in performance_ids]
+    if perfs_to_add == [] and perfs_to_remove == []:  # Note, order does not matter
+        print(f"set_playlist_to: nothing to do")
+        return
+    if len(perfs_to_remove) > 0:
+        remove_from_playlist(playlist_name, perfs_to_remove)
+    i = 0
+    for perf in perfs_to_add:
+        resp = add_to_playlist(playlist_name, perf)
+        if resp.get("result", "error") == "error":
+            print(f"add_to_playlist: ERROR {resp.get('error','unknown error')}")
+            break
+        i += 1
+    perfs_to_keep = [x for x in performance_ids if (x in playlist_contents[0]) and (not x in perfs_to_add[i:])]
+    performance_str = [str(x) for x in perfs_to_keep if isinstance(x, int)]
     playlist_id = get_public_playlist_id(playlist_name)
-    performance_ids = [str(x) for x in performance_ids if isinstance(x, int)]
-    url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(performance_ids)}"
+    url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(performance_str)}"
     resp = request_json(url, debug=True)
-    return
+    if resp.get("result", "error") == "OK":
+        print(f"set_playlist_to: SUCCESS set {playlist_name} to {performance_ids}")
+    else:
+        print(f"Error: {resp.get('error','unknown error')}")
+    return resp
 
 
 def get_playlist_ids(playlist_name):

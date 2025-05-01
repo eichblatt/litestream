@@ -913,6 +913,7 @@ def handle_favorites():
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
     favorites = clu.get_playlist_items("tm_favorites")
+    favorites = sorted(favorites, key=lambda x: clu.FAVORITE_PERFORMANCES.index(x["kv"]))
     # favorites = clu.get_favorite_items(N_favorites)
     selection = select_from_favorites(favorites)
     if selection is not None:
