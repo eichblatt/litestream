@@ -45,12 +45,14 @@ read_phase_end = const(3)
 decode_phase_idle = const(0)
 decode_phase_trackstart = const(1)
 decode_phase_readinfo = const(2)
-decode_phase_decoding = const(3)
+decode_phase_paused = const(3)
+decode_phase_decoding = const(4)
 
 play_phase_idle = const(0)
 play_phase_start = const(1)
 play_phase_playing = const(2)
-play_phase_end = const(3)
+play_phase_paused = const(3)
+play_phase_end = const(4)
 
 audioplayer_state_Stopped = const(0)
 audioplayer_state_Playing = const(1)
@@ -547,7 +549,7 @@ class TrackReader:
         return host, port, path
 
 
-@micropython.native
+#@micropython.native - Hmmm, causes "xtensa bccz out of range" error 
 class TrackDecoder:
     def __init__(self, context, callbacks, debug=0):
         self.context = context
@@ -604,18 +606,25 @@ class TrackDecoder:
         self.DecodeInfo.append((TrackLength, TrackType, hash))
 
     def isRunning(self):
-        return self.decode_phase != decode_phase_idle
+        if self.decode_phase == decode_phase_idle or self.decode_phase == decode_phase_paused:
+            return False
+        else:
+            return True
 
     def start(self):
-        self.decode_phase = decode_phase_trackstart
+        if self.decode_phase == decode_phase_idle:
+            self.decode_phase = decode_phase_trackstart
+        elif self.decode_phase == decode_phase_paused:
+            self.decode_phase = decode_phase_decoding
 
     def decode_chunk(self, timeout=10):
-        if self.decode_phase == decode_phase_idle:
+        if self.decode_phase in (decode_phase_idle, decode_phase_paused):
             return self.context.OutBuffer.any()
 
         # There could still be data in the decoder, so an empty inbuffer doesn't mean we have no data to decode => check both
         if self.context.InBuffer.any() == 0 and self.AACDecoder.write_used() == 0:
-            # print("Decoder starved")
+            print("Decoder starved")
+            self.decode_phase = decode_phase_paused
             return self.context.OutBuffer.any()
 
         TimeStart = time.ticks_ms()
@@ -624,10 +633,10 @@ class TrackDecoder:
             0: "Unknown",
             1: "Out Buffer Full",
             2: "Timeout",
-            3: "InBuffer Dry",
+            3: "Decoder Empty",
             4: "Finished Decoding",
             5: "No Track Info",
-            6: "Decoder Dry",
+            6: "Decoder Starved",
         }
 
         # This phase looks for the sync word in the parsed data
@@ -772,27 +781,28 @@ class TrackDecoder:
                             assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
                             self.current_track_bytes_parsed_out += parsedLength
 
-                        if len(self.DecodeInfo) > 0:  # Do we need this check?
-                            # Have we finished parsing this track? If so, update the parsed length
-                            if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
-                                # self.DEBUG and print("Finished Parsing")
-                                self.ParsedDecodeInfo[-1][0] = self.current_track_bytes_parsed_out
-                                self.current_track_bytes_parsed_out = 0
-                                self.current_track_bytes_parsed_in = 0
-                                self.TSParser.reset()
-                                self.DecodeInfo.pop(0)
-                                self.ParserRunning = False
-                                break
-                            elif self.current_track_bytes_parsed_in > self.DecodeInfo[0][0]:
-                                print(
-                                    f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.DecodeInfo[0][0]}"
-                                )
-                                print(f"DecodeInfo: {self.DecodeInfo} ParsedDecodeInfo: {self.ParsedDecodeInfo}")
-                                self.callbacks["messages"]("decode_chunk: Decode error")
-                                raise RuntimeError("Bytes parsed > track length")  # temporary, for debugging
+                        #if len(self.DecodeInfo) > 0:  # Do we need this check?
+                        # Have we finished parsing this track? If so, update the parsed length
+                        if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
+                            # self.DEBUG and print("Finished Parsing")
+                            self.ParsedDecodeInfo[-1][0] = self.current_track_bytes_parsed_out
+                            self.current_track_bytes_parsed_out = 0
+                            self.current_track_bytes_parsed_in = 0
+                            self.TSParser.reset()
+                            self.DecodeInfo.pop(0)
+                            self.ParserRunning = False
+                            break
+                        elif self.current_track_bytes_parsed_in > self.DecodeInfo[0][0]:
+                            print(
+                                f"Bytes parsed > track length! {self.current_track_bytes_parsed_in} > {self.DecodeInfo[0][0]}"
+                            )
+                            print(f"DecodeInfo: {self.DecodeInfo} ParsedDecodeInfo: {self.ParsedDecodeInfo}")
+                            self.callbacks["messages"]("decode_chunk: Decode error")
+                            raise RuntimeError("Bytes parsed > track length")  # temporary, for debugging
 
-                    # InBuffer Dry
+                    # Decoder Empty. Don't pause here or it will never fill up again
                     if self.AACDecoder.write_used() == 0:
+                        print("Decoder empty")
                         break_reason = 3
                         break
 
@@ -804,16 +814,14 @@ class TrackDecoder:
 
                         if Result in (0, 110):
                             self.current_track_bytes_decoder_out += AudioSamples * 2
-                            assert (
-                                self.context.OutBuffer.write(
-                                    self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
-                                )
-                                == AudioSamples * 2
-                            ), f"Buffer underrun: {AudioSamples}"
+                            self.context.OutBuffer.write(
+                                self.AudioBufferMV, self.AACDecoder.readinto(self.AudioBufferMV, AudioSamples * 2)
+                            )
 
                     # We get this if there is not enough data in the decoder to decode the next packet, so we need to wait until the reader gets some more data
                     elif Result == -13:
                         print("Decoder dry")
+                        self.decodephase = decode_phase_paused
                         break_reason = 6
                         break
 
@@ -896,7 +904,7 @@ class TrackPlayer:
 
         # Make rate=1 so that it doesn't match in play_chunk() and gets inited properly in the first call to play_chunk()
         self.audio_out = I2S(
-            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=44100, ibuf=self.ChunkSize
+            0, sck=sck_pin, ws=ws_pin, sd=sd_pin, mode=I2S.TX, bits=16, format=I2S.STEREO, rate=1, ibuf=self.ChunkSize
         )
 
         self.audio_out.irq(self.i2s_callback)
@@ -912,21 +920,27 @@ class TrackPlayer:
         self.PlayInfo[-1][3] = TrackLength
 
     def isRunning(self):
-        return self.play_phase != play_phase_idle
+        if self.play_phase == play_phase_idle or self.play_phase == play_phase_paused:
+            return False
+        else:
+            return True
 
     def start(self):
-        self.play_phase = play_phase_start
+        if self.play_phase == play_phase_idle:
+            self.play_phase = play_phase_start
+        elif self.play_phase == play_phase_paused:
+            self.play_phase = play_phase_playing
 
     def stop(self):
         self.play_phase = play_phase_idle
 
     def play_chunk(self):
-        if not self.I2SAvailable or self.play_phase == play_phase_idle:
+        if not self.I2SAvailable or self.play_phase in (play_phase_idle, play_phase_paused) or len(self.PlayInfo) == 0:
             return
 
         # Are we at the beginning of a track, and the decoder has given us some format info.
         # If so, init the I2S device (Note that the sample_rate may vary between tracks)
-        if self.play_phase == play_phase_start and len(self.PlayInfo) > 0:
+        if self.play_phase == play_phase_start: # and len(self.PlayInfo) > 0:
             self.current_track_bytes_played = 0
             self.callbacks["messages"](f"play_chunk: Start playing track {self.PlayInfo[0][4]}")
             print(f"Track {self.PlayInfo[0][4]} play start")
@@ -992,7 +1006,8 @@ class TrackPlayer:
             BytesToPlay = min(self.context.OutBuffer.any(), self.ChunkSize)
 
             # Do we have a length for this track yet? (We only get this after the decoder has finished decoding it)
-            if len(self.PlayInfo) > 0 and self.PlayInfo[0][3] != False:
+            #if len(self.PlayInfo) > 0 and self.PlayInfo[0][3] != False:
+            if self.PlayInfo[0][3] != False:
                 # If so, have we played all of the decoded bytes for this track?
                 if self.current_track_bytes_played + BytesToPlay >= self.PlayInfo[0][3]:
                     # Adjust the bytes to play to only be the remaining bytes for this track
@@ -1004,7 +1019,7 @@ class TrackPlayer:
             # In this case we need to stop the player and wait for the decoder to fill up the InBuffer again
             if BytesToPlay == 0:
                 print("Player starved")
-                self.play_phase = play_phase_idle
+                self.play_phase = play_phase_paused
                 return
 
             # Adjust the volume
@@ -1195,6 +1210,7 @@ class AudioPlayer:
 
         # Start the decode loop once we have more than 940 bytes (5 x .ts packets) in the InBuffer. No point starting decoding too early or the decoder can fail with insufficient data
         if not self.decoder.isRunning() and self.InBuffer.any() > 940 and self.audioplayer_state == audioplayer_state_Playing:
+            print("Starting decoder")
             self.decoder.start()
 
         self.decoder.decode_chunk()
@@ -1205,6 +1221,7 @@ class AudioPlayer:
             and self.OutBuffer.any() / 44100 / 2 / 2 > 1
             and self.audioplayer_state == audioplayer_state_Playing
         ):
+            print("Starting player")
             self.player.start()
 
         self.player.play_chunk()
