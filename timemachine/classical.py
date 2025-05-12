@@ -194,7 +194,7 @@ def play_radio(radio_id: str):
     ln, fn = [x.strip() for x in radio_data[0]["composer"].split(",")]
     glc.selected_composer = Composer({"ln": ln, "fn": fn, "id": -1})
     glc.selected_work = Work(name=first_title, id=-1)
-    display_selected_composer(glc.selected_composer)
+    display_composer(glc.selected_composer)
     display_title(glc.selected_work)
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
@@ -395,7 +395,7 @@ def poll_select(pSelect_old):
             else:
                 glc.selected_composer = glc.keyed_composer
                 glc.radio_counter = 0
-                display_selected_composer(glc.selected_composer, show_loading=True)
+                display_composer(glc.selected_composer, show_loading=True)
                 radio_id = get_radio_id(glc.selected_composer)
                 play_radio(radio_id)
                 glc.radio_mode = "Composer"
@@ -686,6 +686,7 @@ def poll_knobs(month_old, day_old, year_old):
         glc.performance_index = 0
         force_update = (KNOB_TIME > COMPOSER_KEY_TIME) or (glc.last_update_time > KNOB_TIME)
         set_knob_times(tm.m)
+        glc.prev_keyed_composer = glc.keyed_composer
         glc.keyed_composer = glc.composers[month_new]
         display_keyed_composers(glc.composers, month_new, month_old, force_update)
         print(f"keyed composer {glc.keyed_composer}")
@@ -715,10 +716,13 @@ def poll_knobs(month_old, day_old, year_old):
             glc.last_update_time = time.ticks_ms()
             set_knob_times(None)  # To ensure that genres will be drawn
         else:
-            if glc.selected_composer != glc.keyed_composer:
-                glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
-                display_selected_composer(glc.selected_composer, show_loading=True)
-            glc.composer_genres = get_cats(glc.selected_composer.id)
+            if glc.keyed_composer != glc.prev_keyed_composer:
+                glc.prev_keyed_composer = glc.keyed_composer
+                display_composer(glc.keyed_composer, show_loading=True)
+            # if glc.selected_composer != glc.keyed_composer:
+            #    glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
+            #    display_selected_composer(glc.keyed_composer, show_loading=True)
+            glc.composer_genres = get_cats(glc.keyed_composer.id)
             # print(f"cat_genres is {glc.composer_genres}")
             display_keyed_genres(glc.composer_genres, day_new, day_old)
             print(f"keyed genre is {glc.keyed_genre}")
@@ -752,7 +756,7 @@ def poll_knobs(month_old, day_old, year_old):
                     set_knob_times(None)  # To ensure that genres will be drawn
                     return month_old, day_old, year_old
             else:
-                display_selected_composer(glc.keyed_composer, glc.keyed_genre, show_loading=True)
+                display_composer(glc.keyed_composer, glc.keyed_genre, show_loading=True)
                 glc.composer_genres = get_cats(glc.keyed_composer.id)
                 print(f"cat_genres is {glc.composer_genres}")
         t = [g for g in glc.composer_genres if g.id == glc.keyed_genre.id]
@@ -924,7 +928,7 @@ def handle_favorites():
         tracklist, selected_performance, glc.state = _select_performance(
             glc.selected_work, glc.player, glc.state, p_id=selection["kv"]
         )
-        display_selected_composer(glc.selected_composer, show_loading=True)
+        display_composer(glc.selected_composer, show_loading=True)
         display_title(glc.selected_work)
         _display_performance_info(glc.selected_work, selected_performance)
         track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
@@ -1040,7 +1044,7 @@ def update_display():
     if glc.player.is_stopped():
         pass
     elif glc.player.is_playing():
-        display_selected_composer(glc.selected_composer)
+        display_composer(glc.selected_composer)
         display_title(glc.selected_work)
         display_performance_info()
         display_tracks(*glc.player.remaining_track_names())
@@ -1166,7 +1170,7 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
 
     # Write the Composer and Genre
     if draw_all:
-        display_selected_composer(composer, composer_genre)
+        display_composer(composer, composer_genre)
     y0 = 2 * pfont_med.HEIGHT
 
     # Write the works
@@ -1201,7 +1205,7 @@ def display_keyed_works(composer, composer_genre, works, index, prev_index):
     return works[index]
 
 
-def display_selected_composer(composer, composer_genre=None, show_loading=False, radio_mode=False):
+def display_composer(composer, composer_genre=None, show_loading=False, radio_mode=False):
     tm.clear_bbox(selection_bbox)
     y0 = 0
     tm.write(composer.name, 0, y0, color=tm.YELLOW, font=pfont_med, show_end=1)
@@ -1237,7 +1241,8 @@ def display_keyed_genres(composer_genres, index, prev_index):
     draw_all = (glc.SCREEN != glc.prev_SCREEN) or start_index != prev_start_index
     print(f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})")
     if draw_all:
-        display_selected_composer(glc.selected_composer)
+        # display_composer(glc.selected_composer)
+        display_composer(glc.keyed_composer)
     for i in range(nlines):
         array_index = (start_index + i) % len(genres)
         keyed_genre = array_index == index
@@ -1312,7 +1317,7 @@ def display_performance_choices(composer, work, performances, index):
     glc.SCREEN = ScreenContext.PERFORMANCE
     # print(f"display_performance_choices: {glc.prev_SCREEN} -> {glc.SCREEN}")
     tm.clear_screen()
-    display_selected_composer(composer)
+    display_composer(composer)
     display_title(work)
     y0 = glc.ycursor
     i = 0
@@ -1410,7 +1415,7 @@ def choose_performance(composer, keyed_work):
     # print(f"choose_performance: {glc.prev_SCREEN} -> {glc.SCREEN}")
     tm.clear_screen()
     tm.label_soft_knobs("Jump 100", "Jump 10", "Next/Prev")
-    display_selected_composer(composer)
+    display_composer(composer)
     display_title(keyed_work)
     y0 = glc.ycursor
     tm.write(
