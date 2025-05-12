@@ -531,7 +531,9 @@ def poll_rewind(pRewind_old):
                 glc.player.rewind()
             else:
                 glc.player.set_volume(max(glc.player.get_volume() - 1, 5))
-                print(f"volume set to {glc.player.get_volume()}")
+                glc.state["volume"] = glc.player.get_volume()
+                print(f"volume set to {glc.state['volume']}")
+                save_state(glc.state)
     return pRewind_old
 
 
@@ -550,6 +552,8 @@ def poll_ffwd(pFFwd_old):
             else:
                 try:
                     glc.player.set_volume(glc.player.get_volume() + 1)
+                    glc.state["volume"] = glc.player.get_volume()
+                    save_state(glc.state)
                 except AssertionError:
                     pass
                 print(f"volume set to {glc.player.get_volume()}")
@@ -1543,6 +1547,7 @@ def run():
         clu.initialize_knobs()
 
         glc.player = playerManager.PlayerManager(callbacks={"display": display_tracks}, debug=False)
+        glc.player.set_volume(glc.state.get("volume", 11))
         glc.ycursor = pfont_med.HEIGHT + 3 * pfont_small.HEIGHT
         main_loop()
 
