@@ -79,10 +79,10 @@ class PlayerManager:
 
     def extend_playlist(self, next_index):
         if next_index in self.pumped_indices:
-            print(f"extend_playlist: Track {next_index} already pumped")
+            self.DEBUG and print(f"extend_playlist: Track {next_index} already pumped")
             return 0
         urllist = self.chunklist[next_index]
-        print(f"extend_playlist: Track {next_index}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
+        self.DEBUG and print(f"extend_playlist: Track {next_index}/{len(self.tracklist)}. + {len(urllist)} URLs to player.")
         new_elements = [(x, hashlib.md5(x.encode()).digest().hex()) for x in urllist]
 
         hashkey = new_elements[0][1]
@@ -98,20 +98,20 @@ class PlayerManager:
         if track_num and track_num == self.track_index:
             return self.track_index
         if (self.track_index + increment) >= self.n_tracks:
-            print(f"increment_track_screen. already on last track {self.track_index}")
+            self.DEBUG and print(f"increment_track_screen. already on last track {self.track_index}")
             return self.track_index
         if (self.track_index + increment) <= 0:
-            print(f"increment_track_screen. already on first track {self.track_index}")
+            self.DEBUG and print(f"increment_track_screen. already on first track {self.track_index}")
 
         self.track_index = self.track_index + increment if track_num is None else track_num
         tracklist = self.remaining_track_names()
         try:
-            self.DEBUG and print(f"playerManager display: {tracklist}")
+            (self.DEBUG > 1) and print(f"playerManager display: {tracklist}")
             self.callbacks["display"](*tracklist)
         except Exception as e:
-            print(f"Error in display callback: {e}")
+            self.DEBUG and print(f"Error in display callback: {e}")
         finally:
-            self.DEBUG and print(f"increment_track_screen: returning track {self.track_index} of {self.n_tracks}")
+            (self.DEBUG > 1) and print(f"increment_track_screen: returning track {self.track_index} of {self.n_tracks}")
         return self.track_index
 
     def messenger(self, message):
@@ -182,8 +182,6 @@ class PlayerManager:
         return self.player.pause()
 
     def stop(self, reset_head=True):
-        # self.ready_to_pump = False
-        # print("No more chunks will be sent -- player reset")
         self.button_window = None
         self.player.stop()  # set the player.playlist to [] if reset_head
         self.set_volume(self.volume)
@@ -256,7 +254,7 @@ class PlayerManager:
             # Find the next index without a chunklist
             for i in range(self.track_index + self.pumpahead, len(self.chunklist)):
                 if len(self.chunklist[i]) > 0:
-                    print(f"pump_chunks: chunklist {i} is not empty")
+                    self.DEBUG and print(f"pump_chunks: chunklist {i} is not empty")
                     elements_added = self.extend_playlist(i)
                     self.pumpahead = 1 if elements_added > 0 else self.pumpahead + 1
                     return
@@ -296,7 +294,7 @@ class PlayerManager:
     async def get_chunklist(self, url):
         if url.endswith("m3u8"):
             # determine the chunks
-            print(f"get_chunklist. first url is {url}")
+            self.DEBUG and print(f"get_chunklist. first url is {url}")
             self.chunked_urls = True
             base_url = "/".join(url.split("/")[:-1])
             chunklist_url = await requests.get(url)

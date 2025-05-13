@@ -999,6 +999,10 @@ class GeneralContext:
         self.selected_work = None
         self.selected_performance = None
         self.prev_keyed_composer = None
+        self.prev_keyed_genre = None
+        self.playing_composer = None
+        self.playing_genre = None
+        self.playing_work = None
         self.this_work_y = None
         self.performance_index = 0
         self.tracklist = []

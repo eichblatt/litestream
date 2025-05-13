@@ -40,7 +40,7 @@ except ImportError as e:
         raise e
 
 ############################################################################################# Globals
-DEBUG = True
+DEBUG = False
 CLASSICAL_API = "https://www.classicalarchives.com/ajax/cma-api-2.json"
 METADATA_ROOT = clu.METADATA_ROOT
 
@@ -119,7 +119,7 @@ def get_cat_works(glc):
 
 def uget_cat_works(composer_id, category):
     global works_dict
-    print(f"Getting works for {composer_id}, category {category.id}")
+    DEBUG and print(f"Getting works for {composer_id}, category {category.id}")
     # In this case, the works_dict requires 2 keys: Composer and Category.
     if not composer_id in works_dict.keys():
         works_dict[composer_id] = {}
@@ -135,7 +135,7 @@ def uget_cat_works(composer_id, category):
     else:
         cat = cat[0]
     filepath = f"{METADATA_ROOT}/{composer_id}_{category.id}.works.json"
-    print(f"filepath is {filepath}")
+    DEBUG and print(f"filepath is {filepath}")
     if utils.path_exists(filepath):
         cache_expiry = 3600 * 24 * 7  # 7 days
         if (time.time() - os.stat(filepath)[7]) < cache_expiry:
@@ -180,6 +180,7 @@ def get_radio_data(radio_id: str):
 
 def play_radio(radio_id: str):
     glc = clu.glc
+    DEBUG and print("playing radio")
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     if (radio_id != glc.radio_id) or not glc.radio_data:
         radio_data = get_radio_data(radio_id)
@@ -198,7 +199,6 @@ def play_radio(radio_id: str):
     display_title(glc.selected_work)
     tm.draw_radio_icon(tm.SCREEN_WIDTH - 18, 0)
     tm.write("loading...", 0, glc.ycursor, pfont_small, tm.WHITE)
-    print(f"work title {glc.selected_work.name}")
 
     n_tracks = len(radio_data)
     dur = sum([int(x["dur"]) for x in radio_data])
@@ -210,10 +210,9 @@ def play_radio(radio_id: str):
     artists = tm.add_line_breaks(", ".join(artists), 0, pfont_small, -3).split("\n")
 
     credits = ["..credits.."] + album_title + artists + [f"Duration: {dur}. {n_tracks} trks"]
-    print(f"credits: {credits}")
 
     play_tracklist(radio_data, credits)
-    play_pause(glc.player)
+    play_pause()
     glc.radio_counter += 1
     return
 
@@ -221,7 +220,7 @@ def play_radio(radio_id: str):
 def handle_radio():
     # Set the glc.selected_composer and glc.selected_work based on selection, or default to first composer.
     glc = clu.glc
-    print("handling radio")
+    DEBUG and print("handling radio")
     tm.clear_screen()
     tm.write("Radio Selection", 0, 0, pfont_med, tm.YELLOW)
     glc.prev_SCREEN = glc.SCREEN
@@ -239,7 +238,7 @@ def handle_radio():
 
 
 def select_radio_channel():
-    print("In select_radio_channel")
+    DEBUG and print("In select_radio_channel")
     tm.clear_screen()
     glc = clu.glc
     glc.prev_SCREEN = glc.SCREEN
@@ -261,7 +260,7 @@ def select_radio_channel():
 
 
 def set_custom_radio():
-    print("In select_custom_radio")
+    DEBUG and print("In select_custom_radio")
     glc = clu.glc
     incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
 
@@ -345,9 +344,9 @@ def poll_play_pause(pPlayPause_old):
             glc.selected_work = glc.keyed_work
             display_title(glc.selected_work)
             glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-            print(f"Track titles are {glc.track_titles}")
+            DEBUG and print(f"Track titles are {glc.track_titles}")
             display_tracks(*glc.track_titles)
-        play_pause(glc.player)
+        play_pause()
         glc.last_update_time = time.ticks_ms()
 
     if not tm.pPlayPause.value():  # long press PlayPause
@@ -372,7 +371,7 @@ def poll_select(pSelect_old):
     else:  # Changed, and currently being RELEASED
         if (time.ticks_ms() - glc.select_press_time) > 1_000:
             return pSelect_old  # This was a long press, so do nothing.
-        print("short press of select -- released")
+        print(f"short press of select -- released. Screen is {glc.SCREEN}")
         if glc.SCREEN == ScreenContext.COMPOSER:
             if not glc.HAS_TOKEN:
                 print("User must be authenticated to play composer radio")
@@ -434,7 +433,7 @@ def poll_select(pSelect_old):
             glc.worklist_key = None
             glc = get_cat_works(glc)
             glc.worklist_key = f"{glc.selected_composer.id}_{glc.selected_genre.id}"
-            print(f"worklist is {glc.worklist}")
+            DEBUG and print(f"worklist is {glc.worklist}")
             glc.worklist_index = clu.worklist_dict().get(glc.worklist_key, 0) % max(1, len(glc.worklist))
             clu.set_worklist_dict(glc.worklist_key, glc.worklist_index)  # To keep the index within bounds of len(gxt.worklist).
             glc.keyed_work = glc.worklist[glc.worklist_index]
@@ -444,13 +443,14 @@ def poll_select(pSelect_old):
             glc.radio_counter = 0
             return pSelect_old
 
-        if glc.SCREEN == ScreenContext.WORK:
-            # elif KNOB_TIME == WORK_KEY_TIME:
+        if (KNOB_TIME == WORK_KEY_TIME) or (glc.SCREEN == ScreenContext.WORK):  # Why do I need this KNOB_TIME check?
+            glc.prev_SCREEN = glc.SCREEN
+            glc.SCREEN = ScreenContext.WORK
             glc.selected_composer = glc.keyed_composer
             glc.selected_genre = glc.keyed_genre
             print(f"Work last keyed {glc.keyed_work}")
         else:
-            print("Unknown last keyed")
+            print(f"Screen is {glc.SCREEN} -- unable to process.")
 
         if glc.keyed_work is None:
             # Figure out which work and performance to play
@@ -485,11 +485,10 @@ def poll_select_longpress(pSelect_old):
         glc.selected_work = glc.keyed_work
         display_title(glc.selected_work)
         display_performance_info()
-        print("performance info displayed")
         glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-        print(f"Track titles are {glc.track_titles}")
+        DEBUG and print(f"Track titles are {glc.track_titles}")
         display_tracks(*glc.track_titles)
-        play_pause(glc.player)
+        play_pause()
         glc.last_update_time = time.ticks_ms()
     else:
         # behave as if we have twiddled a knob.
@@ -532,7 +531,7 @@ def poll_rewind(pRewind_old):
             else:
                 glc.player.set_volume(max(glc.player.get_volume() - 1, 5))
                 glc.state["volume"] = glc.player.get_volume()
-                print(f"volume set to {glc.state['volume']}")
+                DEBUG and print(f"volume set to {glc.state['volume']}")
                 save_state(glc.state)
     return pRewind_old
 
@@ -556,7 +555,7 @@ def poll_ffwd(pFFwd_old):
                     save_state(glc.state)
                 except AssertionError:
                     pass
-                print(f"volume set to {glc.player.get_volume()}")
+                DEBUG and print(f"volume set to {glc.player.get_volume()}")
     return pFFwd_old
 
 
@@ -568,7 +567,7 @@ def poll_power(pPower_old):
     glc = clu.glc
     pPower_old = tm.pPower.value()
     if not pPower_old:
-        print(f"power state is {tm.power()}")
+        DEBUG and print(f"power state is {tm.power()}")
         if tm.power() == 1:
             glc.player.pause()
             tm.power(0)
@@ -613,10 +612,10 @@ def poll_RightSwitch(pYSw_old):
             utils.reset()
             # We need to update the screen here!!
             if was_playing:
-                print("Restarting gxt.player after authenticating")
+                DEBUG and print("Restarting gxt.player after authenticating")
                 glc.player.play()
         else:
-            print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
+            DEBUG and print(f"selected_performance is {glc.selected_performance}, keyed_work is {glc.keyed_work}")
             if glc.SCREEN == ScreenContext.COMPOSER:
                 tm.m._value = FAVORITES_INDEX  # Set the composer index to 0 (Favorites)
                 # tm.d._value += 1  # "twiddle" the genre knob
@@ -635,11 +634,11 @@ def poll_RightSwitch(pYSw_old):
             _ = clu.toggle_favorites(glc.selected_performance if glc.selected_performance is not None else glc.keyed_work)
             # Not strictly necessary, but will update the heart to what the database knows.
             if glc.SCREEN == ScreenContext.TRACKLIST:
-                print(f"Refresh TRACKLIST screen to show the heart change")
+                DEBUG and print(f"Refresh TRACKLIST screen to show the heart change")
                 display_title(glc.selected_work)
                 display_performance_info()
             elif glc.SCREEN == ScreenContext.WORK:
-                print(f"Refresh WORK screen to show the heart change")
+                DEBUG and print(f"Refresh WORK screen to show the heart change")
     return pYSw_old
 
 
@@ -727,17 +726,16 @@ def poll_knobs(month_old, day_old, year_old):
             #    glc.selected_composer = glc.keyed_composer  # we have selected the composer by changing the category
             #    display_selected_composer(glc.keyed_composer, show_loading=True)
             glc.composer_genres = get_cats(glc.keyed_composer.id)
-            # print(f"cat_genres is {glc.composer_genres}")
             display_keyed_genres(glc.composer_genres, day_new, day_old)
             print(f"keyed genre is {glc.keyed_genre}")
             set_knob_times(tm.d)
         day_old = day_new
     elif year_old != year_new:  # Works changes
-        print(f"Year knob twiddled old:{year_old} new:{year_new}")
+        print(f"Year knob twiddled old:{year_old} new:{year_new}. Screen is {glc.SCREEN}")
         tm.power(1)
-        glc.performance_index = 0
-        if glc.selected_genre.index != glc.keyed_genre.index:
-            glc.selected_genre = glc.keyed_genre
+        glc.performance_index = 0  # Radio
+        if glc.keyed_genre != glc.prev_keyed_genre:
+            glc.prev_keyed_genre = glc.keyed_genre
         if glc.keyed_genre.nworks == 0:  # Either already playing a favorite or a radio, or we are in a folder.
             if glc.SCREEN == ScreenContext.TRACKLIST:
                 # Playing a favorite or radio. genre is unknown, --> display works for composer's _first_ genre.
@@ -768,9 +766,10 @@ def poll_knobs(month_old, day_old, year_old):
         print(f"composer_genre is {composer_genre}")
         glc.works = uget_cat_works(glc.keyed_composer.id, composer_genre)
         glc.keyed_work = display_keyed_works(glc.keyed_composer, composer_genre, glc.works, year_new, year_old)
-        print(f"keyed work is {glc.keyed_work}")
+        print(f"keyed work is {glc.keyed_work}. Screen is {glc.SCREEN}")
         set_knob_times(tm.y)
         year_old = year_new  # This must be done AFTER display_keyed_works!!
+        glc.SCREEN = ScreenContext.WORK
     return month_old, day_old, year_old
 
 
@@ -789,14 +788,20 @@ def configure(choice):
 ############################################################################################# Actions
 
 
-def play_pause(player):
+def play_pause():
+    print("In play_pause")
+    glc = clu.glc
+    player = glc.player
     tm.clear_bbox(playpause_bbox)
     if player.is_playing():
         player.pause()
         tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.WHITE)
     elif len(player.tracklist) > 0:
-        print(f"in play_pause: player.tracklist {player.tracklist}")
+        print(f"in play_pause: player.tracklist {player.tracklist}. composer {glc.selected_composer}, work {glc.selected_work}")
         player.play()
+        glc.playing_composer = glc.selected_composer
+        glc.playing_genre = glc.selected_genre
+        glc.playing_work = glc.selected_work
         tm.power(1)
         tm.tft.fill_polygon(tm.PlayPoly, playpause_bbox.x0, playpause_bbox.y0, tm.play_color)
     set_knob_times(None)  # So that twiddling any knob causes refresh screen.
@@ -805,17 +810,17 @@ def play_pause(player):
 
 def play_keyed_work():
     # Set the keyed_work to the selected_work, and play it.
+    print("in play_keyed_work")
     glc = clu.glc
     glc.selected_work = glc.keyed_work
-    print(f"Playing {glc.keyed_work}")
     select_performance()
     save_state(glc.state)
     display_title(glc.selected_work)
     display_performance_info()
     glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
-    print(f"Track titles are {glc.track_titles}")
+    DEBUG and print(f"Track titles are {glc.track_titles}")
     display_tracks(*glc.track_titles)  # This doesn't show the credits.
-    play_pause(glc.player)
+    play_pause()
     return
 
 
@@ -863,7 +868,6 @@ def main_loop():
     glc.SCREEN = ScreenContext.NONE
 
     poll_count = 0
-    print("main loop before while")
     while True:
         glc.player.audio_pump()
         poll_count = poll_count + 1
@@ -885,6 +889,7 @@ def main_loop():
                 play_radio(glc.radio_id)
 
         if glc.SCREEN != glc.prev_SCREEN:
+            print(f"Screen changed from {glc.prev_SCREEN} to {glc.SCREEN}")
             glc.prev_SCREEN = glc.SCREEN
             if glc.SCREEN in [ScreenContext.WORK, ScreenContext.TRACKLIST]:
                 tm.label_soft_knobs("Composer", "Genre", "Work", (tm.BLACK, tm.GREEN, tm.RED))
@@ -938,7 +943,7 @@ def handle_favorites():
         track_titles = cleanup_track_names([x["subtitle"] for x in tracklist])
         print(f"Track titles are {track_titles}")
         display_tracks(*track_titles)
-        play_pause(glc.player)
+        play_pause()
         set_knob_times(None)
     else:
         glc.selected_composer = glc.composers[2]  # Avoid favorites as a composer
@@ -1048,8 +1053,8 @@ def update_display():
     if glc.player.is_stopped():
         pass
     elif glc.player.is_playing():
-        display_composer(glc.selected_composer)
-        display_title(glc.selected_work)
+        display_composer(glc.playing_composer)
+        display_title(glc.playing_work)
         display_performance_info()
         display_tracks(*glc.player.remaining_track_names())
         if glc.radio_mode:
@@ -1094,7 +1099,7 @@ def _display_performance_info(work_id, p_id):
 
 def display_tracks(*track_names):
     glc = clu.glc
-    print(f"in display_tracks. Track names are {track_names[:3]}...")
+    DEBUG and print(f"in display_tracks. Track names are {track_names[:3]}...")
     if len(track_names) == 0:
         return
     tm.clear_to_bottom(0, glc.ycursor)
@@ -1128,7 +1133,7 @@ def display_tracks(*track_names):
         lines_written += len(msg.split("\n"))
         i = i + 1
     if not glc.HAS_TOKEN:
-        print("Writing Subscription Note")
+        DEBUG and print("Writing Subscription Note")
         # This message informs the user to press the right knob to access full tracks, likely requiring authentication or subscription.
         message = "Press Right knob for full tracks"
         n_lines = tm.add_line_breaks(message, 0, pfont_small, 2).count("\n") + 1
@@ -1158,11 +1163,11 @@ def display_keyed_title(keyed_title, color=tm.PURPLE):
 
 def display_keyed_works(composer, composer_genre, works, index, prev_index):
     # Set up the display
-    # print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}, prev_index {prev_index}")
+    DEBUG and print(f"in display_keyed_works -- {works}, of type {type(works)}, index {index}, prev_index {prev_index}")
     glc = clu.glc
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.WORK
-    # print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
+    DEBUG and print(f"display_keyed_works: {glc.prev_SCREEN} -> {glc.SCREEN}")
     names = [w.name for w in works]
     index = index % len(names)
     prev_index = prev_index % len(names)
@@ -1243,7 +1248,9 @@ def display_keyed_genres(composer_genres, index, prev_index):
     prev_start_index = nlines * (prev_index // nlines)
     # draw_all = (KNOB_TIME > GENRE_KEY_TIME) or start_index != prev_start_index
     draw_all = (glc.SCREEN != glc.prev_SCREEN) or start_index != prev_start_index
-    print(f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})")
+    DEBUG and print(
+        f"display keyed genre: all:{draw_all}, start {start_index} ({index}), prev {prev_start_index}({prev_index})"
+    )
     if draw_all:
         # display_composer(glc.selected_composer)
         display_composer(glc.keyed_composer)

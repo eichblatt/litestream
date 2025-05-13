@@ -392,13 +392,12 @@ class TrackReader:
                 # self.start_track(self.current_track_bytes_read)
 
     def end_track(self):
-        # self.DEBUG and print(f"Bytes read: {self.current_track_bytes_read}")
-        print(f"Track {self.hash_being_read} read end", end=" - ")
+        self.DEBUG and print(f"Track {self.hash_being_read} read end", end=" - ")
         gc.collect()
 
         if len(self.context.playlist) > 0:
             # We can read the header of the next track now
-            print("reading next track")
+            self.DEBUG and print("reading next track")
             self.callbacks["messages"](f"read_chunk: Finished reading track {self.hash_being_read}")
             self.read_phase = read_phase_start
             self.trackReader = self.start_track()
@@ -423,7 +422,7 @@ class TrackReader:
             self.sock.close()
             self.sock = None
 
-        print(f"Track {self.hash_being_read} read start")
+        self.DEBUG and print(f"Track {self.hash_being_read} read start")
         self.callbacks["messages"](f"read_chunk: Start reading track {self.hash_being_read}")
 
         while True:
@@ -434,7 +433,7 @@ class TrackReader:
             # Establish a socket connection to the server
             conn = socket.socket()
 
-            print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
+            self.DEBUG and print(f"Getting {path} from {host}, Port:{port}, Offset {offset}")
             addr = socket.getaddrinfo(host, port)[0][-1]
 
             # Tell the socket to return straight away (async)
@@ -549,7 +548,7 @@ class TrackReader:
         return host, port, path
 
 
-#@micropython.native - Hmmm, causes "xtensa bccz out of range" error 
+# @micropython.native - Hmmm, causes "xtensa bccz out of range" error
 class TrackDecoder:
     def __init__(self, context, callbacks, debug=0):
         self.context = context
@@ -648,7 +647,7 @@ class TrackDecoder:
                 self.decode_phase = decode_phase_idle
                 return self.context.OutBuffer.any()
 
-            print(f"Track {self.DecodeInfo[0][2]} decode start")
+            self.DEBUG and print(f"Track {self.DecodeInfo[0][2]} decode start")
             self.callbacks["messages"](f"decode_chunk: Start decoding track {self.DecodeInfo[0][2]}")
 
             if self.DecodeInfo[0][1] == format_AAC:
@@ -729,7 +728,9 @@ class TrackDecoder:
                 channels, sample_rate, bits_per_sample, bit_rate = self.AACDecoder.AAC_GetInfo()
 
                 # Make sure we got valid data back from GetInfo()
-                print(f"Channels: {channels} Sample Rate: {sample_rate} Bits per Sample: {bits_per_sample} Bitrate: {bit_rate}")
+                self.DEBUG and print(
+                    f"Channels: {channels} Sample Rate: {sample_rate} Bits per Sample: {bits_per_sample} Bitrate: {bit_rate}"
+                )
 
                 if channels != 0:
                     # We don't know the parsed track length yet, so set it to False at this point
@@ -781,7 +782,7 @@ class TrackDecoder:
                             assert self.AACDecoder.write(self.ParserOutMV, parsedLength) == parsedLength
                             self.current_track_bytes_parsed_out += parsedLength
 
-                        #if len(self.DecodeInfo) > 0:  # Do we need this check?
+                        # if len(self.DecodeInfo) > 0:  # Do we need this check?
                         # Have we finished parsing this track? If so, update the parsed length
                         if self.current_track_bytes_parsed_in == self.DecodeInfo[0][0]:
                             # self.DEBUG and print("Finished Parsing")
@@ -836,7 +837,7 @@ class TrackDecoder:
                 # Check if we have a parsed length of the track (only populated when we have finished parsing the track) and if so, have we decoded to the end of the current track?
                 if len(self.ParsedDecodeInfo) > 0:
                     if self.current_track_bytes_decoder_in == self.ParsedDecodeInfo[0][0]:
-                        print(f"Track {self.ParsedDecodeInfo[0][2]} decode end", end=" - ")
+                        self.DEBUG and print(f"Track {self.ParsedDecodeInfo[0][2]} decode end", end=" - ")
                         self.callbacks["messages"](f"decode_chunk: Finished decoding track {self.ParsedDecodeInfo[0][2]}")
                         self.current_track_bytes_decoder_in = 0
                         self.decode_phase = decode_phase_trackstart
@@ -848,14 +849,14 @@ class TrackDecoder:
                         # if len(self.playlist) > 0: doesn't work here as the read loop may have read the whole playlist while we're still decoding n tracks behind it
                         if len(self.DecodeInfo) == 0 and len(self.context.playlist) == 0:
                             # We have finished decoding the whole playlist. Now we just need to wait for the player to finish
-                            print("finished decoding playlist")
+                            self.DEBUG and print("finished decoding playlist")
                             self.callbacks["messages"](f"decode_chunk: Finished decoding playlist")
                             self.decode_phase = decode_phase_idle
 
                             # This frees up all the buffers that the decoder allocated, and resets their state
                             self.AACDecoder.AAC_Close()
                         else:
-                            print("decoding next track")
+                            self.DEBUG and print("decoding next track")
 
                         break
 
@@ -940,10 +941,10 @@ class TrackPlayer:
 
         # Are we at the beginning of a track, and the decoder has given us some format info.
         # If so, init the I2S device (Note that the sample_rate may vary between tracks)
-        if self.play_phase == play_phase_start: # and len(self.PlayInfo) > 0:
+        if self.play_phase == play_phase_start:  # and len(self.PlayInfo) > 0:
             self.current_track_bytes_played = 0
             self.callbacks["messages"](f"play_chunk: Start playing track {self.PlayInfo[0][4]}")
-            print(f"Track {self.PlayInfo[0][4]} play start")
+            self.DEBUG and print(f"Track {self.PlayInfo[0][4]} play start")
 
             # The I2S object returns the following: I2S(id=0, sck=13, ws=14, sd=17, mode=5, bits=16, format=1, rate=44100, ibuf=71680)
             # Check if it is the same as the already initialised device. If so, do nothing. If not, init it to the new values
@@ -957,7 +958,7 @@ class TrackPlayer:
                 or current_channels != self.PlayInfo[0][0]
                 or current_rate != self.PlayInfo[0][1]
             ):
-                print(
+                self.DEBUG and print(
                     f"Init I2S device. Bits:{self.PlayInfo[0][2]}, Channels:{self.PlayInfo[0][0]}, Rate:{self.PlayInfo[0][1]}"
                 )
 
@@ -979,7 +980,7 @@ class TrackPlayer:
 
         # Make sure this is before the play_phase_playing check so that it doesn't fall through to this
         if self.play_phase == play_phase_end:
-            print(f"Track {self.PlayInfo[0][4]} play end", end=" - ")
+            self.DEBUG and print(f"Track {self.PlayInfo[0][4]} play end", end=" - ")
             self.callbacks["messages"](f"play_chunk: Finished playing track {self.PlayInfo[0][4]}")
 
             # Remove the info for this track
@@ -1006,7 +1007,7 @@ class TrackPlayer:
             BytesToPlay = min(self.context.OutBuffer.any(), self.ChunkSize)
 
             # Do we have a length for this track yet? (We only get this after the decoder has finished decoding it)
-            #if len(self.PlayInfo) > 0 and self.PlayInfo[0][3] != False:
+            # if len(self.PlayInfo) > 0 and self.PlayInfo[0][3] != False:
             if self.PlayInfo[0][3] != False:
                 # If so, have we played all of the decoded bytes for this track?
                 if self.current_track_bytes_played + BytesToPlay >= self.PlayInfo[0][3]:
