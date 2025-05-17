@@ -565,7 +565,7 @@ def set_worklist_dict(key, val):
 
 
 # ------------------------------------------------------------------------------------ cache management
-def clear_cache(pattern="*"):
+def clear_cache(pattern=".*"):
     utils.remove_files(f"{METADATA_ROOT}/{pattern}")
 
 

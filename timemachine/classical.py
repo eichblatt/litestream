@@ -54,7 +54,7 @@ COMPOSER_KEY_TIME = time.ticks_ms()
 WORK_KEY_TIME = time.ticks_ms()
 GENRE_KEY_TIME = time.ticks_ms()
 KNOB_TIME = time.ticks_ms()
-CONFIG_CHOICES = ["Composers", "Account"]
+CONFIG_CHOICES = ["Composers", "Account", "Clear Cache"]
 FAVORITES_INDEX = 1
 RADIO_INDEX = 0
 glc = clu.glc
@@ -781,6 +781,8 @@ def configure(choice):
         return clu.configure_composers()
     elif choice == "Account":
         state = clu.configure_account()
+    elif choice == "Clear Cache":
+        return clu.clear_cache()
     state = load_state()
     return
 
@@ -1371,7 +1373,7 @@ def show_composers(composer_list):
     glc.prev_SCREEN = glc.SCREEN
     glc.SCREEN = ScreenContext.OTHER
     # print(f"show_composers: {glc.prev_SCREEN} -> {glc.SCREEN}")
-    message = "Loading Composers"
+    message = "Loading Composers..."
     print(f"{composer_list}")
     print(message)
     tm.clear_screen()

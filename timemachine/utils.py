@@ -469,10 +469,12 @@ def remove_files(files):
     print(f"files: {files}")
     for file in files:
         dir = dirname(file)
-        fname = basename(file)
-        if ("*" in fname) and isdir(dir):
+        fpat = basename(file)
+        if fpat == "*":
+            fpat = ".*"
+        if ("*" in fpat) and isdir(dir):
             for x in os.listdir(dir):
-                if re.match(fname, x):
+                if re.match(fpat, x):
                     remove_file("/".join([dir, x]))
         elif isdir(dir):
             remove_file(file)
