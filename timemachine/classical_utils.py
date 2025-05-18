@@ -127,7 +127,10 @@ def get_composers(composer_list, match_field="lnu", beyond_notable=False):
 
     for composer in composer_list:
         if composer == "GREATS":
-            composers += [x for x in ALL_COMPOSERS if x["gc"]]
+            composers += [x for x in ALL_COMPOSERS if x["mk"]]
+            if len(composers) == 0:
+                # If no must-know, then add current "great" composers
+                composers += [x for x in ALL_COMPOSERS if x["gc"]]
         elif composer == "NOTABLES":
             composers += [x for x in ALL_COMPOSERS if x["nc"]]
         elif composer == "ALL":
