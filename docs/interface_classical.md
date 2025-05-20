@@ -14,25 +14,25 @@ This section contains a high-level description of the responses to button presse
 
 | Button         | Short Press | Long Press | Notes |
 |----------------|-------------|------------|-------|
-| **Select**     | Select and Play keyed work | Show all performances of keyed work | When on composer or genre screen, plays composer, genre radio |
-| **Play/Pause** | Toggle play/pause | - | "Pause/Play" would be a better name for this button |
-| **Rewind**     | Previous track | - | Lower the Volume when screen is off |
-| **FFwd**       | Next track | - | Increase the volume control when screen is off |
-| **Stop**       | Stop playback | - | Returns playback to beginning of the selected work |
-| **Power**      | Pause music and Toggle screen | Configure menu | Rotate any knob or press play to re-illuminate the screen |
-| **Left Button**  | Darken the screen | - | Rotate any knob or press play to re-illuminate the screen |
-| **Center Button**| Go to *Radio* "composer" | - | Rotate center knob to enter **Radio** menu |
-| **Right Button** | Go to *Favorites* "composer" | - | Rotate center knob to enter **Favorites** menu |
+| [**Select**](#select)     | Select and Play keyed work | Show all performances of keyed work | When on composer or genre screen, plays composer, genre radio |
+| [**Play/Pause**](#playpause) | Toggle play/pause | - | "Pause/Play" would be a better name for this button |
+| [**Rewind**](#rewind)     | Previous track | - | Lower the Volume when screen is off |
+| [**FFwd**](#ffwd)   | Next track | - | Increase the volume control when screen is off |
+| [**Stop**](#stop)   | Stop playback | - | Returns playback to beginning of the selected work |
+| [**Power**](#power-menu)  | Pause music and Toggle screen | Configure menu | Rotate any knob or press play to re-illuminate the screen |
+| [**Left Button**](#left-button)  | Darken the screen | - | Rotate any knob or press play to re-illuminate the screen |
+| [**Center Button**](#center-button) | Go to *Radio* "composer" | - | Rotate center knob to enter **Radio** menu |
+| [**Right Button**](#right-button) | Go to *Favorites* "composer" | - | Rotate center knob to enter **Favorites** menu |
 
 ### Knobs
 
 | Knob              | Knob Soft Label   | Function      | Notes |
 |-------------------|-------------------|---------------|-------|
-| **Left Knob**     | **Composer**      | Tee up a composer for selection | Teeing up does *not* select the composer |
+| [**Left Knob**](#left-knob) | **Composer**      | Tee up a composer for selection | Teeing up does *not* select the composer |
 |                   | **Jump 100**      | Move the cursor ahead/back in the current menu by 100 items | Wrap around in list if needed |
-| **Center Knob**   | **Genre**         | Tee up a genre | Teeing up does *not* select the genre |
+| [**Center Knob**](#center-knob) | **Genre**         | Tee up a genre | Teeing up does *not* select the genre |
 |                   | **Jump 10**       | Move the cursor ahead/back in the current menu by 10 items | Wrap around the list if needed |
-| **Right Knob**    | **Work**          | Tee up a work | Teeing up does *not* select the work |
+| [**Right Knob**](#right-knob) | **Work**          | Tee up a work | Teeing up does *not* select the work |
 |                   | **Next/Prev**     | Move the cursor to the next/previous item in the current menu | Wrap around the list if needed |
 
 ## The Buttons
