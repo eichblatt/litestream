@@ -14,28 +14,28 @@ The Time Machine classical music interface operates within several distinct cont
 
 - **Active when:** The user is browsing or has teed up a composer
 - **Display:** Shows a scrollable list of composers
-- **Control focus:** Left knob navigates between composers
+- **Control focus:** [Left knob](#left-knob) navigates between composers
 - **Actions available:** Turn [Center Knob](#center-knob) to view the teed up composer's genres, or press [Select](#select) to play composer radio
 
 #### 2. **Genre Context**
 
 - **Active when:** A composer has been teed up and user is browsing genres
 - **Display:** Shows available genres for the teed up composer
-- **Control focus:** Center knob navigates between genres
+- **Control focus:** [Center knob](#center-knob) navigates between genres
 - **Actions available:** Turn [Right Knob](#right-knob) to view works within teed up composer and genre, or press [Select](#select) to play genre-specific radio
 
 #### 3. **Work Context**
 
 - **Active when:** A composer and genre have been teed up
 - **Display:** Shows available works within the teed up genre
-- **Control focus:** Right knob navigates between works
+- **Control focus:** [Right knob](#right-knob) navigates between works
 - **Actions available:** press [Select](#select) to play the default performance of the work. Long-press [Select](#select) to display all performances of the work (see [Performance Selection Context](#4-performance-selection-context))
 
 ### Playback Contexts
 
 #### 4. **Performance Selection Context**
 
-- **Active when:** User long-presses Select on a teed up work
+- **Active when:** User long-presses [Select](#select) on a teed up work
 - **Display:** Shows alternative performances of the selected work
 - **Control focus:** Left, Center, and Right knobs navigate between performances, at different granularities.
 - **Actions available:** Press [Select](#select) to play a specific performance of the work
@@ -53,28 +53,28 @@ The Time Machine classical music interface operates within several distinct cont
 
 - **Active when:** Accessed via Center button or composer navigation, then turn [Center Knob](#center-knob).
 - **Display:** Shows radio station options
-- **Control focus:** Right knob navigates between radio options
+- **Control focus:** [Right knob](#right-knob) navigates between radio options
 - **Actions available:** Select a radio station to begin playback
 
 #### 7. **Favorites Context**
 
-- **Active when:** Accessed via Right button or composer navigation, then turn [Center Knob](#center-knob).
+- **Active when:** Accessed via [Right button](#right-button) or composer navigation, then turn [Center Knob](#center-knob).
 - **Display:** Shows favorite works
-- **Control focus:** Right knob navigates between saved favorites
+- **Control focus:** [Right knob](#right-knob) navigates between saved favorites
 - **Actions available:** Select a favorite to play
 
 #### 8. **Configuration Context**
 
-- **Active when:** User long-presses the Power button
+- **Active when:** User long-presses the [Power button](#power-menu)
 - **Display:** Shows system settings and options
 - **Control focus:** Knobs navigate through configuration options
 - **Actions available:** Update software, configure network, test device
 
 #### 9. **Screen Off Context**
 
-- **Active when:** Screen is darkened via Power or Left button
+- **Active when:** Screen is darkened via [Power](#power-menu) or [Left button](#left-button)
 - **Display:** Screen is off, but device remains operational
-- **Control focus:** When playing: Volume control via Rewind/FFwd buttons
+- **Control focus:** When playing: Volume control via [Rewind](#rewind)/[FFwd](#ffwd) buttons
 - **Actions available:** Limited to volume adjustment and screen wake-up
 
 These contexts determine how the interface responds to user inputs, creating a coherent navigation system through the classical music library that adapts based on the current state and user focus.
@@ -143,7 +143,7 @@ The Rewind button navigates backward in the current tracklist or controls volume
 
 - During playback: Jumps to the previous track in the current work
 - At the beginning of a track: Returns to the beginning of the previous track
-- When screen is off (see [Left button](#left-button)): Decreases the volume
+- When playing and screen is off (see [Left button](#left-button)): Decreases the volume
 
 ### FFwd
 
@@ -151,7 +151,7 @@ The Fast Forward button navigates forward in the current tracklist or controls v
 
 - During playback: Jumps to the next track in the current work
 - When at the last track: Completes playback
-- When screen is off (see [Left button](#left-button)): Increases the volume
+- When playing and screen is off (see [Left button](#left-button)): Increases the volume
 
 ### Stop
 
@@ -202,7 +202,7 @@ This section describes the detailed response of *rotating* the knobs, depending 
 
 The Left knob controls which composer or group of 100 items are selected, depending on context.
 
-When in default context, rotating the Left knob scrolls through available composers. The composer name will be displayed but not selected until the Select button is pressed.
+When in default context, rotating the Left knob scrolls through available composers. The composer name will be displayed but not selected until the [Select](#select) button is pressed.
 
 In menus with many items, the Left knob moves the cursor forward or backward by 100 items. This allows quick navigation through long lists.
 
@@ -212,7 +212,7 @@ Note: In all contexts, rotation of the Left knob will wake up the screen if it w
 
 The Center knob controls which genre or group of 10 items are selected, depending on context.
 
-When in default context, rotating the Center knob scrolls through available genres relevant to the teed-up composer. The genre name will be displayed but not selected until the Select button is pressed.
+When in default context, rotating the Center knob scrolls through available genres relevant to the teed-up composer. The genre name will be displayed but not selected until the [Select](#select) button is pressed.
 
 In menus with many items, the Center knob moves the cursor forward or backward by 10 items. This provides medium-speed navigation through long lists.
 
@@ -222,7 +222,7 @@ Note: In all contexts, rotation of the Center knob will wake up the screen if it
 
 The Right knob controls which work or individual item is selected, depending on context.
 
-When in default context, rotating the Right knob scrolls through available works relevant to the teed-up composer and genre. The work title will be displayed but not selected until the Select, or Play/Pause button is pressed.
+When in default context, rotating the Right knob scrolls through available works relevant to the teed-up composer and genre. The work title will be displayed but not selected until the [Select](#select), or [Play/Pause](#playpause) button is pressed.
 
 In menus with many items, the Right knob moves the cursor forward or backward by 1 item. This provides fine-grained navigation through lists.
 
