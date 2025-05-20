@@ -37,25 +37,123 @@ This section contains a high-level description of the responses to button presse
 
 ## The Buttons
 
-This section describes the detailed response of button presses, depending on the context when they are pressed.
+This section describes the detailed response of button presses, depending on the context when they are pressed. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
 
 ### Select
 
+The Select button selects the current highlighted option or selection.
+
+**Short Press**:
+
+- When a composer is teed up: Plays a radio based on the composer
+- When a genre is teed up: Plays a radio based on the composer and genre
+- When a work is teed up: Plays the selected work with the default performance
+- During radio selection: Starts playing the selected radio station
+
+**Long Press**:
+
+- When a work is teed up: Opens a menu to choose between different performances of the work
+- When in tracklist view: Allows selection of an alternative performance of the current work
+
 ### Play/Pause
+
+The Play/Pause button controls playback without changing the current selection.
+
+- During playback: Pauses the currently playing music
+- When paused: Resumes playback from the pause point
+- When stopped: Starts playback of the currently selected work from the beginning
 
 ### Rewind
 
+The Rewind button navigates backward in the current tracklist or controls volume when the screen is off.
+
+- During playback: Jumps to the previous track in the current work
+- At the beginning of a track: Returns to the beginning of the previous track
+- When screen is off (see [Left knob](#left-knob)): Decreases the volume
+
 ### FFwd
+
+The Fast Forward button navigates forward in the current tracklist or controls volume when the screen is off.
+
+- During playback: Jumps to the next track in the current work
+- When at the last track: Completes playback
+- When screen is off (see [Left knob](#left-knob)): Increases the volume
 
 ### Stop
 
+The Stop button halts all playback.
+
+- During playback: Stops the music and returns to the beginning of the current work
+- When stopped: Does nothing
+
 ### Power (Menu)
+
+The Power button controls the screen display and provides access to configuration options.
+
+**Short Press**:
+
+- When screen is on: Turns off the screen and pauses music
+- When screen is off: Turns the screen back on
+
+**Long Press**:
+
+- Opens the configuration menu with system settings options
+- Provides access to software updates, network settings, authentication, and device testing
+
+### Left Knob
+
+The Left Knob button provides a shortcut to darken the screen. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+
+- In any context: Immediately darkens the screen
+
+### Center Knob
+
+The Center Knob button provides a shortcut to the Radio feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+
+- Jumps directly to the Radio menu with the cursor on the composer selection
+- Equivalent to rotating the Left knob to the "Radio" option at the top of the composer list
+
+### Right Knob
+
+The Right Knob button provides a shortcut to the Favorites feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+
+- Jumps directly to the Favories menu with the cursor on the composer selection
+- Equivalent to rotating the Left knob to the "Favorites" option near the top of the composer list
 
 ## The Knobs
 
+This section describes the detailed response of *turning* the knobs, depending on the context. See the [Buttons section](#the-buttons) above for details about *pressing* the knobs.
+
 ### Left
+
+The Left knob controls which composer or group of 100 items are selected, depending on context.
+
+When in default context, rotating the Left knob scrolls through available composers. The composer name will be displayed but not selected until the Select button is pressed.
+
+In menus with many items, the Left knob moves the cursor forward or backward by 100 items. This allows quick navigation through long lists.
+
+Note: In all contexts, rotation of the Left knob will wake up the screen if it was previously darkened.
 
 ### Center
 
+The Center knob controls which genre or group of 10 items are selected, depending on context.
+
+When in default context, rotating the Center knob scrolls through available genres relevant to the teed-up composer. The genre name will be displayed but not selected until the Select button is pressed.
+
+In menus with many items, the Center knob moves the cursor forward or backward by 10 items. This provides medium-speed navigation through long lists.
+
+Note: In all contexts, rotation of the Center knob will wake up the screen if it was previously darkened.
+
 ### Right
 
+The Right knob controls which work or individual item is selected, depending on context.
+
+When in default context, rotating the Right knob scrolls through available works relevant to the teed-up composer and genre. The work title will be displayed but not selected until the Select, or Play/Pause button is pressed.
+
+In menus with many items, the Right knob moves the cursor forward or backward by 1 item. This provides fine-grained navigation through lists.
+
+In Radio mode, the Right knob allows you to navigate through different radio station options or playlists.
+
+In the Favorites menu, rotating the Right knob scrolls through your saved favorite works.
+
+Note: In all contexts, rotation of the Right knob will wake up the screen if it was previously darkened.
