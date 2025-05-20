@@ -4,7 +4,7 @@
 
 This document describes the behavior of the Time Machine in the Classical music mode. The device is intended to be intuitive, so these directions should be unnecessary.
 
-Since there is no danger in pressing any button or turning any knob, the user should feel free to explore the device ***before*** referring to these directions. Also, the user interface is designed so that everything that is absolutely necessary is **directly accessible** by turning the knobs and pressing the buttons. As far as menus and long-pressed buttons are available, they are *strictly for convenience*.
+Since there is no danger in pressing any button or turning any knob, the user should feel free to ***explore*** the device ***before*** referring to these directions. The basic navigation is all **directly accessible** by turning the three knobs and pressing the six simple buttons. The menus, knob buttons, and long-pressed buttons are strictly for **convenience** or going **deeper** into the archive.
 
 ## Reference Tables
 
