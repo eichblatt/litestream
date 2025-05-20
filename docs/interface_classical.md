@@ -47,7 +47,7 @@ The Select button selects the current highlighted option or selection.
 
 - When a composer is teed up: Plays a radio based on the composer
 - When a genre is teed up: Plays a radio based on the composer and genre
-- When a work is teed up: Plays the selected work with the default performance
+- When a work is teed up: Plays the teed up work with the default performance
 - During radio selection: Starts playing the selected radio station
 
 **Long Press**:
@@ -62,6 +62,7 @@ The Play/Pause button controls playback without changing the current selection.
 - During playback: Pauses the currently playing music
 - When paused: Resumes playback from the pause point
 - When stopped: Starts playback of the currently selected work from the beginning
+- When a work is teed up and nothing is selected: Plays the teed up work with the default performance
 
 ### Rewind
 
@@ -122,7 +123,7 @@ The Right button provides a shortcut to the Favorites feature. See the [Knobs se
 
 ## The Knobs
 
-This section describes the detailed response of *turning* the knobs, depending on the context. See the [Buttons section](#the-buttons) above for details about *pressing* the knobs.
+This section describes the detailed response of *rotating* the knobs, depending on the context. See the [Buttons section](#the-buttons) above for details about *pressing* the knobs.
 
 ### Left Knob
 
