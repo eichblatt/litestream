@@ -20,9 +20,9 @@ This section contains a high-level description of the responses to button presse
 | **FFwd**       | Next track | - | Increase the volume control when screen is off |
 | **Stop**       | Stop playback | - | Returns playback to beginning of the selected work |
 | **Power**      | Pause music and Toggle screen | Configure menu | Rotate any knob or press play to re-illuminate the screen |
-| **Left Knob**  | Darken the screen | - | Rotate any knob or press play to re-illuminate the screen |
-| **Center Knob**| Go to *Radio* "composer" | - | Rotate center knob to enter **Radio** menu |
-| **Right Knob** | Go to *Favorites* "composer" | - | Rotate center knob to enter **Favorites** menu |
+| **Left Button**  | Darken the screen | - | Rotate any knob or press play to re-illuminate the screen |
+| **Center Button**| Go to *Radio* "composer" | - | Rotate center knob to enter **Radio** menu |
+| **Right Button** | Go to *Favorites* "composer" | - | Rotate center knob to enter **Favorites** menu |
 
 ### Knobs
 
@@ -69,7 +69,7 @@ The Rewind button navigates backward in the current tracklist or controls volume
 
 - During playback: Jumps to the previous track in the current work
 - At the beginning of a track: Returns to the beginning of the previous track
-- When screen is off (see [Left knob](#left-knob)): Decreases the volume
+- When screen is off (see [Left button](#left-button)): Decreases the volume
 
 ### FFwd
 
@@ -77,7 +77,7 @@ The Fast Forward button navigates forward in the current tracklist or controls v
 
 - During playback: Jumps to the next track in the current work
 - When at the last track: Completes playback
-- When screen is off (see [Left knob](#left-knob)): Increases the volume
+- When screen is off (see [Left button](#left-button)): Increases the volume
 
 ### Stop
 
@@ -100,22 +100,22 @@ The Power button controls the screen display and provides access to configuratio
 - Opens the configuration menu with system settings options
 - Provides access to software updates, network settings, authentication, and device testing
 
-### Left Knob
+### Left Button
 
-The Left Knob button provides a shortcut to darken the screen. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+The Left button provides a shortcut to darken the screen. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
 
 - In any context: Immediately darkens the screen
 
-### Center Knob
+### Center Button
 
-The Center Knob button provides a shortcut to the Radio feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+The Center button provides a shortcut to the Radio feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
 
 - Jumps directly to the Radio menu with the cursor on the composer selection
 - Equivalent to rotating the Left knob to the "Radio" option at the top of the composer list
 
-### Right Knob
+### Right Button
 
-The Right Knob button provides a shortcut to the Favorites feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
+The Right button provides a shortcut to the Favorites feature. See the [Knobs section](#the-knobs) below for details about *rotating* the knobs.
 
 - Jumps directly to the Favories menu with the cursor on the composer selection
 - Equivalent to rotating the Left knob to the "Favorites" option near the top of the composer list
@@ -124,7 +124,7 @@ The Right Knob button provides a shortcut to the Favorites feature. See the [Kno
 
 This section describes the detailed response of *turning* the knobs, depending on the context. See the [Buttons section](#the-buttons) above for details about *pressing* the knobs.
 
-### Left
+### Left Knob
 
 The Left knob controls which composer or group of 100 items are selected, depending on context.
 
@@ -134,7 +134,7 @@ In menus with many items, the Left knob moves the cursor forward or backward by 
 
 Note: In all contexts, rotation of the Left knob will wake up the screen if it was previously darkened.
 
-### Center
+### Center Knob
 
 The Center knob controls which genre or group of 10 items are selected, depending on context.
 
@@ -144,7 +144,7 @@ In menus with many items, the Center knob moves the cursor forward or backward b
 
 Note: In all contexts, rotation of the Center knob will wake up the screen if it was previously darkened.
 
-### Right
+### Right Knob
 
 The Right knob controls which work or individual item is selected, depending on context.
 
