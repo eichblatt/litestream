@@ -2,9 +2,82 @@
 
 ## Intro
 
-This document will describe the behavior of the Time Machine in the Classical music mode.
+This document describes the behavior of the Time Machine in the Classical music mode.
 
 ## Contexts
+
+The Time Machine classical music interface operates within several distinct contexts that determine how user inputs are interpreted. Each context provides a different view and focus, enabling users to navigate through the classical music library efficiently.
+
+### Main Navigation Contexts
+
+#### 1. **Composer Context**
+
+- **Active when:** The user is browsing or has teed up a composer
+- **Display:** Shows a scrollable list of composers
+- **Control focus:** Left knob navigates between composers
+- **Actions available:** Turn [Center Knob](#center-knob) to view the teed up composer's genres, or press [Select](#select) to play composer radio
+
+#### 2. **Genre Context**
+
+- **Active when:** A composer has been teed up and user is browsing genres
+- **Display:** Shows available genres for the teed up composer
+- **Control focus:** Center knob navigates between genres
+- **Actions available:** Turn [Right Knob](#right-knob) to view works within teed up composer and genre, or press [Select](#select) to play genre-specific radio
+
+#### 3. **Work Context**
+
+- **Active when:** A composer and genre have been teed up
+- **Display:** Shows available works within the teed up genre
+- **Control focus:** Right knob navigates between works
+- **Actions available:** press [Select](#select) to play the default performance of the work. Long-press [Select](#select) to display all performances of the work (see [Performance Selection Context](#4-performance-selection-context))
+
+### Playback Contexts
+
+#### 4. **Performance Selection Context**
+
+- **Active when:** User long-presses Select on a teed up work
+- **Display:** Shows alternative performances of the selected work
+- **Control focus:** Left, Center, and Right knobs navigate between performances, at different granularities.
+- **Actions available:** Press [Select](#select) to play a specific performance of the work
+
+#### 5. **Tracklist Context**
+
+- **Active when:** A work is playing or paused
+- **Display:** Shows the tracks of the current performance
+- **Control focus:** None
+- **Actions available:** Press [Play/Pause](#playpause) to pause, [Ffwd](#ffwd) or [Rewind](#rewind) to advance/reverse tracks.
+
+### Special Contexts
+
+#### 6. **Radio Context**
+
+- **Active when:** Accessed via Center button or composer navigation, then turn [Center Knob](#center-knob).
+- **Display:** Shows radio station options
+- **Control focus:** Right knob navigates between radio options
+- **Actions available:** Select a radio station to begin playback
+
+#### 7. **Favorites Context**
+
+- **Active when:** Accessed via Right button or composer navigation, then turn [Center Knob](#center-knob).
+- **Display:** Shows favorite works
+- **Control focus:** Right knob navigates between saved favorites
+- **Actions available:** Select a favorite to play
+
+#### 8. **Configuration Context**
+
+- **Active when:** User long-presses the Power button
+- **Display:** Shows system settings and options
+- **Control focus:** Knobs navigate through configuration options
+- **Actions available:** Update software, configure network, test device
+
+#### 9. **Screen Off Context**
+
+- **Active when:** Screen is darkened via Power or Left button
+- **Display:** Screen is off, but device remains operational
+- **Control focus:** When playing: Volume control via Rewind/FFwd buttons
+- **Actions available:** Limited to volume adjustment and screen wake-up
+
+These contexts determine how the interface responds to user inputs, creating a coherent navigation system through the classical music library that adapts based on the current state and user focus.
 
 ## Reference Tables
 
