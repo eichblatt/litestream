@@ -77,6 +77,12 @@ class PlayerManager:
         clstr = f"Player Manager: {self.track_index+1}/{len(self.tracklist)} tracks. Chunk lengths:{[len(x) for x in self.chunklist]}"
         return clstr + f" {self.player}. "
 
+    def display(self, *args):
+        try:
+            self.callbacks["display"](*args)
+        except Exception as e:
+            print(f"Error in display callback: {e}")
+
     def extend_playlist(self, next_index):
         if next_index in self.pumped_indices:
             self.DEBUG and print(f"extend_playlist: Track {next_index} already pumped")
@@ -97,7 +103,7 @@ class PlayerManager:
     def increment_track_screen(self, track_num=None, increment=1):
         if track_num and track_num == self.track_index:
             return self.track_index
-        if (self.track_index + increment) >= self.n_tracks:
+        if (self.track_index + increment) > self.n_tracks:
             self.DEBUG and print(f"increment_track_screen. already on last track {self.track_index}")
             return self.track_index
         if (self.track_index + increment) <= 0:
@@ -105,13 +111,8 @@ class PlayerManager:
 
         self.track_index = self.track_index + increment if track_num is None else track_num
         tracklist = self.remaining_track_names()
-        try:
-            (self.DEBUG > 1) and print(f"playerManager display: {tracklist}")
-            self.callbacks["display"](*tracklist)
-        except Exception as e:
-            self.DEBUG and print(f"Error in display callback: {e}")
-        finally:
-            (self.DEBUG > 1) and print(f"increment_track_screen: returning track {self.track_index} of {self.n_tracks}")
+        (self.DEBUG > 1) and print(f"playerManager display: {tracklist}")
+        self.display(*tracklist)
         return self.track_index
 
     def messenger(self, message):
@@ -142,16 +143,13 @@ class PlayerManager:
                 return
 
         if "Finished playing playlist" in message:
-            self.stop(reset_head=True)
+            self.stop(reset_tracklist=True)
             self.playlist_completed = True
-            try:
-                self.callbacks["display"](*self.tracklist)
-            except Exception as e:
-                print(f"Error in display callback: {e}")
+            self.display(*self.tracklist)
             return
 
         if "long pause" in message:
-            self.stop(reset_head=False)
+            self.stop(reset_tracklist=False)
             chunks_to_send = []
             for track_chunks in self.chunklist[self.track_index :]:
                 for chunk in track_chunks:
@@ -181,12 +179,12 @@ class PlayerManager:
     def pause(self):
         return self.player.pause()
 
-    def stop(self, reset_head=True):
+    def stop(self, reset_tracklist=True):
         self.button_window = None
         self.player.stop()  # set the player.playlist to [] if reset_head
         self.set_volume(self.volume)
         self.pumped_indices = []
-        if reset_head:
+        if reset_tracklist:
             self.increment_track_screen(0)  # reset the track index, and update the screen
         return
 
@@ -199,7 +197,7 @@ class PlayerManager:
     def handle_button_presses(self):
         if self.button_window is None:
             self.resume_playing = self.is_playing()
-            self.stop(reset_head=False)  # set player.playlist to []
+            self.stop(reset_tracklist=False)  # set player.playlist to []
             self.block_pump = True
             self.button_window = Timer(-1)
             self.button_window.init(period=1_000, mode=Timer.ONE_SHOT, callback=self._play_selected_track)
@@ -239,6 +237,12 @@ class PlayerManager:
     def ffwd(self):
         self.last_button_time = time.ticks_ms()
         self.increment_track_screen()  # sets the track index
+        if self.track_index >= len(self.urls):
+            print("Beyond the end of the playlist")
+            self.stop(reset_tracklist=True)
+            self.playlist_completed = True
+            self.display(*self.tracklist)
+            return
         self.handle_button_presses()
 
     def pump_chunks(self):

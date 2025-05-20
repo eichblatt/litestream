@@ -400,7 +400,7 @@ def poll_select(pSelect_old):
                 glc.radio_mode = "Composer"
             return pSelect_old
 
-        glc.player.stop()
+        glc.player.stop(reset_tracklist=False)
         glc.worklist = []
 
         if glc.SCREEN == ScreenContext.GENRE:
