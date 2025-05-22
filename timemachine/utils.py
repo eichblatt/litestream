@@ -43,67 +43,72 @@ STOP_CHAR = "$StoP$"
 #
 
 
-def select_option(message, choices, mask=None):
+def select_option(message, choices, mask=None, show_end=-3, option_show_end=1):
     if len(choices) == 0:
         return ""
     pSelect_old = True
+    pStop_old = True
+    incoming_knobs = (tm.m.value(), tm.d.value(), tm.y.value())
+    incoming_ranges = tm.m._range_mode, tm.d._range_mode, tm.y._range_mode
+    incoming_bounds = ((tm.m._min_val, tm.m._max_val), (tm.d._min_val, tm.d._max_val), (tm.y._min_val, tm.y._max_val))
+
     tm.y._value = tm.y._min_val = 0
-    # tm.y._max_val = len(choices) - 1
     tm.y._range_mode = tm.y.RANGE_UNBOUNDED
-
-    # tm.d._value = tm.d._min_val = 0
-    # tm.d._max_val = len(choices) - 1
-    # tm.d._range_mode = tm.d.RANGE_WRAP
-
     tm.label_soft_knobs("", "", "Next/Prev")
-
-    if mask is None:
-        mask = [False] * len(choices)
-    step = step_old = 0
-    text_height = pfont_small.HEIGHT  # was 17
-    choice = ""
-    first_time = True
     tm.clear_screen()
-    # init_screen()
-    choices_color = tm.WHITE
-    background_color = tm.BLACK
-    message = message.replace("\n", " ")
-    message = tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color, show_end=-3)
-    message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
-    select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
-    while pSelect_old == tm.pSelect.value():
-        step = (tm.y.value() - tm.y._min_val) % len(choices)
-        y0 = select_bbox.y0
-        if (step != step_old) or first_time:
-            i = j = 0
-            first_time = False
-            step_old = step
-            tm.clear_bbox(select_bbox)
-            # init_screen()
 
-            for i, s in enumerate(range(max(0, step - 2), step)):
-                text_color = choices_color if not mask[s] else background_color
-                background = choices_color if mask[s] else background_color
-                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
-                y0 += text_height
+    try:
+        if mask is None:
+            mask = [False] * len(choices)
+        step = step_old = 0
+        text_height = pfont_small.HEIGHT  # was 17
+        choice = ""
+        first_time = True
+        choices_color = tm.WHITE
+        background_color = tm.BLACK
+        message = message.replace("\n", " ")
+        message = tm.write(f"{message}", 0, 0, pfont_small, tm.tracklist_color, show_end=show_end)
+        message_height = len(message.split("\n"))  # Use tm.write's show_end=-3 functionality here.
+        select_bbox = tm.Bbox(0, (text_height + 1) * message_height, tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+        while pSelect_old == tm.pSelect.value():
+            step = (tm.y.value() - tm.y._min_val) % len(choices)
+            y0 = select_bbox.y0
+            if (step != step_old) or first_time:
+                i = j = 0
+                first_time = False
+                step_old = step
+                tm.clear_bbox(select_bbox)
+                # init_screen()
 
-            text = ">" + choices[step]
-            text_color = tm.PURPLE if not mask[step] else background_color
-            background = tm.PURPLE if mask[step] else background_color
-            tm.write(text, 0, y0, pfont_small, text_color, background=background, show_end=True)
-            y0 += text_height
+                for i, s in enumerate(range(max(0, step - 2), step)):
+                    text_color = choices_color if not mask[s] else background_color
+                    background = choices_color if mask[s] else background_color
+                    tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=False)
+                    y0 += text_height
 
-            for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
-                if y0 > (tm.SCREEN_HEIGHT - text_height):
-                    continue
-                text_color = choices_color if not mask[s] else background_color
-                background = choices_color if mask[s] else background_color
-                tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=True)
-                y0 += text_height
-            # print(f"step is {step}. Text is {text}")
-        time.sleep(0.2)
-    choice = choices[step]
-    print(f"step is now {step}. Choice: {choice}")
+                text = ">" + choices[step]
+                text_color = tm.PURPLE if not mask[step] else background_color
+                background = tm.PURPLE if mask[step] else background_color
+                msg = tm.write(text, 0, y0, pfont_small, text_color, background=background, show_end=option_show_end)
+                y0 += text_height * len(msg.split("\n"))  # Use tm.write's show_end=-3 functionality here.
+
+                for j, s in enumerate(range(step + 1, max(step + 1, len(choices)))):
+                    if y0 > (tm.SCREEN_HEIGHT - text_height):
+                        continue
+                    text_color = choices_color if not mask[s] else background_color
+                    background = choices_color if mask[s] else background_color
+                    tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=False)
+                    y0 += text_height
+                # print(f"step is {step}. Text is {text}")
+            time.sleep(0.2)
+            if tm.poll_for_button(tm.pStop, timeout=0.2):
+                return "_CANCEL"
+        choice = choices[step]
+        print(f"step is now {step}. Choice: {choice}")
+    finally:
+        tm.m._value, tm.d._value, tm.y._value = incoming_knobs
+        tm.y._range_mode = incoming_ranges[2]
+        tm.y._min_val, tm.y._max_val = incoming_bounds[2]
     time.sleep(0.6)
     return choice
 

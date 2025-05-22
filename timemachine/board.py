@@ -503,7 +503,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
             test = indention + line
             pixel_width = tft.write_len(font, test)
             while (pixel_width + x_pos) > SCREEN_WIDTH:
-                if split_on_words:
+                if split_on_words and " " in test.strip():
                     test = test.split(" ")
                     test = " ".join(test[:-1])
                 else:

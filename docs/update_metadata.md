@@ -25,6 +25,7 @@ Upload this to the Google Cloud in the browser.
 - JoeRussosAlmostDead
 - Phish
 - DeadAndCompany
+- TedeschiTrucksBand
 
 `aa = Archivary.Archivary(collection_list=["JoeRussosAlmostDead","Phish","BillyStrings","DeadAndCompany"],reload_ids=True)`
 
@@ -35,7 +36,7 @@ In case the metadata is stale, ie, the URLs are no longer valid, we need to dele
 
 ## Bash script
 
-: (myenv) /home/steve/myenv ~/projects/deadstream ; bash ./update_cloud_meta.sh -c "Phish DeadAndCompany BillyString"
+: (myenv) /home/steve/myenv ~/projects/deadstream ; bash ./update_cloud_meta.sh -c "Phish DeadAndCompany BillyStrings TedeschiTrucksBand"
 
 ## Regenerate the vcs files
 
