@@ -99,9 +99,7 @@ def select_option(message, choices, mask=None, show_end=-3, option_show_end=1):
                     background = choices_color if mask[s] else background_color
                     tm.write(choices[s], 0, y0, pfont_small, text_color, background=background, show_end=False)
                     y0 += text_height
-                # print(f"step is {step}. Text is {text}")
-            time.sleep(0.2)
-            if tm.poll_for_button(tm.pStop, timeout=0.2):
+            if tm.poll_for_button(tm.pStop, timeout=0.05):
                 return "_CANCEL"
         choice = choices[step]
         print(f"step is now {step}. Choice: {choice}")

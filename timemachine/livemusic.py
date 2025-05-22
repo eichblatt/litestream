@@ -493,7 +493,7 @@ def main_loop(player, coll_dict, state):
                     player.stop()
                     # player.reset_player()
                     selected_vcs, state, selected_date, collection = select_and_play_tape(
-                        key_date, player, coll_dict, state, ntape, collection
+                        key_date, player, coll_dict, state, ntape=0, collection=collection
                     )
                 print("Select RELEASED")
             else:
