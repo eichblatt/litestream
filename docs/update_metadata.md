@@ -25,6 +25,7 @@ Upload this to the Google Cloud in the browser.
 - JoeRussosAlmostDead
 - Phish
 - DeadAndCompany
+- TedeschiTrucksBand
 
 `aa = Archivary.Archivary(collection_list=["JoeRussosAlmostDead","Phish","BillyStrings","DeadAndCompany"],reload_ids=True)`
 
@@ -35,3 +36,12 @@ In case the metadata is stale, ie, the URLs are no longer valid, we need to dele
 
 ## Bash script
 
+: (myenv) /home/steve/myenv ~/projects/deadstream ; bash ./update_cloud_meta.sh -c "Phish DeadAndCompany BillyStrings TedeschiTrucksBand"
+
+## Regenerate the vcs files
+
+For example <https://storage.googleapis.com/spertilo-data/vcs/Phish_vcs.json> contains the list of shows Phish has done. It is constructed from the metadata uploaded in the previous step (the _ids files).
+
+We can delete the `*_vcs.json` files in order to force the server to re-generate them the next time someone looks for it.
+
+Or, we can force the server to refresh them using the service at <https://gratefuldeadtimemachine.com/vcs/Phish>

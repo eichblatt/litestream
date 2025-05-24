@@ -247,7 +247,7 @@ def basic_main():
     uversion = f"{version_strings[2][:7]} {version_strings[4].replace('-','')}"
     tm.write(f"{uversion}", 0, ypos, tm.pfont_smallx, tm.WHITE, show_end=1)
     print(f"firmware version: {uversion}. Software version {software_version} {dev_flag}")
-    mac_address = ":".join([f"{hexbyte:02X}" for hexbyte in network.WLAN().config("mac")])
+    mac_address = utils.get_mac_address()
     tm.write(f"{mac_address}", 0, ypos + tm.pfont_smallx.HEIGHT, tm.pfont_smallx, tm.WHITE)
 
     if tm.poll_for_button(tm.pPlayPause, timeout=2):

@@ -298,7 +298,7 @@ def color_rgb(r, g, b):
         raise ValueError(f"Unknown Screen Driver {SCREEN_DRIVER}")
 
 
-tracklist_color = color_rgb(0, 158, 255)
+tracklist_color = color_rgb(150, 158, 255)
 # play_color = color_rgb(20, 255, 60)
 play_color = color_rgb(255, 0, 15)
 pause_color = color_rgb(255, 0, 15)
@@ -503,7 +503,7 @@ def add_line_breaks(text, x_pos, font, max_new_lines, indent=0):
             test = indention + line
             pixel_width = tft.write_len(font, test)
             while (pixel_width + x_pos) > SCREEN_WIDTH:
-                if split_on_words:
+                if split_on_words and " " in test.strip():
                     test = test.split(" ")
                     test = " ".join(test[:-1])
                 else:
