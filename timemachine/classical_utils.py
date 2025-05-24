@@ -1,4 +1,5 @@
 import json
+import network
 import re
 import time
 import utils
@@ -6,6 +7,7 @@ import utils
 import archive_utils
 import board as tm
 import fonts.NotoSans_18 as pfont_small
+import fonts.NotoSans_bold_18 as pfont_bold
 import fonts.NotoSans_24 as pfont_med
 
 try:
@@ -19,15 +21,17 @@ TOKEN_FILE = "/metadata/classical/token.txt"
 PLAYLIST_IDS = {}
 FAVORITE_PERFORMANCES = []
 FAVORITE_WORKS = []
+ACCESS_TOKEN = ""
 perf_dict = {}
 
 
 # ------------------------------------------------------------------------------------ API requests
 def request_json(url, outpath="/tmp.json", debug=False):
     url0 = url
-    state = load_state()
-    if len(state["access_token"]) > 0 and not "access_token" in url0:
-        url = f"{url0}&access_token={state['access_token']}"
+    # state = load_state()
+    # if len(state["access_token"]) > 0 and not "access_token" in url0:
+    if ACCESS_TOKEN != "" and not "access_token" in url0:
+        url = f"{url0}&access_token={ACCESS_TOKEN}"
     if debug:
         print(f"request_json: url: {url}")
     json_resp = archive_utils.get_request(url, outpath=outpath)
@@ -123,9 +127,12 @@ def get_composers(composer_list, match_field="lnu", beyond_notable=False):
 
     for composer in composer_list:
         if composer == "GREATS":
-            composers += [x for x in ALL_COMPOSERS if x["gc"]]
+            composers += [x for x in ALL_COMPOSERS if x.get("mk", 0)]
+            if len(composers) == 0:
+                # If no must-know, then add current "great" composers
+                composers += [x for x in ALL_COMPOSERS if x.get("gc", 0)]
         elif composer == "NOTABLES":
-            composers += [x for x in ALL_COMPOSERS if x["nc"]]
+            composers += [x for x in ALL_COMPOSERS if x.get("nc", 0)]
         elif composer == "ALL":
             composers = ALL_COMPOSERS
         else:
@@ -398,7 +405,8 @@ def configure_account():
     utils.reset()
 
 
-def authenticate_user():
+def authenticate_user_password():
+    global ACCESS_TOKEN
     validated = False
     tm.clear_screen()
     tm.label_soft_knobs("", "jump 10", "next")
@@ -415,6 +423,7 @@ def authenticate_user():
             if len(token) > 0:
                 state = load_state()
                 state["access_token"] = token
+                ACCESS_TOKEN = token
                 save_state(state)
                 utils.write_file(TOKEN_FILE, token)
                 tm.clear_screen()
@@ -430,23 +439,37 @@ def authenticate_user():
         print(f"Error in authenticate_user: {e}")
         tm.clear_screen()
         tm.write("Authentication Failed", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        time.sleep(2)
         validated = False
     finally:
         tm.label_soft_knobs("Composer", "Genre", "Work")
     return validated
 
 
+def getlinkcode():
+    mac_address = network.WLAN().config("mac").hex()
+    url = f"{CLASSICAL_API}?action=oauth_getlinkcode&deviceid=TimeMachine%20{mac_address}"
+    oauth_resp = request_json(url)
+    return oauth_resp
+
+
 def authenticate_user_qr():
     tm.clear_screen()
     tm.label_soft_knobs("", "", "")
-    # Send API call to server to obtain code.
-    # auth_code = requests.get("https://prs.net/tm/get_code").text
-    auth_code = "123456"
-    url = f"https://prs.net/tm/{auth_code}"
-    x0, y0 = utils.qr_code(url)
-    msg = tm.write(f"Visit https://prs.net/tm/{auth_code} to authenticate.", 0, y0, pfont_small, tm.YELLOW, show_end=-2)
+    msg = tm.write("Authentication Process Starting...", 0, 0, pfont_bold, tm.WHITE, show_end=-3)
+    linkcode = getlinkcode()  # Send API call to server to obtain code.
+    x0, y0 = utils.qr_code(linkcode["oauthUrl"])
+    tm.clear_to_bottom(0, y0)
+    msg = tm.write(
+        f"Visit {linkcode['oauthShortUrl']} to authenticate. Code {linkcode['linkCode']}",
+        0,
+        y0,
+        pfont_bold,
+        tm.YELLOW,
+        show_end=-3,
+    )
     y0 = y0 + pfont_small.HEIGHT * len(msg.split("\n"))
-    token = poll_for_token(auth_code, y0=y0)
+    token = poll_for_token(linkcode, y0=y0)
     validated = validate_token(token)
     if validated:
         tm.clear_to_bottom(0, y0)
@@ -461,7 +484,7 @@ def authenticate_user_qr():
     return validated
 
 
-def poll_for_token(auth_code, timeout=60 * 6, y0=0):
+def poll_for_token(auth_code, timeout=60 * 15, y0=0):
     # Poll server for validation
     token = ""
     start_time = time.time()
@@ -470,15 +493,25 @@ def poll_for_token(auth_code, timeout=60 * 6, y0=0):
         print(f"Polling for token: {auth_code}. Time elapsed: {elapsed_time}/{timeout}s")
         tm.write(f"Polling: {timeout - elapsed_time}s", 0, y0, pfont_med, tm.WHITE)
         tm.write(f"Stop to cancel", 0, y0 + pfont_med.HEIGHT, pfont_med, tm.YELLOW)
-        # token = requests.get(f"https://prs.net/tm/validate/{auth_code}").text
-        if elapsed_time > 10:
-            token = utils.read_file(TOKEN_FILE)[0].strip()
-        if tm.poll_for_button(tm.pStop, 1):
+        resp = requests.get(
+            f"{CLASSICAL_API}?action=oauth_getauthtoken&linkCode={auth_code['linkCode']}&linkDeviceId={auth_code['linkDeviceId']}"
+        ).json()
+        if "error" in resp.keys():
+            if resp["error"].endswith("FAILURE"):
+                return ""
+            elif resp["error"].endswith("RETRY"):
+                pass
+        else:
+            token = resp.get("authToken", "")
+        if tm.poll_for_button(tm.pStop, 5):
             print(f"Cancelled polling for token. Time elapsed: {time.time() - start_time}s")
             break
         if token != "":
             break
     return token
+
+
+authenticate_user = authenticate_user_qr
 
 
 def validate_token(token):
@@ -492,15 +525,20 @@ def validate_token(token):
 
 
 def access_token():
+    global ACCESS_TOKEN
+    if ACCESS_TOKEN != "":
+        return ACCESS_TOKEN
     state = load_state()
-    token = state.get("access_token", "")
-    return token
+    ACCESS_TOKEN = state.get("access_token", "")
+    return ACCESS_TOKEN
 
 
 def logout_user():
+    global ACCESS_TOKEN
     state = load_state()
     state["access_token"] = ""
     save_state(state)
+    ACCESS_TOKEN = ""
 
 
 # ------------------------------------------------------------------------------------ worklists
@@ -530,7 +568,7 @@ def set_worklist_dict(key, val):
 
 
 # ------------------------------------------------------------------------------------ cache management
-def clear_cache(pattern="*"):
+def clear_cache(pattern=".*"):
     utils.remove_files(f"{METADATA_ROOT}/{pattern}")
 
 
@@ -550,20 +588,91 @@ def initialize_knobs():
     # tm.d._range_mode = tm.d.RANGE_WRAP
 
 
-# ------------------------------------------------------------------------------------ playlist management
-def create_playlist(playlist_name):
-    member_alias = get_member_alias()
-    if len(member_alias) == 0:
-        member_alias = create_member_alias()  # raise exception if unable to create member alias
-    url = f"{CLASSICAL_API}?mode=edit_playlist&action=create_playlist&title={playlist_name}"
-    resp = request_json(url)
-    playlist_id = None
-    if resp.get("result", "error") == "OK":
-        playlist_id = resp.get("public_playlist_id", -1)
-    return playlist_id
+# ------------------------------------------------------------------------------------ favorites management
+def populate_favorites():
+    global FAVORITE_PERFORMANCES
+    global FAVORITE_WORKS
+
+    url = f"{CLASSICAL_API}?mode=favorites&action=list-fav-perf&limit=128"
+    fav_perf = request_json(url).get("fav_perf", None)
+    if fav_perf is None:
+        print("populate_favorites: No favorites found")
+        return
+    FAVORITE_PERFORMANCES = [x["perf_id"] for x in fav_perf]  # These are in newest-first order
+    FAVORITE_WORKS = [x["work_id"] for x in fav_perf]
+    # FAVORITE_PERFORMANCES, FAVORITE_WORKS = get_playlist_ids("tm_favorites")
+    print(f"populate_favorites: FAVORITE_PERFORMANCES: {FAVORITE_PERFORMANCES}, FAVORITE_WORKS: {FAVORITE_WORKS}")
+
+    # TEMPORARY  ######################################
+    try:
+        set_playlist_to("tm_favorites", FAVORITE_PERFORMANCES)  # doesn't work
+    except Exception as e:
+        print(f"populate_favorites: unable to set playlist {e}")
+    # END TEMPORARY ###################################
 
 
 def toggle_favorites(performance_id):
+    print(f"toggle_favorites: p_ids: {performance_id}, type: {type(performance_id)}")
+    result = 0  # 0 means removed, 1 means added
+    if performance_id is None:
+        return result
+    p_ids = FAVORITE_PERFORMANCES
+    w_ids = FAVORITE_WORKS
+    if isinstance(performance_id, Work):
+        work_id = performance_id.id
+        print(f"toggle_favorites: performance_id is a Work: {work_id}")
+        if work_id in w_ids:
+            for i, w_id in enumerate(w_ids):
+                if w_id == work_id:
+                    remove_from_favorites(p_ids[i], work_id=work_id)
+                    result = 0
+                    break
+        else:
+            performance_id = get_performances(work_id)[0].get("p_id", 0)
+            add_to_favorites(performance_id, work_id=work_id)
+            result = 1
+    else:
+        if performance_id in p_ids:
+            remove_from_favorites(performance_id)
+            result = 0
+        else:
+            add_to_favorites(performance_id)
+            result = 1
+
+    print(f"toggle_favorites returning {result}")
+    return result
+
+
+def add_to_favorites(performance_id, value=1, work_id=None):
+    global FAVORITE_PERFORMANCES
+    global FAVORITE_WORKS
+    mode = "adding" if value else "removing"
+    print(f"add_to_favorites: {mode} performance_id {performance_id}")
+    if performance_id is None:
+        print("Returning without adding")
+        return
+    # add this performance to the playlist.
+    url = f"{CLASSICAL_API}?mode=favorites&action=set&rec_id={performance_id}&value={value}&perf=1"
+    resp = request_json(url, debug=False)
+    if work_id is not None:  # We have enough info to update the FAVORITE_* lists without checking with server.
+        if value:
+            FAVORITE_WORKS.append(work_id)
+            FAVORITE_PERFORMANCES.append(performance_id)
+        else:
+            if work_id in FAVORITE_WORKS:
+                FAVORITE_WORKS.remove(work_id)
+            if performance_id in FAVORITE_PERFORMANCES:
+                FAVORITE_PERFORMANCES.remove(performance_id)
+    else:  # use the server to update the FAVORITE_* lists.
+        populate_favorites()
+    return
+
+
+def remove_from_favorites(performance_id, work_id=None):
+    return add_to_favorites(performance_id, value=0, work_id=work_id)
+
+
+def toggle_favorites_playlist(performance_id):
     print(f"toggle_favorites: p_ids: {performance_id}, type: {type(performance_id)}")
     result = 0  # 0 means removed, 1 means added
     if performance_id is None:
@@ -596,14 +705,50 @@ def toggle_favorites(performance_id):
     return result
 
 
-def populate_favorites():
-    global FAVORITE_PERFORMANCES
-    global FAVORITE_WORKS
-    FAVORITE_PERFORMANCES, FAVORITE_WORKS = get_playlist_ids("tm_favorites")
-    print(f"populate_favorites: FAVORITE_PERFORMANCES: {FAVORITE_PERFORMANCES}, FAVORITE_WORKS: {FAVORITE_WORKS}")
+def get_favorite_items(N_items=100, start=0):
+    if not glc.HAS_TOKEN:
+        return []
+    print("getting favorite items")
+    fp = FAVORITE_PERFORMANCES
+    fw = FAVORITE_WORKS
+
+
+def get_favorite_recs():
+    if not glc.HAS_TOKEN:
+        return []
+    print("getting favorite recordings")
+    url = f"{CLASSICAL_API}?mode=favorites&action=list&limit=128"
+    items = request_json(url)
+    items = items.get("favorites", [])
+    items = [x for x in items if x.get("kt", "") in ["p"]]  # , "w"]]
+    return items
+
+
+def add_favorites_to_tm_playlist():
+    playlist_pids = get_playlist_ids("tm_favorites")[0]
+    pids = [x for x in FAVORITE_PERFORMANCES if not x in playlist_pids]
+    for fp in pids:
+        add_to_playlist("tm_favorites", fp)
+    pids = [x for x in playlist_pids if not x in FAVORITE_PERFORMANCES]
+    for fp in pids:
+        remove_from_playlist("tm_favorites", fp)
+
+
+# ------------------------------------------------------------------------------------ playlist management
+def create_playlist(playlist_name):
+    member_alias = get_member_alias()
+    if len(member_alias) == 0:
+        member_alias = create_member_alias()  # raise exception if unable to create member alias
+    url = f"{CLASSICAL_API}?mode=edit_playlist&action=create_playlist&title={playlist_name}"
+    resp = request_json(url)
+    playlist_id = None
+    if resp.get("result", "error") == "OK":
+        playlist_id = resp.get("public_playlist_id", -1)
+    return playlist_id
 
 
 def add_to_playlist(playlist_name, performance_id):
+    # NOTE If performance_id is already in the playlist, this will not add it again.
     print(f"add_to_playlist: adding performance_id {performance_id} to {playlist_name}")
     if (performance_id is None) or (playlist_name == ""):
         print("Returning without adding")
@@ -614,23 +759,57 @@ def add_to_playlist(playlist_name, performance_id):
 
     # add this performance to the playlist.
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=add_performance&public_playlist_id={playlist_id}&performance_id={performance_id}"
-    resp = request_json(url, debug=True)
-    return
+    resp = request_json(url)
+    if resp.get("result", "") == "error":
+        print(f"add_to_playlist: ERROR {resp.get('error','unknown error')}")
+    return resp
 
 
-def remove_from_playlist(playlist_name, performance_id):
-    print(f"remove_from_playlist: removing performance_id {performance_id} from {playlist_name}")
+def remove_from_playlist(playlist_name, performance_ids):
+    print(f"remove_from_playlist: removing performance_id {performance_ids} from {playlist_name}")
+    if not isinstance(performance_ids, list):
+        performance_ids = [performance_ids]
     playlist_items = get_playlist_items(playlist_name)
     playlist_id = get_public_playlist_id(playlist_name)
     items_to_keep = []
     for item in playlist_items:
-        if item["kv"] != performance_id:
+        if item["kv"] not in performance_ids:
             items_to_keep.append(str(item["item_id"]))
     print(f"remove_from_playlist: items_to_keep: {items_to_keep}")
     # remove this performance from the playlist.
     url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(items_to_keep)}"
     resp = request_json(url, debug=True)
-    return
+    return resp
+
+
+def set_playlist_to(playlist_name: str, performance_ids: list):
+    # NOTE This function doesn't really work, because update_playlist_items cannot add new items, only delete/rearrange the existing ones.
+    playlist_contents = get_playlist_ids(playlist_name)
+    print(f"setting entire playlist {playlist_name}: to {performance_ids}")
+    perfs_to_add = [x for x in performance_ids if not x in playlist_contents[0]]
+    perfs_to_remove = [x for x in playlist_contents[0] if not x in performance_ids]
+    if perfs_to_add == [] and perfs_to_remove == []:  # Note, order does not matter
+        print(f"set_playlist_to: nothing to do")
+        return
+    if len(perfs_to_remove) > 0:
+        remove_from_playlist(playlist_name, perfs_to_remove)
+    i = 0
+    for perf in perfs_to_add:
+        resp = add_to_playlist(playlist_name, perf)
+        if resp.get("result", "error") == "error":
+            print(f"add_to_playlist: ERROR {resp.get('error','unknown error')}")
+            break
+        i += 1
+    perfs_to_keep = [x for x in performance_ids if (x in playlist_contents[0]) and (not x in perfs_to_add[i:])]
+    performance_str = [str(x) for x in perfs_to_keep if isinstance(x, int)]
+    playlist_id = get_public_playlist_id(playlist_name)
+    url = f"{CLASSICAL_API}?mode=edit_playlist&action=update_playlist_items&public_playlist_id={playlist_id}&item_list={','.join(performance_str)}"
+    resp = request_json(url, debug=True)
+    if resp.get("result", "error") == "OK":
+        print(f"set_playlist_to: SUCCESS set {playlist_name} to {performance_ids}")
+    else:
+        print(f"Error: {resp.get('error','unknown error')}")
+    return resp
 
 
 def get_playlist_ids(playlist_name):
@@ -678,8 +857,7 @@ def get_member_alias():
 
 def propose_member_alias():
     # Create a member alias based on the MAC address of the device.
-    wifi = utils.connect_wifi()
-    mac_address = wifi.config("mac").hex()
+    mac_address = network.WLAN().config("mac").hex()
     member_alias = f"tm{mac_address}"[:16]
     return member_alias
 
@@ -823,6 +1001,11 @@ class GeneralContext:
         self.selected_genre = None
         self.selected_work = None
         self.selected_performance = None
+        self.prev_keyed_composer = None
+        self.prev_keyed_genre = None
+        self.playing_composer = None
+        self.playing_genre = None
+        self.playing_work = None
         self.this_work_y = None
         self.performance_index = 0
         self.tracklist = []

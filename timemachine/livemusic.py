@@ -156,6 +156,7 @@ def configure_artists():
 
 def set_date(date):
     global DATE_SET_TIME
+    print(f"set_date: {date}")
     tm.y._value = int(date[:4])
     tm.m._value = int(date[5:7])
     tm.d._value = int(date[8:10])
@@ -168,7 +169,7 @@ def best_tape(collection, key_date):
     pass
 
 
-def select_date(coll_dict, key_date, ntape=0, collection=None):
+def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
     print(f"selecting show from {key_date}. Collections {coll_dict.keys()}. Collection {collection}")
     if collection is None:
         valid_collections = []
@@ -178,31 +179,48 @@ def select_date(coll_dict, key_date, ntape=0, collection=None):
         collection = valid_collections[ntape % len(valid_collections)]
         ntape = ntape // len(valid_collections)
 
+    tracklist = []
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
-    try:
-        resp = requests.get(tape_ids_url)
-        if resp.status_code == 200:
-            tape_ids = resp.json()
-            ntapes = len(tape_ids)
-            selected_tape_id = tape_ids[ntape % ntapes][0]
-            trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape_id}/trackdata.json"
+
+    if tape_id is not None:
+        selected_tape_id = tape_id
+        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{tape_id}/trackdata.json"
+        try:
             resp = requests.get(trackdata_url)
-            response = resp.json()
-            collection = response["collection"]
-            tracklist = response["tracklist"]
-            urls = response["urls"]
-        else:
-            api_request = f"{API}/track_urls/{key_date}?collections={collection}&ntape={ntape}"
-            print(f"API request is {api_request}")
-            resp = requests.get(api_request)
-            response = resp.json()
-            collection = response["collection"]
-            tracklist = response["tracklist"]
-            urls = response["urls"]
-            selected_tape_id = response.get("tape_id", "unknown")
-    finally:
-        resp.close()
+            if resp.status_code == 200:
+                response = resp.json()
+                collection = response["collection"]
+                tracklist = response["tracklist"]
+                urls = response["urls"]
+        finally:
+            resp.close()
+    if len(tracklist) == 0:
+        try:
+            resp = requests.get(tape_ids_url)
+            if resp.status_code == 200:
+                tape_ids = resp.json()
+                ntapes = len(tape_ids)
+                selected_tape_id = tape_ids[ntape % ntapes][0]
+                trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape_id}/trackdata.json"
+                resp = requests.get(trackdata_url)
+                response = resp.json()
+                collection = response["collection"]
+                tracklist = response["tracklist"]
+                urls = response["urls"]
+            else:
+                api_request = f"{API}/track_urls/{key_date}?collections={collection}&ntape={ntape}"
+                print(f"API request is {api_request}")
+                resp = requests.get(api_request)
+                response = resp.json()
+                collection = response["collection"]
+                tracklist = response["tracklist"]
+                urls = response["urls"]
+                selected_tape_id = response.get("tape_id", "unknown")
+        finally:
+            resp.close()
     print(f"URLs: {urls}")
+    if len(urls) == 0:
+        print(f"no playable tracks found for {key_date} {collection} {selected_tape_id}")
     return collection, tracklist, urls, selected_tape_id
 
 
@@ -225,8 +243,10 @@ def get_tape_ids(coll_dict, key_date):
                     print(f"api_request is {api_request}")
                     resp = requests.get(api_request)
                     these_tape_ids = resp.json()[collection]
+                    print(f"these_tape_ids is {these_tape_ids}")
                     if not isinstance(these_tape_ids, (list, tuple)):
-                        these_tape_ids = list(these_tape_ids)
+                        these_tape_ids = [these_tape_ids]
+                    these_tape_ids = [[collection, x] for x in these_tape_ids]
                     tape_ids = tape_ids + these_tape_ids
                 else:
                     raise Exception(f"Failed to get_tape_ids for {coll_dict} on {key_date}")
@@ -261,7 +281,7 @@ def get_next_tih(date, valid_dates):
     return date
 
 
-def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=None):
+def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=None, tape_id=None):
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.stop()
@@ -347,8 +367,10 @@ def main_loop(player, coll_dict, state):
     selected_date = key_date
     collections = list(coll_dict.keys())
     current_collection = ""
-    vcs = selected_vcs = ""
+    vcs = ""
+    selected_vcs = ""
     pvcs_line = 0
+    refresh_screen = False
     select_press_time = 0
     play_pause_press_time = 0
     date_changed_time = 0
@@ -466,28 +488,13 @@ def main_loop(player, coll_dict, state):
                         print(f"tape_id is {utils.get_tape_id()}, or {tape_id}")
                         tm.clear_bbox(venue_bbox)
                         tm.write(f"{tape_id}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-                        software_version = utils.get_software_version()
-                        dev_flag = "dev" if utils.is_dev_box() else ""
-                        tm.clear_bbox(artist_bbox)
-                        tm.write(
-                            f"{software_version} {dev_flag}",
-                            artist_bbox.x0,
-                            artist_bbox.y0,
-                            pfont_smallx,
-                            tm.stage_date_color,
-                            show_end=1,
-                        )
+                        # display_software_version()
                 elif (key_date in valid_dates) and tm.power():
                     player.stop()
                     # player.reset_player()
-                    selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection)
-                    selected_date = state["selected_date"]
-                    collection = state["selected_collection"]
-                    selected_tape_id = state["selected_tape_id"]
-                    vcs = selected_vcs
-                    if AUTO_PLAY:
-                        gc.collect()
-                        play_pause(player)
+                    selected_vcs, state, selected_date, collection = select_and_play_tape(
+                        key_date, player, coll_dict, state, ntape=0, collection=collection
+                    )
                 print("Select RELEASED")
             else:
                 select_press_time = time.ticks_ms()
@@ -497,20 +504,21 @@ def main_loop(player, coll_dict, state):
             if (time.ticks_ms() - select_press_time) > 1_000:
                 player.stop()
                 print("                 Longpress of select")
+                pSelect_old = 1
                 select_press_time = time.ticks_ms() + 1_000
-                if ntape == 0:
-                    tape_ids = get_tape_ids(coll_dict, key_date)
-                if len(tape_ids) == 0:
+                tape_choice = choose_tape(coll_dict, key_date)
+                if tape_choice[0] is None:
+                    print("No collection selected. Returning to main loop.")
+                    time.sleep(1)  # Let go of the stop button
+                    tm.clear_screen()
+                    refresh_screen = True
                     continue
-                tm.clear_bbox(venue_bbox)
-                display_str = short_tape_id(tape_ids[ntape][1])
-                print(f"display string is {display_str}")
-                tm.write(f"{display_str}", venue_bbox.x0, venue_bbox.y0, venue_font, tm.stage_date_color)
-
-                print(f"tape_ids are {tape_ids}, length {len(tape_ids)}. ntape now is {ntape}")
-                ntape = (ntape + 1) % len(tape_ids)
-                tm.clear_bbox(artist_bbox)
-                collection = tape_ids[ntape][0]
+                else:
+                    collection, tape_ids, ntape = tape_choice
+                tape_id = tape_ids[ntape][1]
+                selected_vcs, state, selected_date, collection = select_and_play_tape(
+                    key_date, player, coll_dict, state, ntape, collection, tape_id
+                )
                 x0 = max((tm.SCREEN_WIDTH - tm.tft.write_len(pfont_small, f"{collection}")) // 2, 0)
                 tm.write(f"{collection}", x0, artist_bbox.y0, pfont_small, tm.stage_date_color)
                 # vcs = coll_dict[collection][key_date]
@@ -598,7 +606,7 @@ def main_loop(player, coll_dict, state):
         month_new = tm.m.value()
         day_new = tm.d.value()
 
-        if (year_old != year_new) | (month_old != month_new) | (day_old != day_new):
+        if ((year_old != year_new) | (month_old != month_new) | (day_old != day_new)) | refresh_screen:
             tm.power(1)
             date_changed_time = time.ticks_ms()
             if (month_new in [4, 6, 9, 11]) and (day_new > 30):
@@ -619,17 +627,17 @@ def main_loop(player, coll_dict, state):
             if day_old != day_new:
                 day_old = day_new
 
-            if date_old != date_new:  # in case the knobs went to an invalid date and the date is still the same.
+            # in case the knobs went to an invalid date and the date is still the same.
+            if (date_old != date_new) or refresh_screen:
+                refresh_screen = False
                 tm.clear_bbox(stage_date_bbox)
                 tm.tft.write(large_font, f"{date_new}", 0, 0, tm.stage_date_color)
                 date_old = date_new
                 try:
                     if key_date in valid_dates:
-                        nshows = 0
-                        for c in list(coll_dict.keys()):
-                            if key_date in coll_dict[c].keys():
-                                collection = c if nshows == 0 else collection
-                                nshows += 1
+                        shows = get_shows(coll_dict, key_date)
+                        nshows = len(shows)
+                        collection = shows[0]
                         vcs = coll_dict[collection][f"{key_date}"]
                     else:
                         vcs = ""
@@ -645,12 +653,82 @@ def main_loop(player, coll_dict, state):
         audio_pump(player, Nmax=3)  # Try to keep buffer filled.
 
 
-def short_tape_id(tape_id, max_chars=16):
+def short_tape_id(tape_id):
     display_str = re.sub(r"\d\d\d\d-\d\d-\d\d\.*", "~", tape_id)
     display_str = re.sub(r"\d\d-\d\d-\d\d\.*", "~", display_str)
-    if (max_chars is None) or (max_chars <= 7) or (len(display_str) <= max_chars):
-        return display_str
-    return f"{display_str[: max_chars - 6]}~{display_str[len(display_str) - 6 :]}"
+    return display_str
+
+
+def display_software_version():
+    software_version = utils.get_software_version()
+    dev_flag = "dev" if utils.is_dev_box() else ""
+    tm.clear_bbox(artist_bbox)
+    tm.write(f"{software_version} {dev_flag}", artist_bbox.x0, artist_bbox.y0, pfont_smallx, tm.stage_date_color, show_end=1)
+
+
+def display_staged_date(key_date):
+    # print(f"display_staged_date: {key_date}")
+    tm.clear_bbox(stage_date_bbox)
+    date = f"{int(key_date[5:7]):2d}-{int(key_date[8:10]):2d}-{key_date[2:4]}"
+    tm.tft.write(large_font, f"{date}", 0, 0, tm.stage_date_color)
+    return
+
+
+def select_and_play_tape(key_date, player, coll_dict, state, ntape=0, collection=None, tape_id=None):
+    selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection, tape_id=tape_id)
+    selected_date = state["selected_date"]
+    collection = state["selected_collection"]
+    display_staged_date(key_date)
+    update_venue(selected_vcs, nshows=1, collection=collection)
+    # selected_tape_id = state["selected_tape_id"]
+    # vcs = selected_vcs
+    if AUTO_PLAY:
+        gc.collect()
+        play_pause(player)
+    return selected_vcs, state, selected_date, collection
+
+
+def get_shows(coll_dict, key_date):
+    colls = []
+    for c in list(coll_dict.keys()):
+        if key_date in coll_dict[c].keys():
+            colls.append(c)
+    if len(colls) > 0:
+        print(f"get_shows: {key_date} {colls}")
+    return colls
+
+
+def choose_tape(coll_dict, key_date):
+    print(f"choose_tape: {key_date}")
+    tm.clear_screen()
+    tm.write("Select Tape", 0, 0, pfont_small, tm.YELLOW, show_end=-3)
+    shows = get_shows(coll_dict, key_date)
+
+    if len(shows) > 1:
+        while not tm.pSelect.value():  # Wait for select button to be released
+            time.sleep(0.1)
+        collection = utils.select_option(f"Select show on {key_date}", shows)
+        if collection == "_CANCEL":
+            return None, None, None
+    else:
+        collection = shows[0]
+
+    tm.clear_screen()
+    tm.write(f"{collection} {key_date} Loading tapes", 0, 0, pfont_small, tm.YELLOW, show_end=-3)
+    tape_ids = get_tape_ids({collection: coll_dict[collection]}, key_date)  # make sure coll_dict not corrupted
+    seen = set()
+    tape_choices = [short_tape_id(x[1]) for x in tape_ids if x[0] == collection and not (x[1] in seen or seen.add(x[1]))]
+    if len(tape_choices) == 1:
+        tape_id = tape_choices[0]
+        ntape = 0
+    else:
+        tape_id = utils.select_option(f"Select tape for {collection}", tape_choices, show_end=-2, option_show_end=-3)
+        if tape_id == "_CANCEL":
+            return None, None, None
+        ntape = tape_choices.index(tape_id)
+    print(f"choose_tape: tape_id {tape_id}. Collection {collection}, ntape {ntape}")
+    tm.clear_screen()
+    return collection, tape_ids, ntape
 
 
 def update_venue(vcs, nshows=1, collection=None):
