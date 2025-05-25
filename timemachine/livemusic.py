@@ -33,6 +33,7 @@ import board as tm
 import utils
 
 import audioPlayer
+from machine import Timer
 
 # Local fonts - So that the font size can be independent of the screen size, or not.
 # import fonts.DejaVu_33 as large_font
@@ -376,7 +377,7 @@ def main_loop(player, coll_dict, state):
     date_changed_time = 0
     power_press_time = 0
     resume_playing = -1
-    resume_playing_delay = 500
+    resume_playing_delay = 1000
     ntape = 0
     valid_dates = set()
     for c in collections:
