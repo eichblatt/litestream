@@ -6,28 +6,60 @@ This document describes the behavior of the Time Machine in the Live Music mode.
 
 Since there is no danger in pressing any button or turning any knob, the user should feel free to ***explore*** the device ***before*** referring to these directions. The basic navigation is all **directly accessible** by turning the three knobs and pressing the six simple buttons. The menus and long-pressed buttons are strictly for **convenience** or going **deeper** into the archive.
 
-## Reference Tables
 
-This section contains a high-level description of the responses to button presses and knob turning.
+## Screen Layout
 
-### Buttons
+The Time Machine in Live Music mode features a clean, organized screen layout designed for optimal viewing of show information and navigation:
 
-| Button         | Short Press | Long Press | Notes |
-|----------------|-------------|------------|-------|
-| [**Select**](#select) | Play show on selected date | Choose specific tape | Shows venue/city and starts playback |
-| [**Play/Pause**](#playpause) | Toggle play/pause | - | "Pause/Play" would be a better name for this button |
-| [**Rewind**](#rewind)     | Previous track | - | Lower the Volume when screen is off |
-| [**FFwd**](#ffwd)   | Next track | - | Increase the volume control when screen is off |
-| [**Stop**](#stop)   | Stop playback | - | Returns playback to beginning of the selected show |
-| [**Power**](#power-menu)  | Pause music and Toggle screen | Configure menu | Rotate any knob or press play to re-illuminate the screen |
+### Top Section
 
-### Knobs
+- **Staged Date**: Shows the currently staged date (Year-Month-Day) in large, easy-to-read, yellow text
+- **Venue/Location** or **Tape ID**: When a show is available for the Staged Date, Shows venue name, city, and state where the show was performed. If venue not available, then displays the identifier for the specific tape/source being played
+- **Multiple Shows Indicator**: If multiple shows are available for the current date, a count appears in blue at the right-hand-side of the venue line.
+- **Collection Indicator**: When a show is available for the Staged Date, displays which collection/band the show belongs to
+- Position: Top 1/4 of screen
 
-| Knob              | Function      | Notes |
-|-------------------|---------------|-------|
-| [**Left Knob (Year)**](#left-knob-year) | Select year | Changes the year component of the date |
-| [**Center Knob (Month)**](#center-knob-month) | Select month | Changes the month component of the date |
-| [**Right Knob (Day)**](#right-knob-day) | Select day | Changes the day component of the date |
+### Bottom Section 
+
+- **Track Information**: Shows the current track title and number
+- **Selected Date**: Print the full date MM-DD-YYYY of the selected show in a small white font.
+- **Playback Status**: Visual indicators for Play, Pause, and Stop states
+- Position: Bottom 3/4 of screen
+
+### Additional Elements
+
+Only available for models with the larger screen
+
+- **Soft Labels**: Labels for knob functions appear near the bottom edge
+
+### Screen States
+
+1. **Date Selection Mode**: Emphasis on the date display, with available shows indicated
+2. **Menu Mode**: Overlaid menu system for selections and configuration
+3. **Screen Off**: Display darkened to save power while maintaining functionality
+
+
+## The Knobs
+
+This section describes how the knobs work to navigate through the archive of live shows.
+
+### Left Knob (Year)
+
+Rotating the knob changes the year component of the date shown at the top of the screen
+
+When rotating to a day with a show, the venue or tape_id will be displayed on the line below the staged date.
+
+### Center Knob (Month)
+
+Rotating the knob changes the month component of the date shown at the top of the screen (1-12)
+
+When rotating to a day with a show, the venue or tape_id will be displayed on the line below the staged date.
+
+### Right Knob (Day)
+
+Rotating the knob changes the day component of the date shown at the top of the screen (1-31)
+
+When rotating to a day with a show, the venue or tape_id will be displayed on the line below the staged date.
 
 ## The Buttons
 
@@ -104,33 +136,6 @@ Turns off the screen.
 
 Jumps to the next available show. Generally, this will be on a different date. In the case where there are multiple bands loaded, and there is more than one show on the same date, pressing hte Month button will take you to the next show on that date. 
 
-## The Knobs
-
-This section describes how the knobs work to navigate through the archive of live shows.
-
-### Left Knob (Year)
-
-The Left knob controls which year is selected for browsing shows.
-
-- Rotating the knob changes the year component of the date shown at the top of the screen
-- Available years are based on the shows in the archive
-- When a year with no shows is selected, the display will automatically jump to the nearest date with available content
-
-### Center Knob (Month)
-
-The Center knob controls which month is selected for browsing shows.
-
-- Rotating the knob changes the month component of the date shown at the top of the screen (1-12)
-- When rotating to a new month, the display updates to show availability within that month
-
-### Right Knob (Day)
-
-The Right knob controls which day is selected for browsing shows.
-
-- Rotating the knob changes the day component of the date shown at the top of the screen (1-31)
-- Days with available shows are highlighted or indicated visually
-- When rotating to a day with no shows, the display will provide visual feedback
-
 ## Contexts
 
 The Time Machine live music interface operates within several distinct contexts that determine how user inputs are interpreted.
@@ -140,7 +145,7 @@ The Time Machine live music interface operates within several distinct contexts 
 #### 1. **Date Selection Context**
 
 - **Active when:** The user is browsing through dates
-- **Display:** Shows the currently selected date at the top of the screen
+- **Display:** Shows the currently staged date at the top of the screen
 - **Control focus:** All three knobs adjust the date components
 - **Actions available:** Press Select to play a show on the selected date
 
@@ -177,3 +182,70 @@ The Time Machine live music interface operates within several distinct contexts 
 - **Actions available:** Limited to volume adjustment and screen wake-up
 
 These contexts determine how the interface responds to user inputs, creating a coherent navigation system through the live music archive that adapts based on the current state and user focus.
+
+## Configuration Menu
+
+The Configuration Menu provides access to advanced settings and features of the Time Machine. 
+
+### Accessing the Configuration Menu
+
+- **Long press** the **Power** button for at least 1 second
+- The screen will display the Configuration Menu with a list of options
+- Use the Right knob to navigate through menu options
+- Press Select to choose an option
+
+### Main Configuration Options
+
+- **Artists**: Add or remove artists.
+- **Update Code**: Update the software of the device
+- **Return to Livemusic**: Resume the livemusic program
+- **Update Firmware**: Update the firmware of the device. This is very rarely recommended.
+- **Wi-Fi**: Forget and re-connect to wireless network
+- **Reboot**: Reboot the device
+- **Test Buttons**: Test that each of the buttons is responsive.
+- **Calibrate Knobs**: Turn each knob to determine the sense of "forward" and "backward"
+- **Calibrate Screen**: Answer a question about the screen settings
+- **Factory Reset**: Reset the device to factory settings
+- **Dev Mode**: Set the device to production mode (default) or dev mode (expert only)
+
+### Navigation Tips
+
+- **Select** button: Confirm selection
+- **Stop** button: Go back one level in the menu
+- **Power** button (short press): Exit the configuration menu
+- Left and Center knobs have contextual functions in certain menus
+
+### Example: Adding a New Collection
+
+1. Long press **Power** to access the Configuration Menu
+2. Rotate the Right knob to highlight "Artists"
+3. Press **Select** to enter Artists Management
+4. Rotate to highlight "Add Artist"
+5. Press **Select** to confirm
+6. Start spelling the collection name. When the number of matching collections is below 30, select the collection to add.
+7. Follow on-screen prompts to complete the installation
+
+The Configuration Menu is designed to be accessible when needed but stays out of the way during normal listening, maintaining the Time Machine's focus on music discovery and enjoyment.
+
+## Reference Tables
+
+This section contains a high-level description of the responses to button presses and knob turning.
+
+### Knobs
+
+| Knob              | Function      | Notes |
+|-------------------|---------------|-------|
+| [**Left Knob (Year)**](#left-knob-year) | Select year | Changes the year component of the date |
+| [**Center Knob (Month)**](#center-knob-month) | Select month | Changes the month component of the date |
+| [**Right Knob (Day)**](#right-knob-day) | Select day | Changes the day component of the date |
+
+### Buttons
+
+| Button         | Short Press | Long Press | Notes |
+|----------------|-------------|------------|-------|
+| [**Select**](#select) | Play show on selected date | Choose specific tape | Shows venue/city and starts playback |
+| [**Play/Pause**](#playpause) | Toggle play/pause | - | "Pause/Play" would be a better name for this button |
+| [**Rewind**](#rewind)     | Previous track | - | Lower the Volume when screen is off |
+| [**FFwd**](#ffwd)   | Next track | - | Increase the volume control when screen is off |
+| [**Stop**](#stop)   | Stop playback | - | Returns playback to beginning of the selected show |
+| [**Power**](#power-menu)  | Pause music and Toggle screen | Configure menu | Rotate any knob or press play to re-illuminate the screen |
