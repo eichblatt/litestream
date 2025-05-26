@@ -33,7 +33,6 @@ import board as tm
 import utils
 
 import audioPlayer
-from machine import Timer
 
 # Local fonts - So that the font size can be independent of the screen size, or not.
 # import fonts.DejaVu_33 as large_font
