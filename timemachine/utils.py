@@ -1069,22 +1069,26 @@ def load_livemusic_state(state_path):
         selected_date = state.get("selected_date", "1975-08-13")
         selected_collection = state.get("selected_collection", collection_list[0])
         selected_tape_id = state.get("selected_tape_id", "unknown")
+        volume = state.get("volume", 11)
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
+            "volume": volume,
         }
     else:
         collection_list = ["GratefulDead"]
         selected_date = "1975-08-13"
         selected_collection = collection_list[0]
         selected_tape_id = "unknown"
+        volume = 11
         state = {
             "collection_list": collection_list,
             "selected_date": selected_date,
             "selected_collection": selected_collection,
             "selected_tape_id": selected_tape_id,
+            "volume": volume,
         }
         write_json(state, state_path)
     return state

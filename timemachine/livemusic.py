@@ -451,6 +451,8 @@ def main_loop(player, coll_dict, state):
                         player.rewind()
                     else:
                         player.set_volume(max(player.get_volume() - 1, 5))
+                        state["volume"] = player.get_volume()
+                        utils.save_state(state)
                         print(f"volume set to {player.get_volume()}")
 
         if pFFwd_old != tm.pFFwd.value():
@@ -470,6 +472,8 @@ def main_loop(player, coll_dict, state):
                         except AssertionError:
                             pass
                         print(f"volume set to {player.get_volume()}")
+                        state["volume"] = player.get_volume()
+                        utils.save_state(state)
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
         if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
