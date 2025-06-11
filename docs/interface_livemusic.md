@@ -6,6 +6,24 @@ This document describes the behavior of the Time Machine in the Live Music mode.
 
 Since there is no danger in pressing any button or turning any knob, the user should feel free to ***explore*** the device ***before*** referring to these directions. The basic navigation is all **directly accessible** by turning the three knobs and pressing the six simple buttons. The menus and long-pressed buttons are strictly for **convenience** or going **deeper** into the archive.
 
+## Front Panel Layout
+
+```
+ ┌──────────────────────────────────────────────────────────────┐
+ │         ┌─────────────────────────────┐                      |
+ │  ┌──┐   |         5 - 8 - 77          |      ┌──┐ ┌──┐ ┌──┐  |
+ │  └──┘   │  Barton Hall, Ithaca, NY   2│      └──┘ └──┘ └──┘  |
+ │ power   │  Grateful Dead              │      rew  stop  ff   |
+ │         │                             │                      |
+ │         │  St. Stephen                │                      |
+ │         │  05-08-77                ▶  │                      |
+ │         └─────────────────────────────┘                      |
+ │           ┌───┐     ┌───┐     ┌───┐        ┌─────┐  ┌──────┐ |
+ │           │ M │     │ D │     │ Y │        │ Sel │  │ Play │ |
+ │           └───┘     └───┘     └───┘        └─────┘  └──────┘ |
+ │                                                              |
+ └──────────────────────────────────────────────────────────────┘
+```
 
 ## Screen Layout
 
