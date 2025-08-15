@@ -203,8 +203,8 @@ def main_loop(player, state):
         date_range_msg += f"-{date_range[1]%100:02d}"
     tm.clear_screen()
     tm.write(date_range_msg, 0, 0, color=tm.stage_date_color, font=large_font)
-    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, color=tm.YELLOW, font=pfont_small)
-    tm.write("min  mid  max", 0, 100, color=tm.WHITE, font=pfont_med)
+    tm.write("Turn knobs to\nChange timespan\nthen Select", 0, 42, font=pfont_small, color=tm.YELLOW)
+    tm.write("min  mid  max", 0, 100, font=pfont_med, color=tm.WHITE)
     poll_count = 0
     while True:
         player.audio_pump()
@@ -471,7 +471,7 @@ def display_artist(artist, date=""):
 
     bottom_y0 = y0 + (text_height * max_lines) + 2
     date_msg = tm.write(f"{date}", 20, bottom_y0, tm.date_font, tm.selected_date_color)
-    msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, 0, -max_lines, indent=1)
+    msg = tm.write(f"{artist}", 0, y1, pfont_small, tm.WHITE, -max_lines, indent=1)
     print(f"in display_artist {artist},\n{msg} at 0,{y1}")
     return msg
 
@@ -497,7 +497,7 @@ def display_tracks(*track_names):
         name = utils.capitalize(name.lower())
         y0 = bottom_bbox.y0 + 2 + (text_height * lines_written)
         show_end = -2 if i == 0 else 0
-        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, 0, show_end, indent=2)
+        msg = tm.write(f"{name}", 0, y0, pfont_small, tm.tracklist_color, show_end, indent=2)
         lines_written += len(msg.split("\n"))
         i = i + 1
     return msg
