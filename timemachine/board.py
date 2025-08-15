@@ -20,7 +20,7 @@ import math
 import os
 import st7789
 import time
-from machine import SPI, Pin
+from machine import SPI, Pin, Timer, reset, SLEEP, DEEPSLEEP
 from rotary_irq_esp import RotaryIRQ
 
 
@@ -46,6 +46,28 @@ pYSw = Pin(41, Pin.IN, Pin.PULL_UP)
 pMSw = Pin(38, Pin.IN, Pin.PULL_UP)
 pDSw = Pin(9, Pin.IN, Pin.PULL_UP)
 pLED = Pin(48, Pin.OUT)
+
+button_window = Timer(10)
+
+
+def _reset_after_button_hold(_):
+    if pPower.value() == 0:  # Button still pressed
+        print("Power button still pressed after 5.5 seconds, resetting")
+        reset()
+    else:
+        print("Power button has been released. Timer finished, not resetting")
+        button_window.deinit()
+
+
+def power_callback(pin):
+    print(f"In Power callback, pin={pin}")
+    button_window.init(period=5_500, mode=Timer.ONE_SHOT, callback=_reset_after_button_hold)
+    clear_screen()
+    return
+
+
+pPower.irq(power_callback, wake=SLEEP | DEEPSLEEP, trigger=Pin.IRQ_FALLING)  # trigger when pressed
+
 
 # Initialise the three rotaries. First value is CL, second is DT
 m = d = y = None  # knobs
