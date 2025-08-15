@@ -84,7 +84,6 @@ def select_date_range(date_range, N_to_select=60):
         bottom_bbox.y0,
         pfont_small,
         tm.PURPLE,
-        clear=0,
         show_end=-2,
     )
     metadata_cache = f"/metadata/78rpm/{date_range[0]}_{date_range[1]}_tracklist.json"
