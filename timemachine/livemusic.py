@@ -282,9 +282,11 @@ def get_next_tih(date, valid_dates):
 
 
 def select_key_date(key_date, player, coll_dict, state, ntape, key_collection=None, tape_id=None):
+    print(f"select_key_date: {key_date}, ntape {ntape}, key_collection {key_collection}")
     tm.clear_bbox(playpause_bbox)
     tm.tft.fill_polygon(tm.PausePoly, playpause_bbox.x0, playpause_bbox.y0, tm.RED)
     player.stop()
+    player.set_playlist([], [])
     # player.reset_player()
     collection, tracklist, urls, selected_tape_id = select_date(coll_dict, key_date, ntape, key_collection)
     vcs = coll_dict[collection][key_date]
@@ -376,7 +378,7 @@ def main_loop(player, coll_dict, state):
     date_changed_time = 0
     power_press_time = 0
     resume_playing = -1
-    resume_playing_delay = 500
+    resume_playing_delay = 1000
     ntape = 0
     valid_dates = set()
     for c in collections:
@@ -451,6 +453,8 @@ def main_loop(player, coll_dict, state):
                         player.rewind()
                     else:
                         player.set_volume(max(player.get_volume() - 1, 5))
+                        state["volume"] = player.get_volume()
+                        utils.save_state(state)
                         print(f"volume set to {player.get_volume()}")
 
         if pFFwd_old != tm.pFFwd.value():
@@ -470,6 +474,8 @@ def main_loop(player, coll_dict, state):
                         except AssertionError:
                             pass
                         print(f"volume set to {player.get_volume()}")
+                        state["volume"] = player.get_volume()
+                        utils.save_state(state)
 
         # set the knobs to the most recently selected date after 20 seconds of inaction
         if (key_date != selected_date) and (time.ticks_diff(time.ticks_ms(), DATE_SET_TIME) > 20_000):
@@ -675,6 +681,7 @@ def display_staged_date(key_date):
 
 
 def select_and_play_tape(key_date, player, coll_dict, state, ntape=0, collection=None, tape_id=None):
+    print(f"select_and_play_tape: {key_date}, ntape {ntape}, collection {collection}, tape_id {tape_id}")
     selected_vcs, state = select_key_date(key_date, player, coll_dict, state, ntape, collection, tape_id=tape_id)
     selected_date = state["selected_date"]
     collection = state["selected_collection"]
@@ -950,6 +957,7 @@ def run():
         # if archive_utils.ping_phishin() == -1:
         #    return -1
         player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
+        player.set_volume(state.get("volume", 11))
         main_loop(player, coll_dict, state)
     except OSError as e:
         msg = f"livemusic: {e}"
