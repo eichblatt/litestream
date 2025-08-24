@@ -7,9 +7,8 @@
   - [Installing the Software](#installing-the-software)
     - [Notes](#notes)
   - [OTA Updates](#ota-updates)
-  - [Getting the Filesystem into File](#getting-the-filesystem-into-file)
+  - [Getting the Filesystem into a File](#getting-the-filesystem-into-a-file)
     - [Preparing the Filesystem](#preparing-the-filesystem)
-    - [Uploading the Filesystem](#uploading-the-filesystem)
   - [Flashing Filesystem](#flashing-filesystem)
     - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
     - [Flash Everything](#flash-everything)
@@ -117,13 +116,26 @@ e.g. ESP-IDF v4.4.4 includes "patch5". Then do a "make BOARD=GENERIC_S3_SPIRAM_O
     sha256sum micropython.bin > micropython.sha
 4. Commit and push this folder contents sha to github.
 
-## Getting the Filesystem into File
+## Getting the Filesystem into a File
 
 This procedure gets the filesystem into the file `fsbackup.bin`. See <https://github.com/orgs/micropython/discussions/12223>
 
 ### Preparing the Filesystem
 
 The filesystem that we want to flash should not contain files `.knob_sense`, `.screen_type`, `latest_state.json`, and the `wifi_cred.json` should contain the wifi credentials at Joel's home, which are FUCKBITCHE$ and L8erHoes
+
+- Put the machine in `dev` mode.
+- Update Software to Latest Version. This will be the latest `dev` version.
+- Run the `utils.create_factory_image()` function. This cleans up files which should not be included in the factory image.
+  - Move `/boot.py` to `/BOOT.py`
+  - Log in via `mpremote` and create the factory image
+
+   ```{}
+    >>> import os
+    >>> os.rename('/boot.py','BOOT.py')
+    >>> import utils
+    >>> utils.create_factory_image()
+    ```
 
 ### Uploading the Filesystem
 
@@ -140,7 +152,11 @@ Disconnect the device from Jama, which will interfere with this process.
 ```
 
 Note, this takes a few minutes.
-Then, push this file `fsbackup.bin` to github, and merge into the main branch.
+Then, push this file `fsbackup.bin` to github, and merge into the main branch. Merging into `main` will require a new version number in the `.VERSION` file.
+
+### Testing the new Filesystem
+
+Flash the newly created image to the device (see below). It should not have WiFi credentials. The version should now match what is in the `.VERSION` file.
 
 ## Flashing Filesystem
 
