@@ -9,6 +9,7 @@
   - [OTA Updates](#ota-updates)
   - [Getting the Filesystem into a File](#getting-the-filesystem-into-a-file)
     - [Preparing the Filesystem](#preparing-the-filesystem)
+    - [Testing the new Filesystem](#testing-the-new-filesystem)
   - [Flashing Filesystem](#flashing-filesystem)
     - [Get the Latest Version of the Firmware and Software](#get-the-latest-version-of-the-firmware-and-software)
     - [Flash Everything](#flash-everything)
@@ -152,7 +153,7 @@ Disconnect the device from Jama, which will interfere with this process.
 ```
 
 Note, this takes a few minutes.
-Then, push this file `fsbackup.bin` to github, and merge into the main branch. Merging into `main` will require a new version number in the `.VERSION` file.
+Then, push this file `fsbackup.bin` to github, and merge into the `main` and then `releases` branch. Merging into `releases` requires a new version number in the `.VERSION` file.
 
 ### Testing the new Filesystem
 
