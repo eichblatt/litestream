@@ -633,6 +633,8 @@ class AudioPlayer:
                 # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.startswith(b"Content-Range:"):
                     track_length = int(header.split(b"/", 1)[1])
+                elif header.startswith(b"Content-Length:"):
+                    track_length = int(header.split(b": ", 1)[1].strip())
 
             if header == b"\r\n":
                 break
