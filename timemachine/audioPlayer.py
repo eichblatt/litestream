@@ -293,6 +293,7 @@ class AudioPlayer:
         self.volume = 0
         # self.playlist_started = False
         self.song_transition = None
+        self.can_resume = True
 
         self.VorbisDecoder = AudioDecoder.VorbisDecoder()
         self.MP3Decoder = AudioDecoder.MP3Decoder()
@@ -631,10 +632,13 @@ class AudioPlayer:
 
                 # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                 # EOF is indistinguishable from the host closing a socket when we pause too long
-                if header.startswith(b"Content-Range:"):
+                if header.lower().startswith(b"content-range:"):
                     track_length = int(header.split(b"/", 1)[1])
-                elif header.startswith(b"Content-Length:"):
+                    self.can_resume = True
+                elif header.lower().startswith(b"content-length:"):
                     track_length = int(header.split(b": ", 1)[1].strip())
+                    self.can_resume = False
+                    print("Warning: Server does not support Range requests - cannot pause/resume")
 
             if header == b"\r\n":
                 break
@@ -802,8 +806,15 @@ class AudioPlayer:
                     # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
                     print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
 
-                    # Start reading the current track again, but at the offset where we were up to
-                    self.read_http_header(self.track_being_read, self.current_track_bytes_read)
+                    if self.can_resume:
+                        # Start reading the current track again, but at the offset where we were up to
+                        self.read_http_header(self.track_being_read, self.current_track_bytes_read)
+                    else:
+                        # Start reading the current track again at the beginning
+                        self.current_track_bytes_read = 0
+                        self.advance_track(0)  # go to beginning of current track
+                        self.play()
+                        # self.read_http_header(self.track_being_read, self.current_track_bytes_read)
 
     @micropython.native
     def decode_chunk(self, timeout=10):
