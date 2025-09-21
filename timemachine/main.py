@@ -28,6 +28,8 @@ import fonts.NotoSans_32 as pfont_large
 from machine import SPI, Pin
 from rotary_irq_esp import RotaryIRQ
 import mip
+
+time.sleep_ms(100)  # Allow power to stabilize before importing WiFi.
 import network
 
 import archive_utils
