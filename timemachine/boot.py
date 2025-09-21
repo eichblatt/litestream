@@ -32,6 +32,7 @@ import os
 import sys
 import time
 
+time.sleep_ms(100)  # Allow power to stabilize before importing WiFi.
 
 machine.freq(240_000_000)
 
