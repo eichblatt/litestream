@@ -27,16 +27,16 @@ Upload this to the Google Cloud in the browser.
 - DeadAndCompany
 - TedeschiTrucksBand
 
-`aa = Archivary.Archivary(collection_list=["JoeRussosAlmostDead","Phish","BillyStrings","DeadAndCompany"],reload_ids=True)`
+First, make sure you are in the right virtual env and have the `api_server` branch of the deadstream repo checked out. Then run this:
+
+```{}
+: /home/steve/.venv ~/projects/deadstream ; ipython -i deadstream/update_cloud_meta.py -- --debug 1 --collections TedeschiTrucksBand JoeRussosAlmostDead --save_cloud 1
+```
 
 ## Other requirments on updating Metadata
 
 In case the metadata is stale, ie, the URLs are no longer valid, we need to delete the files in the `tapes` cloud folder:
 <https://console.cloud.google.com/storage/browser/spertilo-data/tapes>
-
-## Bash script
-
-: (myenv) /home/steve/myenv ~/projects/deadstream ; bash ./update_cloud_meta.sh -c "Phish DeadAndCompany BillyStrings TedeschiTrucksBand"
 
 ## Regenerate the vcs files
 
