@@ -261,7 +261,7 @@ def select_chars(message, message2="", already=None):
     return selected
 
 
-def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""):
+def search_list(message, full_set, current_set, selected_chars=""):
     tm.clear_screen()
     if len(selected_chars) > 0:
         tm.write(f"Searching List for *{selected_chars}*", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-3)
@@ -285,13 +285,13 @@ def search_list(message, full_set, current_set, colls_fn=None, selected_chars=""
             selected_chars = selected_chars.replace(STOP_CHAR, "")
         selected_chars = selected_chars.lower().replace(" ", "")
         print(f"selected {selected_chars}")
-        if colls_fn is not None:
-            matching = distinct(matching + colls_fn(selected_chars))
+        tm.write("...", 0, 100, pfont_small, tm.YELLOW)
         if subset_match:
             matching = [x for x in matching if selected_chars in (remove_accents(x.lower()).replace(" ", "") + "$")]
         else:
             matching = [x for x in matching if selected_chars == (remove_accents(x.lower()).replace(" ", ""))]
         n_matching = len(matching)
+        tm.write("           ", 0, 100, pfont_small, tm.YELLOW)
 
     if len(matching) == 0:
         choice = select_option("No Matches Found", ["_BACK", "_CANCEL"])
