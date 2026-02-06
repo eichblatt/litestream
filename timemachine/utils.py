@@ -963,6 +963,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
     wifi.active(True)
     wifi.config(pm=network.WLAN.PM_NONE)
     if wifi.isconnected():
+        get_ip_address(display=True)
         return wifi
 
     if path_exists(WIFI_CRED_PATH):
@@ -1008,7 +1009,7 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
 
     if wifi.isconnected():
         tm.write("Connected   ", y=0, color=tm.WHITE)
-
+        get_ip_address(display=True)
         wifi_cred_hist = read_json(WIFI_CRED_HIST_PATH) if path_exists(WIFI_CRED_HIST_PATH) else {}
         wifi_cred_hist[wifi_cred["name"]] = wifi_cred["passkey"]
         write_json(wifi_cred_hist, WIFI_CRED_HIST_PATH)
@@ -1020,6 +1021,19 @@ def connect_wifi(retry_time=100, timeout=10000, itry=0):
             remove_wifi_cred()
         time.sleep(2)
         connect_wifi(itry=itry + 1)
+
+
+def get_ip_address(display=False):
+    wifi = network.WLAN(network.STA_IF)
+    if wifi.isconnected():
+        ip_address = wifi.ifconfig()[0]
+        print(f"IP address: {ip_address}")
+        if display:
+            tm.clear_screen()
+            tm.write(f"IP Address: {ip_address}", y=20, font=tm.pfont_small, color=tm.WHITE, show_end=-3)
+            time.sleep(1.0)
+        return ip_address
+    return None
 
 
 def get_mac_address():
