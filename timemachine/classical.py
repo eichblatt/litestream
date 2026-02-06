@@ -475,6 +475,7 @@ def poll_select_longpress(pSelect_old):
     glc.player.pause()
     print("                 Longpress of select")
     glc.radio_mode = None
+    glc.selected_composer = glc.keyed_composer
     glc.performance_index = choose_performance(glc.selected_composer, glc.keyed_work)  # take control of knobs
     if glc.performance_index is not None:
         glc.state["selected_tape"]["composer_id"] = glc.selected_composer.id
@@ -483,6 +484,7 @@ def poll_select_longpress(pSelect_old):
         select_performance(ntape=glc.performance_index)
         save_state(glc.state)
         glc.selected_work = glc.keyed_work
+        display_composer(glc.selected_composer)
         display_title(glc.selected_work)
         display_performance_info()
         glc.track_titles = cleanup_track_names([x["subtitle"] for x in glc.tracklist])
