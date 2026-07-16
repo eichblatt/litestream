@@ -2,7 +2,7 @@ try:
     from timemachine.plex_mini import MyPlexAccount
 except Exception:
     try:
-        from .plex_mini import MyPlexAccount
+        from .timemachine.plex_mini import MyPlexAccount
     except Exception:
         from plex_mini import MyPlexAccount
 
@@ -17,6 +17,25 @@ def is_valid_iso_date(text):
     if not (text[:4].isdigit() and text[5:7].isdigit() and text[8:10].isdigit()):
         return False
     return True
+
+
+import network
+
+
+def connect_to_WiFi(ssid="fiosteve-guest", password="saragansteve3"):
+    sta_if = network.WLAN(network.STA_IF)
+    sta_if.active(True)
+    sta_if.config(pm=network.WLAN.PM_NONE)  # Switch off Power Management on the WiFi radio (better performance)
+
+    if not sta_if.isconnected():
+        print("Connecting to network...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+
+        while not sta_if.isconnected():
+            pass
+
+    print("Connected. Network config:", sta_if.ifconfig())
 
 
 class PlexMetadataClient:
@@ -72,17 +91,18 @@ class PlexMetadataClient:
         return tracks
 
 
-if __name__ == "__main__":
-    # Replace with your own credentials and server details.
-    plex_user = "my_plex_username"
-    plex_password = "my_plex_password"
-    plex_server = "my_plex_server"
-    section_name = "Live Music"
+wifi = connect_to_WiFi()
 
-    client = PlexMetadataClient(plex_user, plex_password, plex_server, section_name)
-    albums = list(client.iter_albums())
-    print("Albums found:", len(albums))
+# Replace with your own credentials and server details.
+plex_user = "myplexusername"
+plex_password = "myplexpassword"
+plex_server = "myplexserver"
+section_name = "Live Music"
 
-    if albums:
-        sample_tracks = client.get_album_tracks(albums[0])
-        print("Tracks in first album:", len(sample_tracks))
+client = PlexMetadataClient(plex_user, plex_password, plex_server, section_name)
+albums = list(client.iter_albums())
+print("Albums found:", len(albums))
+
+if albums:
+    sample_tracks = client.get_album_tracks(albums[0])
+    print("Tracks in first album:", len(sample_tracks))
