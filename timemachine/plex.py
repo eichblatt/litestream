@@ -161,6 +161,75 @@ class PlexMetadataClient:
             )
         return tracks
 
+    def _album_metadata(self, album):
+        title = str(getattr(album, "title", "")).strip()
+        date_str = title[:10]
+        if not utils.is_valid_iso_date(date_str):
+            date_str = ""
+
+        artist = str(getattr(album, "parentTitle", "")).strip()
+        tail = title[10:].strip(" -_:|") if len(title) > 10 else ""
+
+        vcs_text = tail
+        if not vcs_text:
+            vcs_text = artist
+        elif artist and (artist.lower() not in vcs_text.lower()):
+            vcs_text = f"{tail} - {artist}"
+        if not vcs_text:
+            vcs_text = title
+
+        return date_str, artist, vcs_text
+
+    def get_vcs_by_date(self):
+        """Return livemusic-style metadata map: {iso_date: vcs_string}."""
+        vcs_by_date = {}
+        for album in self.iter_albums():
+            date_str, _artist, vcs_text = self._album_metadata(album)
+            if not date_str:
+                continue
+
+            if date_str not in vcs_by_date and vcs_text:
+                vcs_by_date[date_str] = vcs_text
+        return vcs_by_date
+
+    def get_trackdata_for_date(self, key_date, artist_name=None):
+        artist_name_norm = str(artist_name).strip().lower() if artist_name is not None else None
+        candidates = []
+
+        for album in self.iter_albums():
+            date_str, artist, vcs_text = self._album_metadata(album)
+            if date_str != key_date:
+                continue
+
+            if artist_name_norm is not None and str(artist).strip().lower() != artist_name_norm:
+                continue
+
+            track_rows = self.get_album_tracks(album)
+            tracklist = []
+            urls = []
+            for row in track_rows:
+                stream_url = str(row.get("stream_url", "")).strip()
+                if not stream_url:
+                    continue
+                tracklist.append(str(row.get("title", "Unknown Track")))
+                urls.append(stream_url)
+
+            if len(urls) == 0:
+                continue
+
+            candidates.append(
+                {
+                    "artist": artist,
+                    "album_title": str(getattr(album, "title", "")),
+                    "vcs": vcs_text,
+                    "tape_id": str(getattr(album, "ratingKey", "unknown") or "unknown"),
+                    "tracklist": tracklist,
+                    "urls": urls,
+                }
+            )
+
+        return candidates
+
 
 PLEX_CONFIG_FILE = "/config/plex.json"
 
@@ -522,6 +591,51 @@ def get_plex_clients():
             yield client
         except Exception as e:
             print(f"Skipping plex section due to connection error: {e}")
+
+
+def get_plex_vcs_collections():
+    """Return livemusic-style dict keyed by album artist.
+
+    Output shape: {artist_name: {iso_date: vcs_string}}.
+    """
+    collections = {}
+    for client in get_plex_clients():
+        try:
+            for album in client.iter_albums():
+                date_str, artist, vcs_text = client._album_metadata(album)
+                if not date_str:
+                    continue
+
+                artist = artist or str(client.section_name or "Plex")
+
+                if artist not in collections:
+                    collections[artist] = {}
+                if date_str not in collections[artist] and vcs_text:
+                    collections[artist][date_str] = vcs_text
+        except Exception as e:
+            print(f"Skipping plex vcs collection {client.plex_user}:{client.server_name}:{client.section_name}: {e}")
+    return collections
+
+
+def get_plex_trackdata_for_date(collection_name, key_date, ntape=0):
+    candidates = []
+    for client in get_plex_clients():
+        try:
+            candidates.extend(client.get_trackdata_for_date(key_date, artist_name=collection_name))
+        except Exception as e:
+            print(f"Error loading plex trackdata {collection_name} {key_date}: {e}")
+
+    if len(candidates) == 0:
+        return None
+
+    chosen = candidates[ntape % len(candidates)]
+    return {
+        "collection": collection_name,
+        "tracklist": chosen["tracklist"],
+        "urls": chosen["urls"],
+        "tape_id": chosen.get("tape_id", "unknown"),
+        "vcs": chosen.get("vcs", ""),
+    }
 
 
 def configure():

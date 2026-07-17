@@ -54,6 +54,9 @@ AUTO_PLAY = True
 DATE_SET_TIME = time.ticks_ms()
 COLLS_LOADED_TIME = None
 CONFIG_CHOICES = ["Artists", "Plex"]
+PLEX_COLLECTION_PREFIX = "Plex:"
+PLEX_COLLECTIONS = set()
+PLEX_COLLECTION_DATES = {}
 
 
 # --------------------------------------------------------------- Bboxes
@@ -172,6 +175,16 @@ def best_tape(collection, key_date):
     pass
 
 
+def _is_plex_date(collection, key_date=None):
+    if not isinstance(collection, str):
+        return False
+    if collection.startswith(PLEX_COLLECTION_PREFIX):
+        return True
+    if key_date is None:
+        return collection in PLEX_COLLECTIONS
+    return key_date in PLEX_COLLECTION_DATES.get(collection, set())
+
+
 def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
     print(f"selecting show from {key_date}. Collections {coll_dict.keys()}. Collection {collection}")
     if collection is None:
@@ -181,6 +194,21 @@ def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
                 valid_collections.append(coll)
         collection = valid_collections[ntape % len(valid_collections)]
         ntape = ntape // len(valid_collections)
+
+    if _is_plex_date(collection, key_date):
+        response = plex.get_plex_trackdata_for_date(collection, key_date, ntape=ntape)
+        if response is not None:
+            return (
+                response["collection"],
+                response["tracklist"],
+                response["urls"],
+                response.get("tape_id", "plex"),
+            )
+
+        tm.clear_screen()
+        tm.write("No playable Plex tracks", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        tm.write(f"{collection} {key_date}", 0, pfont_small.HEIGHT + 2, pfont_smallx, tm.WHITE, show_end=-2)
+        return collection, [], [], "plex-metadata"
 
     tracklist = []
     tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
@@ -233,6 +261,9 @@ def get_tape_ids(coll_dict, key_date):
     tape_ids = []
     for collection, cdict in coll_dict.items():
         if cdict.get(key_date, None):
+            if _is_plex_date(collection, key_date):
+                print(f"Skipping tape-id lookup for plex metadata collection {collection}")
+                continue
             key_date_colls.append(collection)
             url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
             print(f"URL is {url}")
@@ -726,6 +757,11 @@ def choose_tape(coll_dict, key_date):
     tm.clear_screen()
     tm.write(f"{collection} {key_date} Loading tapes", 0, 0, pfont_small, tm.YELLOW, show_end=-3)
     tape_ids = get_tape_ids({collection: coll_dict[collection]}, key_date)  # make sure coll_dict not corrupted
+    if len(tape_ids) == 0:
+        tm.clear_screen()
+        tm.write("No archive tapes", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+        tm.write("Plex playback pending", 0, pfont_small.HEIGHT + 2, pfont_smallx, tm.WHITE, show_end=-2)
+        return None, None, None
     seen = set()
     tape_choices = [short_tape_id(x[1]) for x in tape_ids if x[0] == collection and not (x[1] in seen or seen.add(x[1]))]
     if len(tape_choices) == 1:
@@ -890,6 +926,60 @@ def get_coll_dict(collection_list):
     return coll_dict
 
 
+def merge_plex_coll_dict(coll_dict):
+    """Merge configured Plex sections into livemusic coll_dict shape."""
+    global PLEX_COLLECTIONS, PLEX_COLLECTION_DATES
+    try:
+        plex_collections = plex.get_plex_vcs_collections()
+    except Exception as e:
+        print(f"Unable to load plex vcs collections: {e}")
+        PLEX_COLLECTIONS = set()
+        PLEX_COLLECTION_DATES = {}
+        return coll_dict
+
+    if len(plex_collections) == 0:
+        PLEX_COLLECTIONS = set()
+        PLEX_COLLECTION_DATES = {}
+        return coll_dict
+
+    min_year = tm.y._min_val
+    max_year = tm.y._max_val
+    added = 0
+    plex_collection_names = set()
+    plex_collection_dates = {}
+    for coll_name, vcs_by_date in plex_collections.items():
+        if not isinstance(vcs_by_date, dict) or len(vcs_by_date) == 0:
+            continue
+        existing = coll_dict.get(coll_name, {})
+        if not isinstance(existing, dict):
+            existing = {}
+
+        merged = dict(existing)
+        inserted_dates = set()
+        for date_key, vcs_text in vcs_by_date.items():
+            if date_key not in merged and vcs_text:
+                merged[date_key] = vcs_text
+                inserted_dates.add(date_key)
+
+        coll_dict[coll_name] = merged
+        if len(inserted_dates) > 0:
+            plex_collection_names.add(coll_name)
+            plex_collection_dates[coll_name] = inserted_dates
+        coll_dates = list(merged.keys())
+        if len(coll_dates) == 0:
+            continue
+        min_year = min(int(min(coll_dates)[:4]), min_year)
+        max_year = max(int(max(coll_dates)[:4]), max_year)
+        added += 1
+
+    PLEX_COLLECTIONS = plex_collection_names
+    PLEX_COLLECTION_DATES = plex_collection_dates
+    tm.y._min_val = min_year
+    tm.y._max_val = max_year
+    print(f"Added {added} plex collections")
+    return coll_dict
+
+
 def ping_archive():
     # Verify that archive.org is up
     n = 0
@@ -951,6 +1041,7 @@ def run():
         initialize_knobs()
 
         coll_dict = get_coll_dict(state["collection_list"])
+        coll_dict = merge_plex_coll_dict(coll_dict)
         print(f"Loaded collections {coll_dict.keys()}")
 
         # if state["collection_list"] != ["Phish"]:
