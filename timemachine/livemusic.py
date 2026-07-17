@@ -108,7 +108,7 @@ def configure(choice):
     if choice == "Artists":
         return configure_artists()
     if choice == "Plex":
-        return plex.configure_plex()
+        return plex.configure()
     return
 
 
