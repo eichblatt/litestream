@@ -1,6 +1,6 @@
 from plex_mini import MyPlexAccount
 import utils
-import timemachine as tm
+import board as tm
 
 
 class PlexMetadataClient:

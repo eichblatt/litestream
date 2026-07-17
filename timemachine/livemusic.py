@@ -31,7 +31,7 @@ except ImportError:
 import archive_utils
 import board as tm
 import utils
-import plex_utils
+import plex
 
 import audioPlayer
 
@@ -108,7 +108,7 @@ def configure(choice):
     if choice == "Artists":
         return configure_artists()
     if choice == "Plex":
-        return plex_utils.configure_plex()
+        return plex.configure_plex()
     return
 
 
