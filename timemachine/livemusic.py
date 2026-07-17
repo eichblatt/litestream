@@ -102,19 +102,13 @@ def set_collection_list(collection_list):
     utils.save_state(state)
 
 
-def get_plex_collections():
-    state = utils.load_state()
-    coll_list = state.get("plex_collections", [])
-    return coll_list
-
-
 def configure(choice):
     assert choice in CONFIG_CHOICES, f"{choice} not in CONFIG_CHOICES: {CONFIG_CHOICES}"
 
     if choice == "Artists":
         return configure_artists()
     if choice == "Plex":
-        return configure_plex()
+        return plex_utils.configure_plex()
     return
 
 
@@ -138,52 +132,6 @@ def configure_artists():
         utils.add_list_element("Artist", all_collections, get_collection_list, append_to_collection_list)
 
     elif choice == "Remove Artist":
-        utils.remove_list_element(get_collection_list, delete_from_collection_list)
-
-    elif choice == "Phish Only":
-        set_collection_list(["Phish"])
-        utils.reset()
-    elif choice == "Dead Only":
-        set_collection_list(["GratefulDead"])
-        utils.reset()
-    elif choice == "Other":
-        other_choices = ["Gizzard Only", "Goose Only", "Dead + Phish", "Cancel"]
-        other_choice = utils.select_option("Select", other_choices)
-        if other_choice == "Gizzard Only":
-            set_collection_list(["KingGizzardAndTheLizardWizard"])
-            utils.reset()
-        if other_choice == "Goose Only":
-            set_collection_list(["GooseBand"])
-            utils.reset()
-        elif other_choice == "Dead + Phish":
-            set_collection_list(["GratefulDead", "Phish"])
-            utils.reset()
-        else:
-            pass
-    return
-
-
-def configure_plex():
-    choices = ["Add Collection", "Remove Collection", "Other", "Cancel"]
-    choice = utils.select_option("Select Option", choices)
-    print(f"configure_collection: chose to {choice}")
-    if choice == "Cancel":
-        return
-
-    all_collections = []
-    collection_list = get_plex_collections()
-    all_accounts = plex_utils.get_plex_accounts()
-
-    print(f"current collection_list is {collection_list}")
-    if choice == "Add Collection":
-        tm.clear_screen()
-        tm.write("Loading All Artist Names...", 0, 0, pfont_small, tm.YELLOW, show_end=-4)
-        all_collections_dict = get_collection_names_dict()
-        for archive in all_collections_dict.keys():
-            all_collections = all_collections + all_collections_dict[archive]
-        utils.add_list_element("Artist", all_collections, get_collection_list, append_to_collection_list)
-
-    elif choice == "Remove Collection":
         utils.remove_list_element(get_collection_list, delete_from_collection_list)
 
     elif choice == "Phish Only":

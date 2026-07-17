@@ -1,5 +1,6 @@
 from plex_mini import MyPlexAccount
 import utils
+import timemachine as tm
 
 
 class PlexMetadataClient:
@@ -9,6 +10,8 @@ class PlexMetadataClient:
         self.plex = self.account.resource(plex_server).connect()
         self.music = self.plex.library.section(section_name)
         self.date_range = date_range
+        self.server_name = plex_server
+        self.section_name = section_name
 
     def iter_albums(self):
         for album in self.music.searchAlbums():
@@ -70,3 +73,27 @@ def get_plex_clients():
             continue
         client = PlexMetadataClient(plex_user, plex_password, plex_server, section_name)
         yield client
+
+
+def configure_plex():
+    choices = ["Add Collection", "Remove Collection", "Cancel"]
+    choice = utils.select_option("Select Option", choices)
+    print(f"configure_collection: chose to {choice}")
+    if choice == "Cancel":
+        return
+
+    plex_sections = utils.read_json(PLEX_SECTIONS_FILE)
+    collection_list = [section["section_name"] for section in plex_sections if section.get("section_name") is not None]
+
+    print(f"current collection_list is {collection_list}")
+    if choice == "Add Collection":
+        all_clients = list(get_plex_clients())
+        all_collections = [c.section_name for c in all_clients]
+        known_choices = [c for c in all_collections if c not in collection_list]
+        tm.clear_screen()
+        utils.add_list_element("Collection", known_choices, get_collection_list, append_to_collection_list)
+
+    elif choice == "Remove Collection":
+        utils.remove_list_element(get_collection_list, delete_from_collection_list)
+
+    return
