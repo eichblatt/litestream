@@ -1,37 +1,10 @@
 from plex_mini import MyPlexAccount
-import network
-
-
-def is_valid_iso_date(text):
-    if not isinstance(text, str):
-        return False
-    if len(text) != 10:
-        return False
-    if text[4] != "-" or text[7] != "-":
-        return False
-    if not (text[:4].isdigit() and text[5:7].isdigit() and text[8:10].isdigit()):
-        return False
-    return True
-
-
-def connect_to_WiFi(ssid="fiosteve-guest", password="saragansteve3"):
-    sta_if = network.WLAN(network.STA_IF)
-    sta_if.active(True)
-    sta_if.config(pm=network.WLAN.PM_NONE)  # Switch off Power Management on the WiFi radio (better performance)
-
-    if not sta_if.isconnected():
-        print("Connecting to network...")
-        sta_if.active(True)
-        sta_if.connect(ssid, password)
-
-        while not sta_if.isconnected():
-            pass
-
-    print("Connected. Network config:", sta_if.ifconfig())
+import utils
 
 
 class PlexMetadataClient:
     def __init__(self, plex_user, plex_password, plex_server, section_name, date_range=None):
+        print(f"Initializing PlexMetadataClient with user: {plex_user}, server: {plex_server}, section: {section_name}")
         self.account = MyPlexAccount(plex_user, plex_password)
         self.plex = self.account.resource(plex_server).connect()
         self.music = self.plex.library.section(section_name)
@@ -40,7 +13,7 @@ class PlexMetadataClient:
     def iter_albums(self):
         for album in self.music.searchAlbums():
             date_str = album.title[:10] if isinstance(album.title, str) else ""
-            if not is_valid_iso_date(date_str):
+            if not utils.is_valid_iso_date(date_str):
                 continue
 
             if self.date_range:
@@ -83,18 +56,17 @@ class PlexMetadataClient:
         return tracks
 
 
-wifi = connect_to_WiFi()
+PLEX_SECTIONS_FILE = "/config/plex.json"
 
-# Replace with your own credentials and server details.
-plex_user = "myplexusername"
-plex_password = "myplexpassword"
-plex_server = "myplexserver"
-section_name = "Live Music"
 
-client = PlexMetadataClient(plex_user, plex_password, plex_server, section_name)
-albums = list(client.iter_albums())
-print("Albums found:", len(albums))
-
-if albums:
-    sample_tracks = client.get_album_tracks(albums[0])
-    print("Tracks in first album:", len(sample_tracks))
+def get_plex_clients():
+    plex_sections = utils.read_json(PLEX_SECTIONS_FILE)
+    for section in plex_sections:
+        plex_user, plex_password = section.get("plex_account")
+        plex_server = section.get("plex_server")
+        section_name = section.get("section_name")
+        if section_name is None:
+            print(f"Skipping section with missing section_name: {section} for account {plex_user}")
+            continue
+        client = PlexMetadataClient(plex_user, plex_password, plex_server, section_name)
+        yield client

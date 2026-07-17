@@ -712,6 +712,18 @@ def isinteger(candidate):
     return False
 
 
+def is_valid_iso_date(text):
+    if not isinstance(text, str):
+        return False
+    if len(text) != 10:
+        return False
+    if text[4] != "-" or text[7] != "-":
+        return False
+    if not (text[:4].isdigit() and text[5:7].isdigit() and text[8:10].isdigit()):
+        return False
+    return True
+
+
 ############################################################################################### logging
 
 
