@@ -96,7 +96,7 @@ class _PlexClientBase:
             "Accept": "application/json",
         }
 
-    def _request_json(self, method, url, headers=None, data=None, params=None):
+    def request_json(self, method, url, headers=None, data=None, params=None):
         full_url = _append_query(url, params)
         hdrs = self._base_headers()
         if headers:
@@ -107,7 +107,7 @@ class _PlexClientBase:
                 resp = requests.post(full_url, headers=hdrs, data=data)
             else:
                 resp = requests.get(full_url, headers=hdrs)
-            status_code = getattr(resp, "status_code", 0)
+            status_code = int(getattr(resp, "status_code", 0))
             if status_code in (401, 403):
                 raise PlexUnauthorized("Plex authentication failed")
             if status_code < 200 or status_code >= 300:
@@ -135,9 +135,10 @@ class MyPlexAccount(_PlexClientBase):
         return {"X-Plex-Token": self.authToken}
 
     def _login(self, username, password):
+        print("Logging in to Plex with username:", username)
         encoded = _b64_encode("%s:%s" % (username, password))
         headers = {"Authorization": "Basic %s" % encoded}
-        payload = self._request_json("POST", "https://plex.tv/users/sign_in.json", headers=headers, data="")
+        payload = self.request_json("POST", "https://plex.tv/users/sign_in.json", headers=headers, data="")
         user = payload.get("user", {}) if isinstance(payload, dict) else {}
         token = user.get("authToken")
         if not token:
@@ -145,7 +146,7 @@ class MyPlexAccount(_PlexClientBase):
         return token
 
     def resources(self):
-        payload = self._request_json(
+        payload = self.request_json(
             "GET",
             "https://plex.tv/api/v2/resources",
             headers=self._token_headers(),
@@ -217,8 +218,9 @@ class MyPlexResource:
         uris = []
         for c in ordered:
             uri = c.get("uri") or c.get("httpuri")
-            if isinstance(uri, str) and uri:
-                uris.append(uri.rstrip("/"))
+            uri_text = str(uri).strip()
+            if uri_text:
+                uris.append(uri_text.rstrip("/"))
         return uris
 
     def connect(self):
@@ -236,7 +238,7 @@ class MyPlexResource:
                 version=self._account.version,
             )
             try:
-                client._request_json("GET", identity_url, headers=headers)
+                client.request_json("GET", identity_url, headers=headers)
                 return PlexServer(uri, token, self._account.client_identifier, self._account.product, self._account.version)
             except Exception:
                 pass
@@ -255,11 +257,13 @@ class PlexServer(_PlexClientBase):
         return {"X-Plex-Token": self._token}
 
     def _get_json(self, path, params=None):
+        path = str(path)
         path = path if path.startswith("/") else "/%s" % path
-        return self._request_json("GET", "%s%s" % (self.base_url, path), headers=self._token_headers(), params=params)
+        return self.request_json("GET", "%s%s" % (self.base_url, path), headers=self._token_headers(), params=params)
 
     def url(self, path, includeToken=False):
-        path = path if str(path).startswith("/") else "/%s" % path
+        path = str(path)
+        path = path if path.startswith("/") else "/%s" % path
         url = "%s%s" % (self.base_url, path)
         if includeToken:
             url = _append_query(url, {"X-Plex-Token": self._token})
@@ -282,7 +286,7 @@ class Library:
         wanted = str(title or "")
         sections = self.sections()
         for section in sections:
-            if section.title == wanted:
+            if str(section.title) == wanted:
                 return section
         for section in sections:
             if str(section.title).lower() == wanted.lower():
@@ -295,8 +299,8 @@ class LibrarySection:
         self._server = server
         self._raw = raw
         self.key = raw.get("key")
-        self.title = raw.get("title")
-        self.type = raw.get("type")
+        self.title = str(raw.get("title"))
+        self.type = str(raw.get("type"))
 
     def searchAlbums(self, **kwargs):
         start = int(kwargs.get("container_start", 0))

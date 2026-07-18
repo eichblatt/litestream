@@ -862,8 +862,11 @@ def lookup_date(d, col_d):
     return response
 
 
-def show_collections(collection_list):
-    ncoll = len(collection_list)
+def show_collections(collection_list, extra_collections=None):
+    if extra_collections is None:
+        extra_collections = []
+    display_collections = list(collection_list) + list(extra_collections)
+    ncoll = len(display_collections)
     message = f"Loading {ncoll} Collections"
     print(message)
     tm.clear_screen()
@@ -871,7 +874,7 @@ def show_collections(collection_list):
     text_start = pfont_med.HEIGHT + 1
     tm.tft.write(pfont_med, message, 0, 0, tm.YELLOW)
     max_lines = (tm.SCREEN_HEIGHT - text_start) // text_height
-    for i, coll in enumerate(collection_list[:max_lines]):
+    for i, coll in enumerate(display_collections[:max_lines]):
         tm.tft.write(pfont_smallx, f"{coll}", 0, text_start + text_height * i, tm.WHITE)
     if ncoll > max_lines:
         tm.tft.write(pfont_smallx, f"...", 0, text_start + text_height * max_lines, tm.WHITE)
@@ -1037,7 +1040,8 @@ def run():
     try:
         tm.label_soft_knobs("-", "-", "-")
         state = utils.load_state()
-        show_collections(state["collection_list"])
+        plex_sections = plex.get_configured_section_labels()
+        show_collections(state["collection_list"], extra_collections=plex_sections)
         initialize_knobs()
 
         coll_dict = get_coll_dict(state["collection_list"])

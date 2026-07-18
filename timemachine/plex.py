@@ -17,7 +17,6 @@ class PlexMetadataClient:
     _SECTION_CACHE = {}
 
     def __init__(self, plex_user, plex_password, plex_server=None, section_name=None, date_range=None):
-        print(f"Initializing PlexMetadataClient with user: {plex_user}, server: {plex_server}, section: {section_name}")
         self.plex_user = plex_user
         self.plex_password = plex_password
         # Discovery mode should not force immediate login. Authentication is lazy
@@ -82,8 +81,9 @@ class PlexMetadataClient:
         plex = self._get_connected_server(server_name)
         sections = []
         for section in plex.library.sections():
-            if getattr(section, "type", "") == "artist":
-                sec_name = getattr(section, "title", "")
+            section_type = str(getattr(section, "type", "")).strip().lower()
+            if section_type == "artist":
+                sec_name = str(getattr(section, "title", "")).strip()
                 if sec_name and sec_name not in sections:
                     sections.append(sec_name)
         PlexMetadataClient._SECTION_CACHE[key] = sections
@@ -483,7 +483,7 @@ def _add_server_screen(cfg):
 def _add_section_screen(cfg, server_scope=None):
     while True:
         section_options = _with_section_labels(_discover_addable_sections(cfg, server_scope=server_scope))
-        choices = [x["_display"] for x in section_options] + ["Add Server", "Cancel"]
+        choices = ["Add Server"] + [x["_display"] for x in section_options] + ["Cancel"]
         choice = _safe_menu_choice("Add Section", choices)
 
         if choice == "Cancel":
@@ -647,6 +647,40 @@ def get_plex_trackdata_for_date(collection_name, key_date, ntape=0):
         "tape_id": chosen.get("tape_id", "unknown"),
         "vcs": chosen.get("vcs", ""),
     }
+
+
+def get_configured_section_count():
+    cfg = _load_plex_config()
+    sections = cfg.get("plex_sections", [])
+    return len(sections) if isinstance(sections, list) else 0
+
+
+def get_configured_section_labels():
+    cfg = _load_plex_config()
+    rows = cfg.get("plex_sections", [])
+    if not isinstance(rows, list):
+        return []
+
+    labels = []
+    section_counts = {}
+    normalized = []
+    for row in rows:
+        norm = _normalize_section_row(row)
+        if norm is None:
+            continue
+        normalized.append(norm)
+        sec = norm.get("section_name", "?")
+        section_counts[sec] = section_counts.get(sec, 0) + 1
+
+    for row in normalized:
+        sec = row.get("section_name", "?")
+        if section_counts.get(sec, 0) > 1:
+            server = row.get("plex_server", "?")
+            account = row.get("plex_account", "?")
+            labels.append(f"Plex: {sec} ({server}, {account})")
+        else:
+            labels.append(f"Plex: {sec}")
+    return labels
 
 
 def configure():
