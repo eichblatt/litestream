@@ -93,10 +93,10 @@ def delete_from_collection_list(old_collection):
     full_list = state.get("collection_list", ["GratefulDead"])
     full_list = [elem for elem in full_list if elem != old_collection]
     state["collection_list"] = full_list
-    if len(full_list) > 0:
-        utils.save_state(state)
-    else:
-        print("WARN tried to set collection list to empty. Bailing")
+    if len(full_list) == 0:
+        state["selected_collection"] = ""
+        print("Archive collection_list is empty. Plex-only mode is allowed if Plex sections are configured.")
+    utils.save_state(state)
 
 
 def set_collection_list(collection_list):
@@ -1043,6 +1043,35 @@ def run():
         coll_dict = get_coll_dict(state["collection_list"])
         coll_dict = merge_plex_coll_dict(coll_dict)
         print(f"Loaded collections {coll_dict.keys()}")
+
+        if len(coll_dict) == 0:
+            tm.clear_screen()
+            tm.write("No music sources configured", 0, 0, color=tm.YELLOW, font=pfont_small, show_end=-2)
+            tm.write("Add Archive artists or Plex sections", 0, pfont_small.HEIGHT + 2, font=pfont_smallx, show_end=-2)
+            return -1
+
+        collections = list(coll_dict.keys())
+        valid_dates = set()
+        for coll in collections:
+            valid_dates = valid_dates | set(list(coll_dict[coll].keys()))
+        valid_dates = sorted(list(valid_dates))
+        if len(valid_dates) == 0:
+            tm.clear_screen()
+            tm.write("No dated shows found", 0, 0, color=tm.YELLOW, font=pfont_small, show_end=-2)
+            tm.write("Check Archive/Plex metadata", 0, pfont_small.HEIGHT + 2, font=pfont_smallx, show_end=-2)
+            return -1
+
+        state_changed = False
+        if state.get("selected_collection") not in collections:
+            state["selected_collection"] = collections[0]
+            state_changed = True
+
+        if state.get("selected_date") not in valid_dates:
+            state["selected_date"] = valid_dates[0]
+            state_changed = True
+
+        if state_changed:
+            utils.save_state(state)
 
         # if state["collection_list"] != ["Phish"]:
         #    if ping_archive() == -1:

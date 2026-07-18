@@ -168,13 +168,11 @@ class PlexMetadataClient:
             date_str = ""
 
         artist = str(getattr(album, "parentTitle", "")).strip()
-        tail = title[10:].strip(" -_:|") if len(title) > 10 else ""
+        tail = title[10:].strip(" -_:|,") if len(title) > 10 else ""
 
         vcs_text = tail
         if not vcs_text:
             vcs_text = artist
-        elif artist and (artist.lower() not in vcs_text.lower()):
-            vcs_text = f"{tail} - {artist}"
         if not vcs_text:
             vcs_text = title
 
@@ -431,25 +429,38 @@ def _discover_addable_servers(cfg):
 
 
 def _add_account_screen(cfg):
-    username = utils.select_chars("Plex user", "Enter Plex username. Press Stop to finish")
-    if not username:
-        return False
+    while True:
+        username = utils.select_chars("Plex user", "Enter Plex username. Press Stop to finish")
+        if not username:
+            return False
 
-    password = utils.select_chars("Plex password", "Enter Plex password. Press Stop to finish")
-    if password is None:
-        return False
+        password = utils.select_chars("Plex password", "Enter Plex password. Press Stop to finish")
+        if password is None:
+            return False
 
-    try:
-        _ = PlexMetadataClient(username, password)
-    except Exception as e:
-        print(f"Plex authentication failed for {username}: {e}")
-        tm.clear_screen()
-        tm.write("Plex login failed", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-2)
-        return False
+        try:
+            # Force a real login/network call so bad credentials are rejected here.
+            client = PlexMetadataClient(username, password)
+            _ = client.servers()
 
-    cfg["plex_accounts"][username] = password
-    _save_plex_config(cfg)
-    return True
+            cfg["plex_accounts"][username] = password
+            _save_plex_config(cfg)
+            return True
+        except Exception as e:
+            print(f"Plex authentication failed for {username}: {e}")
+            PlexMetadataClient.clear_cache(username)
+            tm.clear_screen()
+            tm.write("Plex login failed", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-2)
+            tm.write("Check user/password/network", 0, tm.pfont_small.HEIGHT + 2, tm.pfont_smallx, tm.WHITE, show_end=-2)
+
+            action = _safe_menu_choice("Auth failed", ["Retry", "Save Anyway", "Cancel"])
+            if action == "Retry":
+                continue
+            if action == "Save Anyway":
+                cfg["plex_accounts"][username] = password
+                _save_plex_config(cfg)
+                return True
+            return False
 
 
 def _add_server_screen(cfg):

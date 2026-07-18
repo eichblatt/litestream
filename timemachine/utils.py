@@ -1093,7 +1093,9 @@ def load_livemusic_state(state_path):
         state = read_json(state_path)
         collection_list = state.get("collection_list", ["GratefulDead"])
         selected_date = state.get("selected_date", "1975-08-13")
-        selected_collection = state.get("selected_collection", collection_list[0])
+        selected_collection = state.get("selected_collection", "")
+        if (not selected_collection) and len(collection_list) > 0:
+            selected_collection = collection_list[0]
         selected_tape_id = state.get("selected_tape_id", "unknown")
         volume = state.get("volume", 11)
         state = {
