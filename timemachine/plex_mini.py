@@ -304,9 +304,12 @@ class LibrarySection:
 
     def searchAlbums(self, **kwargs):
         start = int(kwargs.get("container_start", 0))
-        page_size = int(kwargs.get("container_size", 200))
         maxresults = kwargs.get("maxresults")
         maxresults = int(maxresults) if maxresults is not None else None
+
+        # Optimize page size based on maxresults to avoid over-fetching
+        base_page_size = int(kwargs.get("container_size", 200))
+        page_size = min(base_page_size, maxresults) if maxresults else base_page_size
 
         # Pass through additional query filters (for example, title=YYYY-MM-DD)
         # while keeping pagination controls local to this helper.
@@ -320,6 +323,13 @@ class LibrarySection:
 
         all_albums = []
         while True:
+            # Adjust page size if we're close to maxresults limit
+            if maxresults is not None:
+                remaining = maxresults - len(all_albums)
+                if remaining <= 0:
+                    break
+                page_size = min(page_size, remaining)
+
             params = {
                 "X-Plex-Container-Start": start,
                 "X-Plex-Container-Size": page_size,
@@ -363,11 +373,26 @@ class Album:
     def __init__(self, server, raw):
         self._server = server
         self._raw = raw
-        self.title = raw.get("title", "")
-        self.ratingKey = raw.get("ratingKey")
-        self.parentTitle = raw.get("parentTitle", "")
-        self.key = raw.get("key")
-        self.year = raw.get("year")
+
+    @property
+    def title(self):
+        return self._raw.get("title", "")
+
+    @property
+    def ratingKey(self):
+        return self._raw.get("ratingKey")
+
+    @property
+    def parentTitle(self):
+        return self._raw.get("parentTitle", "")
+
+    @property
+    def key(self):
+        return self._raw.get("key")
+
+    @property
+    def year(self):
+        return self._raw.get("year")
 
     def tracks(self):
         if not self.ratingKey:
@@ -384,33 +409,49 @@ class Track:
     def __init__(self, server, raw):
         self._server = server
         self._raw = raw
-        self.title = raw.get("title", "")
-        self.index = raw.get("index", 0)
-        self.media = []
+        self._media_cache = None
 
-        media_rows = raw.get("Media", [])
-        if not isinstance(media_rows, list):
-            media_rows = []
-        for media_row in media_rows:
-            if isinstance(media_row, dict):
-                self.media.append(Media(media_row))
+    @property
+    def title(self):
+        return self._raw.get("title", "")
+
+    @property
+    def index(self):
+        return self._raw.get("index", 0)
+
+    @property
+    def media(self):
+        if self._media_cache is None:
+            media_rows = self._raw.get("Media", [])
+            if not isinstance(media_rows, list):
+                media_rows = []
+            self._media_cache = [Media(media_row) for media_row in media_rows if isinstance(media_row, dict)]
+        return self._media_cache
 
 
 class Media:
     def __init__(self, raw):
         self._raw = raw
-        self.container = raw.get("container")
-        self.parts = []
+        self._parts_cache = None
 
-        part_rows = raw.get("Part", [])
-        if not isinstance(part_rows, list):
-            part_rows = []
-        for part_row in part_rows:
-            if isinstance(part_row, dict):
-                self.parts.append(Part(part_row))
+    @property
+    def container(self):
+        return self._raw.get("container")
+
+    @property
+    def parts(self):
+        if self._parts_cache is None:
+            part_rows = self._raw.get("Part", [])
+            if not isinstance(part_rows, list):
+                part_rows = []
+            self._parts_cache = [Part(part_row) for part_row in part_rows if isinstance(part_row, dict)]
+        return self._parts_cache
 
 
 class Part:
     def __init__(self, raw):
         self._raw = raw
-        self.key = raw.get("key", "")
+
+    @property
+    def key(self):
+        return self._raw.get("key", "")

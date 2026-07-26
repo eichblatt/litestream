@@ -280,8 +280,9 @@ class PlexMetadataClient:
         for query_value in query_values:
             try:
                 # Keep query bounded so unsupported filters do not fetch the
-                # entire library through this fast path.
-                matches = self.music.searchAlbums(title=query_value, maxresults=200)
+                # entire library through this fast path. Date queries rarely
+                # have more than a few matching albums.
+                matches = self.music.searchAlbums(title=query_value, maxresults=20)
             except Exception:
                 matches = []
 
