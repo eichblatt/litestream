@@ -117,6 +117,18 @@ class PlexMetadataClient:
             return f"{date_str} {tail}"
         return date_str
 
+    def _is_supported_audio_media(self, media_item, part_key):
+        container = str(getattr(media_item, "container", "") or "").strip().lower()
+        if container in ("mp3", "ogg"):
+            return True
+
+        # Some Plex rows omit container metadata; use key extension as fallback.
+        key_text = str(part_key or "").strip().lower()
+        if key_text.endswith(".mp3") or key_text.endswith(".ogg"):
+            return True
+
+        return False
+
     def music_sections(self, server_name):
         key = (self._cache_key(), server_name)
         cached = PlexMetadataClient._SECTION_CACHE.get(key)
@@ -192,12 +204,24 @@ class PlexMetadataClient:
         for position, track in enumerate(album.tracks(), start=1):
             stream_url = ""
             media_items = getattr(track, "media", [])
-            if media_items:
-                parts = getattr(media_items[0], "parts", [])
-                if parts:
-                    part_key = getattr(parts[0], "key", "")
-                    if part_key:
-                        stream_url = self.plex.url(part_key, includeToken=True)
+            for media_item in media_items:
+                parts = getattr(media_item, "parts", [])
+                if not parts:
+                    continue
+
+                part_key = getattr(parts[0], "key", "")
+                if not part_key:
+                    continue
+
+                if not self._is_supported_audio_media(media_item, part_key):
+                    continue
+
+                stream_url = self.plex.url(part_key, includeToken=True)
+                break
+
+            if not stream_url:
+                continue
+
             tracks.append(
                 {
                     "track_number": position,
