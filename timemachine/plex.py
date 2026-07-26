@@ -72,6 +72,51 @@ class PlexMetadataClient:
         PlexMetadataClient._SERVER_CACHE[(key, "__server_list__")] = names
         return names
 
+    def _date_span_in_title(self, title):
+        text = str(title or "").strip()
+        if len(text) < 10:
+            return "", -1
+
+        for start in range(0, len(text) - 9):
+            candidate = text[start : start + 10]
+            normalized = candidate.replace("_", "-")
+            if utils.is_valid_iso_date(normalized):
+                return normalized, start
+
+        return "", -1
+
+    def _strip_trailing_parenthetical(self, text):
+        value = str(text or "").strip()
+        if not value.endswith(")"):
+            return value
+
+        open_idx = value.rfind("(")
+        if open_idx < 0:
+            return value
+
+        suffix = value[open_idx + 1 : -1].strip()
+        if not suffix:
+            return value
+
+        compact = suffix.replace(" ", "").replace("-", "")
+        if len(compact) > 8 or not compact.isalpha():
+            return value
+
+        return value[:open_idx].rstrip(" -_:|,")
+
+    def _normalize_album_title(self, title):
+        raw_title = str(title or "").strip()
+        date_str, date_start = self._date_span_in_title(raw_title)
+        if not date_str:
+            return ""
+
+        tail = raw_title[date_start + 10 :].strip(" -_:|,")
+        tail = self._strip_trailing_parenthetical(tail)
+
+        if tail:
+            return f"{date_str} {tail}"
+        return date_str
+
     def music_sections(self, server_name):
         key = (self._cache_key(), server_name)
         cached = PlexMetadataClient._SECTION_CACHE.get(key)
@@ -116,8 +161,8 @@ class PlexMetadataClient:
         if self.music is None:
             return
         for album in self.music.searchAlbums():
-            date_str = album.title[:10] if isinstance(album.title, str) else ""
-            if not utils.is_valid_iso_date(date_str):
+            date_str, _date_start = self._date_span_in_title(getattr(album, "title", ""))
+            if not date_str:
                 continue
 
             if self.date_range:
@@ -129,9 +174,10 @@ class PlexMetadataClient:
     def get_albums(self):
         albums = []
         for album in self.iter_albums():
+            normalized_title = self._normalize_album_title(getattr(album, "title", ""))
             albums.append(
                 {
-                    "title": album.title,
+                    "title": normalized_title or album.title,
                     "artist": album.parentTitle,
                     "rating_key": album.ratingKey,
                     "year": album.year,
@@ -163,12 +209,14 @@ class PlexMetadataClient:
 
     def _album_metadata(self, album):
         title = str(getattr(album, "title", "")).strip()
-        date_str = title[:10]
-        if not utils.is_valid_iso_date(date_str):
-            date_str = ""
+        date_str, date_start = self._date_span_in_title(title)
 
         artist = str(getattr(album, "parentTitle", "")).strip()
-        tail = title[10:].strip(" -_:|,") if len(title) > 10 else ""
+        if date_str:
+            tail = title[date_start + 10 :].strip(" -_:|,")
+        else:
+            tail = ""
+        tail = self._strip_trailing_parenthetical(tail)
 
         vcs_text = tail
         if not vcs_text:
