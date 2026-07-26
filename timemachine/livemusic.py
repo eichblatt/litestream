@@ -196,6 +196,14 @@ def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
         ntape = ntape // len(valid_collections)
 
     if _is_plex_date(collection, key_date):
+        known_dates = PLEX_COLLECTION_DATES.get(collection, set())
+        if key_date not in known_dates:
+            print(f"Skipping Plex lookup for {collection} on {key_date}; date not known for that library")
+            tm.clear_screen()
+            tm.write("No playable Plex tracks", 0, 0, pfont_small, tm.YELLOW, show_end=-2)
+            tm.write(f"{collection} {key_date}", 0, pfont_small.HEIGHT + 2, pfont_smallx, tm.WHITE, show_end=-2)
+            return collection, [], [], "plex-metadata"
+
         response = plex.get_plex_trackdata_for_date(collection, key_date, ntape=ntape)
         if response is not None:
             return (

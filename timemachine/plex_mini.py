@@ -308,14 +308,28 @@ class LibrarySection:
         maxresults = kwargs.get("maxresults")
         maxresults = int(maxresults) if maxresults is not None else None
 
+        # Pass through additional query filters (for example, title=YYYY-MM-DD)
+        # while keeping pagination controls local to this helper.
+        extra_params = {}
+        for key, value in kwargs.items():
+            if key in ("container_start", "container_size", "maxresults"):
+                continue
+            if value is None:
+                continue
+            extra_params[str(key)] = value
+
         all_albums = []
         while True:
+            params = {
+                "X-Plex-Container-Start": start,
+                "X-Plex-Container-Size": page_size,
+            }
+            for key, value in extra_params.items():
+                params[key] = value
+
             payload = self._server._get_json(
                 "/library/sections/%s/albums" % self.key,
-                params={
-                    "X-Plex-Container-Start": start,
-                    "X-Plex-Container-Size": page_size,
-                },
+                params=params,
             )
             container = _extract_container(payload)
             items = container.get("Metadata", [])

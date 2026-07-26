@@ -262,11 +262,65 @@ class PlexMetadataClient:
                 vcs_by_date[date_str] = vcs_text
         return vcs_by_date
 
+    def _query_albums_for_date(self, key_date):
+        """Try targeted Plex album queries for this date before full scan.
+
+        This reduces first-time selection latency without adding discovery cost.
+        """
+        if self.music is None:
+            return []
+
+        candidates = []
+        seen = set()
+        query_values = [str(key_date)]
+        underscored = str(key_date).replace("-", "_")
+        if underscored not in query_values:
+            query_values.append(underscored)
+
+        for query_value in query_values:
+            try:
+                # Keep query bounded so unsupported filters do not fetch the
+                # entire library through this fast path.
+                matches = self.music.searchAlbums(title=query_value, maxresults=200)
+            except Exception:
+                matches = []
+
+            matched_for_date = 0
+            for album in matches:
+                date_str, _artist, _vcs = self._album_metadata(album)
+                if date_str != key_date:
+                    continue
+                matched_for_date += 1
+                rating_key = str(getattr(album, "ratingKey", "") or "")
+                dedupe_key = rating_key if rating_key else str(getattr(album, "title", ""))
+                if dedupe_key in seen:
+                    continue
+                seen.add(dedupe_key)
+                candidates.append(album)
+
+            if matched_for_date > 0:
+                print(f"Plex date lookup fast path hit for {key_date} ({self.server_name}/{self.section_name})")
+                return candidates
+
+        return []
+
     def get_trackdata_for_date(self, key_date, artist_name=None):
         artist_name_norm = str(artist_name).strip().lower() if artist_name is not None else None
         candidates = []
 
-        for album in self.iter_albums():
+        fast_candidates = self._query_albums_for_date(key_date)
+        if len(fast_candidates) > 0:
+            albums_to_check = fast_candidates
+        else:
+            # If fast query returned nothing and we're filtering by artist, skip the
+            # expensive fallback - this library doesn't have albums for this date.
+            if artist_name_norm is not None:
+                return []
+            # Fallback for servers that ignore title filters.
+            print(f"Plex date lookup fell back to full scan for {key_date} ({self.server_name}/{self.section_name})")
+            albums_to_check = self.iter_albums()
+
+        for album in albums_to_check:
             date_str, artist, vcs_text = self._album_metadata(album)
             if date_str != key_date:
                 continue
