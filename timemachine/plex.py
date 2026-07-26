@@ -484,7 +484,7 @@ def _add_section_screen(cfg, server_scope=None):
     while True:
         section_options = _with_section_labels(_discover_addable_sections(cfg, server_scope=server_scope))
         choices = ["Add Server"] + [x["_display"] for x in section_options] + ["Cancel"]
-        choice = _safe_menu_choice("Add Section", choices)
+        choice = _safe_menu_choice("Add Library", choices)
 
         if choice == "Cancel":
             return
@@ -515,14 +515,14 @@ def _delete_section_screen(cfg):
 
     if len(sections) == 0:
         tm.clear_screen()
-        tm.write("No sections configured", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-2)
+        tm.write("No libraries configured", 0, 0, tm.pfont_small, tm.YELLOW, show_end=-2)
         return
 
     section_rows = [row for row in sections if isinstance(row, dict)]
     section_options = _with_section_labels(section_rows)
     labels = [x["_display"] for x in section_options]
 
-    choice = _safe_menu_choice("Delete Section", labels + ["Cancel"])
+    choice = _safe_menu_choice("Delete Library", labels + ["Cancel"])
     if choice == "Cancel":
         return
 
@@ -571,14 +571,14 @@ def _delete_account_screen(cfg):
 def _show_selected_sections_screen(cfg):
     sections = cfg.get("plex_sections", [])
     if len(sections) == 0:
-        _safe_menu_choice("Plex Sections", ["No sections added", "Continue"])
+        _safe_menu_choice("Plex Libraries", ["No libraries added", "Continue"])
         return
 
     section_rows = [row for row in sections if isinstance(row, dict)]
     section_options = _with_section_labels(section_rows)
     labels = [x["_display"] for x in section_options]
 
-    _safe_menu_choice("Plex Sections", labels + ["Continue"])
+    _safe_menu_choice("Plex Libraries", labels + ["Continue"])
 
 
 def get_plex_clients():
@@ -677,16 +677,16 @@ def get_configured_section_labels():
         if section_counts.get(sec, 0) > 1:
             server = row.get("plex_server", "?")
             account = row.get("plex_account", "?")
-            labels.append(f"Plex: {sec} ({server}, {account})")
+            labels.append(f"Plex Library: {sec} ({server}, {account})")
         else:
-            labels.append(f"Plex: {sec}")
+            labels.append(f"Plex Library: {sec}")
     return labels
 
 
 def configure():
     while True:
         cfg = _load_plex_config()
-        choices = ["Show Sections", "Add Section", "Delete Section"]
+        choices = ["Show Libraries", "Add Library", "Delete Library"]
         if len(cfg.get("plex_accounts", {})) > 0:
             choices.append("Delete Account")
         choices.append("Cancel")
@@ -695,13 +695,13 @@ def configure():
 
         if choice == "Cancel":
             return
-        if choice == "Show Sections":
+        if choice == "Show Libraries":
             _show_selected_sections_screen(cfg)
             continue
-        if choice == "Add Section":
+        if choice == "Add Library":
             _add_section_screen(cfg)
             continue
-        if choice == "Delete Section":
+        if choice == "Delete Library":
             _delete_section_screen(cfg)
             continue
         if choice == "Delete Account":

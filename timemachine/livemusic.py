@@ -95,7 +95,7 @@ def delete_from_collection_list(old_collection):
     state["collection_list"] = full_list
     if len(full_list) == 0:
         state["selected_collection"] = ""
-        print("Archive collection_list is empty. Plex-only mode is allowed if Plex sections are configured.")
+        print("Archive collection_list is empty. Plex-only mode is allowed if Plex libraries are configured.")
     utils.save_state(state)
 
 
@@ -930,7 +930,7 @@ def get_coll_dict(collection_list):
 
 
 def merge_plex_coll_dict(coll_dict):
-    """Merge configured Plex sections into livemusic coll_dict shape."""
+    """Merge configured Plex libraries into livemusic coll_dict shape."""
     global PLEX_COLLECTIONS, PLEX_COLLECTION_DATES
     try:
         plex_collections = plex.get_plex_vcs_collections()
@@ -1051,7 +1051,7 @@ def run():
         if len(coll_dict) == 0:
             tm.clear_screen()
             tm.write("No music sources configured", 0, 0, color=tm.YELLOW, font=pfont_small, show_end=-2)
-            tm.write("Add Archive artists or Plex sections", 0, pfont_small.HEIGHT + 2, font=pfont_smallx, show_end=-2)
+            tm.write("Add Archive artists or Plex libraries", 0, pfont_small.HEIGHT + 2, font=pfont_smallx, show_end=-2)
             return -1
 
         collections = list(coll_dict.keys())
