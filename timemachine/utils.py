@@ -712,6 +712,18 @@ def isinteger(candidate):
     return False
 
 
+def is_valid_iso_date(text):
+    if not isinstance(text, str):
+        return False
+    if len(text) != 10:
+        return False
+    if text[4] != "-" or text[7] != "-":
+        return False
+    if not (text[:4].isdigit() and text[5:7].isdigit() and text[8:10].isdigit()):
+        return False
+    return True
+
+
 ############################################################################################### logging
 
 
@@ -1081,7 +1093,9 @@ def load_livemusic_state(state_path):
         state = read_json(state_path)
         collection_list = state.get("collection_list", ["GratefulDead"])
         selected_date = state.get("selected_date", "1975-08-13")
-        selected_collection = state.get("selected_collection", collection_list[0])
+        selected_collection = state.get("selected_collection", "")
+        if (not selected_collection) and len(collection_list) > 0:
+            selected_collection = collection_list[0]
         selected_tape_id = state.get("selected_tape_id", "unknown")
         volume = state.get("volume", 11)
         state = {

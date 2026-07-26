@@ -425,7 +425,10 @@ class AudioPlayer:
         if self.ntracks > 0:
             self.current_track = 0
             self.next_track = self.set_next_track()
-        self.callbacks["display"](*self.track_names())
+        try:  # temporary fix for display callback not being set up yet
+            self.callbacks["display"](*self.track_names())
+        except TypeError:
+            pass  # This happens when the display callback is not set up yet
 
     def track_status(self):
         if self.current_track is None:
@@ -541,12 +544,14 @@ class AudioPlayer:
     #        return self.playlist_started
 
     def parse_url(self, location):
+        print(f"Parsing URL {location.decode()}")
         parts = location.decode().split("://", 1)
         port = 80 if parts[0] == "http" else 443 if parts[0] == "https" else 0
         url = parts[1].split("/", 1)
         host = url[0]
+        host, port = (host.split(":", 1) + [port])[:2]
         path = url[1] if url[1].startswith("/") else "/" + url[1]
-        return host, port, path
+        return host, int(port), path
 
     def read_http_header(self, trackno, offset=0, port=80, retries=1):
         if trackno is None:
@@ -557,6 +562,7 @@ class AudioPlayer:
         #        self.playlist_started = True
         self.track_being_read = trackno
         url = self.playlist[trackno]
+        print(f"Reading HTTP header for track {trackno} from {url} with offset {offset}")
         host, port, path = self.parse_url(url.encode())
         assert port > 0, "Invalid URL prefix"
 
@@ -747,10 +753,11 @@ class AudioPlayer:
             return
 
         # Store the end-of-track and format marker for this track (except if we are restarting a track)
-        if path.lower().endswith(".mp3"):
+        pathname = path.split("?", 1)[0]
+        if pathname.lower().endswith(".mp3"):
             if offset == 0:
                 self.TrackInfo.append((track_length, format_MP3))
-        elif path.lower().endswith(".ogg"):
+        elif pathname.lower().endswith(".ogg"):
             if offset == 0:
                 self.TrackInfo.append((track_length, format_Vorbis))
         else:
