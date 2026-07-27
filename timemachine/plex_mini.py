@@ -269,6 +269,28 @@ class PlexServer(_PlexClientBase):
             url = _append_query(url, {"X-Plex-Token": self._token})
         return url
 
+    def transcode_album_url(self, rating_key, audio_codec="mp3", music_bitrate=320, protocol="http", platform="Chrome"):
+        """Build Plex universal transcode URL using a metadata ratingKey.
+
+        URL shape mirrors known-good browser-style parameters for audio
+        transcoding.
+        """
+        params = {
+            "path": "/library/metadata/%s" % rating_key,
+            "protocol": protocol,
+            "format": "mp3",
+            "audioCodec": audio_codec,
+            "musicBitrate": music_bitrate,
+            "directPlay": 0,
+            "directStream": 0,
+            "X-Plex-Client-Identifier": self.client_identifier,
+            "X-Plex-Product": self.product,
+            "X-Plex-Version": self.version,
+            "X-Plex-Platform": platform,
+            "X-Plex-Token": self._token,
+        }
+        return _append_query("%s/music/:/transcode/universal/start.mp3" % self.base_url, params)
+
 
 class Library:
     def __init__(self, server):
@@ -414,6 +436,10 @@ class Track:
     @property
     def title(self):
         return self._raw.get("title", "")
+
+    @property
+    def ratingKey(self):
+        return self._raw.get("ratingKey")
 
     @property
     def index(self):

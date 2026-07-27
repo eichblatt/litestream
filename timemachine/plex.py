@@ -201,6 +201,7 @@ class PlexMetadataClient:
         tracks = []
         if self.plex is None:
             return tracks
+        album_rating_key = str(getattr(album, "ratingKey", "") or "")
         for position, track in enumerate(album.tracks(), start=1):
             stream_url = ""
             media_items = getattr(track, "media", [])
@@ -212,6 +213,18 @@ class PlexMetadataClient:
                 part_key = getattr(parts[0], "key", "")
                 if not part_key:
                     continue
+
+                container = str(getattr(media_item, "container", "") or "").strip().lower()
+                part_key_lower = str(part_key).strip().lower()
+                is_flac = container == "flac" or part_key_lower.endswith(".flac")
+
+                # For FLAC, use universal transcode URL keyed by track metadata id.
+                if is_flac:
+                    track_rating_key = str(getattr(track, "ratingKey", "") or "")
+                    metadata_rating_key = track_rating_key or album_rating_key
+                    if metadata_rating_key:
+                        stream_url = self.plex.transcode_album_url(metadata_rating_key)
+                    break
 
                 if not self._is_supported_audio_media(media_item, part_key):
                     continue

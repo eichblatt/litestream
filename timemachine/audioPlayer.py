@@ -736,8 +736,11 @@ class AudioPlayer:
                     if header == b"\r\n":
                         break
 
-        # Make sure we know the length of the track and got a valid response from the server. If not, skip this track.
-        if track_length == 0 or (b"HTTP/1.1 200" not in response_headers and b"HTTP/1.1 206" not in response_headers):
+        # Validate response. Some Plex transcode URLs return 200 audio streams
+        # without Content-Length/Content-Range; treat these as unknown-length
+        # tracks and finalize length when the socket closes.
+        status_ok = b"HTTP/1.1 200" in response_headers or b"HTTP/1.1 206" in response_headers
+        if (not status_ok) or (track_length == 0 and b"content-type: audio/" not in response_headers.lower()):
             print("Bad URL:", url)
             print("Headers:", response_headers)
             print("TrackLength:", track_length)
@@ -752,12 +755,21 @@ class AudioPlayer:
             self.handle_end_of_track_read()
             return
 
+        if track_length == 0:
+            # Unknown total length; we'll set the real length at EOF.
+            track_length = -1
+            self.can_resume = True
+            print("Warning: Unknown track length - will finalize on EOF (resume enabled)")
+
         # Store the end-of-track and format marker for this track (except if we are restarting a track)
         pathname = path.split("?", 1)[0]
-        if pathname.lower().endswith(".mp3"):
+        path_lower = path.lower()
+        is_plex_vorbis = "/transcode/universal/start" in pathname.lower() and "audiocodec=vorbis" in path_lower
+        is_plex_mp3 = "/transcode/universal/start" in pathname.lower() and "audiocodec=mp3" in path_lower
+        if pathname.lower().endswith(".mp3") or is_plex_mp3:
             if offset == 0:
                 self.TrackInfo.append((track_length, format_MP3))
-        elif pathname.lower().endswith(".ogg"):
+        elif pathname.lower().endswith(".ogg") or is_plex_vorbis:
             if offset == 0:
                 self.TrackInfo.append((track_length, format_Vorbis))
         else:
@@ -803,13 +815,20 @@ class AudioPlayer:
                         # Start the decode loop
                         self.DecodeLoopRunning = True
 
-                    # We have read to the end of the track
-                    if self.current_track_bytes_read == self.TrackInfo[-1][0]:
+                    # We have read to the end of the track (known-length tracks)
+                    if self.TrackInfo[-1][0] >= 0 and self.current_track_bytes_read == self.TrackInfo[-1][0]:
                         self.handle_end_of_track_read()
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
                     if data == 0:
                         print("Peer close")
+                        # For unknown-length streams, EOF is expected. Finalize
+                        # this track length so the decode loop can complete.
+                        if len(self.TrackInfo) > 0 and self.TrackInfo[-1][0] < 0:
+                            self.TrackInfo[-1] = (self.current_track_bytes_read, self.TrackInfo[-1][1])
+                            print(f"Finalized unknown track length at EOF: {self.current_track_bytes_read}")
+                            self.handle_end_of_track_read()
+                            return
                         # Note: The exception below will be caught by the 'except' below
                         raise RuntimeError("Peer closed socket")
 
