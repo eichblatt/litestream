@@ -392,6 +392,15 @@ def _normalize_section_row(row):
     }
 
 
+def _section_triplet_key(account, server, section):
+    """Return normalized key for account/server/section identity checks."""
+    return (
+        str(account or "").strip().lower(),
+        str(server or "").strip().lower(),
+        str(section or "").strip().lower(),
+    )
+
+
 def _dedupe_sections(section_rows):
     deduped = []
     seen = set()
@@ -502,13 +511,16 @@ def _discover_music_sections(username, password, server_name):
 def _selected_keys(cfg):
     keys = set()
     for row in cfg.get("plex_sections", []):
-        if not isinstance(row, dict):
+        normalized = _normalize_section_row(row)
+        if normalized is None:
             continue
-        account = row.get("plex_account")
-        server = row.get("plex_server")
-        section = row.get("section_name")
-        if account and server and section:
-            keys.add((account, server, section))
+        keys.add(
+            _section_triplet_key(
+                normalized.get("plex_account"),
+                normalized.get("plex_server"),
+                normalized.get("section_name"),
+            )
+        )
     return keys
 
 
@@ -528,7 +540,7 @@ def _discover_addable_sections(cfg, server_scope=None):
                     continue
             sections = _discover_music_sections(username, password, server_name)
             for section_name in sections:
-                key = (username, server_name, section_name)
+                key = _section_triplet_key(username, server_name, section_name)
                 if key in selected:
                     continue
                 options.append(
@@ -642,7 +654,7 @@ def _add_section_screen(cfg, server_scope=None):
                     "section_name": option["section_name"],
                     "plex_account": option["plex_account"],
                 }
-                key = (row["plex_account"], row["plex_server"], row["section_name"])
+                key = _section_triplet_key(row["plex_account"], row["plex_server"], row["section_name"])
                 existing = _selected_keys(cfg)
                 if key not in existing:
                     cfg["plex_sections"].append(row)
