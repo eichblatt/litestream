@@ -52,6 +52,7 @@ class PlexMetadataClient:
         if plex is not None:
             return plex
 
+        print(f"Connecting to Plex server {server_name} for account {self.plex_user}")
         account = self._get_account_cached()
         plex = account.resource(server_name).connect()
         PlexMetadataClient._SERVER_CACHE[key] = plex
