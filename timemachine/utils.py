@@ -328,7 +328,7 @@ def add_list_element(message, full_set, callback_get, callback_add):
 def remove_list_element(callback_get, callback_remove):
     keepGoing = True
     lis = callback_get()
-    while keepGoing & (len(lis) > 1):
+    while keepGoing & (len(lis) > 0):
         elem_to_remove = select_option("Select", lis + ["_CANCEL"])
         lis = [x for x in lis if not x == elem_to_remove]
         choices = ["Remove Another", "Finished"]

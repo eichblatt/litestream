@@ -818,9 +818,9 @@ def get_configured_section_labels():
         if section_counts.get(sec, 0) > 1:
             server = row.get("plex_server", "?")
             account = row.get("plex_account", "?")
-            labels.append(f"Plex Library: {sec} ({server}, {account})")
+            labels.append(f"Plex: {sec} ({server}, {account})")
         else:
-            labels.append(f"Plex Library: {sec}")
+            labels.append(f"Plex: {sec}")
     return labels
 
 
