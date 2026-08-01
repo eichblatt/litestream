@@ -830,11 +830,11 @@ def configure():
         choices = ["Show Libraries", "Add Library", "Delete Library"]
         if len(cfg.get("plex_accounts", {})) > 0:
             choices.append("Delete Account")
-        choices.append("Cancel")
+        choices.extend(["Continue"])
 
         choice = _safe_menu_choice("Plex Setup", choices)
 
-        if choice == "Cancel":
+        if choice in ["Cancel", "Continue"]:
             return
         if choice == "Show Libraries":
             _show_selected_sections_screen(cfg)
