@@ -9,6 +9,9 @@ except Exception:
 import utils
 import board as tm
 
+PLEX_VCS_CACHE_FILE = "/config/plex_vcs_cache.json"
+PLEX_VCS_CACHE_VERSION = 1
+
 
 class PlexMetadataClient:
     # Per-run caches shared by all instances.
@@ -276,6 +279,76 @@ class PlexMetadataClient:
                 vcs_by_date[date_str] = vcs_text
         return vcs_by_date
 
+    def _section_album_count(self):
+        """Return total album count for this section using a lightweight probe."""
+        if self.plex is None or self.music is None:
+            return None
+        try:
+            payload = self.plex._get_json(
+                "/library/sections/%s/albums" % self.music.key,
+                params={
+                    "X-Plex-Container-Start": 0,
+                    "X-Plex-Container-Size": 0,
+                },
+            )
+            media_container = payload.get("MediaContainer", payload) if isinstance(payload, dict) else {}
+            total_size = media_container.get("totalSize")
+            if total_size is None:
+                return None
+            return int(total_size)
+        except Exception:
+            return None
+
+    def collection_fingerprint(self):
+        """Return a compact change marker for cache invalidation.
+
+        Fingerprint is based on section metadata plus current album count.
+        If Plex does not expose stable metadata fields, fallback safely omits
+        cache reuse by returning None.
+        """
+        if self.plex is None or self.music is None:
+            return None
+
+        try:
+            section_rows = self.plex.library.sections()
+        except Exception:
+            return None
+
+        match = None
+        for section in section_rows:
+            same_key = str(getattr(section, "key", "")) == str(getattr(self.music, "key", ""))
+            same_title = str(getattr(section, "title", "")) == str(getattr(self.music, "title", ""))
+            if same_key or same_title:
+                match = section
+                break
+
+        if match is None:
+            return None
+
+        raw = getattr(match, "_raw", None)
+        if not isinstance(raw, dict):
+            return None
+
+        key = str(raw.get("key", ""))
+        updated_at = str(raw.get("updatedAt", ""))
+        scanned_at = str(raw.get("scannedAt", ""))
+        content_changed_at = str(raw.get("contentChangedAt", ""))
+        total_size = self._section_album_count()
+
+        # At minimum we require key + album count to avoid stale cache reuse.
+        if not key or total_size is None:
+            return None
+
+        return "|".join(
+            [
+                key,
+                str(total_size),
+                updated_at,
+                scanned_at,
+                content_changed_at,
+            ]
+        )
+
     def _query_albums_for_date(self, key_date):
         """Try targeted Plex album queries for this date before full scan.
 
@@ -433,6 +506,78 @@ def _safe_menu_choice(title, choices):
     if choice == "_CANCEL":
         return "Cancel"
     return choice
+
+
+def _vcs_cache_default():
+    return {"version": PLEX_VCS_CACHE_VERSION, "libraries": {}}
+
+
+def _vcs_cache_library_key(client):
+    return "|".join(
+        [
+            str(client.plex_user or ""),
+            str(client.server_name or ""),
+            str(client.section_name or ""),
+        ]
+    )
+
+
+def _load_vcs_cache():
+    if not utils.path_exists(PLEX_VCS_CACHE_FILE):
+        return _vcs_cache_default()
+
+    try:
+        raw = utils.read_json(PLEX_VCS_CACHE_FILE)
+    except Exception as e:
+        print(f"Failed reading {PLEX_VCS_CACHE_FILE}: {e}")
+        return _vcs_cache_default()
+
+    if not isinstance(raw, dict):
+        return _vcs_cache_default()
+
+    if int(raw.get("version", -1)) != PLEX_VCS_CACHE_VERSION:
+        return _vcs_cache_default()
+
+    libraries = raw.get("libraries", {})
+    if not isinstance(libraries, dict):
+        libraries = {}
+    return {"version": PLEX_VCS_CACHE_VERSION, "libraries": libraries}
+
+
+def _save_vcs_cache(cache):
+    payload = {
+        "version": PLEX_VCS_CACHE_VERSION,
+        "libraries": cache.get("libraries", {}),
+    }
+    utils.write_json(payload, PLEX_VCS_CACHE_FILE)
+
+
+def _build_library_vcs_map(client):
+    """Return one library's minimal metadata as {artist: {date: vcs}}."""
+    out = {}
+    for album in client.iter_albums():
+        date_str, artist, vcs_text = client._album_metadata(album)
+        if not date_str:
+            continue
+
+        artist = artist or str(client.section_name or "Plex")
+
+        if artist not in out:
+            out[artist] = {}
+        if date_str not in out[artist] and vcs_text:
+            out[artist][date_str] = vcs_text
+    return out
+
+
+def _merge_library_vcs(collections, library_map):
+    for artist, vcs_by_date in library_map.items():
+        if not isinstance(vcs_by_date, dict):
+            continue
+        if artist not in collections:
+            collections[artist] = {}
+        for date_str, vcs_text in vcs_by_date.items():
+            if date_str not in collections[artist] and vcs_text:
+                collections[artist][date_str] = vcs_text
 
 
 def _with_unique_labels(items):
@@ -751,21 +896,50 @@ def get_plex_vcs_collections():
     Output shape: {artist_name: {iso_date: vcs_string}}.
     """
     collections = {}
+    cache = _load_vcs_cache()
+    libraries = cache.get("libraries", {})
+    cache_dirty = False
+    active_library_keys = set()
+
     for client in get_plex_clients():
         try:
-            for album in client.iter_albums():
-                date_str, artist, vcs_text = client._album_metadata(album)
-                if not date_str:
-                    continue
+            library_key = _vcs_cache_library_key(client)
+            active_library_keys.add(library_key)
+            fingerprint = client.collection_fingerprint()
+            cached_row = libraries.get(library_key, {})
 
-                artist = artist or str(client.section_name or "Plex")
+            cached_fingerprint = cached_row.get("fingerprint") if isinstance(cached_row, dict) else None
+            cached_map = cached_row.get("artists") if isinstance(cached_row, dict) else None
 
-                if artist not in collections:
-                    collections[artist] = {}
-                if date_str not in collections[artist] and vcs_text:
-                    collections[artist][date_str] = vcs_text
+            if fingerprint and cached_fingerprint == fingerprint and isinstance(cached_map, dict):
+                _merge_library_vcs(collections, cached_map)
+                continue
+
+            library_map = _build_library_vcs_map(client)
+            _merge_library_vcs(collections, library_map)
+
+            if fingerprint:
+                libraries[library_key] = {
+                    "fingerprint": fingerprint,
+                    "artists": library_map,
+                }
+                cache_dirty = True
         except Exception as e:
             print(f"Skipping plex vcs collection {client.plex_user}:{client.server_name}:{client.section_name}: {e}")
+
+    stale_keys = [key for key in libraries.keys() if key not in active_library_keys]
+    if len(stale_keys) > 0:
+        for key in stale_keys:
+            del libraries[key]
+        cache_dirty = True
+
+    if cache_dirty:
+        try:
+            cache["libraries"] = libraries
+            _save_vcs_cache(cache)
+        except Exception as e:
+            print(f"Unable to write plex vcs cache: {e}")
+
     return collections
 
 
