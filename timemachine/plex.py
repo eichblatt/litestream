@@ -59,19 +59,63 @@ class PlexMetadataClient:
         return plex
 
     def servers(self):
+        server_options = self.server_options()
+        return [row.get("server_id") for row in server_options if row.get("server_id")]
+
+    def server_options(self):
         key = self._cache_key()
-        cached = PlexMetadataClient._SERVER_CACHE.get((key, "__server_list__"))
+        cached = PlexMetadataClient._SERVER_CACHE.get((key, "__server_options__"))
         if cached is not None:
             return cached
 
         resources = self._get_account_cached().resources()
-        names = []
+        rows = []
+        seen_ids = set()
         for res in resources:
-            server_name = getattr(res, "name", None)
-            if server_name and server_name not in names:
-                names.append(server_name)
-        PlexMetadataClient._SERVER_CACHE[(key, "__server_list__")] = names
-        return names
+            server_name = str(getattr(res, "name", "") or "").strip()
+            client_id = str(getattr(res, "clientIdentifier", "") or "").strip()
+            machine_id = str(getattr(res, "machineIdentifier", "") or "").strip()
+            server_id = client_id or machine_id or server_name
+            normalized_id = server_id.strip().lower()
+            if not normalized_id or normalized_id in seen_ids:
+                continue
+
+            raw = getattr(res, "_raw", {})
+            owned = True
+            if isinstance(raw, dict) and "owned" in raw:
+                owned = bool(raw.get("owned"))
+
+            rows.append(
+                {
+                    "server_id": server_id,
+                    "name": server_name or server_id,
+                    "owned": owned,
+                }
+            )
+            seen_ids.add(normalized_id)
+
+        name_counts = {}
+        for row in rows:
+            name = row.get("name", "")
+            name_counts[name] = name_counts.get(name, 0) + 1
+
+        duplicate_names = {name for name, count in name_counts.items() if count > 1}
+        for row in rows:
+            name = row.get("name", "")
+            server_id = str(row.get("server_id", ""))
+            owned = bool(row.get("owned", True))
+
+            if name in duplicate_names:
+                short_id = server_id[-6:] if len(server_id) > 6 else server_id
+                role = "owned" if owned else "shared"
+                row["label"] = f"{name} ({role}:{short_id})"
+            elif owned:
+                row["label"] = name
+            else:
+                row["label"] = f"{name} (shared)"
+
+        PlexMetadataClient._SERVER_CACHE[(key, "__server_options__")] = rows
+        return rows
 
     def _date_span_in_title(self, title):
         text = str(title or "").strip()
@@ -287,8 +331,8 @@ class PlexMetadataClient:
         candidates = []
         seen = set()
         query_values = [str(key_date)]
-        underscored = str(key_date).replace("-", "_")
-        if underscored not in query_values:
+        underscored = query_values[0].replace("-", "_")
+        if underscored != query_values[0]:
             query_values.append(underscored)
 
         for query_value in query_values:
@@ -313,7 +357,7 @@ class PlexMetadataClient:
                 seen.add(dedupe_key)
                 candidates.append(album)
 
-            if matched_for_date > 0:
+            if matched_for_date:
                 print(f"Plex date lookup fast path hit for {key_date} ({self.server_name}/{self.section_name})")
                 return candidates
 
@@ -324,7 +368,7 @@ class PlexMetadataClient:
         candidates = []
 
         fast_candidates = self._query_albums_for_date(key_date)
-        if len(fast_candidates) > 0:
+        if fast_candidates:
             albums_to_check = fast_candidates
         else:
             # If fast query returned nothing and we're filtering by artist, skip the
@@ -353,7 +397,7 @@ class PlexMetadataClient:
                 tracklist.append(str(row.get("title", "Unknown Track")))
                 urls.append(stream_url)
 
-            if len(urls) == 0:
+            if not urls:
                 continue
 
             candidates.append(
@@ -398,6 +442,13 @@ def _section_triplet_key(account, server, section):
         str(account or "").strip().lower(),
         str(server or "").strip().lower(),
         str(section or "").strip().lower(),
+    )
+
+
+def _account_server_key(account, server):
+    return (
+        str(account or "").strip().lower(),
+        str(server or "").strip().lower(),
     )
 
 
@@ -464,36 +515,45 @@ def _with_unique_labels(items):
     return out
 
 
+def _count_section_names(items):
+    counts = {}
+    for item in items:
+        section = str(item.get("section_name", "?"))
+        counts[section] = counts.get(section, 0) + 1
+    return counts
+
+
+def _format_section_label(row, section_counts, server_key="plex_server", prefix=""):
+    section = str(row.get("section_name", "?"))
+    if section_counts.get(section, 0) <= 1:
+        return f"{prefix}{section}"
+
+    server = str(row.get(server_key, row.get("plex_server", "?")))
+    account = str(row.get("plex_account", "?"))
+    return f"{prefix}{section} ({server}, {account})"
+
+
 def _with_section_labels(items):
     """Build menu labels centered on section name.
 
     If a section name appears multiple times, include server/account context
     so options remain understandable.
     """
-    section_counts = {}
-    for item in items:
-        section = str(item.get("section_name", "?"))
-        section_counts[section] = section_counts.get(section, 0) + 1
+    section_counts = _count_section_names(items)
 
     labeled = []
     for item in items:
         row = dict(item)
-        section = str(row.get("section_name", "?"))
-        if section_counts.get(section, 0) > 1:
-            server = str(row.get("plex_server", "?"))
-            account = str(row.get("plex_account", "?"))
-            row["label"] = f"{section} ({server}, {account})"
-        else:
-            row["label"] = section
+        row["label"] = _format_section_label(row, section_counts, server_key="plex_server_display")
         labeled.append(row)
 
     return _with_unique_labels(labeled)
 
 
-def _discover_servers_for_account(username, password):
+def _discover_server_options_for_account(username, password):
     try:
         client = PlexMetadataClient(username, password)
-        return client.servers()
+        return client.server_options()
     except Exception as e:
         print(f"Unable to discover servers for account {username}: {e}")
         return []
@@ -531,23 +591,35 @@ def _discover_addable_sections(cfg, server_scope=None):
     for username, password in accounts.items():
         if not username:
             continue
-        servers = _discover_servers_for_account(username, password)
-        for server_name in servers:
+        server_options = _discover_server_options_for_account(username, password)
+        for server_option in server_options:
+            server_id = str(server_option.get("server_id", "") or "").strip()
+            server_name = str(server_option.get("name", "") or server_id).strip()
+            server_label = str(server_option.get("label", "") or server_name).strip()
+            if not server_id:
+                continue
+
             if server_scope is not None:
                 scope_user = server_scope.get("plex_account")
                 scope_server = server_scope.get("plex_server")
-                if username != scope_user or server_name != scope_server:
+                if username != scope_user:
                     continue
-            sections = _discover_music_sections(username, password, server_name)
+                scope_server_norm = str(scope_server or "").strip().lower()
+                if scope_server_norm not in (server_id.strip().lower(), server_name.strip().lower()):
+                    continue
+
+            sections = _discover_music_sections(username, password, server_id)
             for section_name in sections:
-                key = _section_triplet_key(username, server_name, section_name)
-                if key in selected:
+                key_by_id = _section_triplet_key(username, server_id, section_name)
+                key_by_name = _section_triplet_key(username, server_name, section_name)
+                if key_by_id in selected or key_by_name in selected:
                     continue
                 options.append(
                     {
                         "label": section_name,
                         "plex_account": username,
-                        "plex_server": server_name,
+                        "plex_server": server_id,
+                        "plex_server_display": server_label,
                         "section_name": section_name,
                     }
                 )
@@ -557,25 +629,31 @@ def _discover_addable_sections(cfg, server_scope=None):
 def _discover_addable_servers(cfg):
     chosen_pairs = set()
     for row in cfg.get("plex_sections", []):
-        if isinstance(row, dict):
-            acc = row.get("plex_account")
-            srv = row.get("plex_server")
-            if acc and srv:
-                chosen_pairs.add((acc, srv))
+        normalized = _normalize_section_row(row)
+        if normalized is None:
+            continue
+        chosen_pairs.add(_account_server_key(normalized.get("plex_account"), normalized.get("plex_server")))
 
     options = []
     accounts = cfg.get("plex_accounts", {})
     for username, password in accounts.items():
-        servers = _discover_servers_for_account(username, password)
-        for server_name in servers:
-            key = (username, server_name)
-            if key in chosen_pairs:
+        server_options = _discover_server_options_for_account(username, password)
+        for server_option in server_options:
+            server_id = str(server_option.get("server_id", "") or "").strip()
+            server_name = str(server_option.get("name", "") or server_id).strip()
+            server_label = str(server_option.get("label", "") or server_name).strip()
+            if not server_id:
+                continue
+
+            key_by_id = _account_server_key(username, server_id)
+            key_by_name = _account_server_key(username, server_name)
+            if key_by_id in chosen_pairs or key_by_name in chosen_pairs:
                 continue
             options.append(
                 {
-                    "label": f"{server_name} ({username})",
+                    "label": f"{server_label} ({username})",
                     "plex_account": username,
-                    "plex_server": server_name,
+                    "plex_server": server_id,
                 }
             )
     return options
@@ -594,7 +672,7 @@ def _add_account_screen(cfg):
         try:
             # Force a real login/network call so bad credentials are rejected here.
             client = PlexMetadataClient(username, password)
-            _ = client.servers()
+            _ = client.server_options()
 
             cfg["plex_accounts"][username] = password
             _save_plex_config(cfg)
@@ -815,24 +893,16 @@ def get_configured_section_labels():
         return []
 
     labels = []
-    section_counts = {}
     normalized = []
     for row in rows:
         norm = _normalize_section_row(row)
         if norm is None:
             continue
         normalized.append(norm)
-        sec = norm.get("section_name", "?")
-        section_counts[sec] = section_counts.get(sec, 0) + 1
+    section_counts = _count_section_names(normalized)
 
     for row in normalized:
-        sec = row.get("section_name", "?")
-        if section_counts.get(sec, 0) > 1:
-            server = row.get("plex_server", "?")
-            account = row.get("plex_account", "?")
-            labels.append(f"Plex: {sec} ({server}, {account})")
-        else:
-            labels.append(f"Plex: {sec}")
+        labels.append(_format_section_label(row, section_counts, prefix="Plex: "))
     return labels
 
 
