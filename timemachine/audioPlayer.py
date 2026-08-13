@@ -643,11 +643,8 @@ class AudioPlayer:
                 # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.lower().startswith(b"content-range:"):
                     track_length = int(header.split(b"/", 1)[1])
-                    self.can_resume = True
                 elif header.lower().startswith(b"content-length:"):
                     track_length = int(header.split(b": ", 1)[1].strip())
-                    self.can_resume = False
-                    print("Warning: Server does not support Range requests - cannot pause/resume")
 
             if header == b"\r\n":
                 break
@@ -723,6 +720,7 @@ class AudioPlayer:
 
                 # Read the response headers
                 response_headers = b""
+                track_length = 0
                 while True:
                     header = self.sock.readline()
                     self.decode_chunk()
@@ -733,8 +731,10 @@ class AudioPlayer:
 
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                         # EOF is indistinguishable from the host closing a socket when we pause too long
-                        if header.startswith(b"Content-Range:"):
+                        if header.lower().startswith(b"content-range:"):
                             track_length = int(header.split(b"/", 1)[1])
+                        elif header.lower().startswith(b"content-length:"):
+                            track_length = int(header.split(b": ", 1)[1].strip())
 
                     if header == b"\r\n":
                         break
@@ -742,6 +742,29 @@ class AudioPlayer:
         # Validate response. Some Plex transcode URLs return 200 audio streams
         # without Content-Length/Content-Range; treat these as unknown-length
         # tracks and finalize length when the socket closes.
+        header_lines = response_headers.split(b"\r\n")
+        status_line = header_lines[0].lower() if len(header_lines) > 0 else b""
+        has_206 = b" 206" in status_line
+        has_content_range = False
+        accept_ranges_bytes = False
+        for line in header_lines:
+            line_l = line.lower()
+            if line_l.startswith(b"content-range:"):
+                has_content_range = True
+            elif line_l.startswith(b"accept-ranges:") and b"bytes" in line_l:
+                accept_ranges_bytes = True
+
+        self.can_resume = has_206 or has_content_range or accept_ranges_bytes
+
+        # If we asked for a resume offset but got a full-body response without
+        # content-range semantics, restart from beginning to avoid misaligned read state.
+        if offset > 0 and (not has_206) and (not has_content_range):
+            print("Warning: Range resume ignored by server, restarting track from beginning")
+            self.can_resume = False
+            self.current_track_bytes_read = 0
+            self.read_http_header(trackno, 0, port, retries)
+            return
+
         status_ok = b"HTTP/1.1 200" in response_headers or b"HTTP/1.1 206" in response_headers
         if (not status_ok) or (track_length == 0 and b"content-type: audio/" not in response_headers.lower()):
             print("Bad URL:", url)
@@ -803,6 +826,13 @@ class AudioPlayer:
         # If there is any free space in the input buffer then add any data available from the network
         # If there is no socket then we have already read to the end of the playlist
         if self.sock is not None:
+            # Decode can skip/pop the current track before read reaches end-of-track.
+            # If no track metadata remains for this stream, advance the read side.
+            if len(self.TrackInfo) == 0:
+                print("Read loop has no TrackInfo; advancing read track")
+                self.handle_end_of_track_read()
+                return
+
             if (BytesAvailable := self.InBuffer.get_write_available()) > 0:
                 # We can get an exception here if we pause too long and the underlying socket gets closed
                 try:
@@ -818,8 +848,9 @@ class AudioPlayer:
                         # Start the decode loop
                         self.DecodeLoopRunning = True
 
-                    # We have read to the end of the track (known-length tracks)
-                    if self.TrackInfo[-1][0] >= 0 and self.current_track_bytes_read == self.TrackInfo[-1][0]:
+                    # We have read to the end of the track (known-length tracks).
+                    # Use >= to tolerate socket chunk boundary overshoot.
+                    if self.TrackInfo[-1][0] >= 0 and self.current_track_bytes_read >= self.TrackInfo[-1][0]:
                         self.handle_end_of_track_read()
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
@@ -832,10 +863,32 @@ class AudioPlayer:
                             print(f"Finalized unknown track length at EOF: {self.current_track_bytes_read}")
                             self.handle_end_of_track_read()
                             return
+
+                        # For known-length tracks, peer close near the end is often
+                        # harmless network/server churn (e.g., concurrent clients).
+                        # Treat close as end-of-track when we are close enough.
+                        if len(self.TrackInfo) > 0 and self.TrackInfo[-1][0] > 0:
+                            track_len = self.TrackInfo[-1][0]
+                            bytes_remaining = track_len - self.current_track_bytes_read
+                            close_enough = bytes_remaining <= 131072  # 128kB tail tolerance
+                            high_completion = self.current_track_bytes_read * 100 >= track_len * 98
+                            if close_enough or high_completion:
+                                self.current_track_bytes_read = track_len
+                                print("Treating peer close as track end")
+                                self.handle_end_of_track_read()
+                                return
+
                         # Note: The exception below will be caught by the 'except' below
                         raise RuntimeError("Peer closed socket")
 
                 except Exception as e:
+                    # Decoder/read state can temporarily desync after a forced skip.
+                    # Do not treat metadata index errors as socket resume failures.
+                    if isinstance(e, IndexError):
+                        print("Read/decode track metadata desync; advancing read track")
+                        self.handle_end_of_track_read()
+                        return
+
                     # The user probably paused too long and the underlying socket got closed
                     # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
                     print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
