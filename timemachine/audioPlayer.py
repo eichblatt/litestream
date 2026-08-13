@@ -381,6 +381,9 @@ class AudioPlayer:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
+        # Remaining source bytes to discard after a decode failure.
+        self.skip_track_bytes_remaining = 0
+
         print(self)
 
     def __repr__(self):
@@ -864,6 +867,20 @@ class AudioPlayer:
         if self.InBuffer.BytesInBuffer == 0:
             return self.OutBuffer.buffer_level()
 
+        # If the previous track failed decode, discard its unread bytes before
+        # attempting to decode the next track.
+        if self.skip_track_bytes_remaining > 0:
+            bytes_available = self.InBuffer.get_read_available()
+            if bytes_available == 0:
+                return self.OutBuffer.buffer_level()
+
+            bytes_to_skip = min(self.skip_track_bytes_remaining, bytes_available)
+            self.InBuffer.bytes_wasRead(bytes_to_skip)
+            self.skip_track_bytes_remaining -= bytes_to_skip
+
+            if self.skip_track_bytes_remaining > 0:
+                return self.OutBuffer.buffer_level()
+
         if self.decode_phase == decode_phase_trackstart:
             # We're at the start of a new track.
 
@@ -1002,11 +1019,8 @@ class AudioPlayer:
                         self.InBuffer.bytes_wasRead(128)
                         self.current_track_bytes_decoded_in += 128
                     else:
-                        print(pos, end=":")
-                        print(self.InBuffer.Buffer[pos:].hex())
-
-                        # Not sure what we should do here. Maybe we could handle it?
-                        raise RuntimeError("Corrupted packet")
+                        self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                        break
                     pass
 
                 # If the packet is short/corrupted we can hopefully recover by the next packet
@@ -1015,9 +1029,8 @@ class AudioPlayer:
 
                 else:
                     print("Decode Packet failed. Error:", Result)
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-                    raise RuntimeError("Decode Packet failed")
+                    self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                    break
 
                 if self.decode_phase == decode_phase_readinfo:
                     channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
@@ -1043,11 +1056,8 @@ class AudioPlayer:
 
                 # We have a corrupted packet
                 elif Result == -6:
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-
-                    # Not sure what we should do here. Maybe we could handle it?
-                    raise RuntimeError("Corrupted packet")
+                    self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                    break
                     pass
 
                 # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
@@ -1061,9 +1071,8 @@ class AudioPlayer:
 
                 else:
                     print("Decode Packet failed. Error:", Result)
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-                    raise RuntimeError("Decode Packet failed")
+                    self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                    break
 
                 # If we're at the beginning of the track, get info about this stream
                 if self.decode_phase == decode_phase_readinfo:
@@ -1129,6 +1138,37 @@ class AudioPlayer:
             self.consecutive_zeros += 1
 
         return self.OutBuffer.buffer_level()
+
+    def _skip_current_track_after_decode_error(self, reason, result_code=None):
+        if len(self.TrackInfo) == 0:
+            return
+
+        msg = f"Skip track {self.current_track} after {reason}"
+        if result_code is not None:
+            msg += f" ({result_code})"
+        print(msg)
+
+        # Keep already decoded audio playable, then advance to next track.
+        self.PlayLength.append(self.current_track_bytes_decoded_out)
+
+        remaining = self.TrackInfo[0][0] - self.current_track_bytes_decoded_in
+        self.skip_track_bytes_remaining = remaining if remaining > 0 else 0
+
+        self.TrackInfo.pop(0)
+        self.current_track_bytes_decoded_in = 0
+        self.current_track_bytes_decoded_out = 0
+        self.ID3Tag_size = 0
+        self.decode_phase = decode_phase_trackstart
+
+        if self.current_track + 1 < self.ntracks:
+            self.current_track += 1
+            self.next_track = self.set_next_track()
+            self.callbacks["display"](*self.track_names())
+        else:
+            print("Finished decoding playlist")
+            self.DecodeLoopRunning = False
+            self.MP3Decoder.MP3_Close()
+            self.VorbisDecoder.Vorbis_Close()
 
     @micropython.native
     def play_chunk(self):

@@ -601,6 +601,9 @@ class TrackDecoder:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
+        # Remaining source bytes to discard when a track is force-skipped.
+        self.skip_bytes_remaining = 0
+
     def Add_to_Decode_List(self, TrackLength, TrackType, hash):
         self.DecodeInfo.append((TrackLength, TrackType, hash))
 
@@ -616,6 +619,50 @@ class TrackDecoder:
         elif self.decode_phase == decode_phase_paused:
             self.decode_phase = decode_phase_decoding
 
+    def _discard_skipped_track_bytes(self):
+        while self.skip_bytes_remaining > 0 and self.context.InBuffer.any() >= 188:
+            self.context.InBuffer.readinto(self.ParserInMV, 188)
+            self.skip_bytes_remaining -= 188
+
+        if self.skip_bytes_remaining <= 0:
+            self.skip_bytes_remaining = 0
+            self.current_track_bytes_parsed_in = 0
+            self.current_track_bytes_parsed_out = 0
+            self.TSParser.reset()
+
+    def _skip_current_track_after_decode_error(self, reason, result_code=None):
+        track_hash = self.DecodeInfo[0][2] if self.DecodeInfo else "unknown"
+        msg = f"decode_chunk: Skipping track {track_hash} ({reason})"
+        if result_code is not None:
+            msg += f" [{result_code}]"
+        print(msg)
+        self.callbacks["messages"](msg)
+
+        # Keep already-decoded audio playable, then skip the rest of this track.
+        if self.ParsedDecodeInfo:
+            self.context.player.Update_Track_Length(self.current_track_bytes_decoder_out)
+            self.ParsedDecodeInfo.pop(0)
+
+        if self.DecodeInfo:
+            remaining = self.DecodeInfo[0][0] - self.current_track_bytes_parsed_in
+            self.skip_bytes_remaining = remaining if remaining > 0 else 0
+            self.DecodeInfo.pop(0)
+        else:
+            self.skip_bytes_remaining = 0
+
+        self.AACDecoder.close()
+        self.ParserRunning = False
+        self.current_track_bytes_decoder_in = 0
+        self.current_track_bytes_decoder_out = 0
+        self.current_track_bytes_parsed_in = 0
+        self.current_track_bytes_parsed_out = 0
+
+        if len(self.DecodeInfo) == 0 and len(self.context.playlist) == 0 and self.skip_bytes_remaining == 0:
+            self.decode_phase = decode_phase_idle
+            self.AACDecoder.AAC_Close()
+        else:
+            self.decode_phase = decode_phase_trackstart
+
     def decode_chunk(self, timeout=10):
         if self.decode_phase in (decode_phase_idle, decode_phase_paused):
             return self.context.OutBuffer.any()
@@ -625,6 +672,11 @@ class TrackDecoder:
             print("Decoder starved")
             self.decode_phase = decode_phase_paused
             return self.context.OutBuffer.any()
+
+        if self.skip_bytes_remaining > 0:
+            self._discard_skipped_track_bytes()
+            if self.skip_bytes_remaining > 0:
+                return self.context.OutBuffer.any()
 
         TimeStart = time.ticks_ms()
         break_reason = 0
@@ -827,12 +879,12 @@ class TrackDecoder:
                         break
 
                     elif Result == -6:
-                        print("Corrupted packet")
-                        raise RuntimeError("Corrupted packet")
+                        self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                        break
 
                     else:
-                        print("Decode Packet failed. Error:", Result)
-                        raise RuntimeError("Decode Packet failed")
+                        self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                        break
 
                 # Check if we have a parsed length of the track (only populated when we have finished parsing the track) and if so, have we decoded to the end of the current track?
                 if len(self.ParsedDecodeInfo) > 0:
