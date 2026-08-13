@@ -1089,8 +1089,9 @@ class AudioPlayer:
                 self.PlayInfo.append((channels, sample_rate, bits_per_sample))
                 self.decode_phase = decode_phase_decoding
 
-            # Check if we have decoded to the end of the current track
-            if self.current_track_bytes_decoded_in == self.TrackInfo[0][0]:  # We have finished decoding the current track
+            # Check if we have decoded to the end of the current track.
+            # Use >= to tolerate small decoder/frame boundary overruns.
+            if self.current_track_bytes_decoded_in >= self.TrackInfo[0][0]:  # We have finished decoding the current track
                 print(f"Track {self.current_track} decode end")
 
                 # Save the length of decoded audio for this track. Play_chunk() will check this to re-init the I2S device at the right spot (required in case the bitrate changes between songs)

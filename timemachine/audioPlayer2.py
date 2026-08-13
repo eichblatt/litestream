@@ -632,9 +632,10 @@ class TrackDecoder:
 
     def _skip_current_track_after_decode_error(self, reason, result_code=None):
         track_hash = self.DecodeInfo[0][2] if self.DecodeInfo else "unknown"
-        msg = f"decode_chunk: Skipping track {track_hash} ({reason})"
+        msg = f"decode_chunk: Skipping track ({reason}"
         if result_code is not None:
             msg += f" [{result_code}]"
+        msg += f") {track_hash}"
         print(msg)
         self.callbacks["messages"](msg)
 
