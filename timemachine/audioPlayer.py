@@ -852,6 +852,7 @@ class AudioPlayer:
                     # Use >= to tolerate socket chunk boundary overshoot.
                     if self.TrackInfo[-1][0] >= 0 and self.current_track_bytes_read >= self.TrackInfo[-1][0]:
                         self.handle_end_of_track_read()
+                        return
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
                     if data == 0:
