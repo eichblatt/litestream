@@ -301,7 +301,7 @@ class TrackReader:
     def __init__(self, context, callbacks, debug=0):
         self.context = context
         self.callbacks = callbacks
-        self.DEBUG = debug
+        self.DEBUG = 1  # debug
         self.sock = None
 
         # A buffer used to read data from the network. 16kB matches the size of the WiFi buffer
@@ -601,11 +601,48 @@ class TrackDecoder:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
+        # Emit one stream-signature line per track for format diagnostics.
+        self._signature_logged = False
+
         # Remaining source bytes to discard when a track is force-skipped.
         self.skip_bytes_remaining = 0
 
     def Add_to_Decode_List(self, TrackLength, TrackType, hash):
         self.DecodeInfo.append((TrackLength, TrackType, hash))
+
+    def _log_input_signature_once(self):
+        if self._signature_logged:
+            return
+
+        available = self.context.InBuffer.any()
+        if available < 4:
+            return
+
+        probe_len = min(2048, available)
+        probe = bytearray(probe_len)
+        probe_mv = memoryview(probe)
+        self.context.InBuffer.readinto(probe_mv, probe_len)
+        self.context.InBuffer.write(probe_mv)
+
+        b0, b1, b2, b3 = probe[0], probe[1], probe[2], probe[3]
+        is_adts = b0 == 0xFF and (b1 & 0xF0) == 0xF0
+        ts_like = False
+        if probe_len >= 376:
+            ts_like = probe[0] == 0x47 and probe[188] == 0x47
+
+        if ts_like:
+            sig = "TS(188-sync)"
+        elif is_adts:
+            sig = "AAC-ADTS"
+        elif probe_len >= 12 and probe[4:8] == b"ftyp":
+            sig = "MP4/fMP4"
+        else:
+            sig = "Unknown"
+
+        first8 = "".join(f"{x:02x}" for x in probe[:8])
+        track_hash = self.DecodeInfo[0][2] if self.DecodeInfo else "unknown"
+        print(f"Input signature: {sig} first8={first8} avail={available} track={track_hash}")
+        self._signature_logged = True
 
     def isRunning(self):
         if self.decode_phase == decode_phase_idle or self.decode_phase == decode_phase_paused:
@@ -704,6 +741,9 @@ class TrackDecoder:
             self.callbacks["messages"](f"decode_chunk: Start decoding track {self.DecodeInfo[0][2]}")
 
             if self.DecodeInfo[0][1] == format_AAC:
+                self._signature_logged = False
+                self._log_input_signature_once()
+
                 # De-allocate buffers from previous decoder instances
                 self.AACDecoder.AAC_Close()
 

@@ -556,6 +556,11 @@ class AudioPlayer:
         path = url[1] if url[1].startswith("/") else "/" + url[1]
         return host, int(port), path
 
+    def _is_transient_socket_error(self, exc):
+        # Non-blocking sockets can raise these while no data is ready.
+        errno_value = getattr(exc, "errno", None)
+        return errno_value in (11, 110, 115)
+
     def read_http_header(self, trackno, offset=0, port=80, retries=1):
         if trackno is None:
             return
@@ -836,6 +841,14 @@ class AudioPlayer:
             if (BytesAvailable := self.InBuffer.get_write_available()) > 0:
                 # We can get an exception here if we pause too long and the underlying socket gets closed
                 try:
+                    # Avoid treating "no data yet" as a hard socket failure.
+                    poller = select.poll()
+                    poller.register(self.sock, select.POLLIN)
+                    ready = poller.poll(0)
+                    poller.unregister(self.sock)
+                    if not ready:
+                        return
+
                     # Read data into the InBuffer if there new data available. The readinto() will return None if there is no data available, or 0 if the socket is closed
                     data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
 
@@ -883,6 +896,9 @@ class AudioPlayer:
                         raise RuntimeError("Peer closed socket")
 
                 except Exception as e:
+                    if self._is_transient_socket_error(e):
+                        return
+
                     # Decoder/read state can temporarily desync after a forced skip.
                     # Do not treat metadata index errors as socket resume failures.
                     if isinstance(e, IndexError):
