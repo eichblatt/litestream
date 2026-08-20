@@ -384,6 +384,12 @@ class AudioPlayer:
         # Remaining source bytes to discard after a decode failure.
         self.skip_track_bytes_remaining = 0
 
+        # Reconnect guards to avoid session churn on transient socket stalls.
+        self.read_error_count = 0
+        self.zero_read_count = 0
+        self.first_zero_read_ms = 0
+        self.last_reconnect_ms = time.ticks_ms()
+
         print(self)
 
     def __repr__(self):
@@ -559,7 +565,29 @@ class AudioPlayer:
     def _is_transient_socket_error(self, exc):
         # Non-blocking sockets can raise these while no data is ready.
         errno_value = getattr(exc, "errno", None)
-        return errno_value in (11, 110, 115)
+        if errno_value is None and len(getattr(exc, "args", ())) > 0:
+            first = exc.args[0]
+            if isinstance(first, int):
+                errno_value = first
+
+        if errno_value in (11, 110, 115):
+            return True
+
+        msg = str(exc).lower()
+        return "eagain" in msg or "ewouldblock" in msg or "want read" in msg or "want write" in msg or "timed out" in msg
+
+    def _build_http_get(self, path, host, offset):
+        if not hasattr(self, "plex_session_id"):
+            self.plex_session_id = "litestream-%d" % time.ticks_ms()
+        return bytes(
+            "GET %s HTTP/1.1\r\n"
+            "Host: %s\r\n"
+            "Range: bytes=%d-\r\n"
+            "Connection: keep-alive\r\n"
+            "X-Plex-Session-Identifier: %s\r\n"
+            "\r\n" % (path, host, offset, self.plex_session_id),
+            "utf8",
+        )
 
     def read_http_header(self, trackno, offset=0, port=80, retries=1):
         if trackno is None:
@@ -618,7 +646,7 @@ class AudioPlayer:
         poller.register(self.sock, select.POLLOUT)
 
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-        data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+        data = self._build_http_get(path, host, offset)
 
         # Write the data to the async socket. Use a poller with a 50ms timeout
         # Because this is an async socket it will return straight away, allowing the SSL handshake to happen under the covers
@@ -709,7 +737,7 @@ class AudioPlayer:
                 poller.register(self.sock, select.POLLOUT)
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-                data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+                data = self._build_http_get(path, host, offset)
 
                 # Write the data to the async socket.
                 while data:
@@ -850,13 +878,19 @@ class AudioPlayer:
                         return
 
                     # Read data into the InBuffer if there new data available. The readinto() will return None if there is no data available, or 0 if the socket is closed
-                    data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], BytesAvailable)
+                    read_size = min(BytesAvailable, 16 * 1024)
+                    data = self.sock.readinto(self.InBuffer.Buffer[self.InBuffer.get_writePos() :], read_size)
 
                     if data is not None:
                         # Keep track of how many bytes of the current file we have read.
                         # We will need this if the user pauses for too long and we need to request the current track from the server again
                         self.current_track_bytes_read += data
                         self.InBuffer.bytes_wasWritten(data)
+
+                        if data > 0:
+                            self.read_error_count = 0
+                            self.zero_read_count = 0
+                            self.first_zero_read_ms = 0
 
                         # Start the decode loop
                         self.DecodeLoopRunning = True
@@ -869,6 +903,17 @@ class AudioPlayer:
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
                     if data == 0:
+                        now = time.ticks_ms()
+                        if self.first_zero_read_ms == 0:
+                            self.first_zero_read_ms = now
+                            return
+                        if time.ticks_diff(now, self.first_zero_read_ms) < 1500:
+                            return
+
+                        self.zero_read_count += 1
+                        if self.zero_read_count < 3:
+                            return
+
                         print("Peer close")
                         # For unknown-length streams, EOF is expected. Finalize
                         # this track length so the decode loop can complete.
@@ -908,6 +953,13 @@ class AudioPlayer:
 
                     # The user probably paused too long and the underlying socket got closed
                     # In this case we re-start playing the current track at the offset that we got up to before the pause. Uses the HTTP Range header to request data at an offset
+                    self.read_error_count += 1
+                    now = time.ticks_ms()
+                    if self.read_error_count < 3 or time.ticks_diff(now, self.last_reconnect_ms) < 1500:
+                        return
+
+                    self.read_error_count = 0
+                    self.last_reconnect_ms = now
                     print("Socket Exception:", e, " Restarting track at offset", self.current_track_bytes_read)
 
                     if self.can_resume:
