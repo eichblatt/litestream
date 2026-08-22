@@ -162,6 +162,35 @@ class PlexMetadataClient:
             return f"{date_str} {tail}"
         return date_str
 
+    def _album_artist(self, album):
+        # Prefer album-level artist tags if present.
+        raw = getattr(album, "_raw", None)
+        if isinstance(raw, dict):
+            for key in ("originalTitle", "albumArtist", "grandparentTitle", "parentTitle"):
+                value = str(raw.get(key, "") or "").strip()
+                if value:
+                    return value
+
+            # Last resort when album-level tags are missing.
+            value = str(raw.get("artist", "") or "").strip()
+            if value:
+                return value
+
+        return str(getattr(album, "parentTitle", "") or "").strip()
+
+    def _normalize_artist(self, value):
+        text = str(value or "").strip().lower()
+        if text.startswith("the "):
+            text = text[4:]
+        return text
+
+    def _album_group_key(self, album, date_str=None):
+        title = str(getattr(album, "title", "") or "")
+        normalized_title = self._normalize_album_title(title) or title
+        if date_str is None:
+            date_str, _ = self._date_span_in_title(title)
+        return (date_str, normalized_title.strip().lower())
+
     def _is_supported_audio_media(self, media_item, part_key):
         container = str(getattr(media_item, "container", "") or "").strip().lower()
         if container in ("mp3", "ogg"):
@@ -232,10 +261,11 @@ class PlexMetadataClient:
         albums = []
         for album in self.iter_albums():
             normalized_title = self._normalize_album_title(getattr(album, "title", ""))
+            artist = self._album_artist(album)
             albums.append(
                 {
                     "title": normalized_title or album.title,
-                    "artist": album.parentTitle,
+                    "artist": artist,
                     "rating_key": album.ratingKey,
                     "year": album.year,
                 }
@@ -248,6 +278,12 @@ class PlexMetadataClient:
             return tracks
         album_rating_key = str(getattr(album, "ratingKey", "") or "")
         for position, track in enumerate(album.tracks(), start=1):
+            track_number = getattr(track, "index", position)
+            try:
+                track_number = int(track_number)
+            except Exception:
+                track_number = position
+
             stream_url = ""
             media_items = getattr(track, "media", [])
             for media_item in media_items:
@@ -282,7 +318,7 @@ class PlexMetadataClient:
 
             tracks.append(
                 {
-                    "track_number": position,
+                    "track_number": track_number,
                     "title": getattr(track, "title", "Unknown Track"),
                     "stream_url": stream_url,
                 }
@@ -293,7 +329,7 @@ class PlexMetadataClient:
         title = str(getattr(album, "title", "")).strip()
         date_str, date_start = self._date_span_in_title(title)
 
-        artist = str(getattr(album, "parentTitle", "")).strip()
+        artist = self._album_artist(album)
         if date_str:
             tail = title[date_start + 10 :].strip(" -_:|,")
         else:
@@ -364,7 +400,7 @@ class PlexMetadataClient:
         return []
 
     def get_trackdata_for_date(self, key_date, artist_name=None):
-        artist_name_norm = str(artist_name).strip().lower() if artist_name is not None else None
+        artist_name_norm = self._normalize_artist(artist_name) if artist_name is not None else None
         candidates = []
 
         fast_candidates = self._query_albums_for_date(key_date)
@@ -379,33 +415,81 @@ class PlexMetadataClient:
             print(f"Plex date lookup fell back to full scan for {key_date} ({self.server_name}/{self.section_name})")
             albums_to_check = self.iter_albums()
 
+        grouped = {}
         for album in albums_to_check:
             date_str, artist, vcs_text = self._album_metadata(album)
             if date_str != key_date:
                 continue
 
-            if artist_name_norm is not None and str(artist).strip().lower() != artist_name_norm:
+            group_key = self._album_group_key(album, date_str)
+            if group_key not in grouped:
+                grouped[group_key] = {
+                    "album_title": str(getattr(album, "title", "") or ""),
+                    "vcs": vcs_text,
+                    "albums": [],
+                }
+            grouped[group_key]["albums"].append((album, artist, vcs_text))
+            if (not grouped[group_key]["vcs"]) and vcs_text:
+                grouped[group_key]["vcs"] = vcs_text
+
+        for group in grouped.values():
+            artist_rows = group["albums"]
+            group_artists_norm = [self._normalize_artist(row[1]) for row in artist_rows]
+
+            if artist_name_norm is not None and artist_name_norm not in group_artists_norm:
                 continue
 
-            track_rows = self.get_album_tracks(album)
-            tracklist = []
-            urls = []
-            for row in track_rows:
-                stream_url = str(row.get("stream_url", "")).strip()
-                if not stream_url:
-                    continue
-                tracklist.append(str(row.get("title", "Unknown Track")))
-                urls.append(stream_url)
+            merged_rows = {}
+            artist_track_counts = {}
+
+            for album, artist, _vcs in artist_rows:
+                track_rows = self.get_album_tracks(album)
+                if len(track_rows) > 0:
+                    artist_track_counts[artist] = artist_track_counts.get(artist, 0) + len(track_rows)
+
+                for row in track_rows:
+                    stream_url = str(row.get("stream_url", "") or "").strip()
+                    if not stream_url:
+                        continue
+                    track_number = row.get("track_number", 9999)
+                    try:
+                        track_number = int(track_number)
+                    except Exception:
+                        track_number = 9999
+
+                    title = str(row.get("title", "Unknown Track"))
+                    existing = merged_rows.get(stream_url)
+                    if existing is None or track_number < existing[0]:
+                        merged_rows[stream_url] = (track_number, title, stream_url)
+
+            ordered_rows = sorted(merged_rows.values(), key=lambda item: (item[0], item[1].lower(), item[2]))
+            tracklist = [item[1] for item in ordered_rows]
+            urls = [item[2] for item in ordered_rows]
 
             if not urls:
                 continue
 
+            chosen_artist = None
+            if artist_name_norm is not None:
+                for artist in artist_track_counts.keys():
+                    if self._normalize_artist(artist) == artist_name_norm:
+                        chosen_artist = artist
+                        break
+
+            if chosen_artist is None and len(artist_track_counts) > 0:
+                chosen_artist = max(artist_track_counts.items(), key=lambda item: item[1])[0]
+
+            if chosen_artist is None and len(artist_rows) > 0:
+                chosen_artist = artist_rows[0][1]
+
+            first_album = artist_rows[0][0]
+
             candidates.append(
                 {
-                    "artist": artist,
-                    "album_title": str(getattr(album, "title", "")),
-                    "vcs": vcs_text,
-                    "tape_id": str(getattr(album, "ratingKey", "unknown") or "unknown"),
+                    "artist": chosen_artist,
+                    "album_title": group["album_title"],
+                    "vcs": group["vcs"],
+                    "tape_id": str(getattr(first_album, "ratingKey", "unknown") or "unknown"),
                     "tracklist": tracklist,
                     "urls": urls,
                 }
@@ -841,6 +925,7 @@ def get_plex_vcs_collections():
     Output shape: {artist_name: {iso_date: vcs_string}}.
     """
     collections = {}
+    grouped_albums = {}
     for client in get_plex_clients():
         try:
             for album in client.iter_albums():
@@ -848,14 +933,34 @@ def get_plex_vcs_collections():
                 if not date_str:
                     continue
 
-                artist = artist or str(client.section_name or "Plex")
-
-                if artist not in collections:
-                    collections[artist] = {}
-                if date_str not in collections[artist] and vcs_text:
-                    collections[artist][date_str] = vcs_text
+                dedupe_key = client._album_group_key(album, date_str)
+                if dedupe_key not in grouped_albums:
+                    grouped_albums[dedupe_key] = {
+                        "artist_counts": {},
+                        "fallback_artist": artist or str(client.section_name or "Plex"),
+                        "vcs": vcs_text,
+                    }
+                artist_name = artist or str(client.section_name or "Plex")
+                artist_counts = grouped_albums[dedupe_key]["artist_counts"]
+                artist_counts[artist_name] = artist_counts.get(artist_name, 0) + 1
+                if (not grouped_albums[dedupe_key]["vcs"]) and vcs_text:
+                    grouped_albums[dedupe_key]["vcs"] = vcs_text
         except Exception as e:
             print(f"Skipping plex vcs collection {client.plex_user}:{client.server_name}:{client.section_name}: {e}")
+
+    for (date_str, _album_key), group in grouped_albums.items():
+        artist_counts = group.get("artist_counts", {})
+        if len(artist_counts) == 0:
+            continue
+
+        chosen_artist = max(artist_counts.items(), key=lambda item: item[1])[0]
+        if not chosen_artist:
+            chosen_artist = str(group.get("fallback_artist", "Plex"))
+        if chosen_artist not in collections:
+            collections[chosen_artist] = {}
+        if date_str not in collections[chosen_artist] and group["vcs"]:
+            collections[chosen_artist][date_str] = group["vcs"]
+
     return collections
 
 
@@ -869,6 +974,19 @@ def get_plex_trackdata_for_date(collection_name, key_date, ntape=0):
 
     if len(candidates) == 0:
         return None
+
+    # Deduplicate same album returned via multiple libraries/aliases and keep
+    # the richest playable candidate.
+    deduped = {}
+    for row in candidates:
+        album_title = str(row.get("album_title", "") or "").strip().lower()
+        tape_id = str(row.get("tape_id", "") or "")
+        key = album_title if album_title else tape_id
+        prev = deduped.get(key)
+        if prev is None or len(row.get("urls", [])) > len(prev.get("urls", [])):
+            deduped[key] = row
+
+    candidates = list(deduped.values())
 
     chosen = candidates[ntape % len(candidates)]
     return {

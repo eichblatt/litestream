@@ -976,11 +976,26 @@ def merge_plex_coll_dict(coll_dict):
         if len(inserted_dates) > 0:
             plex_collection_names.add(coll_name)
             plex_collection_dates[coll_name] = inserted_dates
-        coll_dates = list(merged.keys())
-        if len(coll_dates) == 0:
+        coll_dates = merged.keys()
+        first_coll_date = None
+        min_coll_date = None
+        max_coll_date = None
+        for date_key in coll_dates:
+            if first_coll_date is None:
+                first_coll_date = date_key
+            if min_coll_date is None or date_key < min_coll_date:
+                min_coll_date = date_key
+            if max_coll_date is None or date_key > max_coll_date:
+                max_coll_date = date_key
+
+        if first_coll_date is None:
             continue
-        min_year = min(int(min(coll_dates)[:4]), min_year)
-        max_year = max(int(max(coll_dates)[:4]), max_year)
+        if min_coll_date is None:
+            min_coll_date = first_coll_date
+        if max_coll_date is None:
+            max_coll_date = first_coll_date
+        min_year = min(int(min_coll_date[:4]), min_year)
+        max_year = max(int(max_coll_date[:4]), max_year)
         added += 1
 
     PLEX_COLLECTIONS = plex_collection_names
@@ -1063,11 +1078,20 @@ def run():
             return -1
 
         collections = list(coll_dict.keys())
-        valid_dates = set()
+        first_valid_date = None
+        selected_date_present = False
+        selected_date = state.get("selected_date")
         for coll in collections:
-            valid_dates = valid_dates | set(list(coll_dict[coll].keys()))
-        valid_dates = sorted(list(valid_dates))
-        if len(valid_dates) == 0:
+            date_map = coll_dict.get(coll, {})
+            if not isinstance(date_map, dict):
+                continue
+            for date_key in date_map.keys():
+                if first_valid_date is None or date_key < first_valid_date:
+                    first_valid_date = date_key
+                if selected_date is not None and date_key == selected_date:
+                    selected_date_present = True
+
+        if first_valid_date is None:
             tm.clear_screen()
             tm.write("No dated shows found", 0, 0, color=tm.YELLOW, font=pfont_small, show_end=-2)
             tm.write("Check Archive/Plex metadata", 0, pfont_small.HEIGHT + 2, font=pfont_smallx, show_end=-2)
@@ -1078,8 +1102,8 @@ def run():
             state["selected_collection"] = collections[0]
             state_changed = True
 
-        if state.get("selected_date") not in valid_dates:
-            state["selected_date"] = valid_dates[0]
+        if not selected_date_present:
+            state["selected_date"] = first_valid_date
             state_changed = True
 
         if state_changed:
