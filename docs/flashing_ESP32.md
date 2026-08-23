@@ -15,6 +15,7 @@
     - [Flash Everything](#flash-everything)
     - [Rolling Back to a Previous Version of the Firmware](#rolling-back-to-a-previous-version-of-the-firmware)
     - [Browser-based](#browser-based)
+  - [Sending Flash Files to PCB Manufacturer](#sending-flash-files-to-pcb-manufacturer)
 
 ## Install ESP-IDF
 
@@ -202,3 +203,23 @@ sudo /home/steve/.espressif/python_env/$IDF_ENV/bin/python /home/steve/esp/esp-i
 ### Browser-based
 
 <https://espressif.github.io/esptool-js/>
+
+## Sending Flash Files to PCB Manufacturer
+
+When placing the order at jlcpcb.com, add an Assembly Remark:
+
+```{}
+I would like you to flash the 4 files attached to the ESP32 to the following locations.
+0x0 bootloader.bin 
+0x8000 partition-table.bin 
+0x10000 micropython.bin 
+0x4f0000 fsbackup.bin
+```
+
+and attach the 4 files as a zip file. To zip the files:
+
+```{}
+: /home/steve/.espressif/python_env/idf5.2_py3.12_env ~/projects/litestream/MicropythonFirmware/latest ; zip flashfiles.zip bootloader.bin partition-table.bin micropython.bin fsbackup.bin 
+```
+
+
