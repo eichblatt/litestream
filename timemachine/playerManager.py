@@ -101,15 +101,23 @@ class PlayerManager:
         return len(new_elements)
 
     def increment_track_screen(self, track_num=None, increment=1):
-        if track_num and track_num == self.track_index:
+        if self.n_tracks <= 0:
             return self.track_index
-        if (self.track_index + increment) > self.n_tracks:
-            self.DEBUG and print(f"increment_track_screen. already on last track {self.track_index}")
-            return self.track_index
-        if (self.track_index + increment) <= 0:
-            self.DEBUG and print(f"increment_track_screen. already on first track {self.track_index}")
 
-        self.track_index = self.track_index + increment if track_num is None else track_num
+        if track_num is not None:
+            target = min(max(track_num, 0), self.n_tracks - 1)
+            if target == self.track_index:
+                return self.track_index
+            self.track_index = target
+        else:
+            if (self.track_index + increment) > (self.n_tracks - 1):
+                self.DEBUG and print(f"increment_track_screen. already on last track {self.track_index}")
+                return self.track_index
+            if (self.track_index + increment) < 0:
+                self.DEBUG and print(f"increment_track_screen. already on first track {self.track_index}")
+                return self.track_index
+            self.track_index = self.track_index + increment
+
         tracklist = self.remaining_track_names()
         (self.DEBUG > 1) and print(f"playerManager display: {tracklist}")
         self.display(*tracklist)
@@ -129,6 +137,10 @@ class PlayerManager:
         # print(f"PlayerManager {message}")
         if title and "Start playing track" in message:
             self.increment_track_screen(track_num)
+            return
+
+        if (track_num >= 0) and ("Skipping track" in message):
+            self.increment_track_screen(min(track_num + 1, self.n_tracks - 1))
             return
 
         if "Finished playing track" in message:

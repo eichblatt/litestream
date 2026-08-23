@@ -9,7 +9,7 @@ import audioPlayer
 import esp32
 
 
-def connect_to_WiFi():
+def connect_to_WiFi(ssid="DODO-31BF", passkey="PU7QUYXQE7"):
     sta_if = network.WLAN(network.STA_IF)
     sta_if.active(True)
     sta_if.config(pm=network.WLAN.PM_NONE)  # Switch off Power Management on the WiFi radio (better performance)
@@ -17,7 +17,7 @@ def connect_to_WiFi():
     if not sta_if.isconnected():
         print("Connecting to network...")
         sta_if.active(True)
-        sta_if.connect("DODO-31BF", "PU7QUYXQE7")
+        sta_if.connect(ssid, passkey)
 
         while not sta_if.isconnected():
             pass
@@ -116,7 +116,6 @@ pDSw_old = False
 # url = "https://archive.org/download/gd1984-12-28.142611.sbd.miller.flac1648/18TheOtherOne.ogg"
 # url = "https://archive.org/download/gd1980-08-16.SonyECM250.walker-scotton.miller.88959.sbeok.flac16/gd80-08-16d1t01.ogg"
 # url = "https://archive.org/download/gd1991-08-13.sbd.miller.109241.flac16/gd91-08-13d1t02.ogg"
-
 tft.fill(st7789.BLACK)
 
 Player = audioPlayer.AudioPlayer(debug=True)

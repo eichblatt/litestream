@@ -49,6 +49,14 @@
             "github:eichblatt/litestream/timemachine/playerManager.py"
         ],
         [
+            "plex_mini.py",
+            "github:eichblatt/litestream/timemachine/plex_mini.py"
+        ],
+        [
+            "plex.py",
+            "github:eichblatt/litestream/timemachine/plex.py"
+        ],
+        [
             "rpm78.py",
             "github:eichblatt/litestream/timemachine/rpm78.py"
         ],
