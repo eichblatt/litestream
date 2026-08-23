@@ -381,6 +381,9 @@ class AudioPlayer:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
+        # Remaining source bytes to discard after a decode failure.
+        self.skip_track_bytes_remaining = 0
+
         print(self)
 
     def __repr__(self):
@@ -425,7 +428,10 @@ class AudioPlayer:
         if self.ntracks > 0:
             self.current_track = 0
             self.next_track = self.set_next_track()
-        self.callbacks["display"](*self.track_names())
+        try:  # temporary fix for display callback not being set up yet
+            self.callbacks["display"](*self.track_names())
+        except TypeError:
+            pass  # This happens when the display callback is not set up yet
 
     def track_status(self):
         if self.current_track is None:
@@ -541,12 +547,27 @@ class AudioPlayer:
     #        return self.playlist_started
 
     def parse_url(self, location):
+        print(f"Parsing URL {location.decode()}")
         parts = location.decode().split("://", 1)
         port = 80 if parts[0] == "http" else 443 if parts[0] == "https" else 0
         url = parts[1].split("/", 1)
         host = url[0]
+        host, port = (host.split(":", 1) + [port])[:2]
         path = url[1] if url[1].startswith("/") else "/" + url[1]
-        return host, port, path
+        return host, int(port), path
+
+    def _build_http_get(self, path, host, offset):
+        if not hasattr(self, "plex_session_id"):
+            self.plex_session_id = "litestream-%d" % time.ticks_ms()
+        return bytes(
+            "GET %s HTTP/1.1\r\n"
+            "Host: %s\r\n"
+            "Range: bytes=%d-\r\n"
+            "Connection: keep-alive\r\n"
+            "X-Plex-Session-Identifier: %s\r\n"
+            "\r\n" % (path, host, offset, self.plex_session_id),
+            "utf8",
+        )
 
     def read_http_header(self, trackno, offset=0, port=80, retries=1):
         if trackno is None:
@@ -557,6 +578,7 @@ class AudioPlayer:
         #        self.playlist_started = True
         self.track_being_read = trackno
         url = self.playlist[trackno]
+        print(f"Reading HTTP header for track {trackno} from {url} with offset {offset}")
         host, port, path = self.parse_url(url.encode())
         assert port > 0, "Invalid URL prefix"
 
@@ -604,7 +626,7 @@ class AudioPlayer:
         poller.register(self.sock, select.POLLOUT)
 
         # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-        data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+        data = self._build_http_get(path, host, offset)
 
         # Write the data to the async socket. Use a poller with a 50ms timeout
         # Because this is an async socket it will return straight away, allowing the SSL handshake to happen under the covers
@@ -634,11 +656,8 @@ class AudioPlayer:
                 # EOF is indistinguishable from the host closing a socket when we pause too long
                 if header.lower().startswith(b"content-range:"):
                     track_length = int(header.split(b"/", 1)[1])
-                    self.can_resume = True
                 elif header.lower().startswith(b"content-length:"):
                     track_length = int(header.split(b": ", 1)[1].strip())
-                    self.can_resume = False
-                    print("Warning: Server does not support Range requests - cannot pause/resume")
 
             if header == b"\r\n":
                 break
@@ -698,7 +717,7 @@ class AudioPlayer:
                 poller.register(self.sock, select.POLLOUT)
 
                 # Request the file with optional offset (Use an offset if we're re-requesting the same file after a long pause)
-                data = bytes(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nRange: bytes={offset}-\r\n\r\n", "utf8")
+                data = self._build_http_get(path, host, offset)
 
                 # Write the data to the async socket.
                 while data:
@@ -714,6 +733,7 @@ class AudioPlayer:
 
                 # Read the response headers
                 response_headers = b""
+                track_length = 0
                 while True:
                     header = self.sock.readline()
                     self.decode_chunk()
@@ -724,14 +744,42 @@ class AudioPlayer:
 
                         # Save the length of the track. We use this to keep track of when we have finished reading a track rather than relying on EOF
                         # EOF is indistinguishable from the host closing a socket when we pause too long
-                        if header.startswith(b"Content-Range:"):
+                        if header.lower().startswith(b"content-range:"):
                             track_length = int(header.split(b"/", 1)[1])
+                        elif header.lower().startswith(b"content-length:"):
+                            track_length = int(header.split(b": ", 1)[1].strip())
 
                     if header == b"\r\n":
                         break
 
-        # Make sure we know the length of the track and got a valid response from the server. If not, skip this track.
-        if track_length == 0 or (b"HTTP/1.1 200" not in response_headers and b"HTTP/1.1 206" not in response_headers):
+        # Validate response. Some Plex transcode URLs return 200 audio streams
+        # without Content-Length/Content-Range; treat these as unknown-length
+        # tracks and finalize length when the socket closes.
+        header_lines = response_headers.split(b"\r\n")
+        status_line = header_lines[0].lower() if len(header_lines) > 0 else b""
+        has_206 = b" 206" in status_line
+        has_content_range = False
+        accept_ranges_bytes = False
+        for line in header_lines:
+            line_l = line.lower()
+            if line_l.startswith(b"content-range:"):
+                has_content_range = True
+            elif line_l.startswith(b"accept-ranges:") and b"bytes" in line_l:
+                accept_ranges_bytes = True
+
+        self.can_resume = has_206 or has_content_range or accept_ranges_bytes
+
+        # If we asked for a resume offset but got a full-body response without
+        # content-range semantics, restart from beginning to avoid misaligned read state.
+        if offset > 0 and (not has_206) and (not has_content_range):
+            print("Warning: Range resume ignored by server, restarting track from beginning")
+            self.can_resume = False
+            self.current_track_bytes_read = 0
+            self.read_http_header(trackno, 0, port, retries)
+            return
+
+        status_ok = b"HTTP/1.1 200" in response_headers or b"HTTP/1.1 206" in response_headers
+        if (not status_ok) or (track_length == 0 and b"content-type: audio/" not in response_headers.lower()):
             print("Bad URL:", url)
             print("Headers:", response_headers)
             print("TrackLength:", track_length)
@@ -746,11 +794,21 @@ class AudioPlayer:
             self.handle_end_of_track_read()
             return
 
+        if track_length == 0:
+            # Unknown total length; we'll set the real length at EOF.
+            track_length = -1
+            self.can_resume = True
+            print("Warning: Unknown track length - will finalize on EOF (resume enabled)")
+
         # Store the end-of-track and format marker for this track (except if we are restarting a track)
-        if path.lower().endswith(".mp3"):
+        pathname = path.split("?", 1)[0]
+        path_lower = path.lower()
+        is_plex_vorbis = "/transcode/universal/start" in pathname.lower() and "audiocodec=vorbis" in path_lower
+        is_plex_mp3 = "/transcode/universal/start" in pathname.lower() and "audiocodec=mp3" in path_lower
+        if pathname.lower().endswith(".mp3") or is_plex_mp3:
             if offset == 0:
                 self.TrackInfo.append((track_length, format_MP3))
-        elif path.lower().endswith(".ogg"):
+        elif pathname.lower().endswith(".ogg") or is_plex_vorbis:
             if offset == 0:
                 self.TrackInfo.append((track_length, format_Vorbis))
         else:
@@ -796,13 +854,23 @@ class AudioPlayer:
                         # Start the decode loop
                         self.DecodeLoopRunning = True
 
-                    # We have read to the end of the track
-                    if self.current_track_bytes_read == self.TrackInfo[-1][0]:
+                    # We have read to the end of the track (known-length tracks).
+                    # Use >= to tolerate socket chunk boundary overshoot.
+                    if self.TrackInfo[-1][0] >= 0 and self.current_track_bytes_read >= self.TrackInfo[-1][0]:
                         self.handle_end_of_track_read()
+                        return
 
                     # Peer closed socket. This is usually because we are in a long pause, and our socket closes
                     if data == 0:
                         print("Peer close")
+                        # For unknown-length streams, EOF is expected. Finalize
+                        # this track length so the decode loop can complete.
+                        if len(self.TrackInfo) > 0 and self.TrackInfo[-1][0] < 0:
+                            self.TrackInfo[-1] = (self.current_track_bytes_read, self.TrackInfo[-1][1])
+                            print(f"Finalized unknown track length at EOF: {self.current_track_bytes_read}")
+                            self.handle_end_of_track_read()
+                            return
+
                         # Note: The exception below will be caught by the 'except' below
                         raise RuntimeError("Peer closed socket")
 
@@ -837,6 +905,20 @@ class AudioPlayer:
         # No data to decode
         if self.InBuffer.BytesInBuffer == 0:
             return self.OutBuffer.buffer_level()
+
+        # If the previous track failed decode, discard its unread bytes before
+        # attempting to decode the next track.
+        if self.skip_track_bytes_remaining > 0:
+            bytes_available = self.InBuffer.get_read_available()
+            if bytes_available == 0:
+                return self.OutBuffer.buffer_level()
+
+            bytes_to_skip = min(self.skip_track_bytes_remaining, bytes_available)
+            self.InBuffer.bytes_wasRead(bytes_to_skip)
+            self.skip_track_bytes_remaining -= bytes_to_skip
+
+            if self.skip_track_bytes_remaining > 0:
+                return self.OutBuffer.buffer_level()
 
         if self.decode_phase == decode_phase_trackstart:
             # We're at the start of a new track.
@@ -976,11 +1058,8 @@ class AudioPlayer:
                         self.InBuffer.bytes_wasRead(128)
                         self.current_track_bytes_decoded_in += 128
                     else:
-                        print(pos, end=":")
-                        print(self.InBuffer.Buffer[pos:].hex())
-
-                        # Not sure what we should do here. Maybe we could handle it?
-                        raise RuntimeError("Corrupted packet")
+                        self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                        break
                     pass
 
                 # If the packet is short/corrupted we can hopefully recover by the next packet
@@ -989,9 +1068,8 @@ class AudioPlayer:
 
                 else:
                     print("Decode Packet failed. Error:", Result)
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-                    raise RuntimeError("Decode Packet failed")
+                    self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                    break
 
                 if self.decode_phase == decode_phase_readinfo:
                     channels, sample_rate, bits_per_sample, bit_rate = self.MP3Decoder.MP3_GetInfo()
@@ -1017,11 +1095,8 @@ class AudioPlayer:
 
                 # We have a corrupted packet
                 elif Result == -6:
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-
-                    # Not sure what we should do here. Maybe we could handle it?
-                    raise RuntimeError("Corrupted packet")
+                    self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                    break
                     pass
 
                 # We got an OGG Header without Vorbis data (possibly a Ogg Theora video). Skip to next track as we can't decode this
@@ -1035,9 +1110,8 @@ class AudioPlayer:
 
                 else:
                     print("Decode Packet failed. Error:", Result)
-                    print(pos, end=":")
-                    print(self.InBuffer.Buffer[pos:].hex())
-                    raise RuntimeError("Decode Packet failed")
+                    self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                    break
 
                 # If we're at the beginning of the track, get info about this stream
                 if self.decode_phase == decode_phase_readinfo:
@@ -1054,8 +1128,9 @@ class AudioPlayer:
                 self.PlayInfo.append((channels, sample_rate, bits_per_sample))
                 self.decode_phase = decode_phase_decoding
 
-            # Check if we have decoded to the end of the current track
-            if self.current_track_bytes_decoded_in == self.TrackInfo[0][0]:  # We have finished decoding the current track
+            # Check if we have decoded to the end of the current track.
+            # Use >= to tolerate small decoder/frame boundary overruns.
+            if self.current_track_bytes_decoded_in >= self.TrackInfo[0][0]:  # We have finished decoding the current track
                 print(f"Track {self.current_track} decode end")
 
                 # Save the length of decoded audio for this track. Play_chunk() will check this to re-init the I2S device at the right spot (required in case the bitrate changes between songs)
@@ -1103,6 +1178,37 @@ class AudioPlayer:
             self.consecutive_zeros += 1
 
         return self.OutBuffer.buffer_level()
+
+    def _skip_current_track_after_decode_error(self, reason, result_code=None):
+        if len(self.TrackInfo) == 0:
+            return
+
+        msg = f"Skip track {self.current_track} after {reason}"
+        if result_code is not None:
+            msg += f" ({result_code})"
+        print(msg)
+
+        # Keep already decoded audio playable, then advance to next track.
+        self.PlayLength.append(self.current_track_bytes_decoded_out)
+
+        remaining = self.TrackInfo[0][0] - self.current_track_bytes_decoded_in
+        self.skip_track_bytes_remaining = remaining if remaining > 0 else 0
+
+        self.TrackInfo.pop(0)
+        self.current_track_bytes_decoded_in = 0
+        self.current_track_bytes_decoded_out = 0
+        self.ID3Tag_size = 0
+        self.decode_phase = decode_phase_trackstart
+
+        if self.current_track + 1 < self.ntracks:
+            self.current_track += 1
+            self.next_track = self.set_next_track()
+            self.callbacks["display"](*self.track_names())
+        else:
+            print("Finished decoding playlist")
+            self.DecodeLoopRunning = False
+            self.MP3Decoder.MP3_Close()
+            self.VorbisDecoder.Vorbis_Close()
 
     @micropython.native
     def play_chunk(self):

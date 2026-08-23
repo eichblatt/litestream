@@ -301,7 +301,7 @@ class TrackReader:
     def __init__(self, context, callbacks, debug=0):
         self.context = context
         self.callbacks = callbacks
-        self.DEBUG = debug
+        self.DEBUG = 1  # debug
         self.sock = None
 
         # A buffer used to read data from the network. 16kB matches the size of the WiFi buffer
@@ -601,8 +601,48 @@ class TrackDecoder:
         # Used for statistics during debugging
         self.consecutive_zeros = 0
 
+        # Emit one stream-signature line per track for format diagnostics.
+        self._signature_logged = False
+
+        # Remaining source bytes to discard when a track is force-skipped.
+        self.skip_bytes_remaining = 0
+
     def Add_to_Decode_List(self, TrackLength, TrackType, hash):
         self.DecodeInfo.append((TrackLength, TrackType, hash))
+
+    def _log_input_signature_once(self):
+        if self._signature_logged:
+            return
+
+        available = self.context.InBuffer.any()
+        if available < 4:
+            return
+
+        probe_len = min(2048, available)
+        probe = bytearray(probe_len)
+        probe_mv = memoryview(probe)
+        self.context.InBuffer.readinto(probe_mv, probe_len)
+        self.context.InBuffer.write(probe_mv)
+
+        b0, b1, b2, b3 = probe[0], probe[1], probe[2], probe[3]
+        is_adts = b0 == 0xFF and (b1 & 0xF0) == 0xF0
+        ts_like = False
+        if probe_len >= 376:
+            ts_like = probe[0] == 0x47 and probe[188] == 0x47
+
+        if ts_like:
+            sig = "TS(188-sync)"
+        elif is_adts:
+            sig = "AAC-ADTS"
+        elif probe_len >= 12 and probe[4:8] == b"ftyp":
+            sig = "MP4/fMP4"
+        else:
+            sig = "Unknown"
+
+        first8 = "".join(f"{x:02x}" for x in probe[:8])
+        track_hash = self.DecodeInfo[0][2] if self.DecodeInfo else "unknown"
+        print(f"Input signature: {sig} first8={first8} avail={available} track={track_hash}")
+        self._signature_logged = True
 
     def isRunning(self):
         if self.decode_phase == decode_phase_idle or self.decode_phase == decode_phase_paused:
@@ -616,6 +656,51 @@ class TrackDecoder:
         elif self.decode_phase == decode_phase_paused:
             self.decode_phase = decode_phase_decoding
 
+    def _discard_skipped_track_bytes(self):
+        while self.skip_bytes_remaining > 0 and self.context.InBuffer.any() >= 188:
+            self.context.InBuffer.readinto(self.ParserInMV, 188)
+            self.skip_bytes_remaining -= 188
+
+        if self.skip_bytes_remaining <= 0:
+            self.skip_bytes_remaining = 0
+            self.current_track_bytes_parsed_in = 0
+            self.current_track_bytes_parsed_out = 0
+            self.TSParser.reset()
+
+    def _skip_current_track_after_decode_error(self, reason, result_code=None):
+        track_hash = self.DecodeInfo[0][2] if self.DecodeInfo else "unknown"
+        msg = f"decode_chunk: Skipping track ({reason}"
+        if result_code is not None:
+            msg += f" [{result_code}]"
+        msg += f") {track_hash}"
+        print(msg)
+        self.callbacks["messages"](msg)
+
+        # Keep already-decoded audio playable, then skip the rest of this track.
+        if self.ParsedDecodeInfo:
+            self.context.player.Update_Track_Length(self.current_track_bytes_decoder_out)
+            self.ParsedDecodeInfo.pop(0)
+
+        if self.DecodeInfo:
+            remaining = self.DecodeInfo[0][0] - self.current_track_bytes_parsed_in
+            self.skip_bytes_remaining = remaining if remaining > 0 else 0
+            self.DecodeInfo.pop(0)
+        else:
+            self.skip_bytes_remaining = 0
+
+        self.AACDecoder.close()
+        self.ParserRunning = False
+        self.current_track_bytes_decoder_in = 0
+        self.current_track_bytes_decoder_out = 0
+        self.current_track_bytes_parsed_in = 0
+        self.current_track_bytes_parsed_out = 0
+
+        if len(self.DecodeInfo) == 0 and len(self.context.playlist) == 0 and self.skip_bytes_remaining == 0:
+            self.decode_phase = decode_phase_idle
+            self.AACDecoder.AAC_Close()
+        else:
+            self.decode_phase = decode_phase_trackstart
+
     def decode_chunk(self, timeout=10):
         if self.decode_phase in (decode_phase_idle, decode_phase_paused):
             return self.context.OutBuffer.any()
@@ -625,6 +710,11 @@ class TrackDecoder:
             print("Decoder starved")
             self.decode_phase = decode_phase_paused
             return self.context.OutBuffer.any()
+
+        if self.skip_bytes_remaining > 0:
+            self._discard_skipped_track_bytes()
+            if self.skip_bytes_remaining > 0:
+                return self.context.OutBuffer.any()
 
         TimeStart = time.ticks_ms()
         break_reason = 0
@@ -651,6 +741,9 @@ class TrackDecoder:
             self.callbacks["messages"](f"decode_chunk: Start decoding track {self.DecodeInfo[0][2]}")
 
             if self.DecodeInfo[0][1] == format_AAC:
+                self._signature_logged = False
+                self._log_input_signature_once()
+
                 # De-allocate buffers from previous decoder instances
                 self.AACDecoder.AAC_Close()
 
@@ -827,12 +920,12 @@ class TrackDecoder:
                         break
 
                     elif Result == -6:
-                        print("Corrupted packet")
-                        raise RuntimeError("Corrupted packet")
+                        self._skip_current_track_after_decode_error("Corrupted packet", Result)
+                        break
 
                     else:
-                        print("Decode Packet failed. Error:", Result)
-                        raise RuntimeError("Decode Packet failed")
+                        self._skip_current_track_after_decode_error("Decode Packet failed", Result)
+                        break
 
                 # Check if we have a parsed length of the track (only populated when we have finished parsing the track) and if so, have we decoded to the end of the current track?
                 if len(self.ParsedDecodeInfo) > 0:
