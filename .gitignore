@@ -153,5 +153,5 @@ timemachine/playerManager2.py
 timemachine/playerManager_blocking.py
 timemachine/classical_working.py
 timemachine/classical_orig.py
-MicropythonFirmware/latest/flashfiles.zip
+MicropythonFirmware/latest/flashfiles.zip*
 .vscode/settings.json
