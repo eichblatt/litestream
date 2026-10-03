@@ -119,16 +119,44 @@ class PlexMetadataClient:
 
     def _date_span_in_title(self, title):
         text = str(title or "").strip()
-        if len(text) < 10:
-            return "", -1
+        if len(text) < 8:
+            return "", -1, 0
 
+        # Prefer full-year dates when both forms could match.
         for start in range(0, len(text) - 9):
             candidate = text[start : start + 10]
             normalized = candidate.replace("_", "-")
             if utils.is_valid_iso_date(normalized):
-                return normalized, start
+                return normalized, start, 10
 
-        return "", -1
+        # Fallback: accept YY-MM-DD and map century by pivot year.
+        # YY >= 50 -> 19YY, YY < 50 -> 20YY.
+        for start in range(0, len(text) - 7):
+            candidate = text[start : start + 8]
+            if not (
+                len(candidate) == 8
+                and candidate[2] == "-"
+                and candidate[5] == "-"
+                and candidate[:2].isdigit()
+                and candidate[3:5].isdigit()
+                and candidate[6:8].isdigit()
+            ):
+                continue
+
+            # Avoid matching inside a larger numeric token (e.g. 1977-05-08).
+            before = text[start - 1] if start > 0 else ""
+            after_index = start + 8
+            after = text[after_index] if after_index < len(text) else ""
+            if (before and before.isdigit()) or (after and after.isdigit()):
+                continue
+
+            yy = int(candidate[:2])
+            century = "19" if yy >= 50 else "20"
+            expanded = f"{century}{candidate}"
+            if utils.is_valid_iso_date(expanded):
+                return expanded, start, 8
+
+        return "", -1, 0
 
     def _strip_trailing_parenthetical(self, text):
         value = str(text or "").strip()
@@ -151,11 +179,11 @@ class PlexMetadataClient:
 
     def _normalize_album_title(self, title):
         raw_title = str(title or "").strip()
-        date_str, date_start = self._date_span_in_title(raw_title)
+        date_str, date_start, date_len = self._date_span_in_title(raw_title)
         if not date_str:
             return ""
 
-        tail = raw_title[date_start + 10 :].strip(" -_:|,")
+        tail = raw_title[date_start + date_len :].strip(" -_:|,")
         tail = self._strip_trailing_parenthetical(tail)
 
         if tail:
@@ -188,7 +216,7 @@ class PlexMetadataClient:
         title = str(getattr(album, "title", "") or "")
         normalized_title = self._normalize_album_title(title) or title
         if date_str is None:
-            date_str, _ = self._date_span_in_title(title)
+            date_str, _, _ = self._date_span_in_title(title)
         return (date_str, normalized_title.strip().lower())
 
     def _is_supported_audio_media(self, media_item, part_key):
@@ -247,7 +275,7 @@ class PlexMetadataClient:
         if self.music is None:
             return
         for album in self.music.searchAlbums():
-            date_str, _date_start = self._date_span_in_title(getattr(album, "title", ""))
+            date_str, _date_start, _date_len = self._date_span_in_title(getattr(album, "title", ""))
             if not date_str:
                 continue
 
@@ -327,11 +355,11 @@ class PlexMetadataClient:
 
     def _album_metadata(self, album):
         title = str(getattr(album, "title", "")).strip()
-        date_str, date_start = self._date_span_in_title(title)
+        date_str, date_start, date_len = self._date_span_in_title(title)
 
         artist = self._album_artist(album)
         if date_str:
-            tail = title[date_start + 10 :].strip(" -_:|,")
+            tail = title[date_start + date_len :].strip(" -_:|,")
         else:
             tail = ""
         tail = self._strip_trailing_parenthetical(tail)
@@ -366,10 +394,28 @@ class PlexMetadataClient:
 
         candidates = []
         seen = set()
-        query_values = [str(key_date)]
-        underscored = query_values[0].replace("-", "_")
-        if underscored != query_values[0]:
-            query_values.append(underscored)
+        full_date = str(key_date)
+        query_values = [full_date]
+
+        # Add 2-digit year variants for libraries titled as YY-MM-DD.
+        if len(full_date) == 10 and full_date[4] == "-" and full_date[7] == "-":
+            query_values.append(full_date[2:])
+
+        expanded = []
+        for value in query_values:
+            expanded.append(value)
+            underscored = value.replace("-", "_")
+            if underscored != value:
+                expanded.append(underscored)
+
+        # Preserve order while deduplicating.
+        query_values = []
+        seen_query_values = set()
+        for value in expanded:
+            if value in seen_query_values:
+                continue
+            seen_query_values.add(value)
+            query_values.append(value)
 
         for query_value in query_values:
             try:
