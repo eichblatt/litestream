@@ -327,12 +327,16 @@ class PlexMetadataClient:
                 part_key_lower = str(part_key).strip().lower()
                 is_flac = container == "flac" or part_key_lower.endswith(".flac")
 
-                # For FLAC, use universal transcode URL keyed by track metadata id.
+                # For FLAC, prefer metadata-key transcode URL. Some Plex
+                # servers reject part-path transcode requests.
                 if is_flac:
                     track_rating_key = str(getattr(track, "ratingKey", "") or "")
                     metadata_rating_key = track_rating_key or album_rating_key
+                    source_path = str(part_key or "").strip()
                     if metadata_rating_key:
                         stream_url = self.plex.transcode_album_url(metadata_rating_key)
+                    elif source_path:
+                        stream_url = self.plex.transcode_url_for_path(source_path)
                     break
 
                 if not self._is_supported_audio_media(media_item, part_key):

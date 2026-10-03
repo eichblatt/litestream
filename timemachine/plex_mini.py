@@ -217,10 +217,24 @@ class MyPlexResource:
         ordered = sorted(conns, key=_sort_key)
         uris = []
         for c in ordered:
-            uri = c.get("uri") or c.get("httpuri")
-            uri_text = str(uri).strip()
-            if uri_text:
-                uris.append(uri_text.rstrip("/"))
+            # Prefer direct HTTP URI when available. Some Plex servers now
+            # reject equivalent plex.direct HTTPS transcode URLs that still
+            # work via plain http://<ip>:<port>.
+            candidates = []
+            httpuri = c.get("httpuri")
+            uri = c.get("uri")
+            if httpuri:
+                candidates.append(httpuri)
+            if uri:
+                candidates.append(uri)
+
+            for candidate in candidates:
+                uri_text = str(candidate).strip()
+                if not uri_text:
+                    continue
+                normalized = uri_text.rstrip("/")
+                if normalized not in uris:
+                    uris.append(normalized)
         return uris
 
     def connect(self):
@@ -269,27 +283,47 @@ class PlexServer(_PlexClientBase):
             url = _append_query(url, {"X-Plex-Token": self._token})
         return url
 
+    def transcode_url_for_path(self, source_path, audio_codec="mp3", music_bitrate=320, protocol="http", platform="Chrome"):
+        """Build Plex universal transcode URL for an explicit Plex source path.
+
+        Plex transcoding in this project is MP3-only.
+        """
+        # Some Plex servers are sensitive to transcode query parameter order.
+        # Keep path first, then codec/format, then client identity fields.
+        ordered_params = [
+            ("path", str(source_path)),
+            ("audioCodec", "mp3"),
+            ("format", "mp3"),
+            ("musicBitrate", int(music_bitrate) if music_bitrate is not None else 320),
+            ("X-Plex-Product", self.product),
+            ("X-Plex-Client-Identifier", self.client_identifier),
+            ("X-Plex-Platform", platform),
+            ("X-Plex-Version", self.version),
+            ("protocol", protocol),
+            ("X-Plex-Token", self._token),
+        ]
+
+        parts = []
+        for key, value in ordered_params:
+            if value is None:
+                continue
+            parts.append("%s=%s" % (_url_encode(key), _url_encode(value)))
+
+        return "%s/music/:/transcode/universal/start.mp3?%s" % (self.base_url, "&".join(parts))
+
     def transcode_album_url(self, rating_key, audio_codec="mp3", music_bitrate=320, protocol="http", platform="Chrome"):
         """Build Plex universal transcode URL using a metadata ratingKey.
 
         URL shape mirrors known-good browser-style parameters for audio
         transcoding.
         """
-        params = {
-            "path": "/library/metadata/%s" % rating_key,
-            "protocol": protocol,
-            "format": "mp3",
-            "audioCodec": audio_codec,
-            "musicBitrate": music_bitrate,
-            "directPlay": 0,
-            "directStream": 0,
-            "X-Plex-Client-Identifier": self.client_identifier,
-            "X-Plex-Product": self.product,
-            "X-Plex-Version": self.version,
-            "X-Plex-Platform": platform,
-            "X-Plex-Token": self._token,
-        }
-        return _append_query("%s/music/:/transcode/universal/start.mp3" % self.base_url, params)
+        return self.transcode_url_for_path(
+            "/library/metadata/%s" % rating_key,
+            audio_codec=audio_codec,
+            music_bitrate=music_bitrate,
+            protocol=protocol,
+            platform=platform,
+        )
 
 
 class Library:
