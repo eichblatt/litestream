@@ -219,11 +219,12 @@ def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
         return collection, [], [], "plex-metadata"
 
     tracklist = []
-    tape_ids_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+    url_collection = utils.url_escape(collection)
+    tape_ids_url = f"{CLOUD_PATH}/tapes/{url_collection}/{key_date}/tape_ids.json"
 
     if tape_id is not None:
         selected_tape_id = tape_id
-        trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{tape_id}/trackdata.json"
+        trackdata_url = f"{CLOUD_PATH}/tapes/{url_collection}/{key_date}/{tape_id}/trackdata.json"
         try:
             resp = requests.get(trackdata_url)
             if resp.status_code == 200:
@@ -240,14 +241,14 @@ def select_date(coll_dict, key_date, ntape=0, collection=None, tape_id=None):
                 tape_ids = resp.json()
                 ntapes = len(tape_ids)
                 selected_tape_id = tape_ids[ntape % ntapes][0]
-                trackdata_url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/{selected_tape_id}/trackdata.json"
+                trackdata_url = f"{CLOUD_PATH}/tapes/{url_collection}/{key_date}/{selected_tape_id}/trackdata.json"
                 resp = requests.get(trackdata_url)
                 response = resp.json()
                 collection = response["collection"]
                 tracklist = response["tracklist"]
                 urls = response["urls"]
             else:
-                api_request = f"{API}/track_urls/{key_date}?collections={collection}&ntape={ntape}"
+                api_request = f"{API}/track_urls/{key_date}?collections={url_collection}&ntape={ntape}"
                 print(f"API request is {api_request}")
                 resp = requests.get(api_request)
                 response = resp.json()
@@ -273,7 +274,8 @@ def get_tape_ids(coll_dict, key_date):
                 print(f"Skipping tape-id lookup for plex metadata collection {collection}")
                 continue
             key_date_colls.append(collection)
-            url = f"{CLOUD_PATH}/tapes/{collection}/{key_date}/tape_ids.json"
+            url_collection = utils.url_escape(collection)
+            url = f"{CLOUD_PATH}/tapes/{url_collection}/{key_date}/tape_ids.json"
             print(f"URL is {url}")
             try:
                 resp = None
@@ -281,7 +283,7 @@ def get_tape_ids(coll_dict, key_date):
                 if resp.status_code == 200:
                     tape_ids = tape_ids + [[collection, x[0]] for x in resp.json()]
                 elif resp.status_code == 404:
-                    api_request = f"{API}/tape_ids/{key_date}?collections={collection}"
+                    api_request = f"{API}/tape_ids/{key_date}?collections={url_collection}"
                     print(f"api_request is {api_request}")
                     resp = requests.get(api_request)
                     these_tape_ids = resp.json()[collection]
@@ -838,7 +840,9 @@ def display_tracks(*track_names):
 
 def add_vcs(coll):
     print(f"Adding vcs for coll {coll}")
-    vcs_url = f"{CLOUD_PATH}/vcs/{coll}_vcs.json"
+    # Escape the URL component without changing the collection's JSON key.
+    url_coll = utils.url_escape(coll)
+    vcs_url = f"{CLOUD_PATH}/vcs/{url_coll}_vcs.json"
     print(vcs_url)
     resp = None
     try:
@@ -847,7 +851,7 @@ def add_vcs(coll):
             vcs = resp.json()
         else:
             print(f"status was {resp.status_code}")
-            api_request = f"{API}/vcs/{coll}"
+            api_request = f"{API}/vcs/{url_coll}"
             print(f"API request is {api_request}")
             resp = requests.get(api_request)
             vcs = resp.json()[coll]
