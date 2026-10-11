@@ -30,6 +30,12 @@ In Dev Mode, use **Choose App > plexalbums**, or run `import plexalbums;
 plexalbums.run()` on the device. Normal non-dev startup remains `livemusic`.
 The app remembers artist, album, and volume separately from the other apps.
 
+When available, Plex cover art is resized and downloaded before playback starts.
+After 30 seconds showing the playing tracks, the screen switches to the cover.
+Turning a knob returns to browsing. Missing artwork, download errors, or firmware
+without JPEG display support leave the track list visible. Only the current
+cover is stored, in `/config/plexalbums_cover.jpg`.
+
 ## History
 This project is a continuation of the deadstream project (https://github.com/eichblatt/deadstream)
 but designed to work on a microcontroller like the ESP32.

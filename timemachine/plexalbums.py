@@ -9,6 +9,51 @@ import plex
 import utils
 
 CONFIG_CHOICES = ["Plex"]
+COVER_PATH = "/config/plexalbums_cover.jpg"
+
+
+def prepare_cover(album):
+    if not callable(getattr(tm.tft, "jpg", None)):
+        return None
+    thumb = getattr(album["album"], "_raw", {}).get("thumb")
+    if not thumb:
+        return None
+    size = min(tm.SCREEN_WIDTH, tm.SCREEN_HEIGHT)
+    try:
+        if album["client"].plex.download_cover(thumb, size, COVER_PATH):
+            return (COVER_PATH, size)
+    except Exception:
+        print("Plex cover download unavailable")
+    return None
+
+
+def display_cover_title(playback):
+    font = getattr(tm, "pfont_tiny", tm.pfont_small)
+    ycursor = tm.SCREEN_VPARTS[0] if len(tm.SCREEN_VPARTS) > 1 else tm.SCREEN_HEIGHT - font.HEIGHT
+    tracks = playback.get("tracks", [])
+    title = tracks[0]["title"] if tracks else ""
+    tm.clear_area(0, ycursor, tm.SCREEN_WIDTH, font.HEIGHT)
+    tm.write(title, 0, ycursor, font, tm.WHITE, show_end=1, bounds_check=False)
+
+
+def display_cover(browser, playback):
+    cover = playback.get("cover")
+    if cover is None:
+        return False
+    path, size = cover
+    browser._display_frame = (None, {})
+    try:
+        tm.clear_screen()
+        tm.tft.jpg(path, (tm.SCREEN_WIDTH - size) // 2, (tm.SCREEN_HEIGHT - size) // 2)
+        display_cover_title(playback)
+        browser.page = "Cover"
+        return True
+    except Exception:
+        print("Plex cover display unavailable")
+        playback["cover"] = None
+        browser.page = "Playing"
+        display_page(browser, playback["album"], playback["tracks"])
+        return False
 
 
 def configure(choice):
@@ -32,10 +77,15 @@ def load_catalog():
     return catalog
 
 
+def artist_sort_key(name):
+    normalized = str(name).lower()
+    return normalized[4:] if normalized.startswith("the ") else normalized
+
+
 class Browser:
     def __init__(self, catalog):
         self.catalog = catalog
-        self.artists = sorted(catalog, key=lambda name: str(name).lower())
+        self.artists = sorted(catalog, key=artist_sort_key)
         self.artist_index = 0
         self.album_index = 0
         self.track_index = 0
@@ -249,7 +299,8 @@ def main_loop(browser, player, state, playback):
                     tm.power(0)
                 else:
                     tm.power(1)
-                    display_page(browser, playback["album"], playback["tracks"])
+                    if browser.page != "Cover" or not display_cover(browser, playback):
+                        display_page(browser, playback["album"], playback["tracks"])
                 continue
             if button == tm.pMSw:
                 tm.screen_off()
@@ -267,7 +318,10 @@ def main_loop(browser, player, state, playback):
                     playback["album"] = (browser.artist, browser.album["title"])
                     start = browser.track_index if browser.page == "Track" else 0
                     playback["playlist"] = browser.get_tracks()[start:]
+                    player.stop()
+                    playback["cover"] = prepare_cover(browser.album)
                     if browser.play_selection(player):
+                        playback["cover_time"] = time.ticks_ms()
                         playback["selection"] = (browser.artist_index, browser.album_index, browser.get_tracks())
                         resume_at = None
                         state["artist"] = browser.artist
@@ -288,6 +342,7 @@ def main_loop(browser, player, state, playback):
                 else:
                     player.play()
                     browser.page = "Playing"
+                    playback["cover_time"] = time.ticks_ms()
                 display_page(browser, playback["album"], playback["tracks"])
             elif button == tm.pStop:
                 resume_at = None
@@ -309,15 +364,28 @@ def main_loop(browser, player, state, playback):
                 display_page(browser)
         if (
             last_browse_time is not None
-            and browser.page != "Playing"
+            and browser.page not in ("Playing", "Cover")
             and player.is_playing()
             and playback["album"] is not None
             and tm.power()
             and time.ticks_diff(time.ticks_ms(), last_browse_time) >= 30_000
         ):
             browser.restore_playback(playback)
+            playback["cover_time"] = time.ticks_ms()
             last_browse_time = None
-            display_page(browser, playback["album"], playback["tracks"])
+            if playback.get("cover") is not None:
+                display_cover(browser, playback)
+            else:
+                display_page(browser, playback["album"], playback["tracks"])
+        if (
+            browser.page == "Playing"
+            and playback.get("cover") is not None
+            and player.is_playing()
+            and tm.power()
+            and tm.screen_state()
+            and time.ticks_diff(time.ticks_ms(), playback["cover_time"]) >= 30_000
+        ):
+            display_cover(browser, playback)
         if resume_at is not None and time.ticks_diff(time.ticks_ms(), resume_at) >= 0:
             resume_at = None
             if player.playlist and tm.power():
@@ -357,6 +425,8 @@ def run():
         playback["tracks"] = playlist[len(playlist) - remaining :] if remaining else []
         if browser.page == "Playing":
             display_page(browser, playback["album"], playback["tracks"])
+        elif browser.page == "Cover":
+            display_cover_title(playback)
 
     player = audioPlayer.AudioPlayer(callbacks={"display": display_tracks}, debug=False)
     player.set_volume(state.get("volume", 11))

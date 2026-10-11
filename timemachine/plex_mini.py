@@ -325,6 +325,35 @@ class PlexServer(_PlexClientBase):
             platform=platform,
         )
 
+    def cover_url(self, thumb, size):
+        return _append_query(
+            self.url("/photo/:/transcode", includeToken=True),
+            {
+                "url": thumb,
+                "width": size,
+                "height": size,
+                "minSize": 1,
+                "upscale": 1,
+                "format": "jpeg",
+            },
+        )
+
+    def download_cover(self, thumb, size, destination):
+        response = None
+        try:
+            response = requests.get(self.cover_url(thumb, size), headers={"Accept": "image/jpeg"}, timeout=10)
+            if response.status_code != 200:
+                return False
+            data = response.content
+            if not data or len(data) > 128 * 1024 or data[:2] != b"\xff\xd8":
+                return False
+            with open(destination, "wb") as output:
+                output.write(data)
+            return True
+        finally:
+            if response is not None:
+                response.close()
+
 
 class Library:
     def __init__(self, server):
