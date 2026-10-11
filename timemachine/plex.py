@@ -300,12 +300,43 @@ class PlexMetadataClient:
             )
         return albums
 
+    def get_catalog_albums(self):
+        """Return all albums, ordered by release date rather than title dates."""
+        if self.music is None:
+            return []
+        albums = []
+        for album in self.music.searchAlbums():
+            raw = getattr(album, "_raw", {})
+            release_date = str(raw.get("originallyAvailableAt", "") or "")
+            try:
+                year = int(getattr(album, "year", 0) or release_date[:4] or 0)
+            except (ValueError, TypeError):
+                year = 0
+            albums.append(
+                {
+                    "title": str(getattr(album, "title", "") or "Unknown Album"),
+                    "artist": self._album_artist(album) or "Unknown Artist",
+                    "rating_key": album.ratingKey,
+                    "year": year,
+                    "release_date": release_date or ("%04d" % year if year else ""),
+                    "album": album,
+                }
+            )
+        return sorted(
+            albums,
+            key=lambda row: (row["release_date"] or "9999", row["title"].lower()),
+        )
+
     def get_album_tracks(self, album):
         tracks = []
         if self.plex is None:
             return tracks
         album_rating_key = str(getattr(album, "ratingKey", "") or "")
         for position, track in enumerate(album.tracks(), start=1):
+            try:
+                disc_number = int(getattr(track, "_raw", {}).get("parentIndex", 1) or 1)
+            except (ValueError, TypeError):
+                disc_number = 1
             track_number = getattr(track, "index", position)
             try:
                 track_number = int(track_number)
@@ -350,6 +381,7 @@ class PlexMetadataClient:
 
             tracks.append(
                 {
+                    "disc_number": disc_number,
                     "track_number": track_number,
                     "title": getattr(track, "title", "Unknown Track"),
                     "stream_url": stream_url,
@@ -552,7 +584,15 @@ PLEX_CONFIG_FILE = "/config/plex.json"
 
 
 def _default_plex_config():
-    return {"plex_sections": [], "plex_accounts": {}}
+    return {"plex_sections": [], "plexalbums_sections": [], "plex_accounts": {}}
+
+
+def _section_config_key(app_name):
+    if app_name == "livemusic":
+        return "plex_sections"
+    if app_name == "plexalbums":
+        return "plexalbums_sections"
+    raise ValueError("Unknown Plex app: %s" % app_name)
 
 
 def _normalize_section_row(row):
@@ -601,25 +641,39 @@ def _dedupe_sections(section_rows):
     return deduped
 
 
-def _load_plex_config():
+def _read_plex_config():
     cfg = _default_plex_config()
     if not utils.path_exists(PLEX_CONFIG_FILE):
         return cfg
     try:
         raw = utils.read_json(PLEX_CONFIG_FILE)
-        sections = raw.get("plex_sections", [])
         accounts = raw.get("plex_accounts", {})
-        cfg["plex_sections"] = _dedupe_sections(sections)
+        for key in ("plex_sections", "plexalbums_sections"):
+            cfg[key] = _dedupe_sections(raw.get(key, []))
         cfg["plex_accounts"] = accounts
     except Exception as e:
         print(f"Failed reading {PLEX_CONFIG_FILE}: {e}")
     return cfg
 
 
+def _load_plex_config(app_name="livemusic"):
+    key = _section_config_key(app_name)
+    cfg = _read_plex_config()
+    return {
+        "plex_sections": cfg[key],
+        "plex_accounts": cfg["plex_accounts"],
+        "_app_name": app_name,
+    }
+
+
 def _save_plex_config(cfg):
-    cfg["plex_sections"] = _dedupe_sections(cfg.get("plex_sections", []))
-    cfg["plex_accounts"] = cfg.get("plex_accounts", {})
-    utils.write_json(cfg, PLEX_CONFIG_FILE)
+    key = _section_config_key(cfg.get("_app_name", "livemusic"))
+    stored = _read_plex_config()
+    stored[key] = _dedupe_sections(cfg.get("plex_sections", []))
+    stored["plex_accounts"] = cfg.get("plex_accounts", {})
+    for section_key in ("plex_sections", "plexalbums_sections"):
+        stored[section_key] = [row for row in stored[section_key] if row["plex_account"] in stored["plex_accounts"]]
+    utils.write_json(stored, PLEX_CONFIG_FILE)
 
 
 def _safe_menu_choice(title, choices):
@@ -946,8 +1000,8 @@ def _show_selected_sections_screen(cfg):
     _safe_menu_choice("Plex Libraries", labels + ["Continue"])
 
 
-def get_plex_clients():
-    cfg = _load_plex_config()
+def get_plex_clients(app_name="livemusic"):
+    cfg = _load_plex_config(app_name)
     accounts = cfg.get("plex_accounts", {})
     sections = cfg.get("plex_sections", [])
 
@@ -1048,14 +1102,14 @@ def get_plex_trackdata_for_date(collection_name, key_date, ntape=0):
     }
 
 
-def get_configured_section_count():
-    cfg = _load_plex_config()
+def get_configured_section_count(app_name="livemusic"):
+    cfg = _load_plex_config(app_name)
     sections = cfg.get("plex_sections", [])
     return len(sections) if isinstance(sections, list) else 0
 
 
-def get_configured_section_labels():
-    cfg = _load_plex_config()
+def get_configured_section_labels(app_name="livemusic"):
+    cfg = _load_plex_config(app_name)
     rows = cfg.get("plex_sections", [])
     if not isinstance(rows, list):
         return []
@@ -1074,15 +1128,15 @@ def get_configured_section_labels():
     return labels
 
 
-def configure():
+def configure(app_name="livemusic"):
     while True:
-        cfg = _load_plex_config()
+        cfg = _load_plex_config(app_name)
         choices = ["Show Libraries", "Add Library", "Delete Library"]
         if len(cfg.get("plex_accounts", {})) > 0:
             choices.append("Delete Account")
         choices.extend(["Continue"])
 
-        choice = _safe_menu_choice("Plex Setup", choices)
+        choice = _safe_menu_choice("Plex Setup: %s" % app_name, choices)
 
         if choice in ["Cancel", "Continue"]:
             return

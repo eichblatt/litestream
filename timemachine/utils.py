@@ -789,7 +789,7 @@ def random_character(first, last):
 ############################################################################################### Application-Specific
 #
 
-KNOWN_APPS = ["livemusic", "78rpm", "classical"]  # "datpiff" removed
+KNOWN_APPS = ["livemusic", "78rpm", "classical", "plexalbums"]  # "datpiff" removed
 
 
 def set_main_app(main_app_name):
@@ -817,6 +817,8 @@ def get_main_app():
             import rpm78 as main_app
         elif main_app_name == "classical":
             import classical as main_app
+        elif main_app_name == "plexalbums":
+            import plexalbums as main_app
     except FirmwareUpdateRequiredException as e:
         raise e
     except ImportError as e:
@@ -1183,6 +1185,8 @@ def load_state(app=None):
         return load_78rpm_state(state_path)
     elif app_name == "classical":
         return load_classical_state(state_path)
+    elif app_name == "plexalbums":
+        return read_json(state_path) if path_exists(state_path) else {"volume": 11}
     else:
         raise NotImplementedError("Unknown app {app_name}")
 
