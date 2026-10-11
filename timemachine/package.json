@@ -57,6 +57,10 @@
             "github:eichblatt/litestream/timemachine/plex.py"
         ],
         [
+            "plexalbums.py",
+            "github:eichblatt/litestream/timemachine/plexalbums.py"
+        ],
+        [
             "rpm78.py",
             "github:eichblatt/litestream/timemachine/rpm78.py"
         ],
