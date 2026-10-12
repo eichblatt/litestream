@@ -357,6 +357,8 @@ class AudioPlayer:
         # (this is potentially different to which track we are currently playing. We could be reading ahead of decoding and playing by one or more tracks)
         self.current_track_bytes_read = 0
 
+        self.current_track_length = -1
+
         # The number of bytes the decoder has read from the input buffer. Used to detect the end of track by the decoder
         self.current_track_bytes_decoded_in = 0
 
@@ -829,6 +831,7 @@ class AudioPlayer:
             print("Warning: Unknown track length - will finalize on EOF")
 
         # Store the end-of-track and format marker for this track (except if we are restarting a track)
+        self.current_track_length = track_length
         pathname = path.split("?", 1)[0]
         is_plex_transcode = "/transcode/universal/start" in pathname.lower()
         if pathname.lower().endswith(".mp3") or is_plex_transcode:
@@ -866,6 +869,12 @@ class AudioPlayer:
         # If there is no socket then we have already read to the end of the playlist
         if self.sock is not None:
             if (BytesAvailable := self.InBuffer.get_write_available()) > 0:
+                if self.current_track_length >= 0:
+                    remaining = self.current_track_length - self.current_track_bytes_read
+                    if remaining <= 0:
+                        self.handle_end_of_track_read()
+                        return
+                    BytesAvailable = min(BytesAvailable, remaining)
                 # We can get an exception here if we pause too long and the underlying socket gets closed
                 try:
                     # Read data into the InBuffer if there new data available. The readinto() will return None if there is no data available, or 0 if the socket is closed
@@ -882,11 +891,7 @@ class AudioPlayer:
 
                     # We have read to the end of the track (known-length tracks).
                     # Use >= to tolerate socket chunk boundary overshoot.
-                    if (
-                        len(self.TrackInfo) > 0
-                        and self.TrackInfo[-1][0] >= 0
-                        and self.current_track_bytes_read >= self.TrackInfo[-1][0]
-                    ):
+                    if self.current_track_length >= 0 and self.current_track_bytes_read >= self.current_track_length:
                         self.handle_end_of_track_read()
                         return
 
@@ -895,8 +900,10 @@ class AudioPlayer:
                         print("Peer close")
                         # For unknown-length streams, EOF is expected. Finalize
                         # this track length so the decode loop can complete.
-                        if len(self.TrackInfo) > 0 and self.TrackInfo[-1][0] < 0:
-                            self.TrackInfo[-1] = (self.current_track_bytes_read, self.TrackInfo[-1][1])
+                        if self.current_track_length < 0:
+                            self.current_track_length = self.current_track_bytes_read
+                            if len(self.TrackInfo) > 0 and self.TrackInfo[-1][0] < 0:
+                                self.TrackInfo[-1] = (self.current_track_bytes_read, self.TrackInfo[-1][1])
                             print(f"Finalized unknown track length at EOF: {self.current_track_bytes_read}")
                             self.handle_end_of_track_read()
                             return
@@ -955,6 +962,8 @@ class AudioPlayer:
 
             # Work out the size of the ID3 tag (if any) at the beginning
             if self.ID3Tag_size == 0:
+                if self.InBuffer.get_read_available() < 10:
+                    return self.OutBuffer.buffer_level()
                 print(f"Track {self.current_track} decode start")
                 self.current_track_bytes_decoded_in = 0
                 self.current_track_bytes_decoded_out = 0
@@ -999,6 +1008,15 @@ class AudioPlayer:
 
             InBytesAvailable = self.InBuffer.get_read_available()
             pos = self.InBuffer.get_readPos()
+            if self.TrackInfo[0][0] >= 0:
+                InBytesAvailable = min(InBytesAvailable, self.TrackInfo[0][0] - self.current_track_bytes_decoded_in)
+            print(
+                "Decoder input:",
+                self.TrackInfo[0][0],
+                self.current_track_bytes_decoded_in,
+                InBytesAvailable,
+                bytes(self.InBuffer.Buffer[pos : pos + min(16, InBytesAvailable)]),
+            )
 
             # Init (allocate memory) and Start (look for sync word) the correct decoder
             if self.TrackInfo[0][1] == format_MP3:
@@ -1048,6 +1066,8 @@ class AudioPlayer:
 
             # Note that this can move the read pointer
             InBytesAvailable = self.InBuffer.get_read_available()
+            if self.TrackInfo[0][0] >= 0:
+                InBytesAvailable = min(InBytesAvailable, self.TrackInfo[0][0] - self.current_track_bytes_decoded_in)
 
             # The decoders need at least 4096 bytes. At the end of a track we have to let less through though.
             if InBytesAvailable < 4096:
@@ -1082,16 +1102,29 @@ class AudioPlayer:
                 # This means either that we tried to decode the TAG at the end of the file, or we have a corrupted packet
                 elif Result == -6:
                     if (
-                        self.InBuffer.Bytes[pos] == ord(b"T")
+                        InBytesAvailable >= 3
+                        and self.InBuffer.Bytes[pos] == ord(b"T")
                         and self.InBuffer.Bytes[pos + 1] == ord(b"A")
                         and self.InBuffer.Bytes[pos + 2] == ord(b"G")
                     ):
                         # V1.x ID3 tag at the end. Fixed size of 128 bytes. Skip it.
+                        tag_bytes = 128
+                        if self.TrackInfo[0][0] >= 0:
+                            tag_bytes = min(tag_bytes, self.TrackInfo[0][0] - self.current_track_bytes_decoded_in)
+                        if InBytesAvailable < tag_bytes:
+                            break_reason = 3
+                            break
                         print("Skipping TAG")
-                        self.InBuffer.get_read_available()
-                        self.InBuffer.bytes_wasRead(128)
-                        self.current_track_bytes_decoded_in += 128
+                        self.InBuffer.bytes_wasRead(tag_bytes)
+                        self.current_track_bytes_decoded_in += tag_bytes
                     else:
+                        print(
+                            "MP3 header error:",
+                            self.current_track_bytes_decoded_in,
+                            self.TrackInfo[0][0],
+                            InBytesAvailable,
+                            bytes(self.InBuffer.Buffer[pos : pos + min(16, InBytesAvailable)]),
+                        )
                         self._skip_current_track_after_decode_error("Corrupted packet", Result)
                         break
                     pass
