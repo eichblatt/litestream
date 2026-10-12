@@ -14,6 +14,9 @@ removing a library affects only the current app. Accounts are shared, so deletin
 an account removes its library selections from both apps.
 
 - Left knob: album artists, alphabetically (case-insensitive).
+- The Artist page starts with up to 15 recently played artists, newest first,
+  followed by the complete alphabetical list (including those recent artists).
+  History is saved in the `plexalbums` state and updated when playback starts.
 - Center knob: that artist's albums, oldest release first using Plex release
 	date/year metadata. Unknown dates sort last; ties sort by title.
 - Right knob: playable tracks, in disc/track order.

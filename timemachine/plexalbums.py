@@ -83,7 +83,7 @@ def artist_sort_key(name):
 
 
 class Browser:
-    def __init__(self, catalog):
+    def __init__(self, catalog, recent_artists=()):
         self.catalog = catalog
         self.artists = sorted(catalog, key=artist_sort_key)
         self.artist_index = 0
@@ -91,6 +91,24 @@ class Browser:
         self.track_index = 0
         self.tracks = None
         self.page = "Artist"
+        self.set_recent_artists(recent_artists)
+
+    def set_recent_artists(self, recent_artists):
+        artist = self.artist
+        self.recent_artists = []
+        for name in recent_artists:
+            if name not in self.recent_artists:
+                self.recent_artists.append(name)
+            if len(self.recent_artists) == 15:
+                break
+        self.artists = [name for name in self.recent_artists if name in self.catalog] + sorted(
+            self.catalog, key=artist_sort_key
+        )
+        self.artist_index = self.artists.index(artist) if artist in self.artists else 0
+
+    def record_played_artist(self, state):
+        self.set_recent_artists([self.artist] + self.recent_artists)
+        state["recent_artists"] = list(self.recent_artists)
 
     @property
     def artist(self):
@@ -321,6 +339,7 @@ def main_loop(browser, player, state, playback):
                     player.stop()
                     playback["cover"] = prepare_cover(browser.album)
                     if browser.play_selection(player):
+                        browser.record_played_artist(state)
                         playback["cover_time"] = time.ticks_ms()
                         playback["selection"] = (browser.artist_index, browser.album_index, browser.get_tracks())
                         resume_at = None
@@ -407,8 +426,8 @@ def run():
         )
         tm.write(message, 0, 0, tm.pfont_small, tm.YELLOW, show_end=1)
         return -1
-    browser = Browser(catalog)
     state = utils.load_state("plexalbums")
+    browser = Browser(catalog, state.get("recent_artists", []))
     if state.get("artist") in browser.artists:
         browser.artist_index = browser.artists.index(state["artist"])
         for position, album in enumerate(browser.albums):

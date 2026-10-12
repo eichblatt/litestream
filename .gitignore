@@ -156,3 +156,4 @@ timemachine/classical_orig.py
 MicropythonFirmware/latest/flashfiles.zip*
 .vscode/settings.json
 TestPlexAlbums.py
+TestAudioPlayerDecode.py

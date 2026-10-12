@@ -997,6 +997,9 @@ class AudioPlayer:
             self.MP3Decoder.MP3_Close()
             self.VorbisDecoder.Vorbis_Close()
 
+            InBytesAvailable = self.InBuffer.get_read_available()
+            pos = self.InBuffer.get_readPos()
+
             # Init (allocate memory) and Start (look for sync word) the correct decoder
             if self.TrackInfo[0][1] == format_MP3:
                 if self.MP3Decoder.MP3_Init():
@@ -1004,18 +1007,14 @@ class AudioPlayer:
                 else:
                     raise RuntimeError("MP3 decoder Init failed")
 
-                FoundSyncWordAt = self.MP3Decoder.MP3_Start(
-                    self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
-                )
+                FoundSyncWordAt = self.MP3Decoder.MP3_Start(self.InBuffer.Buffer[pos:], InBytesAvailable)
             elif self.TrackInfo[0][1] == format_Vorbis:
                 if self.VorbisDecoder.Vorbis_Init():
                     self.DEBUG and print("Vorbis decoder Init success")
                 else:
                     raise RuntimeError("Vorbis decoder Init failed")
 
-                FoundSyncWordAt = self.VorbisDecoder.Vorbis_Start(
-                    self.InBuffer.Buffer[self.InBuffer.get_readPos() :], self.InBuffer.get_read_available()
-                )
+                FoundSyncWordAt = self.VorbisDecoder.Vorbis_Start(self.InBuffer.Buffer[pos:], InBytesAvailable)
 
             if FoundSyncWordAt >= 0:
                 print("Decoder Start success. Sync word at", FoundSyncWordAt)
