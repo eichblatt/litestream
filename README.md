@@ -28,6 +28,13 @@ an account removes its library selections from both apps.
 	the existing audio player. Left knob press hides the screen; Center/Right
 	knob presses open Album/Track. Rewind/Fast Forward adjust volume when the
 	screen is hidden. Hold Power to return to configuration.
+- A red triangle indicates playback; two red bars indicate pause. The icon is
+  at the lower-right above the knob labels on browsing, track-list, and cover
+  screens, and disappears when stopped.
+- When paused or stopped, the screen turns off after 30 minutes without any
+  button or knob activity. Playback keeps the idle timer reset.
+- Completing an album or playlist stops playback and rewinds the current
+  playlist to its first track, ready for Play/Pause to start it again.
 
 In Dev Mode, use **Choose App > plexalbums**, or run `import plexalbums;
 plexalbums.run()` on the device. Normal non-dev startup remains `livemusic`.
@@ -38,6 +45,18 @@ After 30 seconds showing the playing tracks, the screen switches to the cover.
 Turning a knob returns to browsing. Missing artwork, download errors, or firmware
 without JPEG display support leave the track list visible. Only the current
 cover is stored, in `/config/plexalbums_cover.jpg`.
+
+MP3 and Ogg tracks stream directly. FLAC and M4A tracks (including AAC and ALAC
+in M4A files) are transcoded by Plex to MP3 at 320 kbps.
+
+During playback or pause, serial status output appears every ten seconds with
+read progress, input/output buffer byte counts and percentages, output-buffer
+underruns. The decoder's full URL, including its Plex token, is printed only
+when the track or playlist changes. Treat serial logs as sensitive and remove
+tokens before sharing them. The decoder can run ahead of the audible track.
+Control changes are handled immediately;
+otherwise the main loop pumps audio and skips screen/timer housekeeping until
+its next deadline, at most 100 ms later.
 
 ## History
 This project is a continuation of the deadstream project (https://github.com/eichblatt/deadstream)

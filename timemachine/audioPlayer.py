@@ -382,6 +382,7 @@ class AudioPlayer:
 
         # Used for statistics during debugging
         self.consecutive_zeros = 0
+        self.buffer_underruns = 0
 
         # Remaining source bytes to discard after a decode failure.
         self.skip_track_bytes_remaining = 0
@@ -414,8 +415,15 @@ class AudioPlayer:
                 retstring += (
                     f' Read {bytes}/{length} ({100*ratio:.0f}%) of track {tstat["track_being_read"]}/{tstat["ntracks"]-1}'
                 )
-            retstring += f" InBuffer: {100*self.InBuffer.buffer_level():.0f}%"
-            retstring += f" OutBuffer: {100*self.OutBuffer.buffer_level():.0f}%"
+            retstring += (
+                f" InBuffer: {self.InBuffer.get_bytes_in_buffer()}/{self.InBuffer.BufferSize}"
+                f" ({100*self.InBuffer.buffer_level():.0f}%)"
+            )
+            retstring += (
+                f" OutBuffer: {self.OutBuffer.get_bytes_in_buffer()}/{self.OutBuffer.BufferSize}"
+                f" ({100*self.OutBuffer.buffer_level():.0f}%)"
+            )
+            retstring += f" Underruns: {self.buffer_underruns}"
 
         return retstring
 
@@ -1335,7 +1343,7 @@ class AudioPlayer:
                 BytesToPlay = self.PlayLength[0] - self.current_track_bytes_played
                 self.PlayLength.pop(0)
 
-                if not self.DecodeLoopRunning:
+                if not self.DecodeLoopRunning and not self.PlayLength:
                     self.PlayLoopRunning = False
                     print("Finished playing playlist")
                     # Don't stop() here as we need to let the play loop run out
@@ -1346,6 +1354,8 @@ class AudioPlayer:
                 # We have a zero length track, so we don't need to play anything
                 if BytesToPlay == 0:
                     self.I2SAvailable = True
+                    if not self.PlayLoopRunning:
+                        self.stop()
                     return
 
         # We can get zero bytes to play if the buffer is starved
@@ -1353,6 +1363,7 @@ class AudioPlayer:
             # The output buffer can get starved if the network is slow,
             # or if we slow the decoding loop too much (e.g. by writing too much debug output)
             self.DEBUG and print("Play buffer starved")
+            self.buffer_underruns += 1
 
             # Clear this flag to let the decoder re-start the playback loop when the decoder has generated enough data
             self.PlayLoopRunning = False

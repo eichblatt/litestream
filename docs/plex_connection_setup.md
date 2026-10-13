@@ -69,6 +69,11 @@ Playable tracks are discovered from:
 - MP3 (`.mp3`)
 - OGG (`.ogg`)
 - FLAC (`.flac`, streamed via Plex transcode URL) -- flac is discouraged, transcoding leads to problems.
+- M4A (`.m4a`, including AAC and ALAC, transcoded by Plex to MP3).
+
+MP3 and OGG stream directly. FLAC and M4A use Plex's MP3 transcoder at
+320 kbps; the Plex server must allow audio transcoding. These formats are
+also supported by the `plexalbums` browser.
 
 ## Practical Library Hygiene Tips
 
@@ -86,4 +91,3 @@ If no shows appear:
 3. Confirm the device can still reach Plex over the network.
 4. Re-open Plex setup and verify the selected server/library entries.
 5. If credentials changed, remove and re-add the Plex account.
-

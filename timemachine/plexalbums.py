@@ -10,6 +10,34 @@ import utils
 
 CONFIG_CHOICES = ["Plex"]
 COVER_PATH = "/config/plexalbums_cover.jpg"
+PLAYBACK_ICON_SIZE = 16
+STATUS_INTERVAL_MS = 10_000
+HOUSEKEEPING_INTERVAL_MS = 100
+
+
+def print_player_status(player):
+    print("Plex playback:", player)
+
+
+def print_track_url(player):
+    track = player.current_track
+    if track is not None and 0 <= track < len(player.playlist):
+        print("Decoder URL:", player.playlist[track])
+
+
+def display_playback_icon(browser, player):
+    status = "Stopped" if player.is_stopped() else "Playing" if player.is_playing() else "Paused"
+    previous = getattr(browser, "_playback_icon", None)
+    if status == previous or (status == "Stopped" and previous is None):
+        return
+    x = tm.SCREEN_WIDTH - PLAYBACK_ICON_SIZE
+    y = min(tm.SCREEN_HEIGHT, tm.SCREEN_VPARTS[0]) - PLAYBACK_ICON_SIZE
+    tm.clear_area(x, y, PLAYBACK_ICON_SIZE, PLAYBACK_ICON_SIZE)
+    if status == "Playing":
+        tm.tft.fill_polygon(tm.PlayPoly, x, y, tm.play_color)
+    elif status == "Paused":
+        tm.tft.fill_polygon(tm.PausePoly, x, y, tm.pause_color)
+    browser._playback_icon = status
 
 
 def prepare_cover(album):
@@ -44,6 +72,7 @@ def display_cover(browser, playback):
     browser._display_frame = (None, {})
     try:
         tm.clear_screen()
+        browser._playback_icon = None
         tm.tft.jpg(path, (tm.SCREEN_WIDTH - size) // 2, (tm.SCREEN_HEIGHT - size) // 2)
         display_cover_title(playback)
         browser.page = "Cover"
@@ -173,6 +202,7 @@ def display_page(browser, playing=None, track_names=()):
     font = getattr(tm, "pfont_tiny", tm.pfont_small)
     height = font.HEIGHT
     bottom = min(tm.SCREEN_HEIGHT, tm.SCREEN_VPARTS[0]) if len(tm.SCREEN_VPARTS) > 1 else tm.SCREEN_HEIGHT
+    bottom -= PLAYBACK_ICON_SIZE
     page = browser.page
     entries = []
 
@@ -264,6 +294,7 @@ def display_page(browser, playing=None, track_names=()):
     full_redraw = previous_key != display_key
     if full_redraw:
         tm.clear_screen()
+        browser._playback_icon = None
         changed = set(rows)
     else:
         changed = {row_y for row_y in set(rows) | set(previous_rows) if rows.get(row_y) != previous_rows.get(row_y)}
@@ -289,13 +320,44 @@ def main_loop(browser, player, state, playback):
     power_pressed = None
     resume_at = None
     last_browse_time = None
+    last_activity_time = time.ticks_ms()
+    last_work_time = last_activity_time
+    work_delay = 0
+    last_status_time = None
+    last_logged_playlist = None
+    last_logged_track = None
+    was_playing = player.is_playing()
     display_page(browser)
+    display_playback_icon(browser, player)
     while True:
         player.audio_pump()
+        now = time.ticks_ms()
+        playing = player.is_playing()
+        if playing:
+            last_activity_time = now
+        controls_changed = False
+        position = 0
+        while position < len(knobs):
+            if knobs[position].value() != previous[position]:
+                controls_changed = True
+                break
+            position += 1
+        if not controls_changed:
+            position = 0
+            while position < len(buttons):
+                if buttons[position].value() != button_values[position]:
+                    controls_changed = True
+                    break
+                position += 1
+        if not controls_changed and playing == was_playing and time.ticks_diff(now, last_work_time) < work_delay:
+            continue
+        last_work_time = now
+        was_playing = playing
         for position, knob in enumerate(knobs):
             value = knob.value()
             if value != previous[position]:
                 last_browse_time = time.ticks_ms()
+                last_activity_time = last_browse_time
                 tm.power(1)
                 browser.turn(pages[position], value - previous[position])
                 previous[position] = value
@@ -305,6 +367,7 @@ def main_loop(browser, player, state, playback):
             if value == button_values[position]:
                 continue
             button_values[position] = value
+            last_activity_time = time.ticks_ms()
             if value:
                 if button == tm.pPower:
                     power_pressed = None
@@ -360,9 +423,11 @@ def main_loop(browser, player, state, playback):
                     resume_at = None
                 else:
                     player.play()
-                    browser.page = "Playing"
+                    if browser.page != "Cover":
+                        browser.page = "Playing"
                     playback["cover_time"] = time.ticks_ms()
-                display_page(browser, playback["album"], playback["tracks"])
+                if browser.page != "Cover":
+                    display_page(browser, playback["album"], playback["tracks"])
             elif button == tm.pStop:
                 resume_at = None
                 player.stop()
@@ -409,9 +474,43 @@ def main_loop(browser, player, state, playback):
             resume_at = None
             if player.playlist and tm.power():
                 player.play()
+        display_playback_icon(browser, player)
+        if (
+            not player.is_playing()
+            and tm.screen_state()
+            and time.ticks_diff(time.ticks_ms(), last_activity_time) >= 30 * 60_000
+        ):
+            tm.screen_off()
         if power_pressed is not None and time.ticks_diff(time.ticks_ms(), power_pressed) > 1250:
             tm.power(1)
             return
+        if player.is_stopped():
+            last_logged_playlist = None
+            last_logged_track = None
+        else:
+            if player.playlist is not last_logged_playlist or player.current_track != last_logged_track:
+                print_track_url(player)
+                last_logged_playlist = player.playlist
+                last_logged_track = player.current_track
+            if last_status_time is None or time.ticks_diff(now, last_status_time) >= STATUS_INTERVAL_MS:
+                print_player_status(player)
+                last_status_time = now
+        work_delay = HOUSEKEEPING_INTERVAL_MS
+        for started, interval in (
+            (last_status_time, STATUS_INTERVAL_MS),
+            (last_browse_time, 30_000),
+            (playback.get("cover_time"), 30_000),
+            (last_activity_time, 30 * 60_000),
+            (power_pressed, 1251),
+        ):
+            if started is not None:
+                remaining = interval - time.ticks_diff(now, started)
+                if remaining > 0:
+                    work_delay = min(work_delay, remaining)
+        if resume_at is not None:
+            remaining = time.ticks_diff(resume_at, now)
+            if remaining > 0:
+                work_delay = min(work_delay, remaining)
 
 
 def run():
