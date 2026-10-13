@@ -207,7 +207,10 @@ def display_page(browser, playing=None, track_names=()):
     entries = []
 
     def write(text, x, y, font, color, show_end):
-        entries.append((text, x, y, font, color, show_end))
+        available_lines = max(0, (bottom - y) // font.HEIGHT)
+        if available_lines:
+            text = "\n".join(text.split("\n")[:available_lines])
+            entries.append((text, x, y, font, color, show_end))
 
     write(page, 0, 0, font, tm.YELLOW, show_end=1)
     ycursor = height

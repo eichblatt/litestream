@@ -30,7 +30,8 @@ an account removes its library selections from both apps.
 	screen is hidden. Hold Power to return to configuration.
 - A red triangle indicates playback; two red bars indicate pause. The icon is
   at the lower-right above the knob labels on browsing, track-list, and cover
-  screens, and disappears when stopped.
+  screens, and disappears when stopped. Track text is clipped above the icon
+  row so long or multiline titles cannot overlap it.
 - When paused or stopped, the screen turns off after 30 minutes without any
   button or knob activity. Playback keeps the idle timer reset.
 - Completing an album or playlist stops playback and rewinds the current
@@ -39,6 +40,10 @@ an account removes its library selections from both apps.
 In Dev Mode, use **Choose App > plexalbums**, or run `import plexalbums;
 plexalbums.run()` on the device. Normal non-dev startup remains `livemusic`.
 The app remembers artist, album, and volume separately from the other apps.
+
+Startup loads album metadata from the selected libraries to build the artist
+and album lists. Track lists and cover art remain deferred until needed.
+The catalog is held in RAM for the current run, not cached on disk.
 
 When available, Plex cover art is resized and downloaded before playback starts.
 After 30 seconds showing the playing tracks, the screen switches to the cover.
