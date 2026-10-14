@@ -19,6 +19,8 @@ an account removes its library selections from both apps.
   History is saved in the `plexalbums` state and updated when playback starts.
 - Center knob: that artist's albums, oldest release first using Plex release
 	date/year metadata. Unknown dates sort last; ties sort by title.
+  Opening Albums from the Artist page starts on the first album; subsequent
+  knob turns advance the selection. Returning from Tracks preserves the album.
 - Right knob: playable tracks, in disc/track order.
 - Turning Artist or Album immediately changes the next knob's choices and resets
 	the child selections. Browsing does not interrupt current playback.

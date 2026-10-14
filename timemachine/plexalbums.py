@@ -165,8 +165,11 @@ class Browser:
             self.artist_index = (self.artist_index + delta) % len(self.artists)
             self.album_index = self.track_index = 0
             self.tracks = None
-        elif page == "Album" and self.albums and delta:
-            self.album_index = (self.album_index + delta) % len(self.albums)
+        elif page == "Album" and (previous_page == "Artist" or (self.albums and delta)):
+            if previous_page == "Artist":
+                self.album_index = 0
+            else:
+                self.album_index = (self.album_index + delta) % len(self.albums)
             self.track_index = 0
             self.tracks = None
         elif page == "Track":
@@ -396,7 +399,7 @@ def main_loop(browser, player, state, playback):
             if button == tm.pSelect or (button == tm.pPlayPause and not player.playlist):
                 last_browse_time = time.ticks_ms()
                 if browser.page == "Artist":
-                    browser.page = "Album"
+                    browser.turn("Album", 0)
                     display_page(browser)
                 elif browser.get_tracks():
                     playback["album"] = (browser.artist, browser.album["title"])
